@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { TopBar } from "./TopBar";
-import fleziLogo from "figma:asset/020ceccc095996a9828ea9162f539ccddf92986f.png";
+import fleziLogo from "../../assets/020ceccc095996a9828ea9162f539ccddf92986f.png";
 
 export function Layout() {
   const location = useLocation();

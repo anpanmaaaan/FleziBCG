@@ -1,9 +1,67 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Search, Plus, Edit, Trash2, Eye, Filter, Download, ChevronDown, Settings, ArrowUpDown, Calendar } from "lucide-react";
-import { productionOrders as initialOrders } from "../data/mockData";
 import { ColumnManagerDialog, ColumnConfig } from "../components/ColumnManagerDialog";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
+
+interface ProductionOrderRow {
+  id: string | number;
+  serialNumber?: string;
+  lotId?: string;
+  customer?: string;
+  productName?: string;
+  routeId?: string;
+  priority?: string;
+  machineNumber?: string;
+  quantity?: number;
+  plannedStartDate?: string;
+  plannedCompletionDate?: string;
+  actualStartDate?: string;
+  actualCompletionDate?: string;
+  releasedDate?: string;
+  assignee?: string;
+  department?: string;
+  status?: string;
+  progress?: number | null;
+  materialCode?: string;
+}
+
+const statusLabelMap: Record<string, string> = {
+  PENDING: "Pending",
+  IN_PROGRESS: "In Progress",
+  COMPLETED: "Completed",
+  LATE: "Late",
+  BLOCKED: "Blocked",
+};
+
+function getStatusLabel(status?: string) {
+  if (!status) return "-";
+  return statusLabelMap[status] ?? status;
+}
+
+function normalizeProductionOrder(order: ProductionOrderRow): ProductionOrderRow {
+  return {
+    id: order.id,
+    serialNumber: order.serialNumber ?? "",
+    lotId: order.lotId ?? "",
+    customer: order.customer ?? "",
+    productName: order.productName ?? "",
+    routeId: order.routeId ?? "",
+    priority: order.priority ?? "",
+    machineNumber: order.machineNumber ?? "",
+    quantity: order.quantity ?? 0,
+    plannedStartDate: order.plannedStartDate ?? "",
+    plannedCompletionDate: order.plannedCompletionDate ?? "",
+    actualStartDate: order.actualStartDate ?? "",
+    actualCompletionDate: order.actualCompletionDate ?? "",
+    releasedDate: order.releasedDate ?? "",
+    assignee: order.assignee ?? "",
+    department: order.department ?? "",
+    status: order.status ?? "PENDING",
+    progress: order.progress ?? 0,
+    materialCode: order.materialCode ?? "",
+  };
+}
 
 const DEFAULT_COLUMNS: ColumnConfig[] = [
   { id: 'productionOrder', label: 'Production Order', visible: true, order: 0 },
@@ -29,7 +87,9 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
 
 export function ProductionOrderList() {
   const navigate = useNavigate();
-  const [orders, setOrders] = useState(initialOrders);
+  const [orders, setOrders] = useState<ProductionOrderRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [columnManagerOpen, setColumnManagerOpen] = useState(false);
   const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
   const [searchValues, setSearchValues] = useState<Record<string, string>>({
@@ -113,13 +173,13 @@ export function ProductionOrderList() {
       case 'plannedStartDate':
         return order.plannedStartDate || '-';
       case 'plannedCompletion':
-        return order.plannedCompletionDate;
+        return order.plannedCompletionDate || '-';
       case 'actualStartDate':
         return order.actualStartDate || '-';
       case 'actualCompletion':
         return order.actualCompletionDate || '-';
       case 'releasedDate':
-        return order.releasedDate;
+        return order.releasedDate || '-';
       case 'assignee':
         return order.assignee || '-';
       case 'department':
@@ -132,7 +192,7 @@ export function ProductionOrderList() {
             order.status === 'LATE' ? 'bg-red-50 text-red-600' :
             'bg-gray-50 text-gray-600'
           }`}>
-            {order.status}
+            {getStatusLabel(order.status)}
           </span>
         );
       case 'progress':
@@ -141,10 +201,10 @@ export function ProductionOrderList() {
             <div className="flex-1 bg-gray-200 rounded-full h-2">
               <div 
                 className="bg-blue-500 h-2 rounded-full" 
-                style={{ width: `${order.progress}%` }}
+                style={{ width: `${order.progress ?? 0}%` }}
               />
             </div>
-            <span className="text-xs text-gray-600">{order.progress}%</span>
+            <span className="text-xs text-gray-600">{order.progress ?? 0}%</span>
           </div>
         );
       case 'materialCode':
@@ -154,6 +214,35 @@ export function ProductionOrderList() {
     }
   };
 
+  useEffect(() => {
+    const fetchOrders = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch('/api/v1/production-orders');
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || `Failed to load production orders (${response.status})`);
+        }
+        const data = await response.json();
+        if (!Array.isArray(data)) {
+          throw new Error('Unexpected response from production orders endpoint');
+        }
+
+        setOrders(data.map(normalizeProductionOrder));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unable to load production orders';
+        setError(message);
+        toast.error(message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, []);
+
   const visibleColumnsCount = visibleColumns.length;
 
   return (
@@ -161,7 +250,11 @@ export function ProductionOrderList() {
       {/* Content */}
       <div className="flex-1 overflow-auto p-6">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-xl">Production Order List</h2>
+          <div>
+            <h2 className="text-xl">Production Order List</h2>
+            {loading && <p className="text-sm text-slate-500">Loading production orders...</p>}
+            {error && <p className="text-sm text-red-600">{error}</p>}
+          </div>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setColumnManagerOpen(true)}
