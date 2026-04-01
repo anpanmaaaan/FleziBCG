@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.session import Session
@@ -37,6 +38,32 @@ def mark_operation_started(db: Session, operation: Operation, started_at):
     operation.status = StatusEnum.in_progress.value
     if operation.actual_start is None:
         operation.actual_start = started_at
+
+    db.add(operation)
+    db.commit()
+    db.refresh(operation)
+    return operation
+
+
+def mark_operation_reported(
+    db: Session,
+    operation: Operation,
+    good_qty: int,
+    scrap_qty: int,
+):
+    operation.completed_qty = (operation.completed_qty or 0) + good_qty + scrap_qty
+    operation.good_qty = (operation.good_qty or 0) + good_qty
+    operation.scrap_qty = (operation.scrap_qty or 0) + scrap_qty
+
+    db.add(operation)
+    db.commit()
+    db.refresh(operation)
+    return operation
+
+
+def mark_operation_completed(db: Session, operation: Operation, completed_at: datetime):
+    operation.status = StatusEnum.completed.value
+    operation.actual_end = completed_at
 
     db.add(operation)
     db.commit()

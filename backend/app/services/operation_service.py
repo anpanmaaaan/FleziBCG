@@ -6,8 +6,18 @@ from sqlalchemy.orm import Session
 from app.models.execution import ExecutionEventType
 from app.models.master import StatusEnum
 from app.repositories.execution_event_repository import create_execution_event, get_events_for_operation
-from app.repositories.operation_repository import get_operation_by_id, mark_operation_started
-from app.schemas.operation import OperationDetail, OperationStartRequest
+from app.repositories.operation_repository import (
+    get_operation_by_id,
+    mark_operation_started,
+    mark_operation_reported,
+    mark_operation_completed,
+)
+from app.schemas.operation import (
+    OperationDetail,
+    OperationStartRequest,
+    OperationReportQuantityRequest,
+    OperationCompleteRequest,
+)
 
 
 def _parse_timestamp(value: Optional[str]) -> Optional[datetime]:
@@ -37,9 +47,9 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
     events = get_events_for_operation(db, operation.id)
     actual_start = None
     actual_end = None
-    completed_qty = operation.completed_qty or 0
-    good_qty = operation.good_qty or 0
-    scrap_qty = operation.scrap_qty or 0
+    completed_qty = 0
+    good_qty = 0
+    scrap_qty = 0
 
     for event in events:
         if event.event_type == ExecutionEventType.OP_STARTED.value:
@@ -47,11 +57,12 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
         if event.event_type == ExecutionEventType.OP_COMPLETED.value:
             actual_end = _parse_timestamp(event.payload.get("completed_at")) or actual_end
         if event.event_type == ExecutionEventType.QTY_REPORTED.value:
-            completed_qty = max(completed_qty, int(event.payload.get("quantity", completed_qty)))
-            good_qty = int(event.payload.get("good_quantity", completed_qty))
+            good_qty += int(event.payload.get("good_qty", 0))
+            scrap_qty += int(event.payload.get("scrap_qty", 0))
         if event.event_type == ExecutionEventType.NG_REPORTED.value:
-            scrap_qty = int(event.payload.get("ng_quantity", scrap_qty))
+            scrap_qty += int(event.payload.get("ng_quantity", 0))
 
+    completed_qty = good_qty + scrap_qty
     status = _derive_status(events)
     progress = _derive_progress(operation.quantity, completed_qty)
 
@@ -107,5 +118,87 @@ def start_operation(db: Session, operation, request: OperationStartRequest, tena
     operation = get_operation_by_id(db, operation.id)
     if not operation:
         raise ValueError("Operation not found after event creation.")
+
+    return derive_operation_detail(db, operation)
+
+
+def report_quantity(
+    db: Session,
+    operation,
+    request: OperationReportQuantityRequest,
+    tenant_id: str = "default",
+) -> OperationDetail:
+    if operation.tenant_id != tenant_id:
+        raise ValueError("Operation does not belong to the requesting tenant.")
+    if operation.status != StatusEnum.in_progress.value:
+        raise ValueError("Operation must be IN_PROGRESS to report quantity.")
+
+    if request.good_qty < 0 or request.scrap_qty < 0:
+        raise ValueError("Quantities must be non-negative.")
+
+    if request.good_qty + request.scrap_qty <= 0:
+        raise ValueError("At least one of good_qty or scrap_qty must be greater than zero.")
+
+    payload = {
+        "operator_id": request.operator_id,
+        "good_qty": request.good_qty,
+        "scrap_qty": request.scrap_qty,
+    }
+
+    create_execution_event(
+        db=db,
+        event_type=ExecutionEventType.QTY_REPORTED.value,
+        production_order_id=operation.work_order.production_order_id,
+        work_order_id=operation.work_order_id,
+        operation_id=operation.id,
+        payload=payload,
+        tenant_id=operation.tenant_id,
+    )
+
+    # Snapshot update as derived state in service.
+    operation = mark_operation_reported(db, operation, request.good_qty, request.scrap_qty)
+
+    operation = get_operation_by_id(db, operation.id)
+    if not operation:
+        raise ValueError("Operation not found after quantity report event")
+
+    return derive_operation_detail(db, operation)
+
+
+def complete_operation(
+    db: Session,
+    operation,
+    request: OperationCompleteRequest,
+    tenant_id: str = "default",
+) -> OperationDetail:
+    if operation.tenant_id != tenant_id:
+        raise ValueError("Operation does not belong to the requesting tenant.")
+    if operation.status == StatusEnum.completed.value:
+        raise ValueError("Operation already completed; cannot complete again.")
+    if operation.status != StatusEnum.in_progress.value:
+        raise ValueError("Operation must be IN_PROGRESS to complete.")
+
+    completed_at = datetime.utcnow()
+    payload = {
+        "operator_id": request.operator_id,
+        "completed_at": completed_at.isoformat(),
+    }
+
+    create_execution_event(
+        db=db,
+        event_type=ExecutionEventType.OP_COMPLETED.value,
+        production_order_id=operation.work_order.production_order_id,
+        work_order_id=operation.work_order_id,
+        operation_id=operation.id,
+        payload=payload,
+        tenant_id=operation.tenant_id,
+    )
+
+    # Snapshot update (derived state) in service layer.
+    operation = mark_operation_completed(db, operation, completed_at)
+
+    operation = get_operation_by_id(db, operation.id)
+    if not operation:
+        raise ValueError("Operation not found after completion event")
 
     return derive_operation_detail(db, operation)

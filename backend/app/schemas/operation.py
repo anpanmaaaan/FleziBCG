@@ -34,3 +34,13 @@ class OperationDetail(OperationListItem):
 class OperationStartRequest(BaseModel):
     operator_id: str | None = None
     started_at: datetime | None = None
+
+
+class OperationReportQuantityRequest(BaseModel):
+    good_qty: int
+    scrap_qty: int = 0
+    operator_id: str | None = None
+
+
+class OperationCompleteRequest(BaseModel):
+    operator_id: str | None = None
