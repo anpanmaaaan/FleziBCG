@@ -7,6 +7,65 @@ cd frontend
 npm install
 npm run dev
 
+# NOTE
+.gitignore
+# =========================
+# Node / Frontend
+# =========================
+
+# Dependency directories
+node_modules/
+
+# Build output (Vite / React)
+frontend/dist/
+frontend/.vite/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# =========================
+# Backend / Python
+# =========================
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environment
+.venv/
+venv/
+
+# =========================
+# Database (local only)
+# =========================
+
+# SQLite local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# =========================
+# OS / Editor
+# =========================
+
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# =========================
+# Logs / Temp
+# =========================
+
+*.log
+tmp/
+.temp/
+.cache/
+
 # agent-review-promp
 Please perform a FULL CODEBASE REVIEW for this MES project before merge.
 
