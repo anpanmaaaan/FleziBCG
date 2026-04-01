@@ -3,12 +3,13 @@ import { useNavigate } from "react-router";
 import { ReactNode } from "react";
 
 interface PageHeaderProps {
-  title: string;
+  title: React.ReactNode;
   subtitle?: string;
   showBackButton?: boolean;
   onBackClick?: () => void;
   actions?: ReactNode;
   breadcrumb?: ReactNode;
+  children?: ReactNode;
 }
 
 export function PageHeader({ 
@@ -17,7 +18,8 @@ export function PageHeader({
   showBackButton = false, 
   onBackClick,
   actions,
-  breadcrumb
+  breadcrumb,
+  children
 }: PageHeaderProps) {
   const navigate = useNavigate();
 
@@ -61,9 +63,10 @@ export function PageHeader({
         </div>
 
         {/* Right: Actions */}
-        {actions && (
+        {(actions || children) && (
           <div className="flex items-center gap-3">
             {actions}
+            {children}
           </div>
         )}
       </div>

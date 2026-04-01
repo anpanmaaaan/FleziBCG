@@ -25,6 +25,17 @@ def get_production_order_by_id(db: Session, order_id: int) -> ProductionOrder | 
     return db.scalar(statement)
 
 
+def get_production_order_by_number(db: Session, order_number: str) -> ProductionOrder | None:
+    statement = (
+        select(ProductionOrder)
+        .where(ProductionOrder.order_number == order_number)
+        .options(
+            selectinload(ProductionOrder.work_orders).selectinload(WorkOrder.operations)
+        )
+    )
+    return db.scalar(statement)
+
+
 def count_production_orders(db: Session) -> int:
     statement = select(func.count()).select_from(ProductionOrder)
     return db.scalar(statement) or 0

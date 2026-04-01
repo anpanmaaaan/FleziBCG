@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.models.execution import ExecutionEventType
 from app.models.master import StatusEnum
 from app.repositories.execution_event_repository import create_execution_event, get_events_for_operation
-from app.repositories.operation_repository import get_operation_by_id
+from app.repositories.operation_repository import get_operation_by_id, mark_operation_started
 from app.schemas.operation import OperationDetail, OperationStartRequest
 
 
@@ -78,14 +78,18 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
     )
 
 
-def start_operation(db: Session, operation, request: OperationStartRequest) -> OperationDetail:
-    if operation.status == StatusEnum.completed.value:
-        raise ValueError("Cannot start an operation that is already completed.")
+def start_operation(db: Session, operation, request: OperationStartRequest, tenant_id: str = "default") -> OperationDetail:
+    if operation.tenant_id != tenant_id:
+        raise ValueError("Operation does not belong to the requesting tenant.")
+    if operation.status in (StatusEnum.in_progress.value, StatusEnum.completed.value):
+        raise ValueError("Operation already started or completed; cannot start again.")
 
+    start_time = request.started_at or datetime.utcnow()
     payload = {
         "operator_id": request.operator_id,
-        "started_at": request.started_at.isoformat() if request.started_at else datetime.utcnow().isoformat(),
+        "started_at": start_time.isoformat(),
     }
+
     create_execution_event(
         db=db,
         event_type=ExecutionEventType.OP_STARTED.value,
@@ -96,7 +100,10 @@ def start_operation(db: Session, operation, request: OperationStartRequest) -> O
         tenant_id=operation.tenant_id,
     )
 
-    # Re-read the operation with related entities to derive state.
+    # Snapshot update (derived state) in service layer only.
+    operation = mark_operation_started(db, operation, start_time)
+
+    # Re-read operation for state derivation and return detail.
     operation = get_operation_by_id(db, operation.id)
     if not operation:
         raise ValueError("Operation not found after event creation.")

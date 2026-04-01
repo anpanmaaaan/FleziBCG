@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
@@ -30,12 +30,13 @@ def start_operation_endpoint(
     operation_id: int,
     request: OperationStartRequest,
     db: Session = Depends(get_db),
+    x_tenant_id: str = Header("default", alias="X-Tenant-ID"),
 ):
     operation = get_operation_by_id(db, operation_id)
     if not operation:
         raise HTTPException(status_code=404, detail="Operation not found")
 
     try:
-        return start_operation(db, operation, request)
+        return start_operation(db, operation, request, tenant_id=x_tenant_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

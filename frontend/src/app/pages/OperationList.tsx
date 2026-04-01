@@ -31,24 +31,24 @@ interface WorkOrderExecution {
 // Backend response structures
 interface WorkOrderFromAPI {
   id: number;
-  work_order_number: string;
+  workOrderNumber: string;
   status: string;
-  planned_start: string | null;
-  planned_end: string | null;
-  actual_start: string | null;
-  actual_end: string | null;
-  operations_count: number;
-  overall_progress: number;
+  plannedStart: string | null;
+  plannedEnd: string | null;
+  actualStart: string | null;
+  actualEnd: string | null;
+  operationsCount: number;
+  overallProgress: number;
 }
 
 interface ProductionOrderFromAPI {
   id: number;
-  order_number: string;
-  product_name: string;
+  orderNumber: string;
+  productName: string;
   quantity: number;
   status: string;
-  route_id: string | null;
-  work_orders: WorkOrderFromAPI[];
+  routeId: string | null;
+  workOrders: WorkOrderFromAPI[];
 }
 
 // Helper to format datetime strings for display
@@ -79,9 +79,9 @@ const normalizeWorkOrder = (
 
   // Compute delay if actual_end exists and is after planned_end
   let delayMinutes: number | undefined;
-  if (backendWO.actual_end && backendWO.planned_end) {
-    const plannedTime = new Date(backendWO.planned_end).getTime();
-    const actualTime = new Date(backendWO.actual_end).getTime();
+  if (backendWO.actualEnd && backendWO.plannedEnd) {
+    const plannedTime = new Date(backendWO.plannedEnd).getTime();
+    const actualTime = new Date(backendWO.actualEnd).getTime();
     if (actualTime > plannedTime) {
       delayMinutes = Math.round((actualTime - plannedTime) / (1000 * 60));
     }
@@ -89,19 +89,19 @@ const normalizeWorkOrder = (
 
   return {
     id: backendWO.id,
-    workOrderId: backendWO.work_order_number,
+    workOrderId: backendWO.workOrderNumber,
     productionOrderId,
     productName,
     productionLine: '-', // Not available in Phase 1 backend data
     status: normalizedStatus,
-    overallProgress: backendWO.overall_progress,
-    operationsCount: backendWO.operations_count,
+    overallProgress: backendWO.overallProgress,
+    operationsCount: backendWO.operationsCount,
     completedOperations: 0, // TODO: compute from operations when detailed data is available
     currentOperation: undefined, // TODO: derive from execution events
-    plannedStart: formatDateTime(backendWO.planned_start),
-    plannedEnd: formatDateTime(backendWO.planned_end),
-    actualStart: formatDateTime(backendWO.actual_start),
-    estimatedCompletion: formatDateTime(backendWO.actual_end),
+    plannedStart: formatDateTime(backendWO.plannedStart),
+    plannedEnd: formatDateTime(backendWO.plannedEnd),
+    actualStart: formatDateTime(backendWO.actualStart),
+    estimatedCompletion: formatDateTime(backendWO.actualEnd),
     delayMinutes,
   };
 };
@@ -142,9 +142,9 @@ export function OperationList() {
         }
         const data: ProductionOrderFromAPI = await response.json();
 
-        setProductName(data.product_name);
-        const normalized = data.work_orders.map(wo =>
-          normalizeWorkOrder(wo, data.id, data.product_name)
+        setProductName(data.productName);
+        const normalized = data.workOrders.map(wo =>
+          normalizeWorkOrder(wo, data.id, data.productName)
         );
         setWorkOrders(normalized);
       } catch (err) {
@@ -426,3 +426,5 @@ export function OperationList() {
       </div>
     </div>
   );
+
+}

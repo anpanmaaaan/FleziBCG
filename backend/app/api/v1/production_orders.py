@@ -1,7 +1,15 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.repositories.production_order_repository import get_production_order_by_id, get_production_orders
+from app.repositories.production_order_repository import (
+    get_production_order_by_id,
+    get_production_order_by_number,
+    get_production_orders,
+)
+
+logger = logging.getLogger(__name__)
 from app.schemas.production_order import ProductionOrderDetail, ProductionOrderSummary, WorkOrderSummary
 from app.schemas.operation import OperationListItem
 from app.repositories.operation_repository import get_operations_by_work_order
@@ -69,39 +77,56 @@ def _build_production_order_summary(order) -> ProductionOrderSummary:
 
 @router.get("/production-orders", response_model=list[ProductionOrderSummary])
 def read_production_orders(db: Session = Depends(get_db)):
-    orders = get_production_orders(db)
-    return [_build_production_order_summary(order) for order in orders]
+    try:
+        orders = get_production_orders(db)
+        return [_build_production_order_summary(order) for order in orders]
+    except Exception as exc:
+        logger.exception("Failed to load production orders")
+        raise HTTPException(status_code=500, detail="Failed to load production orders")
 
 
 @router.get("/production-orders/{order_id}", response_model=ProductionOrderDetail)
-def read_production_order(order_id: int, db: Session = Depends(get_db)):
-    order = get_production_order_by_id(db, order_id)
-    if not order:
-        raise HTTPException(status_code=404, detail="Production order not found")
+def read_production_order(order_id: str, db: Session = Depends(get_db)):
+    try:
+        order = None
 
-    return ProductionOrderDetail(
-        id=order.id,
-        order_number=order.order_number,
-        product_name=order.product_name,
-        quantity=order.quantity,
-        status=order.status,
-        serial_number=getattr(order, "serial_number", None),
-        lot_id=getattr(order, "lot_id", None),
-        customer=getattr(order, "customer", None),
-        priority=getattr(order, "priority", None),
-        machine_number=getattr(order, "machine_number", None),
-        route_id=order.route_id,
-        material_code=getattr(order, "material_code", None),
-        assignee=getattr(order, "assignee", None),
-        department=getattr(order, "department", None),
-        released_date=getattr(order, "released_date", None),
-        planned_start_date=order.planned_start,
-        planned_completion_date=order.planned_end,
-        actual_start_date=getattr(order, "actual_start", None),
-        actual_completion_date=getattr(order, "actual_end", None),
-        progress=_compute_production_order_progress(order),
-        work_orders=[_build_work_order_summary(wo) for wo in order.work_orders],
-    )
+        if order_id.isdigit():
+            order = get_production_order_by_id(db, int(order_id))
+
+        if order is None:
+            order = get_production_order_by_number(db, order_id)
+
+        if not order:
+            raise HTTPException(status_code=404, detail="Production order not found")
+
+        return ProductionOrderDetail(
+            id=order.id,
+            order_number=order.order_number,
+            product_name=order.product_name,
+            quantity=order.quantity,
+            status=order.status,
+            serial_number=getattr(order, "serial_number", None),
+            lot_id=getattr(order, "lot_id", None),
+            customer=getattr(order, "customer", None),
+            priority=getattr(order, "priority", None),
+            machine_number=getattr(order, "machine_number", None),
+            route_id=order.route_id,
+            material_code=getattr(order, "material_code", None),
+            assignee=getattr(order, "assignee", None),
+            department=getattr(order, "department", None),
+            released_date=getattr(order, "released_date", None),
+            planned_start_date=order.planned_start,
+            planned_completion_date=order.planned_end,
+            actual_start_date=getattr(order, "actual_start", None),
+            actual_completion_date=getattr(order, "actual_end", None),
+            progress=_compute_production_order_progress(order),
+            work_orders=[_build_work_order_summary(wo) for wo in order.work_orders],
+        )
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Failed to load production order %s", order_id)
+        raise HTTPException(status_code=500, detail="Failed to load production order")
 
 
 @router.get("/work-orders/{wo_id}/operations", response_model=list[OperationListItem])

@@ -29,7 +29,7 @@ def _seed_sqlite_sample_data(engine):
 
         now = datetime.now()
         po1 = ProductionOrder(
-            order_number="PO-1001",
+            order_number="PO-001",
             route_id="R-1001",
             product_name="Widget A",
             quantity=100,
@@ -81,7 +81,7 @@ def _seed_sqlite_sample_data(engine):
         po1.work_orders = [wo1]
 
         po2 = ProductionOrder(
-            order_number="PO-1002",
+            order_number="PO-002",
             route_id="R-1002",
             product_name="Gizmo B",
             quantity=50,
