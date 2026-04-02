@@ -7,6 +7,13 @@ cd frontend
 npm install
 npm run dev
 
+# init DB
+python - <<'EOF'
+from app.db.init_db import init_db
+init_db()
+print("✅ DB initialized")
+EOF
+
 # NOTE
 .gitignore
 # =========================
