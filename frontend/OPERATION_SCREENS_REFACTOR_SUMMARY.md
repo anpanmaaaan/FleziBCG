@@ -35,20 +35,20 @@ Station Execution
          ↓ View Operations
          
 2. Work Order Execution Status List
-   /production-order/:orderId
+   /production-orders/:orderId/work-orders
    - WO-level aggregate status
    - Slim, focused
    - CTA: "View" → Gantt
          ↓ Click "View"
          
 3. Operation Execution Overview (Gantt ONLY)
-   /operation/:woId
+   /work-orders/:woId/operations
    - TRUE time-based Gantt chart
    - Click bar → Navigate to detail
          ↓ Click bar
          
 4. Operation Execution Detail (Tabs ONLY)
-   /operation-detail/:operationId
+   /operations/:operationId/detail
    - Deep dive 1 operation
    - 5 tabs: Overview, Quality, Materials, Timeline, Documents
          ↓ "Open in Station Execution"
@@ -95,9 +95,9 @@ Station Execution
 
 /src/app/routes.ts
   └── Updated routing
-      - /production-order/:orderId → WO Status List
-      - /operation/:woId → Gantt Overview
-      - /operation-detail/:operationId → Detail Tabs
+   - /production-orders/:orderId/work-orders → WO Status List
+   - /work-orders/:woId/operations → Gantt Overview
+   - /operations/:operationId/detail → Detail Tabs
 ```
 
 ### Documentation:
@@ -163,7 +163,7 @@ User at: Production Order List
 Goal: Check status of PO-001
 
 1️⃣ Click "View Operations" on PO-001
-   → Navigate to /production-order/PO-001
+   → Navigate to /production-orders/PO-001/work-orders
    
    Screen: Work Order Execution Status List
    - See 4 WOs with aggregate status
@@ -171,7 +171,7 @@ Goal: Check status of PO-001
    - Delay: +30 minutes
    
 2️⃣ Click "View" on WO-2024-001
-   → Navigate to /operation/WO-2024-001
+   → Navigate to /work-orders/WO-2024-001/operations
    
    Screen: Operation Execution Overview (Gantt)
    - See timeline with 4 operations
@@ -182,7 +182,7 @@ Goal: Check status of PO-001
    - Notice: Gap between OP-10 and OP-20 (visual)
    
 3️⃣ Click on OP-20 bar
-   → Navigate to /operation-detail/OP-020
+   → Navigate to /operations/OP-020/detail
    
    Screen: Operation Execution Detail
    - Left panel: Summary (OP-020, 64% progress, +45min delay)
@@ -330,21 +330,21 @@ interface OperationExecutionGantt {
 2. **Route params changed:**
    ```typescript
    // Old
-   /operation/:operationId
+   [legacy single-screen route]
    
    // New
-   /operation/:woId                      // Gantt Overview
-   /operation-detail/:operationId        // Detail Tabs
+   /work-orders/:woId/operations         // Gantt Overview
+   /operations/:operationId/detail       // Detail Tabs
    ```
 
 3. **Navigation changed:**
    ```typescript
    // Old
-   navigate(`/operation/${opId}`)
+   navigate(`[legacy single-screen route]`)
    
    // New
-   navigate(`/operation/${woId}`)           // To Gantt
-   navigate(`/operation-detail/${opId}`)    // To Detail
+   navigate(`/work-orders/${woId}/operations`)  // To Gantt
+   navigate(`/operations/${opId}/detail`)       // To Detail
    ```
 
 ### For Users:

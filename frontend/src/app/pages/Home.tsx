@@ -486,7 +486,7 @@ export function Home() {
                       } ${
                         order.status === 'Completed' ? 'opacity-50' : ''
                       }`}
-                      onClick={() => navigate(`/production-order/${order.id}`)}
+                      onClick={() => navigate(`/production-orders/${order.id}/work-orders`)}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">

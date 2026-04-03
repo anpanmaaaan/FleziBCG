@@ -63,7 +63,7 @@ export function Layout() {
 
   // Get current page title
   const getCurrentPageTitle = () => {
-    if (location.pathname === '/') return 'Execution Tracking';
+    if (location.pathname === '/') return 'Execution – Work Orders';
     if (location.pathname === '/dashboard') return 'Dashboard';
     if (location.pathname === '/performance/oee-deep-dive') return 'OEE Deep Dive';
     if (location.pathname === '/production-orders') return 'Production Orders';
@@ -75,8 +75,11 @@ export function Layout() {
     if (location.pathname === '/traceability') return 'Traceability';
     if (location.pathname === '/scheduling') return 'APS Scheduling';
     if (location.pathname === '/settings') return 'Settings';
+    if (location.pathname === '/work-orders') return 'Execution – Work Orders';
     if (location.pathname.startsWith('/routes/')) return 'Route Detail';
-    if (location.pathname.startsWith('/production-order/')) return 'Operation List';
+    if (location.pathname.startsWith('/production-orders/') && location.pathname.includes('/work-orders')) return 'Work Order Execution Status';
+    if (location.pathname.startsWith('/work-orders/')) return 'Operation Execution Overview';
+    if (location.pathname.startsWith('/operations/')) return 'Operation Execution Detail';
     return 'Dashboard';
   };
 
@@ -173,7 +176,7 @@ export function Layout() {
             <button
               onClick={() => toggleMenu('production')}
               className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} px-3 py-3 rounded-lg hover:bg-slate-100 transition-all ${
-                isActive('/production-orders') || isActive('/dispatch') || isActive('/') || isActive('/station-execution') ? 'bg-blue-50 text-blue-600 font-medium shadow-sm' : 'text-slate-700'
+                isActive('/production-orders') || isActive('/dispatch') || isActive('/work-orders') || isActive('/station-execution') ? 'bg-blue-50 text-blue-600 font-medium shadow-sm' : 'text-slate-700'
               }`}
               title={sidebarCollapsed ? 'Production' : ''}
             >
@@ -210,12 +213,12 @@ export function Layout() {
                   <CompletionBadge percent={80} />
                 </Link>
                 <Link
-                  to="/"
+                  to="/work-orders"
                   className={`flex items-center justify-between px-3 py-2 text-sm rounded-lg hover:bg-slate-100 transition-all ${
-                    isActive('/') ? 'bg-blue-50 text-blue-600 font-medium' : 'text-slate-600'
+                    isActive('/work-orders') ? 'bg-blue-50 text-blue-600 font-medium' : 'text-slate-600'
                   }`}
                 >
-                  <span>Execution Tracking</span>
+                  <span>Execution – Work Orders</span>
                   <CompletionBadge percent={100} />
                 </Link>
                 <Link
@@ -236,7 +239,7 @@ export function Layout() {
             <button
               onClick={() => toggleMenu('routing')}
               className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} px-3 py-3 rounded-lg hover:bg-slate-100 transition-all ${
-                isActive('/routes') || location.pathname.startsWith('/routes/') || location.pathname.startsWith('/production-order/') ? 'bg-blue-50 text-blue-600 font-medium shadow-sm' : 'text-slate-700'
+                isActive('/routes') || location.pathname.startsWith('/routes/') || location.pathname === '/work-orders' || (location.pathname.startsWith('/production-orders/') && location.pathname.includes('/work-orders')) || location.pathname.startsWith('/work-orders/') || location.pathname.startsWith('/operations/') ? 'bg-blue-50 text-blue-600 font-medium shadow-sm' : 'text-slate-700'
               }`}
               title={sidebarCollapsed ? 'Routes & Operations' : ''}
             >
@@ -264,9 +267,18 @@ export function Layout() {
                   <CompletionBadge percent={85} />
                 </Link>
                 <Link
-                  to="/production-order/PO-001"
+                  to="/work-orders"
                   className={`flex items-center justify-between px-3 py-2 text-sm rounded-lg hover:bg-slate-100 transition-all ${
-                    location.pathname.startsWith('/production-order/') ? 'bg-blue-50 text-blue-600 font-medium' : 'text-slate-600'
+                    location.pathname === '/work-orders' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-slate-600'
+                  }`}
+                >
+                  <span>Work Order Execution</span>
+                  <CompletionBadge percent={100} />
+                </Link>
+                <Link
+                  to="/production-orders/PO-001/work-orders"
+                  className={`flex items-center justify-between px-3 py-2 text-sm rounded-lg hover:bg-slate-100 transition-all ${
+                    (location.pathname.startsWith('/production-orders/') && location.pathname.includes('/work-orders')) ? 'bg-blue-50 text-blue-600 font-medium' : 'text-slate-600'
                   }`}
                 >
                   <span>Operation List</span>

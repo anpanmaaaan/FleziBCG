@@ -146,7 +146,8 @@ Hệ thống cung cấp các chức năng cốt lõi:
 │   │   │   ├── RouteList.tsx
 │   │   │   ├── RouteDetail.tsx
 │   │   │   ├── OperationList.tsx
-│   │   │   ├── OperationDetail.tsx
+│   │   │   ├── OperationExecutionOverview.tsx
+│   │   │   ├── OperationExecutionDetail.tsx
 │   │   │   ├── StationExecution.tsx
 │   │   │   ├── QCCheckpoints.tsx
 │   │   │   ├── DefectManagement.tsx
@@ -765,26 +766,26 @@ export const routes: Route[] = [
 ### 4.4.3. Operation List
 
 **File:** `/src/app/pages/OperationList.tsx`  
-**Route:** `/production-order/:orderId`
+**Route:** `/production-orders/:orderId/work-orders`
 
 ### Chức năng:
-- ✅ **Operations for specific PO**
+- ✅ **Work orders for specific PO**
   - Filtered by production order
-  - Execution status
+  - Work-order execution status
   - Progress tracking
   
 - ✅ **Breadcrumb navigation**
   - Production Orders → Operation List
   
-- ✅ **Click to operation detail**
-  - Deep dive into single operation
+- ✅ **Click to work-order execution overview**
+  - Navigate to WO-scoped execution timeline
 
 ---
 
-### 4.4.4. Operation Detail
+### 4.4.4. Operation Execution Detail
 
-**File:** `/src/app/pages/OperationDetail.tsx`  
-**Route:** `/operation/:operationId`
+**File:** `/src/app/pages/OperationExecutionDetail.tsx`  
+**Route:** `/operations/:operationId/detail`
 
 ### Chức năng comprehensive với **6 tabs:**
 

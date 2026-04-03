@@ -133,7 +133,8 @@ MES Lite là hệ thống quản lý sản xuất với **8 modules chính**:
 ├── RouteList.tsx          # Danh sách Route
 ├── RouteDetail.tsx        # Chi tiết Route
 ├── OperationList.tsx      # Danh sách Operation
-├── OperationDetail.tsx    # Chi tiết Operation (6 tabs)
+├── OperationExecutionOverview.tsx # Tổng quan execution theo WO
+├── OperationExecutionDetail.tsx   # Chi tiết execution của 1 operation
 ├── QCCheckpoints.tsx      # QC checkpoints
 ├── DefectManagement.tsx   # Quản lý lỗi
 ├── Traceability.tsx       # Truy xuất nguồn gốc
@@ -363,8 +364,9 @@ import { Badge } from "@/components/ui/badge";
 ├── /performance/oee-deep-dive (OEE Deep Dive)
 │
 ├── /production-orders (Production Order List)
-│   └── /production-order/:orderId (Operation List)
-│       └── /operation/:operationId (Operation Detail - 6 tabs)
+│   └── /production-orders/:orderId/work-orders (Work Order Execution Status)
+│       └── /work-orders/:woId/operations (Operation Execution Overview)
+│           └── /operations/:operationId/detail (Operation Execution Detail)
 │
 ├── /dispatch (Dispatch Queue)
 │

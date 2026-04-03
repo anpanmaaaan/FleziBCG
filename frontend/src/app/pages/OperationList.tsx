@@ -2,8 +2,8 @@
 // Shows high-level WO execution status, not individual operations detail
 
 import { useState, useMemo, useEffect } from "react";
-import { useParams, useNavigate } from "react-router";
-import { Search, CheckCircle, Clock, AlertCircle, ChevronRight, AlertTriangle } from "lucide-react";
+import { useLocation, useParams, useNavigate } from "react-router";
+import { Search, CheckCircle, Clock, AlertCircle, ChevronRight, AlertTriangle, Info } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { StatsCard } from "../components/StatsCard";
@@ -49,6 +49,10 @@ interface ProductionOrderFromAPI {
   status: string;
   routeId: string | null;
   workOrders: WorkOrderFromAPI[];
+}
+
+interface ProductionOrderSummaryFromAPI {
+  id: number;
 }
 
 // Helper to format datetime strings for display
@@ -120,31 +124,55 @@ const mapBackendStatus = (status: string): 'Pending' | 'In Progress' | 'Complete
 
 export function OperationList() {
   const { orderId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const [workOrders, setWorkOrders] = useState<WorkOrderExecution[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [productName, setProductName] = useState<string>('');
   const [searchValue, setSearchValue] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const hasProductionOrderFilter = Boolean(orderId);
 
-  // Fetch production order and work orders on mount
+  const loadProductionOrder = async (productionOrderId: string | number): Promise<ProductionOrderFromAPI> => {
+    const response = await fetch(`/api/v1/production-orders/${productionOrderId}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || `Failed to load work orders (${response.status})`);
+    }
+
+    return response.json();
+  };
+
   useEffect(() => {
     const fetchWorkOrders = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        const response = await fetch(`/api/v1/production-orders/${orderId}`);
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(errorText || `Failed to load work orders (${response.status})`);
+        if (hasProductionOrderFilter && orderId) {
+          const data = await loadProductionOrder(orderId);
+          const normalized = data.workOrders.map((wo) =>
+            normalizeWorkOrder(wo, data.id, data.productName)
+          );
+          setWorkOrders(normalized);
+          return;
         }
-        const data: ProductionOrderFromAPI = await response.json();
 
-        setProductName(data.productName);
-        const normalized = data.workOrders.map(wo =>
-          normalizeWorkOrder(wo, data.id, data.productName)
+        const productionOrdersResponse = await fetch("/api/v1/production-orders");
+        if (!productionOrdersResponse.ok) {
+          const errorText = await productionOrdersResponse.text();
+          throw new Error(errorText || `Failed to load production orders (${productionOrdersResponse.status})`);
+        }
+
+        const productionOrders: ProductionOrderSummaryFromAPI[] = await productionOrdersResponse.json();
+        const orderDetails = await Promise.all(
+          productionOrders.map((productionOrder) => loadProductionOrder(productionOrder.id))
+        );
+
+        const normalized = orderDetails.flatMap((productionOrder) =>
+          productionOrder.workOrders.map((wo) =>
+            normalizeWorkOrder(wo, productionOrder.id, productionOrder.productName)
+          )
         );
         setWorkOrders(normalized);
       } catch (err) {
@@ -156,10 +184,8 @@ export function OperationList() {
       }
     };
 
-    if (orderId) {
-      fetchWorkOrders();
-    }
-  }, [orderId]);
+    fetchWorkOrders();
+  }, [hasProductionOrderFilter, orderId]);
 
   const filteredWorkOrders = useMemo(() => {
     let filtered = workOrders;
@@ -211,18 +237,29 @@ export function OperationList() {
     }
   };
 
+  const subtitle = hasProductionOrderFilter
+    ? `Filtered by Production Order: ${orderId || "-"}`
+    : "All Work Orders";
+
+  const contextNote = hasProductionOrderFilter
+    ? "This screen shows execution status of Work Orders, filtered by a Production Order. Execution flow starts at Work Order level."
+    : "This screen shows execution status of all Work Orders. Execution flow starts at Work Order level.";
+
   return (
     <div className="h-full flex flex-col bg-white">
       {/* Header */}
       <PageHeader
-        title={
-          <div>
-            <div className="text-sm text-gray-500 mb-1">Production Order: {orderId}</div>
-            <div className="text-2xl font-bold">Work Order Execution Status</div>
+        title="Execution – Work Orders"
+        subtitle={subtitle}
+        breadcrumb={
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <span>Execution</span>
+            <span>{">"}</span>
+            <span className="font-medium text-gray-700">Work Orders</span>
           </div>
         }
-        showBackButton={true}
-        onBackClick={() => navigate("/production-orders")}
+        showBackButton={hasProductionOrderFilter}
+        onBackClick={hasProductionOrderFilter ? () => navigate("/production-orders") : undefined}
       >
         <div className="flex items-center gap-4 ml-auto">
           {error ? (
@@ -232,12 +269,19 @@ export function OperationList() {
             </div>
           ) : (
             <div>
-              <span className="text-sm text-gray-500">Route: </span>
-              <span className="font-medium">DMES-R8</span>
+              <span className="text-sm text-gray-500">Context: </span>
+              <span className="font-medium">{hasProductionOrderFilter ? `Production Order ${orderId}` : "All Work Orders"}</span>
             </div>
           )}
         </div>
       </PageHeader>
+
+      <div className="px-6 py-3 border-b border-gray-100 bg-slate-50">
+        <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+          <Info className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+          <p>{contextNote}</p>
+        </div>
+      </div>
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-6">
@@ -341,7 +385,7 @@ export function OperationList() {
                 <div
                   key={wo.id}
                   className="border rounded-lg p-5 hover:shadow-md transition-all bg-white cursor-pointer group"
-                  onClick={() => navigate(`/operation/${wo.id}`)}
+                  onClick={() => navigate(`/work-orders/${wo.id}/operations`)}
                 >
                   <div className="flex items-center gap-4">
                     {/* Status Icon */}
@@ -403,7 +447,7 @@ export function OperationList() {
                       className="flex-shrink-0 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 group-hover:border-blue-500 group-hover:text-blue-600 transition-colors"
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigate(`/operation/${wo.id}`);
+                        navigate(`/work-orders/${wo.id}/operations`);
                       }}
                     >
                       <span className="font-medium">View</span>

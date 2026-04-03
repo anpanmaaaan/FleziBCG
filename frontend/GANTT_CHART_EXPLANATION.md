@@ -296,7 +296,7 @@ function OperationOverview() {
   const [operations, setOperations] = useState<OperationExecutionGantt[]>([...]);
   
   const handleOperationClick = (op: OperationExecutionGantt) => {
-    navigate(`/operation-detail/${op.id}`);
+    navigate(`/operations/${op.id}/detail`);
   };
   
   return (

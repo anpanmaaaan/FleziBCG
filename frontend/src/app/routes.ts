@@ -1,4 +1,5 @@
 import { createBrowserRouter } from "react-router";
+import { redirect } from "react-router";
 import { Layout } from "./components/Layout";
 import { Home } from "./pages/Home";
 import { Dashboard } from "./pages/Dashboard";
@@ -22,7 +23,8 @@ export const router = createBrowserRouter([
     Component: Layout,
     children: [
       // Execution Tracking (Main)
-      { index: true, Component: Home },
+      { index: true, loader: () => redirect("/work-orders") },
+      { path: "home", Component: Home },
       
       // Dashboard
       { path: "dashboard", Component: Dashboard },
@@ -39,9 +41,10 @@ export const router = createBrowserRouter([
       { path: "routes/:routeId", Component: RouteDetail },
       
       // Work Order Execution Flow (3 screens)
-      { path: "production-order/:orderId", Component: OperationList }, // WO Status List
-      { path: "operation/:woId", Component: OperationExecutionOverview }, // Gantt Overview
-      { path: "operation-detail/:operationId", Component: OperationExecutionDetail }, // Detail Tabs
+      { path: "work-orders", Component: OperationList }, // WO Status List (all)
+      { path: "production-orders/:orderId/work-orders", Component: OperationList }, // WO Status List
+      { path: "work-orders/:woId/operations", Component: OperationExecutionOverview }, // WO-scoped Gantt Overview
+      { path: "operations/:operationId/detail", Component: OperationExecutionDetail }, // Operation Detail Tabs
       
       // Station Execution
       { path: "station-execution", Component: StationExecution },

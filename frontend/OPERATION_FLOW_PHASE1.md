@@ -43,7 +43,7 @@ UI chỉ **xem – điều hướng – phân tích**, KHÔNG điều khiển.
                  ▼
 ┌─────────────────────────────────────────────────┐
 │  3. Operation Execution Overview (Gantt)        │
-│     (OperationDetail.tsx - REFACTORED)          │
+│     (OperationExecutionOverview.tsx)            │
 │                                                  │
 │  ┌───────────────────────────────────────────┐  │
 │  │  GANTT CHART - Operation Sequence         │  │
@@ -89,7 +89,7 @@ UI chỉ **xem – điều hướng – phân tích**, KHÔNG điều khiển.
 
 ### 🟩 Màn 2: Work Order Execution Status List (REFACTORED)
 **File:** `/src/app/pages/OperationList.tsx`  
-**Route:** `/production-order/:orderId`
+**Route:** `/production-orders/:orderId/work-orders`
 
 #### ✅ Thay đổi:
 1. **Đổi khái niệm:**
@@ -134,8 +134,8 @@ UI chỉ **xem – điều hướng – phân tích**, KHÔNG điều khiển.
 ---
 
 ### 🟨 Màn 3: Operation Execution Overview (GANTT)
-**File:** `/src/app/pages/OperationDetail.tsx`  
-**Route:** `/operation/:operationId`
+**File:** `/src/app/pages/OperationExecutionOverview.tsx`  
+**Route:** `/work-orders/:woId/operations`
 
 #### ✅ Thay đổi:
 1. **Gantt Chart - CORE:**
