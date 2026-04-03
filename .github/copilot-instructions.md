@@ -125,3 +125,18 @@ Not allowed:
 	- Phase 4 RBAC is frontend/UX-level only
 	- Backend execution APIs are unchanged
 	- Future phases may extend RBAC but must not violate these rules
+
+## Phase 5A — i18n Infrastructure Rules (LOCKED)
+
+- From Phase 5A onward:
+	- All new UI text MUST use semantic i18n keys
+	- Hardcoded business text is forbidden
+
+- Backend MUST continue returning enums/codes only
+
+- i18n runtime behavior MUST NOT be enabled without a new phase
+
+- Phase 5B is the earliest phase allowed to:
+	- Replace UI text with t()
+	- Add language selector
+	- Introduce locale switching
