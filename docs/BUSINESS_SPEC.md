@@ -29,3 +29,20 @@ Define the MES business boundaries and decision model across completed phases, w
 ## Future (FUTURE)
 - Additional decision metrics only if derived in backend service layer
 - Extended persona-based reporting views without changing execution ownership boundaries
+
+## Phase 5A — i18n Infrastructure (Completed)
+Internationalization infrastructure was prepared early to establish a stable, typed translation contract before any runtime language behavior is introduced. This sequencing protects execution stability, prevents inconsistent text patterns, and keeps business semantics aligned across personas.
+
+What was added (infrastructure only):
+- i18n module folder and export entrypoint in frontend
+- Domain-based namespaces
+- Semantic key typing
+- EN placeholder registry
+- Stub translation hook surface for future phase wiring
+
+What was intentionally NOT done:
+- No UI text replacement in existing screens
+- No locale switching behavior
+- No language selector UI
+- No backend API changes
+- No runtime behavior changes
