@@ -27,6 +27,18 @@ def get_operations_by_numbers(db: Session, operation_numbers: list[str]) -> list
     return list(db.scalars(statement))
 
 
+def get_operations_by_names(db: Session, operation_names: list[str]) -> list[Operation]:
+    if not operation_names:
+        return []
+
+    statement = (
+        select(Operation)
+        .where(Operation.name.in_(operation_names))
+        .order_by(Operation.name, Operation.id)
+    )
+    return list(db.scalars(statement))
+
+
 def get_operation_by_id(db: Session, operation_id: int) -> Operation | None:
     statement = (
         select(Operation)

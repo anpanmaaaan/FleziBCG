@@ -13,19 +13,10 @@ else
   exit 1
 fi
 
-# Remove local DB
-echo "→ Removing local SQLite DB"
-rm -f dev.db *.db *.sqlite *.sqlite3
-
-# Recreate schema
+# Create database schema via PostgreSQL (Docker-based)
 echo "→ Creating database schema"
-python - <<'EOF'
-from app.db.session import engine
-from app.db.base import Base
-
-Base.metadata.create_all(bind=engine)
-print("✅ Database schema created")
-EOF
-
+echo "ℹ️ Note: Ensure Docker-based PostgreSQL is running (docker compose -f docker/docker-compose.dev.yml up -d)"
+python -m app.db.init_db
 echo "✅ Backend rebuild completed"
+echo "ℹ️ Seed data: python -m scripts.seed.seed_all"
 echo "ℹ️ Start server with: uvicorn app.main:app --reload"

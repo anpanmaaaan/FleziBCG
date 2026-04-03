@@ -7,71 +7,19 @@ cd frontend
 npm install
 npm run dev
 
-# init DB
-python - <<'EOF'
-from app.db.init_db import init_db
-init_db()
-print("✅ DB initialized")
-EOF
+# DB login
+docker compose -f docker/docker-compose.dev.yml up -d
 
-# NOTE
-.gitignore
-# =========================
-# Node / Frontend
-# =========================
+Open http://localhost:8978
+User: flelibcg
+Pass: beniceSCM2026
 
-# Dependency directories
-node_modules/
-
-# Build output (Vite / React)
-frontend/dist/
-frontend/.vite/
-
-# Environment variables
-.env
-.env.*
-!.env.example
-
-# =========================
-# Backend / Python
-# =========================
-
-# Python cache
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-
-# Virtual environment
-.venv/
-venv/
-
-# =========================
-# Database (local only)
-# =========================
-
-# SQLite local databases
-*.db
-*.sqlite
-*.sqlite3
-
-# =========================
-# OS / Editor
-# =========================
-
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
-
-# =========================
-# Logs / Temp
-# =========================
-
-*.log
-tmp/
-.temp/
-.cache/
+## Then add PostgreSQL connection:
+Host: db
+Port: 5432
+Database: mes
+User: mes
+Password: mes
 
 # agent-review-promp
 Please perform a FULL CODEBASE REVIEW for this MES project before merge.
@@ -80,7 +28,7 @@ Context:
 - This is a Manufacturing Execution System (MES) implementation.
 - Backend: FastAPI + SQLAlchemy.
 - Frontend: React + TypeScript + Vite.
-- Database: SQLite for Phase 1–2, PostgreSQL planned later.
+- Database: PostgreSQL (Docker-based) for development and production.
 - Phase 1 (read-side) is complete:
   - ProductionOrderList
   - OperationList
@@ -132,9 +80,9 @@ Please review the codebase across these dimensions:
 - Separation of display vs business logic
 
 5. DATABASE STRATEGY
-- SQLite usage appropriateness for Phase 2
-- Absence of SQLite-specific assumptions that block PostgreSQL
-- Migration preparedness
+- PostgreSQL is the only supported development database (Docker-based)
+- No SQLite fallback or local database artifacts
+- Migration preparedness via Alembic (framework ready)
 
 6. PHASE 2 COMPLETENESS
 - Are all required write-flows implemented correctly?

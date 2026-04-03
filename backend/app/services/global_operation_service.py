@@ -4,7 +4,7 @@ from math import sqrt
 from sqlalchemy.orm import Session
 
 from app.models.master import StatusEnum
-from app.repositories.operation_repository import get_operations_by_numbers, get_operations_by_work_order
+from app.repositories.operation_repository import get_operations_by_names, get_operations_by_work_order
 from app.schemas.operation import OperationListItem
 
 REPEAT_DELAY_MIN_COUNT = 2
@@ -100,19 +100,19 @@ def _derive_supervisor_bucket(status: str, delay_minutes: int | None) -> str:
 
 def build_work_order_operation_summaries(db: Session, work_order_id: int) -> list[OperationListItem]:
     operations = get_operations_by_work_order(db, work_order_id)
-    operation_numbers = sorted({operation.operation_number for operation in operations})
-    historical_operations = get_operations_by_numbers(db, operation_numbers)
+    process_step_names = sorted({operation.name for operation in operations})
+    historical_operations = get_operations_by_names(db, process_step_names)
 
-    history_by_number: dict[str, list] = {number: [] for number in operation_numbers}
+    history_by_process_step: dict[str, list] = {name: [] for name in process_step_names}
     for historical_operation in historical_operations:
-        history_by_number.setdefault(historical_operation.operation_number, []).append(historical_operation)
+        history_by_process_step.setdefault(historical_operation.name, []).append(historical_operation)
 
     operation_projections = []
     for operation in operations:
         delay_minutes = _derive_delay_minutes(operation.status, operation.planned_end, operation.actual_end)
         supervisor_bucket = _derive_supervisor_bucket(operation.status, delay_minutes)
 
-        operation_history = history_by_number.get(operation.operation_number, [])
+        operation_history = history_by_process_step.get(operation.name, [])
         historical_delay_minutes = [
             _derive_delay_minutes(item.status, item.planned_end, item.actual_end)
             for item in operation_history
