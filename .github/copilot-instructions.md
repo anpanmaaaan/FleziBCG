@@ -149,3 +149,12 @@ Not allowed:
 - Operations MUST NOT aggregate KPIs (Dashboard responsibility).
 - Persona awareness does NOT imply role enforcement.
 - IE / QA views are future phases and must not be mixed.
+
+## Phase 2C — Global Operations IE / Process Rules (LOCKED)
+
+- Global Operations IE / Process view is READ-ONLY.
+- All analytical indicators MUST be backend-derived.
+- Frontend MUST NOT compute cycle time, delay frequency, or variance.
+- IE / Process view MUST NOT include KPI/dashboard semantics.
+- IE / Process view MUST NOT include execution actions.
+- Role/auth enforcement is NOT allowed in Phase 2C.

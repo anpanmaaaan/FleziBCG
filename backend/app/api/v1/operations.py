@@ -3,8 +3,14 @@ from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
 from app.repositories.operation_repository import get_operation_by_id
-from app.schemas.operation import OperationDetail, OperationStartRequest, OperationReportQuantityRequest, OperationCompleteRequest
-from app.services.operation_service import derive_operation_detail, start_operation, report_quantity, complete_operation
+from app.schemas.operation import (
+    OperationAbortRequest,
+    OperationCompleteRequest,
+    OperationDetail,
+    OperationReportQuantityRequest,
+    OperationStartRequest,
+)
+from app.services.operation_service import abort_operation, derive_operation_detail, start_operation, report_quantity, complete_operation
 
 router = APIRouter()
 
@@ -72,6 +78,23 @@ def complete_operation_endpoint(
 
     try:
         return complete_operation(db, operation, request, tenant_id=x_tenant_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/operations/{operation_id}/abort", response_model=OperationDetail)
+def abort_operation_endpoint(
+    operation_id: int,
+    request: OperationAbortRequest,
+    db: Session = Depends(get_db),
+    x_tenant_id: str = Header("default", alias="X-Tenant-ID"),
+):
+    operation = get_operation_by_id(db, operation_id)
+    if not operation:
+        raise HTTPException(status_code=404, detail="Operation not found")
+
+    try:
+        return abort_operation(db, operation, request, tenant_id=x_tenant_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

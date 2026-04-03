@@ -14,6 +14,7 @@ class ExecutionEventType(str, Enum):
     NG_REPORTED = "NG_REPORTED"
     QC_MEASURE_RECORDED = "QC_MEASURE_RECORDED"
     OP_COMPLETED = "OP_COMPLETED"
+    OP_ABORTED = "OP_ABORTED"
 
 
 class ExecutionEvent(Base):

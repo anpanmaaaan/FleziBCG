@@ -16,7 +16,7 @@ interface WorkOrderExecution {
   productionOrderId: string | number;
   productName: string;
   productionLine: string;
-  status: 'Pending' | 'In Progress' | 'Completed' | 'Late' | 'Blocked';
+  status: 'Planned' | 'Pending' | 'In Progress' | 'Completed' | 'Completed Late' | 'Late' | 'Blocked' | 'Aborted';
   overallProgress: number; // 0-100
   operationsCount: number;
   completedOperations: number;
@@ -38,6 +38,7 @@ interface WorkOrderFromAPI {
   actualStart: string | null;
   actualEnd: string | null;
   operationsCount: number;
+  completedOperations: number;
   overallProgress: number;
 }
 
@@ -100,7 +101,7 @@ const normalizeWorkOrder = (
     status: normalizedStatus,
     overallProgress: backendWO.overallProgress,
     operationsCount: backendWO.operationsCount,
-    completedOperations: 0, // TODO: compute from operations when detailed data is available
+    completedOperations: backendWO.completedOperations,
     currentOperation: undefined, // TODO: derive from execution events
     plannedStart: formatDateTime(backendWO.plannedStart),
     plannedEnd: formatDateTime(backendWO.plannedEnd),
@@ -111,13 +112,16 @@ const normalizeWorkOrder = (
 };
 
 // Map backend status strings to UI statuses
-const mapBackendStatus = (status: string): 'Pending' | 'In Progress' | 'Completed' | 'Late' | 'Blocked' => {
-  const statusMap: Record<string, 'Pending' | 'In Progress' | 'Completed' | 'Late' | 'Blocked'> = {
+const mapBackendStatus = (status: string): WorkOrderExecution['status'] => {
+  const statusMap: Record<string, WorkOrderExecution['status']> = {
+    'PLANNED': 'Planned',
     'PENDING': 'Pending',
     'IN_PROGRESS': 'In Progress',
     'COMPLETED': 'Completed',
+    'COMPLETED_LATE': 'Completed Late',
     'LATE': 'Late',
     'BLOCKED': 'Blocked',
+    'ABORTED': 'Aborted',
   };
   return statusMap[status] ?? 'Pending';
 };
@@ -207,7 +211,7 @@ export function OperationList() {
 
   const stats = useMemo(() => ({
     total: workOrders.length,
-    completed: workOrders.filter(wo => wo.status === 'Completed').length,
+    completed: workOrders.filter(wo => wo.status === 'Completed' || wo.status === 'Completed Late').length,
     inProgress: workOrders.filter(wo => wo.status === 'In Progress').length,
     pending: workOrders.filter(wo => wo.status === 'Pending').length,
     late: workOrders.filter(wo => wo.status === 'Late').length,
@@ -219,10 +223,13 @@ export function OperationList() {
   const getStatusVariant = (status: string): "success" | "warning" | "error" | "info" | "neutral" => {
     switch (status) {
       case 'Completed': return 'success';
+      case 'Completed Late': return 'warning';
       case 'In Progress': return 'info';
+      case 'Planned': return 'neutral';
       case 'Pending': return 'neutral';
       case 'Late': return 'error';
       case 'Blocked': return 'error';
+      case 'Aborted': return 'error';
       default: return 'neutral';
     }
   };
@@ -230,8 +237,11 @@ export function OperationList() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'Completed': return <CheckCircle className="w-5 h-5 text-green-600" />;
+      case 'Completed Late': return <AlertCircle className="w-5 h-5 text-amber-600" />;
       case 'In Progress': return <Clock className="w-5 h-5 text-blue-600 animate-spin" style={{ animationDuration: '4s' }} />;
       case 'Late': return <AlertCircle className="w-5 h-5 text-red-600" />;
+      case 'Aborted': return <AlertTriangle className="w-5 h-5 text-red-700" />;
+      case 'Planned': return <Clock className="w-5 h-5 text-gray-400" />;
       case 'Pending': return <Clock className="w-5 h-5 text-gray-400" />;
       default: return null;
     }
@@ -355,11 +365,14 @@ export function OperationList() {
                   className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">All Status</option>
+                  <option value="Planned">Planned</option>
                   <option value="Pending">Pending</option>
                   <option value="In Progress">In Progress</option>
                   <option value="Late">Late</option>
                   <option value="Completed">Completed</option>
+                  <option value="Completed Late">Completed Late</option>
                   <option value="Blocked">Blocked</option>
+                  <option value="Aborted">Aborted</option>
                 </select>
 
                 <div className="text-sm text-gray-600">
@@ -432,7 +445,7 @@ export function OperationList() {
                       <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                         <div
                           className={`h-full transition-all ${
-                            wo.status === 'Completed' ? 'bg-green-500' :
+                            wo.status === 'Completed' || wo.status === 'Completed Late' ? 'bg-green-500' :
                             wo.status === 'Late' ? 'bg-red-500' :
                             wo.status === 'In Progress' ? 'bg-blue-500' :
                             'bg-gray-400'

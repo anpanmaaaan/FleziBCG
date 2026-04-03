@@ -14,6 +14,7 @@ from app.schemas.production_order import ProductionOrderDetail, ProductionOrderS
 from app.schemas.operation import OperationListItem
 from app.db.session import SessionLocal
 from app.services.global_operation_service import build_work_order_operation_summaries
+from app.services.work_order_execution_service import build_work_order_summary_projection
 
 router = APIRouter()
 
@@ -32,21 +33,23 @@ def _compute_production_order_progress(order) -> int | None:
     total = len(order.work_orders)
     if total == 0:
         return None
-    completed = sum(1 for wo in order.work_orders if wo.status == "COMPLETED")
+    completed = sum(1 for wo in order.work_orders if wo.status in {"COMPLETED", "COMPLETED_LATE"})
     return int(completed * 100 / total)
 
 
 def _build_work_order_summary(work_order) -> WorkOrderSummary:
+    projection = build_work_order_summary_projection(work_order)
     return WorkOrderSummary(
-        id=work_order.id,
-        work_order_number=work_order.work_order_number,
-        status=work_order.status,
-        planned_start=work_order.planned_start,
-        planned_end=work_order.planned_end,
-        actual_start=work_order.actual_start,
-        actual_end=work_order.actual_end,
-        operations_count=len(work_order.operations) if work_order.operations is not None else 0,
-        overall_progress=0,  # TODO: compute from execution events once event data is in place
+        id=projection["id"],
+        work_order_number=projection["work_order_number"],
+        status=projection["status"],
+        planned_start=projection["planned_start"],
+        planned_end=projection["planned_end"],
+        actual_start=projection["actual_start"],
+        actual_end=projection["actual_end"],
+        operations_count=projection["operations_count"],
+        completed_operations=projection["completed_operations"],
+        overall_progress=projection["overall_progress"],
     )
 
 

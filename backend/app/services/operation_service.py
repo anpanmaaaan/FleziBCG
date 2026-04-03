@@ -11,13 +11,16 @@ from app.repositories.operation_repository import (
     mark_operation_started,
     mark_operation_reported,
     mark_operation_completed,
+    mark_operation_aborted,
 )
 from app.schemas.operation import (
     OperationDetail,
     OperationStartRequest,
     OperationReportQuantityRequest,
     OperationCompleteRequest,
+    OperationAbortRequest,
 )
+from app.services.work_order_execution_service import recompute_work_order
 
 
 def _parse_timestamp(value: Optional[str]) -> Optional[datetime]:
@@ -30,11 +33,13 @@ def _parse_timestamp(value: Optional[str]) -> Optional[datetime]:
 
 
 def _derive_status(events: list) -> str:
+    if any(event.event_type == ExecutionEventType.OP_ABORTED.value for event in events):
+        return StatusEnum.aborted.value
     if any(event.event_type == ExecutionEventType.OP_COMPLETED.value for event in events):
         return StatusEnum.completed.value
     if any(event.event_type == ExecutionEventType.OP_STARTED.value for event in events):
         return StatusEnum.in_progress.value
-    return StatusEnum.pending.value
+    return StatusEnum.planned.value
 
 
 def _derive_progress(operation_quantity: int, completed_qty: int) -> int:
@@ -92,7 +97,11 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
 def start_operation(db: Session, operation, request: OperationStartRequest, tenant_id: str = "default") -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
-    if operation.status in (StatusEnum.in_progress.value, StatusEnum.completed.value):
+    if operation.status in (
+        StatusEnum.in_progress.value,
+        StatusEnum.completed.value,
+        StatusEnum.aborted.value,
+    ):
         raise ValueError("Operation already started or completed; cannot start again.")
 
     start_time = request.started_at or datetime.utcnow()
@@ -113,6 +122,7 @@ def start_operation(db: Session, operation, request: OperationStartRequest, tena
 
     # Snapshot update (derived state) in service layer only.
     operation = mark_operation_started(db, operation, start_time)
+    recompute_work_order(db, operation.work_order_id)
 
     # Re-read operation for state derivation and return detail.
     operation = get_operation_by_id(db, operation.id)
@@ -173,7 +183,7 @@ def complete_operation(
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
-    if operation.status == StatusEnum.completed.value:
+    if operation.status in (StatusEnum.completed.value, StatusEnum.aborted.value):
         raise ValueError("Operation already completed; cannot complete again.")
     if operation.status != StatusEnum.in_progress.value:
         raise ValueError("Operation must be IN_PROGRESS to complete.")
@@ -196,9 +206,48 @@ def complete_operation(
 
     # Snapshot update (derived state) in service layer.
     operation = mark_operation_completed(db, operation, completed_at)
+    recompute_work_order(db, operation.work_order_id)
 
     operation = get_operation_by_id(db, operation.id)
     if not operation:
         raise ValueError("Operation not found after completion event")
+
+    return derive_operation_detail(db, operation)
+
+
+def abort_operation(
+    db: Session,
+    operation,
+    request: OperationAbortRequest,
+    tenant_id: str = "default",
+) -> OperationDetail:
+    if operation.tenant_id != tenant_id:
+        raise ValueError("Operation does not belong to the requesting tenant.")
+    if operation.status in (StatusEnum.completed.value, StatusEnum.aborted.value):
+        raise ValueError("Operation already completed or aborted; cannot abort.")
+
+    aborted_at = datetime.utcnow()
+    payload = {
+        "operator_id": request.operator_id,
+        "reason_code": request.reason_code,
+        "aborted_at": aborted_at.isoformat(),
+    }
+
+    create_execution_event(
+        db=db,
+        event_type=ExecutionEventType.OP_ABORTED.value,
+        production_order_id=operation.work_order.production_order_id,
+        work_order_id=operation.work_order_id,
+        operation_id=operation.id,
+        payload=payload,
+        tenant_id=operation.tenant_id,
+    )
+
+    operation = mark_operation_aborted(db, operation, aborted_at)
+    recompute_work_order(db, operation.work_order_id)
+
+    operation = get_operation_by_id(db, operation.id)
+    if not operation:
+        raise ValueError("Operation not found after abort event")
 
     return derive_operation_detail(db, operation)

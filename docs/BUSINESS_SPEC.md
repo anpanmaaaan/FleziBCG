@@ -60,3 +60,17 @@ What was intentionally NOT included:
 - No dashboard KPI aggregation logic
 - No role/auth enforcement
 - No IE-specific or QA-specific dedicated views (future phases)
+
+## Phase 2C — Global Operations Enhancement (IE / Process View)
+Phase 2C was required to provide a dedicated investigation lens for IE / Process users within the existing Global Operations screen. The business goal is to detect recurring delay patterns, cycle-time deviation, and variability concentration using backend-derived semantics.
+
+Business capability added:
+- Pattern-based operational investigation for process improvement prioritization
+- Read-only analytical indicators for recurring lateness and variability
+- Investigation grouping by process-relevant dimensions without changing execution flow ownership
+
+What was intentionally excluded:
+- No execution write actions
+- No dashboard KPI/management summary semantics
+- No role/auth enforcement
+- No new screen or persona auto-detection logic

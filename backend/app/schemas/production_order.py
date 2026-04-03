@@ -15,6 +15,7 @@ class WorkOrderSummary(BaseSchema):
     actual_start: datetime | None = None
     actual_end: datetime | None = None
     operations_count: int = 0
+    completed_operations: int = 0
     overall_progress: int = 0
 
 

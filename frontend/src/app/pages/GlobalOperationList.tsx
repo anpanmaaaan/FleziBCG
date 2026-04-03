@@ -11,6 +11,8 @@ import { StatusBadge } from "../components/StatusBadge";
 import { useI18n } from "../i18n";
 
 type SupervisorBucket = "BLOCKED" | "DELAYED" | "IN_PROGRESS" | "OTHER";
+type MonitoringLens = "IE_PROCESS" | "SUPERVISOR";
+type GroupMode = "none" | "work_order" | "operation_number" | "work_center" | "route_step";
 
 interface MonitorOperation {
   id: number;
@@ -34,6 +36,15 @@ interface MonitorOperation {
   qcRiskFlag: boolean;
   woBlockedOperations: number;
   woDelayedOperations: number;
+  cycleTimeMinutes: number | null;
+  cycleTimeDelta: number | null;
+  delayCount: number;
+  delayFrequency: number;
+  repeatFlag: boolean;
+  qcFailCount: number;
+  highVarianceFlag: boolean;
+  oftenLateFlag: boolean;
+  routeStep: string | null;
 }
 
 interface ProductionOrderFilter {
@@ -69,9 +80,21 @@ export function GlobalOperationList() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchValue, setSearchValue] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("SUPERVISOR_DEFAULT");
+  const [selectedLens, setSelectedLens] = useState<MonitoringLens>("IE_PROCESS");
+  const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedProductionOrderId, setSelectedProductionOrderId] = useState("all");
-  const [groupByWorkOrder, setGroupByWorkOrder] = useState(false);
+  const [groupMode, setGroupMode] = useState<GroupMode>("operation_number");
+
+  useEffect(() => {
+    if (selectedLens === "SUPERVISOR") {
+      setSelectedStatus("SUPERVISOR_DEFAULT");
+      setGroupMode("work_order");
+      return;
+    }
+
+    setSelectedStatus("all");
+    setGroupMode("operation_number");
+  }, [selectedLens]);
 
   const getSupervisorBucket = (status: string, delayMinutes: number | null): SupervisorBucket => {
     if (status === "BLOCKED") {
@@ -113,27 +136,37 @@ export function GlobalOperationList() {
             allOperations.push(
               ...workOrderOperations.map((operation) => ({
                 id: operation.id,
-                operationNumber: operation.operationNumber,
+                operationNumber: operation.operationNumber ?? operation.operation_number ?? String(operation.id),
                 operationName: operation.name,
                 sequence: operation.sequence,
                 status: operation.status,
                 supervisorBucket: operation.supervisorBucket
-                  ?? getSupervisorBucket(operation.status, operation.delayMinutes ?? null),
-                plannedStart: operation.plannedStart,
-                plannedEnd: operation.plannedEnd,
+                  ?? operation.supervisor_bucket
+                  ?? getSupervisorBucket(operation.status, operation.delayMinutes ?? operation.delay_minutes ?? null),
+                plannedStart: operation.plannedStart ?? operation.planned_start ?? null,
+                plannedEnd: operation.plannedEnd ?? operation.planned_end ?? null,
                 quantity: operation.quantity,
-                completedQty: operation.completedQty,
+                completedQty: operation.completedQty ?? operation.completed_qty ?? 0,
                 progress: operation.progress,
                 productionOrderId: productionOrder.id,
                 productionOrderNumber: productionOrder.orderNumber,
                 workOrderId: workOrder.id,
-                workOrderNumber: operation.workOrderNumber ?? workOrder.workOrderNumber,
-                workCenter: operation.workCenter ?? null,
-                delayMinutes: operation.delayMinutes ?? null,
-                blockReasonCode: operation.blockReasonCode ?? null,
-                qcRiskFlag: Boolean(operation.qcRiskFlag),
-                woBlockedOperations: operation.woBlockedOperations ?? 0,
-                woDelayedOperations: operation.woDelayedOperations ?? 0,
+                workOrderNumber: operation.workOrderNumber ?? operation.work_order_number ?? workOrder.workOrderNumber,
+                workCenter: operation.workCenter ?? operation.work_center ?? null,
+                delayMinutes: operation.delayMinutes ?? operation.delay_minutes ?? null,
+                blockReasonCode: operation.blockReasonCode ?? operation.block_reason_code ?? null,
+                qcRiskFlag: Boolean(operation.qcRiskFlag ?? operation.qc_risk_flag),
+                woBlockedOperations: operation.woBlockedOperations ?? operation.wo_blocked_operations ?? 0,
+                woDelayedOperations: operation.woDelayedOperations ?? operation.wo_delayed_operations ?? 0,
+                cycleTimeMinutes: operation.cycleTimeMinutes ?? operation.cycle_time_minutes ?? null,
+                cycleTimeDelta: operation.cycleTimeDelta ?? operation.cycle_time_delta ?? null,
+                delayCount: operation.delayCount ?? operation.delay_count ?? 0,
+                delayFrequency: operation.delayFrequency ?? operation.delay_frequency ?? 0,
+                repeatFlag: Boolean(operation.repeatFlag ?? operation.repeat_flag),
+                qcFailCount: operation.qcFailCount ?? operation.qc_fail_count ?? 0,
+                highVarianceFlag: Boolean(operation.highVarianceFlag ?? operation.high_variance_flag),
+                oftenLateFlag: Boolean(operation.oftenLateFlag ?? operation.often_late_flag),
+                routeStep: operation.routeStep ?? operation.route_step ?? null,
               })),
             );
           }
@@ -162,11 +195,11 @@ export function GlobalOperationList() {
 
   const filteredOperations = useMemo(() => {
     return operations.filter((operation) => {
-      if (selectedStatus === "SUPERVISOR_DEFAULT") {
+      if (selectedLens === "SUPERVISOR" && selectedStatus === "SUPERVISOR_DEFAULT") {
         if (!["BLOCKED", "DELAYED", "IN_PROGRESS"].includes(operation.supervisorBucket)) {
           return false;
         }
-      } else if (selectedStatus === "DELAYED") {
+      } else if (selectedLens === "SUPERVISOR" && selectedStatus === "DELAYED") {
         if (operation.supervisorBucket !== "DELAYED") {
           return false;
         }
@@ -188,11 +221,32 @@ export function GlobalOperationList() {
         || operation.operationName.toLowerCase().includes(q)
         || operation.workOrderNumber.toLowerCase().includes(q)
         || operation.productionOrderNumber.toLowerCase().includes(q)
+        || (operation.routeStep ?? "").toLowerCase().includes(q)
       );
     });
-  }, [operations, searchValue, selectedStatus, selectedProductionOrderId]);
+  }, [operations, searchValue, selectedStatus, selectedProductionOrderId, selectedLens]);
 
   const sortedOperations = useMemo(() => {
+    if (selectedLens === "IE_PROCESS") {
+      return [...filteredOperations].sort((a, b) => {
+        const deltaA = a.cycleTimeDelta ?? Number.NEGATIVE_INFINITY;
+        const deltaB = b.cycleTimeDelta ?? Number.NEGATIVE_INFINITY;
+        if (deltaA !== deltaB) {
+          return deltaB - deltaA;
+        }
+
+        if (a.delayFrequency !== b.delayFrequency) {
+          return b.delayFrequency - a.delayFrequency;
+        }
+
+        if (a.operationNumber !== b.operationNumber) {
+          return a.operationNumber.localeCompare(b.operationNumber);
+        }
+
+        return a.sequence - b.sequence;
+      });
+    }
+
     const bucketPriority: Record<SupervisorBucket, number> = {
       BLOCKED: 0,
       DELAYED: 1,
@@ -217,37 +271,85 @@ export function GlobalOperationList() {
 
       return a.sequence - b.sequence;
     });
-  }, [filteredOperations]);
+  }, [filteredOperations, selectedLens]);
 
-  const groupedByWorkOrder = useMemo(() => {
+  const groupedOperations = useMemo(() => {
+    if (groupMode === "none") {
+      return [] as Array<[string, MonitorOperation[]]>;
+    }
+
     const groups = new Map<string, MonitorOperation[]>();
+
+    const getGroupKey = (operation: MonitorOperation): string => {
+      if (groupMode === "work_order") {
+        return `${t("operations.group.label.work_order", "WO")}: ${operation.workOrderNumber}`;
+      }
+      if (groupMode === "operation_number") {
+        return `${t("operations.group.label.operation_number", "OP")}: ${operation.operationNumber}`;
+      }
+      if (groupMode === "work_center") {
+        return `${t("operations.group.label.work_center", "WC")}: ${operation.workCenter ?? t("operations.ie.group.unassigned", "Unassigned")}`;
+      }
+      return `${t("operations.group.label.route_step", "ROUTE")}: ${operation.routeStep ?? t("operations.ie.group.unassigned", "Unassigned")}`;
+    };
+
     for (const operation of sortedOperations) {
-      const key = `${operation.workOrderNumber}__${operation.workOrderId}`;
+      const key = getGroupKey(operation);
       const existing = groups.get(key) ?? [];
       existing.push(operation);
       groups.set(key, existing);
     }
+
     return Array.from(groups.entries());
-  }, [sortedOperations]);
+  }, [sortedOperations, groupMode, t]);
 
   const stats = useMemo(() => {
     const blocked = operations.filter((operation) => operation.supervisorBucket === "BLOCKED").length;
     const delayed = operations.filter((operation) => operation.supervisorBucket === "DELAYED").length;
     const inProgress = operations.filter((operation) => operation.status === "IN_PROGRESS").length;
+    const repeatIssues = operations.filter((operation) => operation.repeatFlag).length;
+    const highVariance = operations.filter((operation) => operation.highVarianceFlag).length;
+    const oftenLate = operations.filter((operation) => operation.oftenLateFlag).length;
 
     return {
       total: operations.length,
       blocked,
       delayed,
       inProgress,
+      repeatIssues,
+      highVariance,
+      oftenLate,
     };
   }, [operations]);
+
+  const subtitle = selectedLens === "IE_PROCESS"
+    ? t("operations.ie.subtitle", "Global Operations - IE / Process Investigation Lens")
+    : t("operations.supervisor.subtitle", "Global Operations - Supervisor Investigation Lens");
+
+  const lensNotice = selectedLens === "IE_PROCESS"
+    ? t(
+      "operations.ie.read_only_notice",
+      "Read-only IE/Process investigation workspace for recurring delay and variability patterns. No execution actions are available on this screen.",
+    )
+    : t(
+      "operations.supervisor.read_only_notice",
+      "Read-only supervisor investigation workspace for blocked and delayed operations. No execution actions are available on this screen.",
+    );
+
+  const showGrouped = groupMode !== "none";
+
+  const formatDelta = (value: number | null): string => {
+    if (value === null) {
+      return "-";
+    }
+    return `${value > 0 ? "+" : ""}${value}m`;
+  };
 
   return (
     <div className="h-full flex flex-col bg-white">
       <PageHeader
         title="Execution - Operations"
-        subtitle={t("operations.supervisor.subtitle", "Global Operations - Supervisor Investigation Lens")}
+        subtitle={subtitle}
         breadcrumb={
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <span>Execution</span>
@@ -260,12 +362,7 @@ export function GlobalOperationList() {
       <div className="px-6 py-3 border-b border-gray-100 bg-slate-50">
         <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
           <AlertTriangle className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
-          <p>
-            {t(
-              "operations.supervisor.read_only_notice",
-              "Read-only supervisor investigation workspace for blocked and delayed operations. No execution actions are available on this screen.",
-            )}
-          </p>
+          <p>{lensNotice}</p>
         </div>
       </div>
 
@@ -293,14 +390,33 @@ export function GlobalOperationList() {
           <>
             <div className="grid grid-cols-4 gap-4 mb-6">
               <StatsCard title="Total Operations" value={stats.total} color="blue" />
-              <StatsCard title={t("operations.supervisor.stats.blocked", "Blocked")} value={stats.blocked} color="red" icon={AlertTriangle} />
-              <StatsCard title={t("operations.supervisor.stats.delayed", "Delayed")} value={stats.delayed} color="yellow" icon={Clock} />
-              <StatsCard title="In Progress" value={stats.inProgress} color="purple" icon={CheckCircle} />
+              {selectedLens === "SUPERVISOR" ? (
+                <>
+                  <StatsCard title={t("operations.supervisor.stats.blocked", "Blocked")} value={stats.blocked} color="red" icon={AlertTriangle} />
+                  <StatsCard title={t("operations.supervisor.stats.delayed", "Delayed")} value={stats.delayed} color="yellow" icon={Clock} />
+                  <StatsCard title="In Progress" value={stats.inProgress} color="purple" icon={CheckCircle} />
+                </>
+              ) : (
+                <>
+                  <StatsCard title={t("operations.ie.stats.repeat_issues", "Repeat Issues")} value={stats.repeatIssues} color="orange" icon={AlertTriangle} />
+                  <StatsCard title={t("operations.ie.stats.high_variance", "High Variance")} value={stats.highVariance} color="yellow" icon={Clock} />
+                  <StatsCard title={t("operations.ie.stats.often_late", "Often Late")} value={stats.oftenLate} color="purple" icon={CheckCircle} />
+                </>
+              )}
             </div>
 
             <div className="bg-gray-50 p-4 rounded-lg mb-6">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-4">
+                  <select
+                    value={selectedLens}
+                    onChange={(event) => setSelectedLens(event.target.value as MonitoringLens)}
+                    className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="IE_PROCESS">{t("operations.lens.ie_process", "IE / Process Lens")}</option>
+                    <option value="SUPERVISOR">{t("operations.lens.supervisor", "Supervisor Lens")}</option>
+                  </select>
+
                   <div className="relative">
                     <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
@@ -317,15 +433,23 @@ export function GlobalOperationList() {
                     onChange={(event) => setSelectedStatus(event.target.value)}
                     className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="SUPERVISOR_DEFAULT">
-                      {t("operations.supervisor.filter.default", "Supervisor Default (Blocked, Delayed, In Progress)")}
-                    </option>
+                    {selectedLens === "SUPERVISOR" && (
+                      <option value="SUPERVISOR_DEFAULT">
+                        {t("operations.supervisor.filter.default", "Supervisor Default (Blocked, Delayed, In Progress)")}
+                      </option>
+                    )}
                     <option value="all">All Statuses</option>
-                    <option value="BLOCKED">{t("operations.supervisor.status.blocked", "Blocked")}</option>
-                    <option value="DELAYED">{t("operations.supervisor.status.delayed", "Delayed")}</option>
+                    {selectedLens === "SUPERVISOR" && (
+                      <option value="BLOCKED">{t("operations.supervisor.status.blocked", "Blocked")}</option>
+                    )}
+                    {selectedLens === "SUPERVISOR" && (
+                      <option value="DELAYED">{t("operations.supervisor.status.delayed", "Delayed")}</option>
+                    )}
                     <option value="PENDING">Pending</option>
-                    <option value="IN_PROGRESS">In Progress</option>
-                    <option value="COMPLETED">Completed</option>
+                    <option value="PLANNED">{t("operations.status.planned", "Planned")}</option>
+                    <option value="IN_PROGRESS">{t("operations.status.in_progress", "In Progress")}</option>
+                    <option value="COMPLETED">{t("operations.status.completed", "Completed")}</option>
+                    <option value="COMPLETED_LATE">{t("operations.status.completed_late", "Completed Late")}</option>
                   </select>
 
                   <select
@@ -341,18 +465,17 @@ export function GlobalOperationList() {
                     ))}
                   </select>
 
-                  <button
-                    type="button"
-                    onClick={() => setGroupByWorkOrder((value) => !value)}
-                    className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${groupByWorkOrder
-                      ? "bg-blue-50 text-blue-700 border-blue-300"
-                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                    }`}
+                  <select
+                    value={groupMode}
+                    onChange={(event) => setGroupMode(event.target.value as GroupMode)}
+                    className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    {groupByWorkOrder
-                      ? t("operations.supervisor.grouped.label", "Grouped by Work Order")
-                      : t("operations.supervisor.group.label", "Group by Work Order")}
-                  </button>
+                    <option value="none">{t("operations.group.none", "No Grouping")}</option>
+                    <option value="work_order">{t("operations.group.work_order", "Group by Work Order")}</option>
+                    <option value="operation_number">{t("operations.group.operation_number", "Group by Operation Number")}</option>
+                    <option value="work_center">{t("operations.group.work_center", "Group by Work Center")}</option>
+                    <option value="route_step">{t("operations.group.route_step", "Group by Route Step")}</option>
+                  </select>
                 </div>
 
                 <div className="text-sm text-gray-600">
@@ -361,11 +484,11 @@ export function GlobalOperationList() {
               </div>
             </div>
 
-            {/* TODO(Phase 2C): Add IE/Process analytics lens in a separate monitoring mode. */}
+            {/* TODO(Phase 2D): Add explicit Supervisor vs IE lens policy binding after role/auth phase. */}
             {/* TODO(Phase 2C): Add QA-focused risk lens with quality-specific filters. */}
 
             <div className="space-y-4">
-              {!groupByWorkOrder && sortedOperations.map((operation) => (
+              {!showGrouped && sortedOperations.map((operation) => (
                 <button
                   type="button"
                   key={operation.id}
@@ -384,6 +507,21 @@ export function GlobalOperationList() {
                             {t("operations.supervisor.status.delayed", "Delayed")}
                           </span>
                         )}
+                        {selectedLens === "IE_PROCESS" && operation.oftenLateFlag && (
+                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">
+                            {t("operations.ie.cue.often_late", "Often Late")}
+                          </span>
+                        )}
+                        {selectedLens === "IE_PROCESS" && operation.highVarianceFlag && (
+                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-medium">
+                            {t("operations.ie.cue.high_variance", "High Variance")}
+                          </span>
+                        )}
+                        {selectedLens === "IE_PROCESS" && operation.repeatFlag && (
+                          <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-medium">
+                            {t("operations.ie.cue.repeat_issue", "Repeat Issue")}
+                          </span>
+                        )}
                         <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-medium">
                           Seq {operation.sequence}
                         </span>
@@ -398,11 +536,25 @@ export function GlobalOperationList() {
                         <span>Progress: {operation.progress}%</span>
                         <span>Planned End: {formatDateTime(operation.plannedEnd)}</span>
                         <span>Delay: {operation.delayMinutes ?? 0} min</span>
+                        {selectedLens === "IE_PROCESS" && <span>{t("operations.ie.label.cycle", "Cycle")}: {operation.cycleTimeMinutes ?? "-"} min</span>}
+                        {selectedLens === "IE_PROCESS" && <span>{t("operations.ie.label.cycle_delta", "Cycle Delta")}: {formatDelta(operation.cycleTimeDelta)}</span>}
                       </div>
 
                       <div className="flex items-center gap-3 text-xs text-gray-600 flex-wrap">
                         <span className="px-2 py-1 rounded-full bg-slate-100">WO Blocked Ops: {operation.woBlockedOperations}</span>
                         <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-700">WO Delayed Ops: {operation.woDelayedOperations}</span>
+                        {selectedLens === "IE_PROCESS" && (
+                          <span className="px-2 py-1 rounded-full bg-slate-100">{t("operations.ie.label.delay_count", "Delay Count")}: {operation.delayCount}</span>
+                        )}
+                        {selectedLens === "IE_PROCESS" && (
+                          <span className="px-2 py-1 rounded-full bg-slate-100">{t("operations.ie.label.delay_frequency", "Delay Frequency")}: {(operation.delayFrequency * 100).toFixed(1)}%</span>
+                        )}
+                        {selectedLens === "IE_PROCESS" && (
+                          <span className="px-2 py-1 rounded-full bg-slate-100">{t("operations.ie.label.qc_fail_count", "QC Fail Count")}: {operation.qcFailCount}</span>
+                        )}
+                        {selectedLens === "IE_PROCESS" && operation.routeStep && (
+                          <span className="px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">{t("operations.ie.label.route_step", "Route Step")}: {operation.routeStep}</span>
+                        )}
                         {operation.blockReasonCode && (
                           <span className="px-2 py-1 rounded-full bg-red-100 text-red-700">
                             Block Reason: {operation.blockReasonCode}
@@ -427,14 +579,12 @@ export function GlobalOperationList() {
                 </button>
               ))}
 
-              {groupByWorkOrder && groupedByWorkOrder.map(([groupKey, groupOperations]) => {
+              {showGrouped && groupedOperations.map(([groupKey, groupOperations]) => {
                 const lead = groupOperations[0];
                 return (
                   <div key={groupKey} className="border rounded-lg p-4 bg-white">
                     <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                      <div className="text-sm font-semibold text-gray-800">
-                        WO: {lead.workOrderNumber} ({groupOperations.length} ops)
-                      </div>
+                      <div className="text-sm font-semibold text-gray-800">{groupKey} ({groupOperations.length} ops)</div>
                       <div className="flex items-center gap-2 text-xs">
                         <span className="px-2 py-1 rounded-full bg-slate-100">Blocked: {lead.woBlockedOperations}</span>
                         <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-700">Delayed: {lead.woDelayedOperations}</span>
@@ -457,6 +607,9 @@ export function GlobalOperationList() {
                               </StatusBadge>
                               <span className="text-xs text-gray-500">Seq {operation.sequence}</span>
                               <span className="text-xs text-gray-500">Delay {operation.delayMinutes ?? 0} min</span>
+                              {selectedLens === "IE_PROCESS" && (
+                                <span className="text-xs text-gray-500">{t("operations.ie.label.cycle_delta", "Cycle Delta")} {formatDelta(operation.cycleTimeDelta)}</span>
+                              )}
                             </div>
                             <div className="text-sm text-gray-400 group-hover:text-blue-600 transition-colors flex items-center gap-1">
                               <span>View Detail</span>

@@ -4,6 +4,15 @@ from sqlalchemy.orm import Session, selectinload
 from app.models.master import WorkOrder
 
 
+def get_work_order_by_id(db: Session, work_order_id: int) -> WorkOrder | None:
+    statement = (
+        select(WorkOrder)
+        .options(selectinload(WorkOrder.operations))
+        .where(WorkOrder.id == work_order_id)
+    )
+    return db.scalar(statement)
+
+
 def get_work_order_by_id_or_number(
     db: Session,
     work_order_ref: str,

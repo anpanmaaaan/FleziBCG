@@ -15,6 +15,18 @@ def get_operations_by_work_order(db: Session, work_order_id: int) -> list[Operat
     return list(db.scalars(statement))
 
 
+def get_operations_by_numbers(db: Session, operation_numbers: list[str]) -> list[Operation]:
+    if not operation_numbers:
+        return []
+
+    statement = (
+        select(Operation)
+        .where(Operation.operation_number.in_(operation_numbers))
+        .order_by(Operation.operation_number, Operation.id)
+    )
+    return list(db.scalars(statement))
+
+
 def get_operation_by_id(db: Session, operation_id: int) -> Operation | None:
     statement = (
         select(Operation)
@@ -64,6 +76,17 @@ def mark_operation_reported(
 def mark_operation_completed(db: Session, operation: Operation, completed_at: datetime):
     operation.status = StatusEnum.completed.value
     operation.actual_end = completed_at
+
+    db.add(operation)
+    db.commit()
+    db.refresh(operation)
+    return operation
+
+
+def mark_operation_aborted(db: Session, operation: Operation, aborted_at: datetime):
+    operation.status = StatusEnum.aborted.value
+    if operation.actual_end is None:
+        operation.actual_end = aborted_at
 
     db.add(operation)
     db.commit()

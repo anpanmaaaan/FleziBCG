@@ -22,6 +22,15 @@ class OperationListItem(BaseModel):
     qc_risk_flag: bool = False
     wo_blocked_operations: int = 0
     wo_delayed_operations: int = 0
+    cycle_time_minutes: int | None = None
+    cycle_time_delta: int | None = None
+    delay_count: int = 0
+    delay_frequency: float = 0
+    repeat_flag: bool = False
+    qc_fail_count: int = 0
+    high_variance_flag: bool = False
+    often_late_flag: bool = False
+    route_step: str | None = None
 
     class Config:
         from_attributes = True
@@ -52,3 +61,8 @@ class OperationReportQuantityRequest(BaseModel):
 
 class OperationCompleteRequest(BaseModel):
     operator_id: str | None = None
+
+
+class OperationAbortRequest(BaseModel):
+    operator_id: str | None = None
+    reason_code: str | None = None
