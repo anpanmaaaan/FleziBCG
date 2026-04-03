@@ -10,6 +10,10 @@ export const mapExecutionStatusText = (status: OperationExecutionStatus): string
       return "In Progress";
     case "COMPLETED":
       return "Completed";
+    case "BLOCKED":
+      return "Blocked";
+    case "LATE":
+      return "Delayed";
     default:
       return String(status);
   }
@@ -25,6 +29,10 @@ export const mapExecutionStatusBadgeVariant = (
       return "info";
     case "PENDING":
       return "neutral";
+    case "BLOCKED":
+      return "error";
+    case "LATE":
+      return "warning";
     default:
       return "warning";
   }

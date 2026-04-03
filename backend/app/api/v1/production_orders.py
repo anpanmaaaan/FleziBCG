@@ -12,8 +12,8 @@ from app.repositories.production_order_repository import (
 logger = logging.getLogger(__name__)
 from app.schemas.production_order import ProductionOrderDetail, ProductionOrderSummary, WorkOrderSummary
 from app.schemas.operation import OperationListItem
-from app.repositories.operation_repository import get_operations_by_work_order
 from app.db.session import SessionLocal
+from app.services.global_operation_service import build_work_order_operation_summaries
 
 router = APIRouter()
 
@@ -131,19 +131,4 @@ def read_production_order(order_id: str, db: Session = Depends(get_db)):
 
 @router.get("/work-orders/{wo_id}/operations", response_model=list[OperationListItem])
 def read_work_order_operations(wo_id: int, db: Session = Depends(get_db)):
-    operations = get_operations_by_work_order(db, wo_id)
-    return [
-        OperationListItem(
-            id=operation.id,
-            operation_number=operation.operation_number,
-            name=operation.name,
-            sequence=operation.sequence,
-            status=operation.status,
-            planned_start=operation.planned_start,
-            planned_end=operation.planned_end,
-            quantity=operation.quantity,
-            completed_qty=operation.completed_qty,
-            progress=0,  # TODO: derive runtime progress from events
-        )
-        for operation in operations
-    ]
+    return build_work_order_operation_summaries(db, wo_id)

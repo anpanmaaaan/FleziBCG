@@ -9,11 +9,19 @@ class OperationListItem(BaseModel):
     name: str
     sequence: int
     status: str
+    supervisor_bucket: str | None = None
     planned_start: datetime | None = None
     planned_end: datetime | None = None
     quantity: int
     completed_qty: int = 0
     progress: int = 0
+    work_order_number: str | None = None
+    work_center: str | None = None
+    delay_minutes: int | None = None
+    block_reason_code: str | None = None
+    qc_risk_flag: bool = False
+    wo_blocked_operations: int = 0
+    wo_delayed_operations: int = 0
 
     class Config:
         from_attributes = True
