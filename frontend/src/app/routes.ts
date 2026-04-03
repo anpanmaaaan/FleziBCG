@@ -9,6 +9,7 @@ import { RouteDetail } from "./pages/RouteDetail";
 import { OperationList } from "./pages/OperationList";
 import { OperationExecutionOverview } from "./pages/OperationExecutionOverview";
 import { OperationExecutionDetail } from "./pages/OperationExecutionDetail";
+import { GlobalOperationList } from "./pages/GlobalOperationList";
 import { DispatchQueue } from "./pages/DispatchQueue";
 import { QCCheckpoints } from "./pages/QCCheckpoints";
 import { DefectManagement } from "./pages/DefectManagement";
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
       { path: "work-orders", Component: OperationList }, // WO Status List (all)
       { path: "production-orders/:orderId/work-orders", Component: OperationList }, // WO Status List
       { path: "work-orders/:woId/operations", Component: OperationExecutionOverview }, // WO-scoped Gantt Overview
+      { path: "operations", Component: GlobalOperationList }, // Global Operation Monitoring (read-only)
       { path: "operations/:operationId/detail", Component: OperationExecutionDetail }, // Operation Detail Tabs
       
       // Station Execution

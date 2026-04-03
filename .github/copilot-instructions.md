@@ -25,6 +25,24 @@ This repository contains a lightweight MES system with:
 - enforce tenant filtering in service/repository layer
 - Phase 1 only: deterministic MES execution, no AI/ML, no APS, no streaming infra
 
+## Execution flow baseline (LOCKED)
+
+The following execution flow is non-negotiable:
+
+- Execution entry starts at Work Order, not Production Order
+- Production Order is planning context and filter only
+- Operation is the smallest execution unit
+- Station Execution is the only write surface
+
+Canonical execution flow:
+- /work-orders
+- /work-orders/:woId/operations
+- /operations/:operationId/detail
+- /station-execution?operationId=...
+
+Do NOT introduce screens that mix Production Order, Work Order,
+and Operation execution semantics.
+
 ## Coding rules
 - keep modules small and explicit
 - prefer service layer over putting logic in route handlers
@@ -44,8 +62,46 @@ Phase 1 includes:
 - operation complete
 - QC measure record (backend computes pass/fail)
 
+## Phase 2 scope (READ-ONLY monitoring)
+
+Phase 2 introduces a Global Operation List for monitoring only.
+
+Rules:
+- Global Operation List is read-only
+- No start / complete / report actions allowed
+- No execution state derivation in frontend
+- Backend remains source of truth
+
+Allowed:
+- status display via enum mapping
+- filters by status, work center, WO, PO
+- drill-down to operation detail
+
+Not allowed:
+- write actions
+- business rule inference in UI
+
 ## Non-goals
 - no AI control
 - no advanced scheduling
 - no external workflow engine
 - no streaming platform
+
+## Future-ready guardrails
+
+### AI
+- AI is advisory only
+- AI may read execution events and history
+- AI must never trigger or control execution actions
+- No AI logic in execution or service layers in Phase 1–2
+
+### Multi-language (i18n)
+- Backend returns enums and codes, not translated text
+- UI text must not contain business logic
+- Prefer semantic keys for UI text (i18n-ready)
+- Language preference belongs to tenant or user
+
+### Microservice
+- Current architecture is modular monolith
+- Do NOT prematurely split into microservices
+- Clear module boundaries are preferred over service extraction

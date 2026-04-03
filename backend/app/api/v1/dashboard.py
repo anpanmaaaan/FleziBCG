@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
-from app.schemas.dashboard import DashboardSummary
-from app.services.dashboard_service import get_dashboard_summary
+from app.schemas.dashboard import DashboardHealthResponse, DashboardSummaryResponse
+from app.services.dashboard_service import get_dashboard_health, get_dashboard_summary
 
 router = APIRouter()
 
@@ -16,6 +16,26 @@ def get_db():
         db.close()
 
 
-@router.get("/dashboard", response_model=DashboardSummary)
-def read_dashboard(db: Session = Depends(get_db)):
-    return get_dashboard_summary(db)
+@router.get("/dashboard", response_model=DashboardSummaryResponse)
+def read_dashboard_legacy(
+    db: Session = Depends(get_db),
+    x_tenant_id: str = Header("default", alias="X-Tenant-ID"),
+):
+    # Backward-compatible alias to summary endpoint.
+    return get_dashboard_summary(db, tenant_id=x_tenant_id)
+
+
+@router.get("/dashboard/summary", response_model=DashboardSummaryResponse)
+def read_dashboard_summary(
+    db: Session = Depends(get_db),
+    x_tenant_id: str = Header("default", alias="X-Tenant-ID"),
+):
+    return get_dashboard_summary(db, tenant_id=x_tenant_id)
+
+
+@router.get("/dashboard/health", response_model=DashboardHealthResponse)
+def read_dashboard_health(
+    db: Session = Depends(get_db),
+    x_tenant_id: str = Header("default", alias="X-Tenant-ID"),
+):
+    return get_dashboard_health(db, tenant_id=x_tenant_id)

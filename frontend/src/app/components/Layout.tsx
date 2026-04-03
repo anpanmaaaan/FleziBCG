@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { TopBar } from "./TopBar";
-import fleziLogo from "../../assets/020ceccc095996a9828ea9162f539ccddf92986f.png";
 
 export function Layout() {
   const location = useLocation();
@@ -76,6 +75,7 @@ export function Layout() {
     if (location.pathname === '/scheduling') return 'APS Scheduling';
     if (location.pathname === '/settings') return 'Settings';
     if (location.pathname === '/work-orders') return 'Execution – Work Orders';
+    if (location.pathname === '/operations') return 'Execution - Operations';
     if (location.pathname.startsWith('/routes/')) return 'Route Detail';
     if (location.pathname.startsWith('/production-orders/') && location.pathname.includes('/work-orders')) return 'Work Order Execution Status';
     if (location.pathname.startsWith('/work-orders/')) return 'Operation Execution Overview';
@@ -93,7 +93,7 @@ export function Layout() {
       >
         {/* Logo */}
         <div className={`p-6 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
-          {!sidebarCollapsed && <img src={fleziLogo} alt="FleziBCG" className="h-16" />}
+          {!sidebarCollapsed && <img src="/flezi-logo.png" alt="FleziBCG" className="h-16" />}
           <button 
             onClick={toggleSidebar}
             className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 p-2 rounded-lg transition-colors"
@@ -239,7 +239,7 @@ export function Layout() {
             <button
               onClick={() => toggleMenu('routing')}
               className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} px-3 py-3 rounded-lg hover:bg-slate-100 transition-all ${
-                isActive('/routes') || location.pathname.startsWith('/routes/') || location.pathname === '/work-orders' || (location.pathname.startsWith('/production-orders/') && location.pathname.includes('/work-orders')) || location.pathname.startsWith('/work-orders/') || location.pathname.startsWith('/operations/') ? 'bg-blue-50 text-blue-600 font-medium shadow-sm' : 'text-slate-700'
+                isActive('/routes') || location.pathname.startsWith('/routes/') || location.pathname === '/work-orders' || location.pathname === '/operations' || (location.pathname.startsWith('/production-orders/') && location.pathname.includes('/work-orders')) || location.pathname.startsWith('/work-orders/') || location.pathname.startsWith('/operations/') ? 'bg-blue-50 text-blue-600 font-medium shadow-sm' : 'text-slate-700'
               }`}
               title={sidebarCollapsed ? 'Routes & Operations' : ''}
             >
@@ -273,6 +273,15 @@ export function Layout() {
                   }`}
                 >
                   <span>Work Order Execution</span>
+                  <CompletionBadge percent={100} />
+                </Link>
+                <Link
+                  to="/operations"
+                  className={`flex items-center justify-between px-3 py-2 text-sm rounded-lg hover:bg-slate-100 transition-all ${
+                    location.pathname === '/operations' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-slate-600'
+                  }`}
+                >
+                  <span>Operations (Global)</span>
                   <CompletionBadge percent={100} />
                 </Link>
                 <Link
