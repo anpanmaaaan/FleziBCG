@@ -1,11 +1,22 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy.orm import Session
 
 from .common import ScenarioContext, create_scenario_context, run_complete, run_start
 
 
 def seed(db: Session) -> ScenarioContext:
+    """
+    S2: Completed Late
+    
+    Validates:
+    - All operations complete after their planned_end times
+    - WO status resolves to COMPLETED_LATE
+    - Delay is correctly calculated
+    - Timing logic: actual_end > planned_end = LATE
+    """
     context = create_scenario_context(
         db,
         scenario_code="S2",
@@ -20,7 +31,12 @@ def seed(db: Session) -> ScenarioContext:
     )
 
     for operation in context.operations:
-        run_start(db, operation.id)
-        run_complete(db, operation.id)
+        # Start at planned time
+        run_start(db, operation.id, started_at=operation.planned_start)
+        # Complete AFTER planned_end to trigger COMPLETED_LATE status
+        # Add 30 minutes delay to ensure actual_end > planned_end
+        completion_time = datetime.fromisoformat(operation.planned_end.isoformat())
+        completion_time = completion_time.replace(hour=completion_time.hour + 1)  # 1 hour late
+        run_complete(db, operation.id, completed_at=completion_time)
 
     return context

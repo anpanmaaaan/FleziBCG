@@ -10,7 +10,7 @@ from app.schemas.operation import (
     OperationReportQuantityRequest,
     OperationStartRequest,
 )
-from app.security.dependencies import RequestIdentity, get_request_identity
+from app.security.dependencies import RequestIdentity, require_permission
 from app.services.operation_service import abort_operation, derive_operation_detail, start_operation, report_quantity, complete_operation
 
 router = APIRouter()
@@ -25,9 +25,13 @@ def get_db():
 
 
 @router.get("/operations/{operation_id}", response_model=OperationDetail)
-def read_operation(operation_id: int, db: Session = Depends(get_db)):
+def read_operation(
+    operation_id: int,
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(require_permission("VIEW")),
+):
     operation = get_operation_by_id(db, operation_id)
-    if not operation:
+    if not operation or operation.tenant_id != identity.tenant_id:
         raise HTTPException(status_code=404, detail="Operation not found")
     return derive_operation_detail(db, operation)
 
@@ -37,10 +41,10 @@ def start_operation_endpoint(
     operation_id: int,
     request: OperationStartRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(get_request_identity),
+    identity: RequestIdentity = Depends(require_permission("EXECUTE")),
 ):
     operation = get_operation_by_id(db, operation_id)
-    if not operation:
+    if not operation or operation.tenant_id != identity.tenant_id:
         raise HTTPException(status_code=404, detail="Operation not found")
 
     try:
@@ -54,10 +58,10 @@ def report_quantity_endpoint(
     operation_id: int,
     request: OperationReportQuantityRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(get_request_identity),
+    identity: RequestIdentity = Depends(require_permission("EXECUTE")),
 ):
     operation = get_operation_by_id(db, operation_id)
-    if not operation:
+    if not operation or operation.tenant_id != identity.tenant_id:
         raise HTTPException(status_code=404, detail="Operation not found")
 
     try:
@@ -71,10 +75,10 @@ def complete_operation_endpoint(
     operation_id: int,
     request: OperationCompleteRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(get_request_identity),
+    identity: RequestIdentity = Depends(require_permission("EXECUTE")),
 ):
     operation = get_operation_by_id(db, operation_id)
-    if not operation:
+    if not operation or operation.tenant_id != identity.tenant_id:
         raise HTTPException(status_code=404, detail="Operation not found")
 
     try:
@@ -88,10 +92,10 @@ def abort_operation_endpoint(
     operation_id: int,
     request: OperationAbortRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(get_request_identity),
+    identity: RequestIdentity = Depends(require_permission("EXECUTE")),
 ):
     operation = get_operation_by_id(db, operation_id)
-    if not operation:
+    if not operation or operation.tenant_id != identity.tenant_id:
         raise HTTPException(status_code=404, detail="Operation not found")
 
     try:

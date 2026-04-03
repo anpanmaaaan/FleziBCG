@@ -112,22 +112,22 @@ def create_operation(
     return operation
 
 
-def run_start(db: Session, operation_id: int) -> Operation:
+def run_start(db: Session, operation_id: int, started_at: datetime | None = None) -> Operation:
     operation = get_operation_by_id(db, operation_id)
     if operation is None:
         raise ValueError(f"Operation {operation_id} not found")
-    start_operation(db, operation, OperationStartRequest(operator_id="seed-user"), tenant_id=TENANT_ID)
+    start_operation(db, operation, OperationStartRequest(operator_id="seed-user", started_at=started_at), tenant_id=TENANT_ID)
     refreshed = get_operation_by_id(db, operation_id)
     if refreshed is None:
         raise ValueError(f"Operation {operation_id} missing after start")
     return refreshed
 
 
-def run_complete(db: Session, operation_id: int) -> Operation:
+def run_complete(db: Session, operation_id: int, completed_at: datetime | None = None) -> Operation:
     operation = get_operation_by_id(db, operation_id)
     if operation is None:
         raise ValueError(f"Operation {operation_id} not found")
-    complete_operation(db, operation, OperationCompleteRequest(operator_id="seed-user"), tenant_id=TENANT_ID)
+    complete_operation(db, operation, OperationCompleteRequest(operator_id="seed-user", completed_at=completed_at), tenant_id=TENANT_ID)
     refreshed = get_operation_by_id(db, operation_id)
     if refreshed is None:
         raise ValueError(f"Operation {operation_id} missing after completion")

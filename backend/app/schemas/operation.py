@@ -61,6 +61,7 @@ class OperationReportQuantityRequest(BaseModel):
 
 class OperationCompleteRequest(BaseModel):
     operator_id: str | None = None
+    completed_at: datetime | None = None
 
 
 class OperationAbortRequest(BaseModel):

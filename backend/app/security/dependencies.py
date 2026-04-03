@@ -1,8 +1,10 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-from fastapi import Header, HTTPException, Request
+from fastapi import Depends, Header, HTTPException, Request
 
+from app.db.session import SessionLocal
 from app.security.auth import AuthIdentity
+from app.security.rbac import PermissionFamily, has_permission
 
 
 @dataclass
@@ -13,6 +15,8 @@ class RequestIdentity:
     tenant_id: str
     role_code: str | None
     is_authenticated: bool
+    impersonation_session_id: int | None = field(default=None)
+    acting_role_code: str | None = field(default=None)
 
 
 def _anonymous_identity(tenant_id: str) -> RequestIdentity:
@@ -59,3 +63,54 @@ def require_authenticated_identity(request: Request) -> RequestIdentity:
         role_code=auth_identity.role_code,
         is_authenticated=True,
     )
+
+
+def _get_security_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+_AUDITED_FAMILIES = frozenset({"EXECUTE", "APPROVE", "CONFIGURE"})
+
+
+def require_permission(permission_family: PermissionFamily):
+    def dependency(
+        request: Request,
+        identity: RequestIdentity = Depends(require_authenticated_identity),
+        db=Depends(_get_security_db),
+    ) -> RequestIdentity:
+        from app.repositories.impersonation_repository import get_active_impersonation_session
+        from app.services.impersonation_service import log_impersonation_permission_use
+
+        effective_identity = identity
+        active_session = get_active_impersonation_session(db, identity.user_id, identity.tenant_id)
+
+        if active_session is not None:
+            effective_identity = RequestIdentity(
+                user_id=identity.user_id,
+                username=identity.username,
+                email=identity.email,
+                tenant_id=identity.tenant_id,
+                role_code=identity.role_code,
+                is_authenticated=identity.is_authenticated,
+                impersonation_session_id=active_session.id,
+                acting_role_code=active_session.acting_role_code,
+            )
+
+        if not has_permission(db, effective_identity, permission_family):
+            raise HTTPException(status_code=403, detail=f"Missing required permission: {permission_family}")
+
+        if active_session is not None and permission_family in _AUDITED_FAMILIES:
+            log_impersonation_permission_use(
+                db,
+                active_session,
+                permission_family,
+                endpoint=str(request.url),
+            )
+
+        return effective_identity
+
+    return dependency

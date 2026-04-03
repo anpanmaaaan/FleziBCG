@@ -1,6 +1,6 @@
 import { createBrowserRouter } from "react-router";
-import { redirect } from "react-router";
 import { Layout } from "./components/Layout";
+import { LoginPage } from "./pages/LoginPage";
 import { Home } from "./pages/Home";
 import { Dashboard } from "./pages/Dashboard";
 import { ProductionOrderList } from "./pages/ProductionOrderList";
@@ -17,14 +17,26 @@ import { Traceability } from "./pages/Traceability";
 import { APSScheduling } from "./pages/APSScheduling";
 import { StationExecution } from "./pages/StationExecution";
 import { OEEDeepDive } from "./pages/OEEDeepDive";
+import { PersonaLandingRedirect } from "./persona/PersonaLandingRedirect";
+import { RequireAuth } from "./auth/RequireAuth";
 
 export const router = createBrowserRouter([
+  // Public route
+  {
+    path: "/login",
+    Component: LoginPage,
+  },
+  // Protected routes
   {
     path: "/",
-    Component: Layout,
+    element: (
+      <RequireAuth>
+        <Layout />
+      </RequireAuth>
+    ),
     children: [
       // Execution Tracking (Main)
-      { index: true, loader: () => redirect("/work-orders") },
+      { index: true, Component: PersonaLandingRedirect },
       { path: "home", Component: Home },
       
       // Dashboard
@@ -49,6 +61,7 @@ export const router = createBrowserRouter([
       { path: "operations/:operationId/detail", Component: OperationExecutionDetail }, // Operation Detail Tabs
       
       // Station Execution
+      { path: "station", Component: StationExecution },
       { path: "station-execution", Component: StationExecution },
       
       // Quality Management

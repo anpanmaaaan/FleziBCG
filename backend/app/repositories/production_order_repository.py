@@ -5,16 +5,18 @@ from sqlalchemy.orm.session import Session
 from app.models.master import ProductionOrder, WorkOrder
 
 
-def get_production_orders(db: Session) -> list[ProductionOrder]:
+def get_production_orders(db: Session, tenant_id: str | None = None) -> list[ProductionOrder]:
     statement = (
         select(ProductionOrder)
         .options(selectinload(ProductionOrder.work_orders))
         .order_by(ProductionOrder.id)
     )
+    if tenant_id is not None:
+        statement = statement.where(ProductionOrder.tenant_id == tenant_id)
     return list(db.scalars(statement))
 
 
-def get_production_order_by_id(db: Session, order_id: int) -> ProductionOrder | None:
+def get_production_order_by_id(db: Session, order_id: int, tenant_id: str | None = None) -> ProductionOrder | None:
     statement = (
         select(ProductionOrder)
         .where(ProductionOrder.id == order_id)
@@ -22,10 +24,12 @@ def get_production_order_by_id(db: Session, order_id: int) -> ProductionOrder | 
             selectinload(ProductionOrder.work_orders).selectinload(WorkOrder.operations)
         )
     )
+    if tenant_id is not None:
+        statement = statement.where(ProductionOrder.tenant_id == tenant_id)
     return db.scalar(statement)
 
 
-def get_production_order_by_number(db: Session, order_number: str) -> ProductionOrder | None:
+def get_production_order_by_number(db: Session, order_number: str, tenant_id: str | None = None) -> ProductionOrder | None:
     statement = (
         select(ProductionOrder)
         .where(ProductionOrder.order_number == order_number)
@@ -33,6 +37,8 @@ def get_production_order_by_number(db: Session, order_number: str) -> Production
             selectinload(ProductionOrder.work_orders).selectinload(WorkOrder.operations)
         )
     )
+    if tenant_id is not None:
+        statement = statement.where(ProductionOrder.tenant_id == tenant_id)
     return db.scalar(statement)
 
 

@@ -188,7 +188,7 @@ def complete_operation(
     if operation.status != StatusEnum.in_progress.value:
         raise ValueError("Operation must be IN_PROGRESS to complete.")
 
-    completed_at = datetime.utcnow()
+    completed_at = request.completed_at or datetime.utcnow()
     payload = {
         "operator_id": request.operator_id,
         "completed_at": completed_at.isoformat(),

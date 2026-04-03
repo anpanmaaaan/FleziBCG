@@ -1,17 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { AlertTriangle, CheckCircle, ChevronRight, Clock, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { operationMonitorApi } from "../api/operationMonitorApi";
 import { mapExecutionStatusBadgeVariant, mapExecutionStatusText } from "../api/mappers/executionMapper";
+import { useAuth } from "../auth/AuthContext";
 import { PageHeader } from "../components/PageHeader";
 import { StatsCard } from "../components/StatsCard";
 import { StatusBadge } from "../components/StatusBadge";
 import { useI18n } from "../i18n";
+import {
+  getAllowedOperationLenses,
+  getFallbackOperationLens,
+  resolvePersonaFromUser,
+  type OperationLens,
+} from "../persona/personaLanding.ts";
 
 type SupervisorBucket = "BLOCKED" | "DELAYED" | "IN_PROGRESS" | "OTHER";
-type MonitoringLens = "IE_PROCESS" | "SUPERVISOR";
+type MonitoringLens = "IE_PROCESS" | "SUPERVISOR" | "QC";
 type GroupMode = "none" | "work_order" | "operation_number" | "work_center" | "route_step";
 
 interface MonitorOperation {
@@ -71,22 +78,61 @@ const formatDateTime = (value: string | null): string => {
   });
 };
 
+function mapOperationLensToMonitoringLens(lens: OperationLens): MonitoringLens {
+  if (lens === "ie") {
+    return "IE_PROCESS";
+  }
+  if (lens === "qc") {
+    return "QC";
+  }
+  return "SUPERVISOR";
+}
+
+function mapMonitoringLensToOperationLens(lens: MonitoringLens): OperationLens {
+  if (lens === "IE_PROCESS") {
+    return "ie";
+  }
+  if (lens === "QC") {
+    return "qc";
+  }
+  return "supervisor";
+}
+
 export function GlobalOperationList() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { currentUser } = useAuth();
   const { t } = useI18n();
+  const persona = resolvePersonaFromUser(currentUser);
+  const allowedOperationLenses = getAllowedOperationLenses(persona);
+  const fallbackOperationLens = getFallbackOperationLens(persona);
+  const requestedLensParam = (searchParams.get("lens") ?? "").trim().toLowerCase();
+  const activeOperationLens = allowedOperationLenses.includes(requestedLensParam as OperationLens)
+    ? requestedLensParam as OperationLens
+    : fallbackOperationLens;
 
   const [operations, setOperations] = useState<MonitorOperation[]>([]);
   const [productionOrderFilters, setProductionOrderFilters] = useState<ProductionOrderFilter[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchValue, setSearchValue] = useState("");
-  const [selectedLens, setSelectedLens] = useState<MonitoringLens>("IE_PROCESS");
+  const [selectedLens, setSelectedLens] = useState<MonitoringLens>(() => mapOperationLensToMonitoringLens(activeOperationLens));
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedProductionOrderId, setSelectedProductionOrderId] = useState("all");
   const [groupMode, setGroupMode] = useState<GroupMode>("operation_number");
 
   useEffect(() => {
-    if (selectedLens === "SUPERVISOR") {
+    if (requestedLensParam !== activeOperationLens) {
+      const nextSearchParams = new URLSearchParams(searchParams);
+      nextSearchParams.set("lens", activeOperationLens);
+      setSearchParams(nextSearchParams, { replace: true });
+    }
+
+    setSelectedLens(mapOperationLensToMonitoringLens(activeOperationLens));
+  }, [activeOperationLens, requestedLensParam, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (selectedLens === "SUPERVISOR" || selectedLens === "QC") {
       setSelectedStatus("SUPERVISOR_DEFAULT");
       setGroupMode("work_order");
       return;
@@ -195,11 +241,11 @@ export function GlobalOperationList() {
 
   const filteredOperations = useMemo(() => {
     return operations.filter((operation) => {
-      if (selectedLens === "SUPERVISOR" && selectedStatus === "SUPERVISOR_DEFAULT") {
+      if ((selectedLens === "SUPERVISOR" || selectedLens === "QC") && selectedStatus === "SUPERVISOR_DEFAULT") {
         if (!["BLOCKED", "DELAYED", "IN_PROGRESS"].includes(operation.supervisorBucket)) {
           return false;
         }
-      } else if (selectedLens === "SUPERVISOR" && selectedStatus === "DELAYED") {
+      } else if ((selectedLens === "SUPERVISOR" || selectedLens === "QC") && selectedStatus === "DELAYED") {
         if (operation.supervisorBucket !== "DELAYED") {
           return false;
         }
@@ -324,12 +370,19 @@ export function GlobalOperationList() {
 
   const subtitle = selectedLens === "IE_PROCESS"
     ? t("operations.ie.subtitle", "Global Operations - IE / Process Investigation Lens")
+    : selectedLens === "QC"
+    ? t("operations.qa.subtitle", "Global Operations - QC Lens")
     : t("operations.supervisor.subtitle", "Global Operations - Supervisor Investigation Lens");
 
   const lensNotice = selectedLens === "IE_PROCESS"
     ? t(
       "operations.ie.read_only_notice",
       "Read-only IE/Process investigation workspace for recurring delay and variability patterns. No execution actions are available on this screen.",
+    )
+    : selectedLens === "QC"
+    ? t(
+      "operations.qc.read_only_notice",
+      "Read-only QC placeholder lens. QC status is visible, but no approval or execution actions are available in this phase.",
     )
     : t(
       "operations.supervisor.read_only_notice",
@@ -390,7 +443,7 @@ export function GlobalOperationList() {
           <>
             <div className="grid grid-cols-4 gap-4 mb-6">
               <StatsCard title="Total Operations" value={stats.total} color="blue" />
-              {selectedLens === "SUPERVISOR" ? (
+              {selectedLens === "SUPERVISOR" || selectedLens === "QC" ? (
                 <>
                   <StatsCard title={t("operations.supervisor.stats.blocked", "Blocked")} value={stats.blocked} color="red" icon={AlertTriangle} />
                   <StatsCard title={t("operations.supervisor.stats.delayed", "Delayed")} value={stats.delayed} color="yellow" icon={Clock} />
@@ -409,12 +462,25 @@ export function GlobalOperationList() {
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-4">
                   <select
-                    value={selectedLens}
-                    onChange={(event) => setSelectedLens(event.target.value as MonitoringLens)}
+                    value={mapMonitoringLensToOperationLens(selectedLens)}
+                    onChange={(event) => {
+                      const nextLens = event.target.value as OperationLens;
+                      const nextSearchParams = new URLSearchParams(searchParams);
+                      nextSearchParams.set("lens", nextLens);
+                      setSearchParams(nextSearchParams, { replace: true });
+                    }}
                     className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={allowedOperationLenses.length === 1}
                   >
-                    <option value="IE_PROCESS">{t("operations.lens.ie_process", "IE / Process Lens")}</option>
-                    <option value="SUPERVISOR">{t("operations.lens.supervisor", "Supervisor Lens")}</option>
+                    {allowedOperationLenses.includes("ie") && (
+                      <option value="ie">{t("operations.lens.ie_process", "IE / Process Lens")}</option>
+                    )}
+                    {allowedOperationLenses.includes("supervisor") && (
+                      <option value="supervisor">{t("operations.lens.supervisor", "Supervisor Lens")}</option>
+                    )}
+                    {allowedOperationLenses.includes("qc") && (
+                      <option value="qc">{t("operations.lens.qc", "QC Lens")}</option>
+                    )}
                   </select>
 
                   <div className="relative">
@@ -433,16 +499,16 @@ export function GlobalOperationList() {
                     onChange={(event) => setSelectedStatus(event.target.value)}
                     className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    {selectedLens === "SUPERVISOR" && (
+                    {(selectedLens === "SUPERVISOR" || selectedLens === "QC") && (
                       <option value="SUPERVISOR_DEFAULT">
                         {t("operations.supervisor.filter.default", "Supervisor Default (Blocked, Delayed, In Progress)")}
                       </option>
                     )}
                     <option value="all">All Statuses</option>
-                    {selectedLens === "SUPERVISOR" && (
+                    {(selectedLens === "SUPERVISOR" || selectedLens === "QC") && (
                       <option value="BLOCKED">{t("operations.supervisor.status.blocked", "Blocked")}</option>
                     )}
-                    {selectedLens === "SUPERVISOR" && (
+                    {(selectedLens === "SUPERVISOR" || selectedLens === "QC") && (
                       <option value="DELAYED">{t("operations.supervisor.status.delayed", "Delayed")}</option>
                     )}
                     <option value="PENDING">Pending</option>
@@ -483,9 +549,6 @@ export function GlobalOperationList() {
                 </div>
               </div>
             </div>
-
-            {/* TODO(Phase 2D): Add explicit Supervisor vs IE lens policy binding after role/auth phase. */}
-            {/* TODO(Phase 2C): Add QA-focused risk lens with quality-specific filters. */}
 
             <div className="space-y-4">
               {!showGrouped && sortedOperations.map((operation) => (

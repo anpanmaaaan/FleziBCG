@@ -1,11 +1,25 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy.orm import Session
 
-from .common import ScenarioContext, create_scenario_context, mark_blocked_for_incident_seed, run_start
+from .common import ScenarioContext, create_scenario_context, mark_blocked_for_incident_seed, run_complete, run_start
 
 
 def seed(db: Session) -> ScenarioContext:
+    """
+    S3: In-Progress + Blocked Incident
+    
+    Validates:
+    - WO with multiple operations: one blocked, one in-progress
+    - WO status resolves to BLOCKED (at least one op blocked, none in progress OR some in progress with blocked)
+    - Supervisor lens identifies blocked operations
+    - Demonstrates incident/delay handling scenario
+    
+    Note: Currently uses mark_blocked_for_incident_seed() which sets status directly.
+    Future: Should create proper OP_BLOCKED execution event when blocking is implemented.
+    """
     context = create_scenario_context(
         db,
         scenario_code="S3",
@@ -22,9 +36,14 @@ def seed(db: Session) -> ScenarioContext:
     first_op = context.operations[0]
     second_op = context.operations[1]
 
-    run_start(db, first_op.id)
+    # First operation: Start then block due to material shortage
+    run_start(db, first_op.id, started_at=first_op.planned_start)
     mark_blocked_for_incident_seed(db, first_op.id, reason_code="MATERIAL_SHORTAGE")
 
-    run_start(db, second_op.id)
+    # Second operation: Leave in-progress (started but not completed)
+    run_start(db, second_op.id, started_at=second_op.planned_start)
+    
+    # Third operation: Leave pending (not started)
+    # This demonstrates a mixed WO state where some ops are blocked, some in-progress, some pending
 
     return context

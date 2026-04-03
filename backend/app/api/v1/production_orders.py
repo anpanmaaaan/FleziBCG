@@ -15,6 +15,8 @@ from app.schemas.operation import OperationListItem
 from app.db.session import SessionLocal
 from app.services.global_operation_service import build_work_order_operation_summaries
 from app.services.work_order_execution_service import build_work_order_summary_projection
+from app.security.dependencies import RequestIdentity, require_permission
+from app.repositories.work_order_repository import get_work_order_by_id_or_number
 
 router = APIRouter()
 
@@ -79,9 +81,12 @@ def _build_production_order_summary(order) -> ProductionOrderSummary:
 
 
 @router.get("/production-orders", response_model=list[ProductionOrderSummary])
-def read_production_orders(db: Session = Depends(get_db)):
+def read_production_orders(
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(require_permission("VIEW")),
+):
     try:
-        orders = get_production_orders(db)
+        orders = get_production_orders(db, tenant_id=identity.tenant_id)
         return [_build_production_order_summary(order) for order in orders]
     except Exception as exc:
         logger.exception("Failed to load production orders")
@@ -89,15 +94,19 @@ def read_production_orders(db: Session = Depends(get_db)):
 
 
 @router.get("/production-orders/{order_id}", response_model=ProductionOrderDetail)
-def read_production_order(order_id: str, db: Session = Depends(get_db)):
+def read_production_order(
+    order_id: str,
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(require_permission("VIEW")),
+):
     try:
         order = None
 
         if order_id.isdigit():
-            order = get_production_order_by_id(db, int(order_id))
+            order = get_production_order_by_id(db, int(order_id), tenant_id=identity.tenant_id)
 
         if order is None:
-            order = get_production_order_by_number(db, order_id)
+            order = get_production_order_by_number(db, order_id, tenant_id=identity.tenant_id)
 
         if not order:
             raise HTTPException(status_code=404, detail="Production order not found")
@@ -133,5 +142,12 @@ def read_production_order(order_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/work-orders/{wo_id}/operations", response_model=list[OperationListItem])
-def read_work_order_operations(wo_id: int, db: Session = Depends(get_db)):
+def read_work_order_operations(
+    wo_id: int,
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(require_permission("VIEW")),
+):
+    work_order = get_work_order_by_id_or_number(db, str(wo_id), tenant_id=identity.tenant_id)
+    if not work_order:
+        raise HTTPException(status_code=404, detail="Work order not found")
     return build_work_order_operation_summaries(db, wo_id)

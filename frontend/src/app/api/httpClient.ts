@@ -27,9 +27,14 @@ export class HttpError extends Error {
 const API_PREFIX = "/api";
 
 let getHttpContext: (() => HttpContext) | null = null;
+let onUnauthorized: (() => void) | null = null;
 
 export const setHttpContextProvider = (provider: () => HttpContext) => {
   getHttpContext = provider;
+};
+
+export const setUnauthorizedHandler = (handler: () => void) => {
+  onUnauthorized = handler;
 };
 
 const normalizePath = (path: string) => {
@@ -90,6 +95,10 @@ export const request = async <T>(path: string, options: RequestOptions = {}): Pr
       typeof parsedBody === "object" && parsedBody !== null && "detail" in parsedBody
         ? (parsedBody as { detail?: unknown }).detail
         : parsedBody;
+
+    if (response.status === 401) {
+      onUnauthorized?.();
+    }
 
     throw new HttpError(
       typeof detail === "string" && detail.trim().length > 0

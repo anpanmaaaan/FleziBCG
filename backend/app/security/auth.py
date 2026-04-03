@@ -4,10 +4,12 @@ from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.config.settings import Settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 
 @dataclass
@@ -56,8 +58,10 @@ def _load_default_users() -> list[dict[str, str]]:
 
 
 def _verify_password(plain_password: str, stored_password: str) -> bool:
-    if stored_password.startswith("$2"):
+    # Check if the stored password is a hash (starts with algorithm prefix)
+    if stored_password.startswith(("$2", "$argon2", "$pbkdf2")):
         return pwd_context.verify(plain_password, stored_password)
+    # Fallback: plain comparison (for non-hashed passwords in config)
     return plain_password == stored_password
 
 
@@ -112,3 +116,49 @@ def decode_access_token(token: str) -> AuthIdentity | None:
         tenant_id=str(tenant_id),
         role_code=str(payload.get("role_code")) if payload.get("role_code") is not None else None,
     )
+
+
+def authenticate_user_db(
+    db: Session,
+    username: str,
+    password: str,
+    tenant_id: str = "default",
+) -> AuthIdentity | None:
+    """Authenticate user against database. Returns AuthIdentity with role_code from user_roles."""
+    from app.models.rbac import Role, UserRole
+    from app.models.user import User
+
+    user = db.scalar(
+        select(User).where(
+            User.username == username,
+            User.tenant_id == tenant_id,
+            User.is_active.is_(True),
+        )
+    )
+    if user is None:
+        return None
+
+    if not _verify_password(password, user.password_hash):
+        return None
+
+    # Fetch the user's role from user_roles for this tenant.
+    user_role = db.scalar(
+        select(UserRole)
+        .join(Role, Role.id == UserRole.role_id)
+        .where(
+            UserRole.user_id == user.user_id,
+            UserRole.tenant_id == tenant_id,
+            UserRole.is_active.is_(True),
+        )
+    )
+
+    role_code = user_role.role.code if user_role else None
+
+    return AuthIdentity(
+        user_id=user.user_id,
+        username=user.username,
+        email=user.email,
+        tenant_id=tenant_id,
+        role_code=role_code,
+    )
+

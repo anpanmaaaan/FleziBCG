@@ -5,7 +5,7 @@ from app.db.session import SessionLocal
 from app.repositories.execution_event_repository import get_events_for_work_order
 from app.repositories.work_order_repository import get_work_order_by_id_or_number
 from app.schemas.execution_timeline import WorkOrderExecutionTimeline
-from app.security.dependencies import RequestIdentity, get_request_identity
+from app.security.dependencies import RequestIdentity, require_permission
 from app.services.execution_timeline_service import build_work_order_execution_timeline
 
 router = APIRouter()
@@ -23,7 +23,7 @@ def get_db():
 def read_execution_timeline(
     work_order_id: str,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(get_request_identity),
+    identity: RequestIdentity = Depends(require_permission("VIEW")),
 ):
     """ExecutionTimeline API - read-only, visualization only."""
     # For visualization only - no execution control.
