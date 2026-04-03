@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
@@ -10,6 +10,7 @@ from app.schemas.operation import (
     OperationReportQuantityRequest,
     OperationStartRequest,
 )
+from app.security.dependencies import RequestIdentity, get_request_identity
 from app.services.operation_service import abort_operation, derive_operation_detail, start_operation, report_quantity, complete_operation
 
 router = APIRouter()
@@ -36,14 +37,14 @@ def start_operation_endpoint(
     operation_id: int,
     request: OperationStartRequest,
     db: Session = Depends(get_db),
-    x_tenant_id: str = Header("default", alias="X-Tenant-ID"),
+    identity: RequestIdentity = Depends(get_request_identity),
 ):
     operation = get_operation_by_id(db, operation_id)
     if not operation:
         raise HTTPException(status_code=404, detail="Operation not found")
 
     try:
-        return start_operation(db, operation, request, tenant_id=x_tenant_id)
+        return start_operation(db, operation, request, tenant_id=identity.tenant_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -53,14 +54,14 @@ def report_quantity_endpoint(
     operation_id: int,
     request: OperationReportQuantityRequest,
     db: Session = Depends(get_db),
-    x_tenant_id: str = Header("default", alias="X-Tenant-ID"),
+    identity: RequestIdentity = Depends(get_request_identity),
 ):
     operation = get_operation_by_id(db, operation_id)
     if not operation:
         raise HTTPException(status_code=404, detail="Operation not found")
 
     try:
-        return report_quantity(db, operation, request, tenant_id=x_tenant_id)
+        return report_quantity(db, operation, request, tenant_id=identity.tenant_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -70,14 +71,14 @@ def complete_operation_endpoint(
     operation_id: int,
     request: OperationCompleteRequest,
     db: Session = Depends(get_db),
-    x_tenant_id: str = Header("default", alias="X-Tenant-ID"),
+    identity: RequestIdentity = Depends(get_request_identity),
 ):
     operation = get_operation_by_id(db, operation_id)
     if not operation:
         raise HTTPException(status_code=404, detail="Operation not found")
 
     try:
-        return complete_operation(db, operation, request, tenant_id=x_tenant_id)
+        return complete_operation(db, operation, request, tenant_id=identity.tenant_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -87,14 +88,14 @@ def abort_operation_endpoint(
     operation_id: int,
     request: OperationAbortRequest,
     db: Session = Depends(get_db),
-    x_tenant_id: str = Header("default", alias="X-Tenant-ID"),
+    identity: RequestIdentity = Depends(get_request_identity),
 ):
     operation = get_operation_by_id(db, operation_id)
     if not operation:
         raise HTTPException(status_code=404, detail="Operation not found")
 
     try:
-        return abort_operation(db, operation, request, tenant_id=x_tenant_id)
+        return abort_operation(db, operation, request, tenant_id=identity.tenant_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
