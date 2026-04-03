@@ -1,7 +1,7 @@
 import { LucideIcon } from "lucide-react";
 import { ReactNode } from "react";
 
-type ColorVariant = "blue" | "green" | "purple" | "orange" | "red" | "gray" | "cyan";
+type ColorVariant = "blue" | "green" | "purple" | "orange" | "yellow" | "red" | "gray" | "cyan";
 
 interface StatsCardProps {
   title: string;
@@ -44,6 +44,13 @@ export function StatsCard({ title, value, icon: Icon, color = "blue", subtitle, 
       text: "text-orange-600",
       valueText: "text-orange-800",
       iconBg: "bg-orange-500",
+    },
+    yellow: {
+      bg: "from-yellow-50 to-yellow-100",
+      border: "border-yellow-200",
+      text: "text-yellow-700",
+      valueText: "text-yellow-800",
+      iconBg: "bg-yellow-500",
     },
     red: {
       bg: "from-red-50 to-red-100",

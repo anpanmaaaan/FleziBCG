@@ -140,3 +140,12 @@ Not allowed:
 	- Replace UI text with t()
 	- Add language selector
 	- Introduce locale switching
+
+## Phase 2B — Global Operations Supervisor Rules (LOCKED)
+
+- Global Operations is READ-ONLY.
+- Supervisor view prioritizes BLOCKED and DELAYED operations.
+- Operations MUST NOT include execution actions.
+- Operations MUST NOT aggregate KPIs (Dashboard responsibility).
+- Persona awareness does NOT imply role enforcement.
+- IE / QA views are future phases and must not be mixed.

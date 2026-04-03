@@ -46,3 +46,17 @@ What was intentionally NOT done:
 - No language selector UI
 - No backend API changes
 - No runtime behavior changes
+
+## Phase 2B — Global Operations Enhancement (Supervisor View)
+Phase 2B was required to make Global Operations operationally useful for supervisor intervention, not just generic monitoring. The enhancement prioritizes what blocks production now and surfaces immediate Work Order impact while preserving read-only boundaries.
+
+Value for the Supervisor persona:
+- Faster triage of blocked and delayed operations
+- Clear view of which Work Orders are impacted
+- Better investigation ordering without entering execution controls
+
+What was intentionally NOT included:
+- No execution actions in Operations
+- No dashboard KPI aggregation logic
+- No role/auth enforcement
+- No IE-specific or QA-specific dedicated views (future phases)

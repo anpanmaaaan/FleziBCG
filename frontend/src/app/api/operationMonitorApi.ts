@@ -27,11 +27,19 @@ export interface OperationListItemMonitor {
   name: string;
   sequence: number;
   status: string;
+  supervisorBucket?: "BLOCKED" | "DELAYED" | "IN_PROGRESS" | "OTHER";
   plannedStart: string | null;
   plannedEnd: string | null;
   quantity: number;
   completedQty: number;
   progress: number;
+  workOrderNumber?: string | null;
+  workCenter?: string | null;
+  delayMinutes?: number | null;
+  blockReasonCode?: string | null;
+  qcRiskFlag?: boolean;
+  woBlockedOperations?: number;
+  woDelayedOperations?: number;
 }
 
 export const operationMonitorApi = {
