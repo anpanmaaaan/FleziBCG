@@ -1,18 +1,12 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link } from "react-router";
 import {
   Activity,
   TrendingUp,
-  TrendingDown,
-  AlertCircle,
   CheckCircle2,
   Clock,
   Package,
   Target,
-  Calendar,
-  ArrowUpRight,
-  ArrowDownRight,
-  Minus,
   ArrowRight,
   AlertTriangle
 } from "lucide-react";
@@ -28,29 +22,7 @@ import {
   Legend,
   ResponsiveContainer
 } from "recharts";
-
-// Sample data
-const productionTrendData = [
-  { id: 'prod-1', date: '03/20', planned: 1200, actual: 1150 },
-  { id: 'prod-2', date: '03/21', planned: 1250, actual: 1220 },
-  { id: 'prod-3', date: '03/22', planned: 1300, actual: 1180 },
-  { id: 'prod-4', date: '03/23', planned: 1280, actual: 1260 },
-  { id: 'prod-5', date: '03/24', planned: 1350, actual: 1310 },
-  { id: 'prod-6', date: '03/25', planned: 1400, actual: 1380 },
-  { id: 'prod-7', date: '03/26', planned: 1420, actual: 1400 },
-  { id: 'prod-8', date: '03/27', planned: 1450, actual: 1280 },
-];
-
-const qualityTrendData = [
-  { id: 'qual-1', date: '03/20', rate: 95.2 },
-  { id: 'qual-2', date: '03/21', rate: 96.1 },
-  { id: 'qual-3', date: '03/22', rate: 94.8 },
-  { id: 'qual-4', date: '03/23', rate: 97.2 },
-  { id: 'qual-5', date: '03/24', rate: 96.5 },
-  { id: 'qual-6', date: '03/25', rate: 95.9 },
-  { id: 'qual-7', date: '03/26', rate: 96.8 },
-  { id: 'qual-8', date: '03/27', rate: 95.5 },
-];
+import { dashboardApi, type DashboardHealthResponse, type DashboardSummaryResponse } from "../api/dashboardApi";
 
 interface KPICardProps {
   title: string;
@@ -63,11 +35,6 @@ interface KPICardProps {
 }
 
 function KPICard({ title, value, change, trend, icon, iconBgColor, subtitle }: KPICardProps) {
-  const getTrendIcon = () => {
-    if (!trend || trend === 'neutral') return <Minus className="w-4 h-4" />;
-    return trend === 'up' ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />;
-  };
-
   return (
     <div className="bg-white rounded-xl border shadow-lg p-6 hover:shadow-xl transition-shadow">
       <div className="flex items-start justify-between mb-4">
@@ -80,8 +47,7 @@ function KPICard({ title, value, change, trend, icon, iconBgColor, subtitle }: K
             trend === 'down' ? 'bg-red-100 text-red-700' :
             'bg-gray-100 text-gray-700'
           }`}>
-            {getTrendIcon()}
-            <span>{Math.abs(change)}%</span>
+            <span>{Math.abs(change)}</span>
           </div>
         )}
       </div>
@@ -95,33 +61,116 @@ function KPICard({ title, value, change, trend, icon, iconBgColor, subtitle }: K
 }
 
 export function Dashboard() {
-  const [timeRange, setTimeRange] = useState<'today' | 'week' | 'month'>('today');
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [summaryData, setSummaryData] = useState<DashboardSummaryResponse | null>(null);
+  const [healthData, setHealthData] = useState<DashboardHealthResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(interval);
+    let cancelled = false;
+
+    const loadDashboard = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const [summary, health] = await Promise.all([
+          dashboardApi.getSummary(),
+          dashboardApi.getHealth(),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        setSummaryData(summary);
+        setHealthData(health);
+      } catch (err) {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : "Failed to load dashboard";
+          setError(message);
+          setSummaryData(null);
+          setHealthData(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadDashboard();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const totalPlanned = productionTrendData.reduce((sum, d) => sum + d.planned, 0);
-  const totalActual = productionTrendData.reduce((sum, d) => sum + d.actual, 0);
-  const overallEfficiency = Math.round((totalActual / totalPlanned) * 100);
+  const topRisk = healthData?.riskWorkOrders?.[0] ?? null;
+  const topBottleneck = healthData?.bottlenecks?.[0] ?? null;
+
+  const productionTrendData = useMemo(() => {
+    if (!summaryData) {
+      return [];
+    }
+
+    return [
+      {
+        id: "summary-point",
+        date: summaryData.context.date,
+        planned: summaryData.workOrders.total,
+        actual: summaryData.workOrders.onTime,
+      },
+    ];
+  }, [summaryData]);
+
+  const qualityTrendData = useMemo(() => {
+    // TODO: Backend dashboard trend API does not provide quality time-series yet.
+    // Keep chart layout intact and render empty data until backend adds trend points.
+    return [] as Array<{ id: string; date: string; rate: number }>;
+  }, []);
+
+  const severityKey = summaryData?.alerts.highestSeverity
+    ? `dashboard.alert.severity.${summaryData.alerts.highestSeverity.toLowerCase()}`
+    : "dashboard.alert.severity.unknown";
+
+  const riskReasonKey = topRisk
+    ? `dashboard.risk.reason.${topRisk.reasonCode.toLowerCase()}`
+    : "dashboard.risk.reason.none";
+
+  const bottleneckStatusKey = topBottleneck
+    ? `dashboard.bottleneck.status.${topBottleneck.status.toLowerCase()}`
+    : "dashboard.bottleneck.status.none";
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto p-6">
+        {loading && (
+          <div className="mb-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+            <p className="text-sm text-blue-800">dashboard.loading</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
+            <p className="text-sm text-red-800">dashboard.error.load_failed: {error}</p>
+          </div>
+        )}
+
         {/* Alert Banner with CTA */}
         <div className="mb-6 bg-gradient-to-r from-orange-50 to-red-50 border-l-4 border-orange-500 p-4 rounded-r-lg">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
               <div>
-                <h3 className="text-sm font-semibold text-orange-900">OEE Alert: Equipment Failure on Line 3</h3>
+                <h3 className="text-sm font-semibold text-orange-900">
+                  dashboard.alert.summary.{severityKey}
+                </h3>
                 <p className="text-sm text-orange-700 mt-1">
-                  Overall OEE dropped to 72% today. Equipment Failure is the biggest loss (48 min, -5.2% OEE impact).
+                  {topRisk
+                    ? `dashboard.alert.risk_work_order: ${topRisk.workOrderNumber} (${riskReasonKey})`
+                    : "dashboard.alert.risk_work_order.none"}
                 </p>
               </div>
             </div>
@@ -139,38 +188,34 @@ export function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           <KPICard
             title="Overall Equipment Effectiveness"
-            value={`${overallEfficiency}%`}
-            change={3.2}
-            trend="up"
+            value="--"
+            trend="neutral"
             icon={<Target className="w-6 h-6 text-blue-600" />}
             iconBgColor="bg-blue-100"
-            subtitle="Target: 95%"
+            subtitle="dashboard.kpi.oee.unavailable"
           />
           <KPICard
             title="Production Volume"
-            value={totalActual.toLocaleString()}
-            change={5.8}
-            trend="up"
+            value={summaryData?.workOrders.total ?? "--"}
             icon={<Package className="w-6 h-6 text-green-600" />}
             iconBgColor="bg-green-100"
-            subtitle={`Planned: ${totalPlanned.toLocaleString()}`}
+            subtitle="dashboard.kpi.work_orders.total"
           />
           <KPICard
             title="Quality Rate"
-            value="96.2%"
-            change={1.2}
-            trend="up"
+            value="--"
+            trend="neutral"
             icon={<CheckCircle2 className="w-6 h-6 text-purple-600" />}
             iconBgColor="bg-purple-100"
-            subtitle="9,700 inspected"
+            subtitle="dashboard.kpi.quality.unavailable"
           />
           <KPICard
-            title="Active Lines"
-            value="7/8"
+            title="Alerts"
+            value={summaryData?.alerts.count ?? "--"}
             trend="neutral"
             icon={<Activity className="w-6 h-6 text-indigo-600" />}
             iconBgColor="bg-indigo-100"
-            subtitle="Production lines"
+            subtitle={severityKey}
           />
         </div>
 
@@ -191,33 +236,34 @@ export function Dashboard() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white rounded-lg p-4 border border-purple-100">
-                <div className="text-sm text-gray-600 mb-1">Availability</div>
-                <div className="text-2xl font-bold text-blue-600">90.5%</div>
-                <div className="flex items-center gap-1 text-xs text-red-600 mt-1">
-                  <TrendingDown className="w-3 h-3" />
-                  <span>-2.1% vs yesterday</span>
+                <div className="text-sm text-gray-600 mb-1">work_orders.on_time</div>
+                <div className="text-2xl font-bold text-blue-600">{summaryData?.workOrders.onTime ?? "--"}</div>
+                <div className="flex items-center gap-1 text-xs text-blue-600 mt-1">
+                  <TrendingUp className="w-3 h-3" />
+                  <span>dashboard.kpi.work_orders.on_time</span>
                 </div>
               </div>
               <div className="bg-white rounded-lg p-4 border border-purple-100">
-                <div className="text-sm text-gray-600 mb-1">Performance</div>
-                <div className="text-2xl font-bold text-green-600">94.8%</div>
+                <div className="text-sm text-gray-600 mb-1">operations.in_progress</div>
+                <div className="text-2xl font-bold text-green-600">{summaryData?.operations.inProgress ?? "--"}</div>
                 <div className="flex items-center gap-1 text-xs text-green-600 mt-1">
                   <TrendingUp className="w-3 h-3" />
-                  <span>+5.8% vs yesterday</span>
+                  <span>dashboard.kpi.operations.in_progress</span>
                 </div>
               </div>
               <div className="bg-white rounded-lg p-4 border border-purple-100">
-                <div className="text-sm text-gray-600 mb-1">Quality</div>
-                <div className="text-2xl font-bold text-emerald-600">99.3%</div>
-                <div className="flex items-center gap-1 text-xs text-green-600 mt-1">
+                <div className="text-sm text-gray-600 mb-1">operations.blocked</div>
+                <div className="text-2xl font-bold text-emerald-600">{summaryData?.operations.blocked ?? "--"}</div>
+                <div className="flex items-center gap-1 text-xs text-emerald-600 mt-1">
                   <TrendingUp className="w-3 h-3" />
-                  <span>+0.5% vs yesterday</span>
+                  <span>dashboard.kpi.operations.blocked</span>
                 </div>
               </div>
             </div>
             <div className="mt-4 p-3 bg-purple-100 rounded-lg">
               <p className="text-sm text-purple-900">
-                <strong>🔍 Top Issue:</strong> Equipment Failure on Line 3 (48 min downtime, -5.2% OEE impact)
+                <strong>dashboard.top_issue:</strong> {bottleneckStatusKey}
+                {topBottleneck ? ` · ${topBottleneck.scopeCode}` : ""}
               </p>
             </div>
           </div>
@@ -234,7 +280,7 @@ export function Dashboard() {
               </div>
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-green-600" />
-                <span className="text-sm font-semibold text-green-600">+5.8%</span>
+                <span className="text-sm font-semibold text-green-600">dashboard.trend.summary</span>
               </div>
             </div>
             <ResponsiveContainer width="100%" height={300} key="production-responsive">
@@ -280,7 +326,7 @@ export function Dashboard() {
               </div>
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-purple-600" />
-                <span className="text-sm font-semibold text-purple-600">+1.2%</span>
+                <span className="text-sm font-semibold text-purple-600">dashboard.trend.pending_backend</span>
               </div>
             </div>
             <ResponsiveContainer width="100%" height={300} key="quality-responsive">
