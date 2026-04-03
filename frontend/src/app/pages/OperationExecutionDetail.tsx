@@ -1,9 +1,9 @@
 // Operation Execution Detail - Tabs ONLY (No Gantt)
 // Deep dive into a single operation execution
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router";
-import { 
+import {
   Clock,
   AlertTriangle,
   Package,
@@ -15,52 +15,24 @@ import {
   XCircle,
   TrendingUp,
   ExternalLink,
-  ArrowLeft
+  ArrowLeft,
 } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { StatsCard } from "../components/StatsCard";
-
-// ============ TYPES ============
-interface OperationExecutionDetail {
-  id: string;
-  sequence: number;
-  name: string;
-  description: string;
-  workOrderId: string;
-  productionOrderId: string;
-  status: 'Pending' | 'In Progress' | 'Completed' | 'Blocked' | 'Paused';
-  productionLine: string;
-  workstation: string;
-  workCenter: string;
-  machineId: string;
-  machineName: string;
-  operatorId?: string;
-  operatorName?: string;
-  setupTime: number;
-  runTime: number;
-  quantity: number;
-  completedQty: number;
-  goodQty: number;
-  scrapQty: number;
-  progress: number;
-  startTime?: string;
-  endTime?: string;
-  plannedStart: string;
-  plannedEnd: string;
-  estimatedCompletion: string;
-  qcRequired: boolean;
-  qcStatus?: 'Pending' | 'Passed' | 'Failed';
-  timing: 'On-time' | 'Late' | 'Early';
-  delayMinutes?: number;
-  blockReason?: string;
-}
+import { operationApi, type OperationDetail } from "../api/operationApi";
+import {
+  mapExecutionStatusText,
+  mapExecutionStatusBadgeVariant,
+  getProgressPercentage as calcProgressPercent,
+  getYieldRate as calcYieldRate,
+} from "../api/mappers/executionMapper";
 
 interface QCCheckpoint {
   id: string;
   name: string;
-  type: 'Dimensional' | 'Visual' | 'Functional' | 'Material';
-  status: 'Pending' | 'Passed' | 'Failed' | 'Skipped';
+  type: "Dimensional" | "Visual" | "Functional" | "Material";
+  status: "Pending" | "Passed" | "Failed" | "Skipped";
   result?: string;
   inspector?: string;
   timestamp?: string;
@@ -76,192 +48,218 @@ interface MaterialItem {
   consumedQty: number;
   unit: string;
   lotNumber?: string;
-  status: 'Available' | 'In Use' | 'Depleted' | 'Overused';
+  status: "Available" | "In Use" | "Depleted" | "Overused";
 }
 
 interface TimelineEvent {
   id: string;
   timestamp: string;
-  type: 'Status Change' | 'Operator Action' | 'System Event' | 'Quality Event' | 'Material Event';
+  type: "Status Change" | "Operator Action" | "System Event" | "Quality Event" | "Material Event";
   description: string;
   user?: string;
   details?: string;
 }
 
-// ============ MOCK DATA ============
-const mockOperation: OperationExecutionDetail = {
-  id: 'OP-020',
-  sequence: 20,
-  name: 'Machining - Bore Drilling',
-  description: 'Precision drilling operation for main bore with 0.01mm tolerance. Use carbide drill bit with coolant.',
-  productionOrderId: 'PO-001',
-  workOrderId: 'WO-2024-001',
-  status: 'In Progress',
-  productionLine: 'Line A',
-  workstation: 'WS-01',
-  workCenter: 'MC-01',
-  machineId: 'MACHINE-01',
-  machineName: 'CNC Drill Press #1',
-  operatorId: 'OP-123',
-  operatorName: 'John Smith',
-  setupTime: 30,
-  runTime: 5,
-  quantity: 50,
-  completedQty: 32,
-  goodQty: 30,
-  scrapQty: 2,
-  progress: 64,
-  startTime: '2024-04-15 08:35',
-  plannedStart: '2024-04-15 08:30',
-  plannedEnd: '2024-04-15 13:00',
-  estimatedCompletion: '2024-04-15 14:45',
-  qcRequired: true,
-  qcStatus: 'Pending',
-  timing: 'Late',
-  delayMinutes: 45,
-};
-
-const mockQCCheckpoints: QCCheckpoint[] = [
+// Read-only placeholder data for tabs not yet backed by API endpoints.
+const readOnlyQCCheckpoints: QCCheckpoint[] = [
   {
-    id: 'QC-001',
-    name: 'Bore Diameter Check',
-    type: 'Dimensional',
-    status: 'Passed',
-    result: 'Within tolerance',
-    inspector: 'Mary Johnson',
-    timestamp: '2024-04-15 10:30',
-    specification: '50.00mm ± 0.01mm',
-    actualValue: '50.005mm',
+    id: "QC-001",
+    name: "Bore Diameter Check",
+    type: "Dimensional",
+    status: "Passed",
+    result: "Within tolerance",
+    inspector: "Mary Johnson",
+    timestamp: "2024-04-15 10:30",
+    specification: "50.00mm +/- 0.01mm",
+    actualValue: "50.005mm",
   },
   {
-    id: 'QC-002',
-    name: 'Surface Finish Inspection',
-    type: 'Visual',
-    status: 'Passed',
-    result: 'No defects',
-    inspector: 'Mary Johnson',
-    timestamp: '2024-04-15 10:35',
-    specification: 'Ra 1.6μm max',
-    actualValue: 'Ra 1.2μm',
+    id: "QC-002",
+    name: "Surface Finish Inspection",
+    type: "Visual",
+    status: "Passed",
+    result: "No defects",
+    inspector: "Mary Johnson",
+    timestamp: "2024-04-15 10:35",
+    specification: "Ra 1.6um max",
+    actualValue: "Ra 1.2um",
   },
   {
-    id: 'QC-003',
-    name: 'Perpendicularity Check',
-    type: 'Dimensional',
-    status: 'Pending',
-    specification: '0.05mm per 100mm',
+    id: "QC-003",
+    name: "Perpendicularity Check",
+    type: "Dimensional",
+    status: "Pending",
+    specification: "0.05mm per 100mm",
   },
 ];
 
-const mockMaterials: MaterialItem[] = [
+const readOnlyMaterials: MaterialItem[] = [
   {
-    id: 'MAT-001',
-    materialCode: 'STL-4140',
-    materialName: 'Alloy Steel 4140',
+    id: "MAT-001",
+    materialCode: "STL-4140",
+    materialName: "Alloy Steel 4140",
     requiredQty: 50,
     consumedQty: 32,
-    unit: 'pcs',
-    lotNumber: 'LOT-2024-0415-001',
-    status: 'In Use',
+    unit: "pcs",
+    lotNumber: "LOT-2024-0415-001",
+    status: "In Use",
   },
   {
-    id: 'MAT-002',
-    materialCode: 'TOOL-CB-10',
-    materialName: 'Carbide Drill Bit 10mm',
+    id: "MAT-002",
+    materialCode: "TOOL-CB-10",
+    materialName: "Carbide Drill Bit 10mm",
     requiredQty: 1,
     consumedQty: 1,
-    unit: 'pcs',
-    lotNumber: 'TOOL-2024-0401',
-    status: 'In Use',
+    unit: "pcs",
+    lotNumber: "TOOL-2024-0401",
+    status: "In Use",
   },
   {
-    id: 'MAT-003',
-    materialCode: 'COOL-SYN-5L',
-    materialName: 'Synthetic Coolant',
+    id: "MAT-003",
+    materialCode: "COOL-SYN-5L",
+    materialName: "Synthetic Coolant",
     requiredQty: 10,
     consumedQty: 6.5,
-    unit: 'L',
-    status: 'In Use',
+    unit: "L",
+    status: "In Use",
   },
 ];
 
-const mockTimeline: TimelineEvent[] = [
+const readOnlyTimeline: TimelineEvent[] = [
   {
-    id: 'EVT-001',
-    timestamp: '2024-04-15 08:35',
-    type: 'Status Change',
-    description: 'Operation started',
-    user: 'John Smith',
-    details: 'Status changed from Pending to In Progress (5min late)',
+    id: "EVT-001",
+    timestamp: "2024-04-15 08:35",
+    type: "Status Change",
+    description: "Operation started",
+    user: "John Smith",
+    details: "Status changed from Pending to In Progress",
   },
   {
-    id: 'EVT-002',
-    timestamp: '2024-04-15 08:50',
-    type: 'Operator Action',
-    description: 'Setup completed',
-    user: 'John Smith',
-    details: 'Machine setup and calibration completed',
+    id: "EVT-002",
+    timestamp: "2024-04-15 08:50",
+    type: "Operator Action",
+    description: "Setup completed",
+    user: "John Smith",
+    details: "Machine setup and calibration completed",
   },
   {
-    id: 'EVT-003',
-    timestamp: '2024-04-15 09:00',
-    type: 'Material Event',
-    description: 'Material LOT-2024-0415-001 scanned',
-    user: 'John Smith',
+    id: "EVT-003",
+    timestamp: "2024-04-15 09:00",
+    type: "Material Event",
+    description: "Material LOT-2024-0415-001 scanned",
+    user: "John Smith",
   },
   {
-    id: 'EVT-004',
-    timestamp: '2024-04-15 10:30',
-    type: 'Quality Event',
-    description: 'QC Checkpoint passed',
-    user: 'Mary Johnson',
-    details: 'Bore Diameter Check - Passed',
+    id: "EVT-004",
+    timestamp: "2024-04-15 10:30",
+    type: "Quality Event",
+    description: "QC checkpoint passed",
+    user: "Mary Johnson",
+    details: "Bore Diameter Check - Passed",
   },
 ];
 
-type TabType = 'overview' | 'quality' | 'materials' | 'timeline' | 'documents';
+type TabType = "overview" | "quality" | "materials" | "timeline" | "documents";
 
 export function OperationExecutionDetail() {
   const { operationId } = useParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [activeTab, setActiveTab] = useState<TabType>("overview");
+  const [operation, setOperation] = useState<OperationDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const operation = mockOperation;
+  useEffect(() => {
+    const loadOperation = async () => {
+      if (!operationId) {
+        setError("Operation ID is missing in URL.");
+        setOperation(null);
+        setLoading(false);
+        return;
+      }
 
-  const getStatusVariant = (status: string): "success" | "warning" | "error" | "info" | "neutral" => {
-    switch (status) {
-      case 'Completed': return 'success';
-      case 'In Progress': return 'info';
-      case 'Pending': return 'neutral';
-      case 'Blocked': return 'error';
-      case 'Paused': return 'warning';
-      default: return 'neutral';
-    }
-  };
+      const canonicalOperationId = operationId.trim();
+      if (!/^\d+$/.test(canonicalOperationId)) {
+        setError("Operation ID must be a numeric operation_id.");
+        setOperation(null);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const data = await operationApi.get(canonicalOperationId);
+        setOperation(data);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to load operation.";
+        setError(message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadOperation();
+  }, [operationId]);
 
   const tabs = [
-    { id: 'overview', label: 'Overview', icon: Activity },
-    { id: 'quality', label: 'Quality', icon: Shield },
-    { id: 'materials', label: 'Materials', icon: Package },
-    { id: 'timeline', label: 'Timeline', icon: History },
-    { id: 'documents', label: 'Documents', icon: FileText },
+    { id: "overview", label: "Overview", icon: Activity },
+    { id: "quality", label: "Quality", icon: Shield },
+    { id: "materials", label: "Materials", icon: Package },
+    { id: "timeline", label: "Timeline", icon: History },
+    { id: "documents", label: "Documents", icon: FileText },
   ] as const;
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gray-50">
+        <div className="text-gray-600">Loading operation detail...</div>
+      </div>
+    );
+  }
+
+  if (error || !operation) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gray-50 p-6">
+        <div className="max-w-xl w-full bg-white border border-red-200 rounded-lg p-6">
+          <div className="flex items-center gap-2 text-red-700 font-semibold mb-2">
+            <AlertTriangle className="w-5 h-5" />
+            Failed to load operation detail
+          </div>
+          <div className="text-sm text-red-600">{error || "Operation not found."}</div>
+        </div>
+      </div>
+    );
+  }
+
+  const statusText = mapExecutionStatusText(operation.status);
+  const progressPercent = calcProgressPercent({
+    completedQty: operation.completed_qty,
+    targetQty: operation.quantity,
+  });
+  const yieldRate = calcYieldRate({
+    goodQty: operation.good_qty,
+    completedQty: operation.completed_qty,
+  });
+  const remainingQty = Math.max(0, operation.quantity - operation.completed_qty);
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
-      {/* Header */}
       <PageHeader
         title={
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => navigate(`/operation/${operation.workOrderId}`)}
+            <button
+              onClick={() => navigate("/work-orders/" + operation.work_order_id + "/operations")}
               className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Overview
             </button>
             <div>
-              <div className="text-sm text-gray-500">Operation {operation.sequence}: {operation.id}</div>
+              <div className="text-sm text-gray-500">
+                Operation {operation.sequence}: {operation.operation_number}
+              </div>
               <div className="text-2xl font-bold">{operation.name}</div>
             </div>
           </div>
@@ -269,14 +267,14 @@ export function OperationExecutionDetail() {
         showBackButton={false}
         actions={
           <>
-            <StatusBadge variant={getStatusVariant(operation.status)} size="lg">
-              {operation.status}
+            <StatusBadge variant={mapExecutionStatusBadgeVariant(operation.status)} size="lg">
+              {statusText}
             </StatusBadge>
-            <StatusBadge variant={operation.timing === 'On-time' ? 'success' : operation.timing === 'Early' ? 'info' : 'error'} size="lg">
-              {operation.timing}
+            <StatusBadge variant="info" size="lg">
+              Read-Only
             </StatusBadge>
-            <Link 
-              to="/station-execution"
+            <Link
+              to={`/station-execution?operationId=${encodeURIComponent(String(operation.id))}`}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
             >
               <ExternalLink className="w-4 h-4" />
@@ -287,14 +285,13 @@ export function OperationExecutionDetail() {
       />
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Left: Operation Summary Panel */}
         <div className="w-80 bg-white border-r border-gray-200 p-6 overflow-auto">
           <h3 className="text-lg font-bold mb-4">Operation Summary</h3>
-          
+
           <div className="space-y-4">
             <div>
               <div className="text-sm text-gray-500">Operation ID</div>
-              <div className="font-mono font-bold text-lg text-blue-600">{operation.id}</div>
+              <div className="font-mono font-bold text-lg text-blue-600">{operation.operation_number}</div>
             </div>
 
             <div>
@@ -304,26 +301,24 @@ export function OperationExecutionDetail() {
 
             <div>
               <div className="text-sm text-gray-500">Station / Workcenter</div>
-              <div className="font-medium">{operation.workstation} / {operation.workCenter}</div>
+              <div className="font-medium">- / -</div>
             </div>
 
             <div>
               <div className="text-sm text-gray-500">Status</div>
-              <StatusBadge variant={getStatusVariant(operation.status)}>
-                {operation.status}
-              </StatusBadge>
+              <StatusBadge variant={mapExecutionStatusBadgeVariant(operation.status)}>{statusText}</StatusBadge>
             </div>
 
             <div>
               <div className="text-sm text-gray-500">Progress</div>
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-blue-500 transition-all"
-                    style={{ width: `${operation.progress}%` }}
+                    style={{ width: progressPercent + "%" }}
                   />
                 </div>
-                <span className="font-bold">{operation.progress}%</span>
+                <span className="font-bold">{progressPercent}%</span>
               </div>
             </div>
 
@@ -332,52 +327,26 @@ export function OperationExecutionDetail() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Planned Start:</span>
-                  <span className="font-medium">{operation.plannedStart}</span>
+                  <span className="font-medium">{operation.planned_start || "-"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Actual Start:</span>
-                  <span className="font-medium">{operation.startTime || '-'}</span>
+                  <span className="font-medium">{operation.actual_start || "-"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Planned End:</span>
-                  <span className="font-medium">{operation.plannedEnd}</span>
+                  <span className="font-medium">{operation.planned_end || "-"}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Est. Completion:</span>
-                  <span className={`font-medium ${operation.timing === 'Late' ? 'text-red-600' : ''}`}>
-                    {operation.estimatedCompletion}
-                  </span>
+                  <span className="text-gray-600">Actual End:</span>
+                  <span className="font-medium">{operation.actual_end || "-"}</span>
                 </div>
               </div>
             </div>
-
-            {operation.delayMinutes && operation.delayMinutes > 0 && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <div className="flex items-center gap-2 text-red-800 font-medium mb-1">
-                  <AlertTriangle className="w-4 h-4" />
-                  Delay Alert
-                </div>
-                <div className="text-sm text-red-600">
-                  +{operation.delayMinutes} minutes behind schedule
-                </div>
-              </div>
-            )}
-
-            {operation.blockReason && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <div className="flex items-center gap-2 text-red-800 font-medium mb-1">
-                  <XCircle className="w-4 h-4" />
-                  Blocked
-                </div>
-                <div className="text-sm text-red-600">{operation.blockReason}</div>
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Main Content - Tabs */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Tabs */}
           <div className="bg-white border-b border-gray-200 px-6">
             <div className="flex gap-1">
               {tabs.map((tab) => {
@@ -386,11 +355,10 @@ export function OperationExecutionDetail() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as TabType)}
-                    className={`flex items-center gap-2 px-4 py-3 font-medium transition-colors border-b-2 ${
-                      activeTab === tab.id
-                        ? 'text-blue-600 border-blue-600'
-                        : 'text-gray-500 border-transparent hover:text-gray-700'
-                    }`}
+                    className={"flex items-center gap-2 px-4 py-3 font-medium transition-colors border-b-2 " +
+                      (activeTab === tab.id
+                        ? "text-blue-600 border-blue-600"
+                        : "text-gray-500 border-transparent hover:text-gray-700")}
                   >
                     <Icon className="w-4 h-4" />
                     {tab.label}
@@ -400,82 +368,69 @@ export function OperationExecutionDetail() {
             </div>
           </div>
 
-          {/* Tab Content */}
           <div className="flex-1 overflow-auto p-6">
-            {/* Overview Tab */}
-            {activeTab === 'overview' && (
+            {activeTab === "overview" && (
               <div className="space-y-6">
-                {/* Stats Row */}
                 <div className="grid grid-cols-5 gap-4">
                   <StatsCard
                     title="Completed Qty"
-                    value={`${operation.completedQty}/${operation.quantity}`}
+                    value={operation.completed_qty + "/" + operation.quantity}
                     color="blue"
                     icon={Package}
                   />
                   <StatsCard
                     title="Good Quantity"
-                    value={operation.goodQty}
+                    value={operation.good_qty}
                     color="green"
                     icon={CheckCircle}
                   />
                   <StatsCard
                     title="Scrap Quantity"
-                    value={operation.scrapQty}
+                    value={operation.scrap_qty}
                     color="red"
                     icon={XCircle}
                   />
-                  <StatsCard
-                    title="Progress"
-                    value={`${operation.progress}%`}
-                    color="purple"
-                    icon={TrendingUp}
-                  />
-                  <StatsCard
-                    title="Yield Rate"
-                    value={`${((operation.goodQty / operation.completedQty) * 100 || 0).toFixed(1)}%`}
-                    color="cyan"
-                  />
+                  <StatsCard title="Progress" value={progressPercent + "%"} color="purple" icon={TrendingUp} />
+                  <StatsCard title="Yield Rate" value={yieldRate.toFixed(1) + "%"} color="cyan" />
                 </div>
 
-                {/* Resource & Location Info */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-white rounded-lg border p-6">
-                    <h3 className="text-lg font-bold mb-4">Location & Equipment</h3>
+                    <h3 className="text-lg font-bold mb-4">Location and Equipment</h3>
                     <div className="space-y-3">
                       <div className="flex justify-between">
                         <span className="text-gray-600">Production Line</span>
-                        <span className="font-medium">{operation.productionLine}</span>
+                        <span className="font-medium">-</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Work Center</span>
-                        <span className="font-medium">{operation.workCenter}</span>
+                        <span className="font-medium">-</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Workstation</span>
-                        <span className="font-medium">{operation.workstation}</span>
+                        <span className="font-medium">-</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Machine</span>
-                        <span className="font-medium">{operation.machineName}</span>
+                        <span className="font-medium">-</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Machine ID</span>
-                        <span className="font-medium text-blue-600">{operation.machineId}</span>
+                        <span className="font-medium text-blue-600">-</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="bg-white rounded-lg border p-6">
-                    <h3 className="text-lg font-bold mb-4">Time & Quantity</h3>
+                    <h3 className="text-lg font-bold mb-4">Time and Quantity</h3>
                     <div className="space-y-3">
                       <div className="flex justify-between">
                         <span className="text-gray-600">Setup Time</span>
-                        <span className="font-medium">{operation.setupTime} min</span>
+                        <span className="font-medium">-</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Run Time / Unit</span>
-                        <span className="font-medium">{operation.runTime} min</span>
+                        <span className="font-medium">-</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Planned Quantity</span>
@@ -483,101 +438,83 @@ export function OperationExecutionDetail() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Completed Quantity</span>
-                        <span className="font-medium text-blue-600">{operation.completedQty} pcs</span>
+                        <span className="font-medium text-blue-600">{operation.completed_qty} pcs</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Remaining</span>
-                        <span className="font-medium text-orange-600">{operation.quantity - operation.completedQty} pcs</span>
+                        <span className="font-medium text-orange-600">{remainingQty} pcs</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Operator Info */}
-                {operation.operatorName && (
-                  <div className="bg-white rounded-lg border p-6">
-                    <h3 className="text-lg font-bold mb-4">Operator Assignment</h3>
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-2xl font-bold text-blue-600">
-                          {operation.operatorName.split(' ').map(n => n[0]).join('')}
-                        </span>
-                      </div>
-                      <div>
-                        <div className="font-bold text-lg">{operation.operatorName}</div>
-                        <div className="text-sm text-gray-500">Operator ID: {operation.operatorId}</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Operation Description */}
                 <div className="bg-white rounded-lg border p-6">
                   <h3 className="text-lg font-bold mb-4">Operation Description</h3>
-                  <p className="text-gray-700 leading-relaxed">{operation.description}</p>
+                  <p className="text-gray-700 leading-relaxed">
+                    Execution detail is loaded from backend source-of-truth events. This page is read-only.
+                  </p>
                 </div>
               </div>
             )}
 
-            {/* Quality Tab */}
-            {activeTab === 'quality' && (
+            {activeTab === "quality" && (
               <div className="space-y-6">
-                {/* Quality Summary */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-medium text-blue-800">Read-only placeholder data</div>
+                    <div className="text-sm text-blue-600 mt-1">
+                      QC endpoint integration is pending. Data below is a temporary read-only placeholder.
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-4 gap-4">
-                  <StatsCard
-                    title="QC Checkpoints"
-                    value={mockQCCheckpoints.length}
-                    color="blue"
-                    icon={Shield}
-                  />
+                  <StatsCard title="QC Checkpoints" value={readOnlyQCCheckpoints.length} color="blue" icon={Shield} />
                   <StatsCard
                     title="Passed"
-                    value={mockQCCheckpoints.filter(c => c.status === 'Passed').length}
+                    value={readOnlyQCCheckpoints.filter((c) => c.status === "Passed").length}
                     color="green"
                     icon={CheckCircle}
                   />
                   <StatsCard
                     title="Pending"
-                    value={mockQCCheckpoints.filter(c => c.status === 'Pending').length}
+                    value={readOnlyQCCheckpoints.filter((c) => c.status === "Pending").length}
                     color="orange"
                     icon={Clock}
                   />
-                  <StatsCard
-                    title="First Pass Yield"
-                    value="93.8%"
-                    color="cyan"
-                    icon={TrendingUp}
-                  />
+                  <StatsCard title="First Pass Yield" value="93.8%" color="cyan" icon={TrendingUp} />
                 </div>
 
-                {/* QC Checkpoints */}
                 <div className="bg-white rounded-lg border p-6">
                   <h3 className="text-lg font-bold mb-4">Quality Checkpoints (Read-Only)</h3>
                   <div className="space-y-3">
-                    {mockQCCheckpoints.map((checkpoint) => (
+                    {readOnlyQCCheckpoints.map((checkpoint) => (
                       <div key={checkpoint.id} className="border rounded-lg p-4">
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <h4 className="font-bold">{checkpoint.name}</h4>
-                              <StatusBadge 
+                              <StatusBadge
                                 variant={
-                                  checkpoint.status === 'Passed' ? 'success' :
-                                  checkpoint.status === 'Failed' ? 'error' :
-                                  checkpoint.status === 'Pending' ? 'warning' : 'neutral'
+                                  checkpoint.status === "Passed"
+                                    ? "success"
+                                    : checkpoint.status === "Failed"
+                                      ? "error"
+                                      : checkpoint.status === "Pending"
+                                        ? "warning"
+                                        : "neutral"
                                 }
                                 size="sm"
                               >
                                 {checkpoint.status}
                               </StatusBadge>
-                              <span className="text-xs text-gray-500 px-2 py-1 bg-gray-100 rounded">
-                                {checkpoint.type}
-                              </span>
+                              <span className="text-xs text-gray-500 px-2 py-1 bg-gray-100 rounded">{checkpoint.type}</span>
                             </div>
                             <div className="text-sm text-gray-500">ID: {checkpoint.id}</div>
                           </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
                             <span className="text-gray-500">Specification: </span>
@@ -609,46 +546,33 @@ export function OperationExecutionDetail() {
               </div>
             )}
 
-            {/* Materials Tab - READ ONLY */}
-            {activeTab === 'materials' && (
+            {activeTab === "materials" && (
               <div className="space-y-6">
-                {/* Read-only Notice */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
                   <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <div className="font-medium text-blue-800">Read-Only View (Phase 1)</div>
                     <div className="text-sm text-blue-600 mt-1">
-                      This view is for analysis only. Material consumption and adjustments are performed in Station Execution.
+                      This view is for analysis only. Material endpoint integration is pending; data below is placeholder.
                     </div>
                   </div>
                 </div>
 
-                {/* Material Summary */}
                 <div className="grid grid-cols-4 gap-4">
-                  <StatsCard
-                    title="Total Materials"
-                    value={mockMaterials.length}
-                    color="blue"
-                    icon={Package}
-                  />
+                  <StatsCard title="Total Materials" value={readOnlyMaterials.length} color="blue" icon={Package} />
                   <StatsCard
                     title="In Use"
-                    value={mockMaterials.filter(m => m.status === 'In Use').length}
+                    value={readOnlyMaterials.filter((m) => m.status === "In Use").length}
                     color="green"
                   />
-                  <StatsCard
-                    title="Consumption Rate"
-                    value="64%"
-                    color="purple"
-                  />
+                  <StatsCard title="Consumption Rate" value="64%" color="purple" />
                   <StatsCard
                     title="Status"
-                    value={mockMaterials.some(m => m.status === 'Overused') ? 'Alert' : 'OK'}
-                    color={mockMaterials.some(m => m.status === 'Overused') ? 'red' : 'green'}
+                    value={readOnlyMaterials.some((m) => m.status === "Overused") ? "Alert" : "OK"}
+                    color={readOnlyMaterials.some((m) => m.status === "Overused") ? "red" : "green"}
                   />
                 </div>
 
-                {/* Materials List */}
                 <div className="bg-white rounded-lg border p-6">
                   <h3 className="text-lg font-bold mb-4">Bill of Materials (BOM)</h3>
                   <table className="w-full">
@@ -664,26 +588,33 @@ export function OperationExecutionDetail() {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {mockMaterials.map((material) => {
+                      {readOnlyMaterials.map((material) => {
                         const remaining = material.requiredQty - material.consumedQty;
                         const isOverused = remaining < 0;
-                        
+
                         return (
                           <tr key={material.id} className="hover:bg-gray-50">
                             <td className="px-4 py-3 font-mono text-sm">{material.materialCode}</td>
                             <td className="px-4 py-3">{material.materialName}</td>
-                            <td className="px-4 py-3">{material.requiredQty} {material.unit}</td>
-                            <td className="px-4 py-3 font-medium">{material.consumedQty} {material.unit}</td>
-                            <td className={`px-4 py-3 font-medium ${isOverused ? 'text-red-600' : 'text-orange-600'}`}>
+                            <td className="px-4 py-3">
+                              {material.requiredQty} {material.unit}
+                            </td>
+                            <td className="px-4 py-3 font-medium">
+                              {material.consumedQty} {material.unit}
+                            </td>
+                            <td className={"px-4 py-3 font-medium " + (isOverused ? "text-red-600" : "text-orange-600")}>
                               {remaining} {material.unit}
                               {isOverused && <span className="ml-2 text-xs bg-red-100 px-2 py-0.5 rounded">Overused</span>}
                             </td>
-                            <td className="px-4 py-3 font-mono text-xs">{material.lotNumber || '-'}</td>
+                            <td className="px-4 py-3 font-mono text-xs">{material.lotNumber || "-"}</td>
                             <td className="px-4 py-3">
-                              <StatusBadge 
+                              <StatusBadge
                                 variant={
-                                  material.status === 'Overused' ? 'error' :
-                                  material.status === 'In Use' ? 'success' : 'neutral'
+                                  material.status === "Overused"
+                                    ? "error"
+                                    : material.status === "In Use"
+                                      ? "success"
+                                      : "neutral"
                                 }
                                 size="sm"
                               >
@@ -697,17 +628,24 @@ export function OperationExecutionDetail() {
                   </table>
                 </div>
 
-                {/* Traceability */}
                 <div className="bg-white rounded-lg border p-6">
                   <h3 className="text-lg font-bold mb-4">Traceability Information</h3>
                   <div className="space-y-4">
                     <div className="border rounded-lg p-4">
                       <div className="font-medium mb-2">Material: Alloy Steel 4140</div>
                       <div className="text-sm space-y-1 text-gray-600">
-                        <div><span className="font-medium">Lot Number:</span> LOT-2024-0415-001</div>
-                        <div><span className="font-medium">Supplier:</span> ABC Steel Corp.</div>
-                        <div><span className="font-medium">Received Date:</span> 2024-04-10</div>
-                        <div><span className="font-medium">Heat Number:</span> H-45678-2024</div>
+                        <div>
+                          <span className="font-medium">Lot Number:</span> LOT-2024-0415-001
+                        </div>
+                        <div>
+                          <span className="font-medium">Supplier:</span> ABC Steel Corp.
+                        </div>
+                        <div>
+                          <span className="font-medium">Received Date:</span> 2024-04-10
+                        </div>
+                        <div>
+                          <span className="font-medium">Heat Number:</span> H-45678-2024
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -715,37 +653,47 @@ export function OperationExecutionDetail() {
               </div>
             )}
 
-            {/* Timeline Tab */}
-            {activeTab === 'timeline' && (
+            {activeTab === "timeline" && (
               <div className="space-y-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-medium text-blue-800">Read-only placeholder data</div>
+                    <div className="text-sm text-blue-600 mt-1">
+                      Timeline endpoint integration is pending. Data below is a temporary read-only placeholder.
+                    </div>
+                  </div>
+                </div>
+
                 <div className="bg-white rounded-lg border p-6">
                   <h3 className="text-lg font-bold mb-4">Operation Timeline</h3>
                   <div className="space-y-4">
-                    {mockTimeline.map((event, index) => (
+                    {readOnlyTimeline.map((event, index) => (
                       <div key={event.id} className="flex gap-4">
                         <div className="flex flex-col items-center">
-                          <div className={`w-3 h-3 rounded-full ${
-                            event.type === 'Status Change' ? 'bg-blue-500' :
-                            event.type === 'Quality Event' ? 'bg-green-500' :
-                            event.type === 'Material Event' ? 'bg-purple-500' :
-                            event.type === 'System Event' ? 'bg-red-500' :
-                            'bg-gray-500'
-                          }`} />
-                          {index < mockTimeline.length - 1 && (
-                            <div className="w-0.5 h-full bg-gray-300 flex-1 mt-1" />
-                          )}
+                          <div
+                            className={
+                              "w-3 h-3 rounded-full " +
+                              (event.type === "Status Change"
+                                ? "bg-blue-500"
+                                : event.type === "Quality Event"
+                                  ? "bg-green-500"
+                                  : event.type === "Material Event"
+                                    ? "bg-purple-500"
+                                    : event.type === "System Event"
+                                      ? "bg-red-500"
+                                      : "bg-gray-500")
+                            }
+                          />
+                          {index < readOnlyTimeline.length - 1 && <div className="w-0.5 h-full bg-gray-300 flex-1 mt-1" />}
                         </div>
                         <div className="flex-1 pb-4">
                           <div className="flex items-center justify-between mb-1">
                             <span className="font-medium">{event.description}</span>
                             <span className="text-xs text-gray-500">{event.timestamp}</span>
                           </div>
-                          {event.user && (
-                            <div className="text-sm text-gray-600">By: {event.user}</div>
-                          )}
-                          {event.details && (
-                            <div className="text-sm text-gray-500 mt-1">{event.details}</div>
-                          )}
+                          {event.user && <div className="text-sm text-gray-600">By: {event.user}</div>}
+                          {event.details && <div className="text-sm text-gray-500 mt-1">{event.details}</div>}
                         </div>
                       </div>
                     ))}
@@ -754,18 +702,27 @@ export function OperationExecutionDetail() {
               </div>
             )}
 
-            {/* Documents Tab */}
-            {activeTab === 'documents' && (
+            {activeTab === "documents" && (
               <div className="space-y-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-medium text-blue-800">Read-only placeholder data</div>
+                    <div className="text-sm text-blue-600 mt-1">
+                      Documents endpoint integration is pending. List below is a temporary read-only placeholder.
+                    </div>
+                  </div>
+                </div>
+
                 <div className="bg-white rounded-lg border p-6">
-                  <h3 className="text-lg font-bold mb-4">Work Instructions & Documents</h3>
+                  <h3 className="text-lg font-bold mb-4">Work Instructions and Documents</h3>
                   <div className="space-y-3">
                     <div className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
                       <div className="flex items-center gap-3">
                         <FileText className="w-10 h-10 text-blue-600" />
                         <div className="flex-1">
                           <div className="font-medium">Work Instruction - Bore Drilling</div>
-                          <div className="text-sm text-gray-500">PDF • 2.4 MB • Updated 2024-04-10</div>
+                          <div className="text-sm text-gray-500">PDF - 2.4 MB - Updated 2024-04-10</div>
                         </div>
                       </div>
                     </div>
@@ -774,7 +731,7 @@ export function OperationExecutionDetail() {
                         <FileText className="w-10 h-10 text-green-600" />
                         <div className="flex-1">
                           <div className="font-medium">Quality Control Procedure</div>
-                          <div className="text-sm text-gray-500">PDF • 1.8 MB • Updated 2024-04-05</div>
+                          <div className="text-sm text-gray-500">PDF - 1.8 MB - Updated 2024-04-05</div>
                         </div>
                       </div>
                     </div>
@@ -783,7 +740,7 @@ export function OperationExecutionDetail() {
                         <FileText className="w-10 h-10 text-purple-600" />
                         <div className="flex-1">
                           <div className="font-medium">Safety Guidelines</div>
-                          <div className="text-sm text-gray-500">PDF • 0.9 MB • Updated 2024-03-20</div>
+                          <div className="text-sm text-gray-500">PDF - 0.9 MB - Updated 2024-03-20</div>
                         </div>
                       </div>
                     </div>

@@ -5,54 +5,11 @@ import { StatusBadge } from "../components/StatusBadge";
 import { StatsCard } from "../components/StatsCard";
 import { toast } from "sonner";
 import { Play, ClipboardList, CheckCircle, AlertTriangle } from "lucide-react";
-
-interface OperationDetail {
-  id: number;
-  operation_number: string;
-  name: string;
-  sequence: number;
-  status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | string;
-  planned_start: string | null;
-  planned_end: string | null;
-  actual_start: string | null;
-  actual_end: string | null;
-  quantity: number;
-  completed_qty: number;
-  good_qty: number;
-  scrap_qty: number;
-  progress: number;
-  work_order_id: number;
-  work_order_number: string;
-  production_order_id: number;
-  production_order_number: string;
-  qc_required: boolean;
-}
-
-const statusLabel = (status: string) => {
-  switch (status) {
-    case "PENDING":
-      return "Pending";
-    case "IN_PROGRESS":
-      return "In Progress";
-    case "COMPLETED":
-      return "Completed";
-    default:
-      return status;
-  }
-};
-
-const statusVariant = (status: string): "success" | "warning" | "error" | "info" | "neutral" => {
-  switch (status) {
-    case "COMPLETED":
-      return "success";
-    case "IN_PROGRESS":
-      return "info";
-    case "PENDING":
-      return "neutral";
-    default:
-      return "warning";
-  }
-};
+import { operationApi, type OperationDetail } from "../api/operationApi";
+import {
+  mapExecutionStatusBadgeVariant,
+  mapExecutionStatusText,
+} from "../api/mappers/executionMapper";
 
 export function StationExecution() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -72,9 +29,18 @@ export function StationExecution() {
     }
   }, [queryOperationId]);
 
+  const isCanonicalOperationId = (value: string) => /^\d+$/.test(value.trim());
+
   const fetchOperation = async (id: string) => {
-    if (!id) {
+    const trimmedId = id.trim();
+
+    if (!trimmedId) {
       toast.error("Please enter an operation ID.");
+      return;
+    }
+
+    if (!isCanonicalOperationId(trimmedId)) {
+      toast.error("Operation ID must be a numeric operation_id.");
       return;
     }
 
@@ -82,16 +48,11 @@ export function StationExecution() {
     setOperation(null);
 
     try {
-      const response = await fetch(`/api/v1/operations/${id}`);
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error(body?.detail || `Failed to load operation (${response.status})`);
-      }
-      const data: OperationDetail = await response.json();
+      const data = await operationApi.get(trimmedId);
       setOperation(data);
       setGoodQty(data.good_qty || 0);
       setScrapQty(data.scrap_qty || 0);
-      setSearchParams({ operationId: id });
+      setSearchParams({ operationId: trimmedId });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load operation.";
       toast.error(message);
@@ -100,52 +61,58 @@ export function StationExecution() {
     }
   };
 
-  const performAction = async (apiPath: string, method: string, payload?: any) => {
+  const startOperation = async () => {
     if (!operation) return;
     setActionLoading(true);
 
     try {
-      const response = await fetch(`/api/v1/operations/${operation.id}/${apiPath}`, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: payload ? JSON.stringify(payload) : undefined,
-      });
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error(body?.detail || `Action failed (${response.status})`);
-      }
-      const data: OperationDetail = await response.json();
-      setOperation(data);
-      toast.success(`Operation updated to ${statusLabel(data.status)}.`);
+      const data = await operationApi.start(operation.id);
+      toast.success("Operation updated to " + mapExecutionStatusText(data.status) + ".");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Action failed.";
       toast.error(message);
     } finally {
       setActionLoading(false);
-      await fetchOperation(operationId);
+      await fetchOperation(String(operation.id));
     }
-  };
-
-  const startOperation = async () => {
-    if (!operation) return;
-    await performAction("start", "POST", { operator_id: null });
   };
 
   const reportQuantity = async () => {
     if (!operation) return;
-    await performAction("report-quantity", "POST", {
-      good_qty: goodQty,
-      scrap_qty: scrapQty,
-      operator_id: null,
-    });
+    setActionLoading(true);
+
+    try {
+      const data = await operationApi.reportQuantity(operation.id, {
+        good_qty: goodQty,
+        scrap_qty: scrapQty,
+        operator_id: null,
+      });
+      toast.success("Operation updated to " + mapExecutionStatusText(data.status) + ".");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Action failed.";
+      toast.error(message);
+    } finally {
+      setActionLoading(false);
+      await fetchOperation(String(operation.id));
+    }
   };
 
   const completeOperation = async () => {
     if (!operation) return;
     const confirmed = window.confirm("Confirm complete operation?");
     if (!confirmed) return;
-    await performAction("complete", "POST", { operator_id: null });
+    setActionLoading(true);
+
+    try {
+      const data = await operationApi.complete(operation.id);
+      toast.success("Operation updated to " + mapExecutionStatusText(data.status) + ".");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Action failed.";
+      toast.error(message);
+    } finally {
+      setActionLoading(false);
+      await fetchOperation(String(operation.id));
+    }
   };
 
   return (
@@ -157,9 +124,11 @@ export function StationExecution() {
           <div className="flex items-center gap-2">
             <input
               type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={operationId}
               onChange={(e) => setOperationId(e.target.value)}
-              placeholder="Enter operation id"
+              placeholder="Enter numeric operation_id"
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
             />
             <button
@@ -184,8 +153,8 @@ export function StationExecution() {
               <div className="bg-white p-4 rounded-lg border">
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-lg font-semibold">Operation</h2>
-                  <StatusBadge variant={statusVariant(operation.status)}>
-                    {statusLabel(operation.status)}
+                  <StatusBadge variant={mapExecutionStatusBadgeVariant(operation.status)}>
+                    {mapExecutionStatusText(operation.status)}
                   </StatusBadge>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">

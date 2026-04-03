@@ -1,10 +1,10 @@
-Mình tổng hợp lại TOÀN BỘ các điểm thay đổi so với source OperationDetail.tsx hiện tại, theo dạng checklist định hướng implementation, để bạn apply từng bước, không bị lạc và không phá code đang có.
+Mình tổng hợp lại TOÀN BỘ các điểm thay đổi so với source legacy operation overview screen hiện tại, theo dạng checklist định hướng implementation, để bạn apply từng bước, không bị lạc và không phá code đang có.
 👉 Đây không phải ý kiến thiết kế nữa, mà là bản “diff logic + UX” ở mức hệ thống.
 
 ✅ TỔNG HỢP THAY ĐỔI – OPERATION DETAIL (GANTT‑CENTRIC)
 ⚠️ PHẠM VI
 
-Áp dụng cho: OperationDetail.tsx
+Áp dụng cho: OperationExecutionOverview.tsx
 Không đụng StationExecution.tsx
 Không đụng backend (chỉ UI refactor)
 Phù hợp Phase 1 – Read‑only analysis view

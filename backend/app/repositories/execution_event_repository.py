@@ -30,3 +30,13 @@ def create_execution_event(
 def get_events_for_operation(db: Session, operation_id: int) -> list[ExecutionEvent]:
     statement = select(ExecutionEvent).where(ExecutionEvent.operation_id == operation_id).order_by(ExecutionEvent.created_at)
     return list(db.scalars(statement))
+
+
+def get_events_for_work_order(db: Session, work_order_id: int, tenant_id: str) -> list[ExecutionEvent]:
+    statement = (
+        select(ExecutionEvent)
+        .where(ExecutionEvent.work_order_id == work_order_id)
+        .where(ExecutionEvent.tenant_id == tenant_id)
+        .order_by(ExecutionEvent.operation_id, ExecutionEvent.created_at, ExecutionEvent.id)
+    )
+    return list(db.scalars(statement))

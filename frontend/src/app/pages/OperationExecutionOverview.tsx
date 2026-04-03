@@ -1,7 +1,7 @@
 // Operation Execution Overview - Gantt Chart ONLY
 // Click bar to navigate to detailed view
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router";
 import { 
   ArrowLeft,
@@ -9,85 +9,179 @@ import {
   Activity,
   CheckCircle,
   TrendingUp,
-  Clock
+  Clock,
+  AlertTriangle,
 } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 import { StatsCard } from "../components/StatsCard";
 import { GanttChart, OperationExecutionGantt } from "../components/GanttChart";
+import { request } from "../api/httpClient";
+import type { OperationExecutionStatus } from "../api/operationApi";
+import {
+  mapExecutionStatusText,
+  getProgressPercentage as calcProgressPercent,
+} from "../api/mappers/executionMapper";
 
-// ============ MOCK DATA ============
-const mockOperationSequence: OperationExecutionGantt[] = [
-  {
-    id: 'OP-010',
-    sequence: 10,
-    name: 'Material Preparation',
-    workstation: 'WS-00',
-    operatorName: 'Tom Brown',
-    status: 'Completed',
-    plannedStart: '2024-04-15T07:00:00',
-    plannedEnd: '2024-04-15T08:30:00',
-    actualStart: '2024-04-15T07:00:00',
-    actualEnd: '2024-04-15T08:15:00', // Early finish
-    qcRequired: false,
+type OverviewOperation = OperationExecutionGantt & {
+  operationId: number;
+  operationNumber: string;
+  backendStatus?: OperationExecutionStatus;
+};
+
+type ExecutionTimelineOperation = {
+  operationId: number;
+  operationNumber: string;
+  sequence: number;
+  name: string;
+  workstation: string;
+  status: OperationExecutionStatus;
+  plannedStart: string | null;
+  plannedEnd: string | null;
+  actualStart: string | null;
+  actualEnd: string | null;
+  delayMinutes: number | null;
+  timingStatus: "EARLY" | "ON_TIME" | "LATE";
+  qcRequired: boolean;
+};
+
+type ExecutionTimelineResponse = {
+  workOrderId: number;
+  workOrderNumber: string;
+  productionOrderId: number;
+  productionOrderNumber: string;
+  operations: ExecutionTimelineOperation[];
+  derivedAt?: string;
+};
+
+const workOrderApi = {
+  getExecutionTimeline(workOrderId: string) {
+    return request<ExecutionTimelineResponse>(`/v1/work-orders/${encodeURIComponent(workOrderId)}/execution-timeline`);
   },
-  {
-    id: 'OP-020',
-    sequence: 20,
-    name: 'Machining - Bore Drilling',
-    workstation: 'WS-01',
-    operatorName: 'John Smith',
-    status: 'Running',
-    plannedStart: '2024-04-15T08:30:00',
-    plannedEnd: '2024-04-15T13:00:00',
-    actualStart: '2024-04-15T08:35:00', // Started 5min late
-    currentTime: '2024-04-15T11:30:00', // Current position
-    delayMinutes: 45,
-    qcRequired: true,
-  },
-  {
-    id: 'OP-030',
-    sequence: 30,
-    name: 'Surface Treatment',
-    workstation: 'WS-02',
-    status: 'Not Started',
-    plannedStart: '2024-04-15T13:00:00',
-    plannedEnd: '2024-04-15T18:00:00',
-    qcRequired: true,
-  },
-  {
-    id: 'OP-040',
-    sequence: 40,
-    name: 'Quality Inspection',
-    workstation: 'WS-QC',
-    status: 'Not Started',
-    plannedStart: '2024-04-15T18:00:00',
-    plannedEnd: '2024-04-15T23:00:00',
-    qcRequired: true,
-  },
-];
+};
+
+const mapTimelineStatusToGanttStatus = (
+  status: OperationExecutionStatus,
+): OperationExecutionGantt["status"] => {
+  const statusText = mapExecutionStatusText(status);
+
+  if (statusText === "Completed") {
+    return "Completed";
+  }
+  if (statusText === "In Progress") {
+    return "Running";
+  }
+  return "Not Started";
+};
+
+const toOverviewOperation = (operation: ExecutionTimelineOperation): OverviewOperation => {
+  const plannedStart = operation.plannedStart || operation.actualStart || new Date().toISOString();
+  const plannedEnd = operation.plannedEnd || operation.actualEnd || plannedStart;
+
+  return {
+    id: String(operation.operationId),
+    operationId: operation.operationId,
+    operationNumber: operation.operationNumber,
+    sequence: operation.sequence,
+    name: operation.name,
+    workstation: operation.workstation || "N/A",
+    backendStatus: operation.status,
+    status: mapTimelineStatusToGanttStatus(operation.status),
+    plannedStart,
+    plannedEnd,
+    actualStart: operation.actualStart || undefined,
+    actualEnd: operation.actualEnd || undefined,
+    currentTime: operation.status === "IN_PROGRESS" ? new Date().toISOString() : undefined,
+    delayMinutes: operation.delayMinutes || undefined,
+    qcRequired: operation.qcRequired,
+  };
+};
 
 export function OperationExecutionOverview() {
   const { woId } = useParams();
   const navigate = useNavigate();
   const [selectedOperationId, setSelectedOperationId] = useState<string | undefined>();
+  const [operations, setOperations] = useState<OverviewOperation[]>([]);
+  const [productionOrderId, setProductionOrderId] = useState<number | null>(null);
+  const [productionOrderNumber, setProductionOrderNumber] = useState<string | null>(null);
+  const [workOrderNumber, setWorkOrderNumber] = useState<string | null>(null);
+  const [derivedAt, setDerivedAt] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Calculate WO-level stats
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadTimeline = async () => {
+      if (!woId) {
+        setError("Work order ID is missing in URL.");
+        setOperations([]);
+        setProductionOrderId(null);
+        setProductionOrderNumber(null);
+        setWorkOrderNumber(null);
+        setDerivedAt(null);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+      try {
+        const timeline = await workOrderApi.getExecutionTimeline(woId);
+
+        if (cancelled) {
+          return;
+        }
+
+        const mapped = timeline.operations.map(toOverviewOperation);
+        setOperations(mapped);
+        setProductionOrderId(timeline.productionOrderId);
+        setProductionOrderNumber(timeline.productionOrderNumber);
+        setWorkOrderNumber(timeline.workOrderNumber);
+        setDerivedAt(timeline.derivedAt || null);
+      } catch (err) {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : "Failed to load execution timeline.";
+          setError(message);
+          setOperations([]);
+          setProductionOrderId(null);
+          setProductionOrderNumber(null);
+          setWorkOrderNumber(null);
+          setDerivedAt(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadTimeline();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [woId]);
+
+  // Read-only visual summary from backend-derived timeline statuses.
+  const completedOperations = operations.filter((op) => op.status === "Completed").length;
+  const inProgressOperations = operations.filter((op) => op.status === "Running").length;
+  const totalOperations = operations.length;
+
   const stats = {
-    totalOperations: mockOperationSequence.length,
-    completedOperations: mockOperationSequence.filter(op => op.status === 'Completed').length,
-    inProgressOperations: mockOperationSequence.filter(op => op.status === 'Running').length,
-    overallProgress: Math.round(
-      mockOperationSequence.reduce((sum, op) => {
-        if (op.status === 'Completed') return sum + 100;
-        if (op.status === 'Running') return sum + 50; // Estimate 50% for running
-        return sum;
-      }, 0) / mockOperationSequence.length
-    ),
+    totalOperations,
+    completedOperations,
+    inProgressOperations,
+    overallProgress: calcProgressPercent({
+      completedQty: completedOperations,
+      targetQty: totalOperations,
+    }),
   };
 
   const handleOperationClick = (operation: OperationExecutionGantt) => {
-    // Navigate to detail view
-    navigate(`/operation-detail/${operation.id}`);
+    const overviewOperation = operation as OverviewOperation;
+    const canonicalOperationId = String(overviewOperation.operationId);
+    setSelectedOperationId(canonicalOperationId);
+    navigate(`/operations/${canonicalOperationId}/detail`);
   };
 
   return (
@@ -97,14 +191,19 @@ export function OperationExecutionOverview() {
         title={
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => navigate(`/production-order/PO-001`)}
+              onClick={() => {
+                if (productionOrderId !== null) {
+                  navigate(`/production-orders/${productionOrderId}/work-orders`);
+                }
+              }}
+              disabled={productionOrderId === null}
               className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
             >
               <ArrowLeft className="w-4 h-4" />
               Back
             </button>
             <div>
-              <div className="text-sm text-gray-500">Work Order: {woId || 'WO-2024-001'}</div>
+              <div className="text-sm text-gray-500">Work Order: {workOrderNumber || woId || "-"}</div>
               <div className="text-2xl font-bold">Operation Execution Overview</div>
             </div>
           </div>
@@ -125,6 +224,20 @@ export function OperationExecutionOverview() {
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-6">
+        {error && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <div className="font-medium text-amber-800">Timeline unavailable</div>
+              <div className="text-sm text-amber-700 mt-1">{error}</div>
+            </div>
+          </div>
+        )}
+
+        {derivedAt && (
+          <div className="text-xs text-gray-500 mb-4">Timeline derived at {derivedAt}</div>
+        )}
+
         {/* WO-level Stats */}
         <div className="grid grid-cols-4 gap-4 mb-6">
           <StatsCard
@@ -159,13 +272,14 @@ export function OperationExecutionOverview() {
             <div className="font-medium text-blue-800">Time-Based Gantt Chart</div>
             <div className="text-sm text-blue-600 mt-1">
               Click any operation bar to view detailed information. Gaps and delays are visible through bar positioning.
+              {loading ? " Loading backend timeline..." : ""}
             </div>
           </div>
         </div>
 
         {/* Gantt Chart */}
         <GanttChart 
-          operations={mockOperationSequence}
+          operations={operations}
           onOperationClick={handleOperationClick}
           selectedOperationId={selectedOperationId}
         />
@@ -178,7 +292,7 @@ export function OperationExecutionOverview() {
               Operations Breakdown
             </h3>
             <div className="space-y-2 text-sm">
-              {mockOperationSequence.map(op => (
+              {operations.map((op) => (
                 <div 
                   key={op.id} 
                   className="flex items-center justify-between p-2 rounded hover:bg-gray-50 cursor-pointer"
@@ -186,6 +300,7 @@ export function OperationExecutionOverview() {
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs text-gray-500">{op.sequence}</span>
+                    <span>{op.operationNumber}</span>
                     <span>{op.name}</span>
                   </div>
                   <div className={`text-xs px-2 py-1 rounded ${
@@ -193,7 +308,7 @@ export function OperationExecutionOverview() {
                     op.status === 'Running' ? 'bg-blue-100 text-blue-700' :
                     'bg-gray-100 text-gray-600'
                   }`}>
-                    {op.status}
+                    {mapExecutionStatusText(op.backendStatus || "PENDING")}
                   </div>
                 </div>
               ))}
@@ -205,11 +320,11 @@ export function OperationExecutionOverview() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Work Order ID:</span>
-                <span className="font-medium font-mono">{woId || 'WO-2024-001'}</span>
+                <span className="font-medium font-mono">{workOrderNumber || woId || "-"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Production Order:</span>
-                <span className="font-medium font-mono">PO-001</span>
+                <span className="font-medium font-mono">{productionOrderNumber || "-"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Product:</span>
