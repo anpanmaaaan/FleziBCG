@@ -105,3 +105,23 @@ Not allowed:
 - Current architecture is modular monolith
 - Do NOT prematurely split into microservices
 - Clear module boundaries are preferred over service extraction
+
+## Phase 4 — RBAC & Persona Landing (LOCKED)
+
+- Persona to default landing rules:
+	- OPERATOR -> /station-execution
+	- SUPERVISOR / SHIFT_LEADER -> /work-orders
+	- MANAGER / OFFICE -> /dashboard
+	- IE / PROCESS -> /operations
+	- QA -> /quality
+
+- Guardrail rules:
+	- Agents MUST NOT change persona landing without new phase
+	- Agents MUST NOT expose Station Execution to non-operators
+	- Agents MUST NOT make Operations (Global) a manager default
+	- Agents MUST NOT introduce execution logic into Dashboard
+
+- Enforcement notes:
+	- Phase 4 RBAC is frontend/UX-level only
+	- Backend execution APIs are unchanged
+	- Future phases may extend RBAC but must not violate these rules
