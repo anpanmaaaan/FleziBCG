@@ -19,6 +19,11 @@ class Role(Base):
 
     permissions: Mapped[list["RolePermission"]] = relationship("RolePermission", back_populates="role", cascade="all, delete-orphan")
     user_assignments: Mapped[list["UserRole"]] = relationship("UserRole", back_populates="role", cascade="all, delete-orphan")
+    role_assignments: Mapped[list["UserRoleAssignment"]] = relationship(
+        "UserRoleAssignment",
+        back_populates="role",
+        cascade="all, delete-orphan",
+    )
 
 
 class Permission(Base):
@@ -65,6 +70,52 @@ class UserRole(Base):
 
     role: Mapped[Role] = relationship("Role", back_populates="user_assignments")
     scopes: Mapped[list["RoleScope"]] = relationship("RoleScope", back_populates="user_role", cascade="all, delete-orphan")
+
+
+class Scope(Base):
+    __tablename__ = "scopes"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "scope_type", "scope_value", name="uq_scope_tenant_type_value"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    scope_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    scope_value: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    parent_scope_id: Mapped[int | None] = mapped_column(ForeignKey("scopes.id"), nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    parent: Mapped["Scope | None"] = relationship(
+        "Scope",
+        remote_side=[id],
+        back_populates="children",
+    )
+    children: Mapped[list["Scope"]] = relationship("Scope", back_populates="parent")
+    role_assignments: Mapped[list["UserRoleAssignment"]] = relationship(
+        "UserRoleAssignment",
+        back_populates="scope",
+        cascade="all, delete-orphan",
+    )
+
+
+class UserRoleAssignment(Base):
+    __tablename__ = "user_role_assignments"
+    __table_args__ = (
+        UniqueConstraint("user_id", "role_id", "scope_id", name="uq_user_role_assignment_scope"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    role_id: Mapped[int] = mapped_column(ForeignKey("roles.id"), nullable=False, index=True)
+    scope_id: Mapped[int] = mapped_column(ForeignKey("scopes.id"), nullable=False, index=True)
+    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    valid_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    role: Mapped[Role] = relationship("Role", back_populates="role_assignments")
+    scope: Mapped[Scope] = relationship("Scope", back_populates="role_assignments")
 
 
 class RoleScope(Base):

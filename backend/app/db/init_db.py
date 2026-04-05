@@ -5,7 +5,7 @@ from app.db.session import SessionLocal
 # ✅ Import ALL models here
 from app.models.master import ProductionOrder, WorkOrder, Operation
 from app.models.execution import ExecutionEvent
-from app.models.rbac import Role, Permission, RolePermission, UserRole, RoleScope
+from app.models.rbac import Role, Permission, RolePermission, UserRole, RoleScope, Scope, UserRoleAssignment
 from app.models.impersonation import ImpersonationSession, ImpersonationAuditLog
 from app.models.approval import ApprovalRule, ApprovalRequest, ApprovalDecision, ApprovalAuditLog
 from app.models.user import User

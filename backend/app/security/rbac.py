@@ -1,12 +1,13 @@
 import json
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Literal
 
 from sqlalchemy import exists, or_, select
 from sqlalchemy.orm import Session
 
 from app.config.settings import Settings
-from app.models.rbac import Permission, Role, RolePermission, RoleScope, UserRole
+from app.models.rbac import Permission, Role, RolePermission, RoleScope, Scope, UserRole, UserRoleAssignment
 
 PermissionFamily = Literal["VIEW", "EXECUTE", "APPROVE", "CONFIGURE", "ADMIN"]
 
@@ -32,6 +33,11 @@ ROLE_ALIASES: dict[str, str] = {
 }
 
 SCOPE_TYPE_TENANT = "tenant"
+SCOPE_TYPE_PLANT = "plant"
+SCOPE_TYPE_AREA = "area"
+SCOPE_TYPE_LINE = "line"
+SCOPE_TYPE_STATION = "station"
+SCOPE_TYPE_EQUIPMENT = "equipment"
 SCOPE_WILDCARD = "*"
 
 # Roles that cannot be the target of impersonation.
@@ -108,6 +114,38 @@ def _get_or_create_permission(db: Session, family: PermissionFamily) -> Permissi
     return permission
 
 
+def _get_or_create_scope(
+    db: Session,
+    *,
+    tenant_id: str,
+    scope_type: str,
+    scope_value: str,
+    parent_scope_id: int | None,
+) -> Scope:
+    scope = db.scalar(
+        select(Scope).where(
+            Scope.tenant_id == tenant_id,
+            Scope.scope_type == scope_type,
+            Scope.scope_value == scope_value,
+        )
+    )
+    if scope is not None:
+        if scope.parent_scope_id != parent_scope_id:
+            scope.parent_scope_id = parent_scope_id
+            db.flush()
+        return scope
+
+    scope = Scope(
+        tenant_id=tenant_id,
+        scope_type=scope_type,
+        scope_value=scope_value,
+        parent_scope_id=parent_scope_id,
+    )
+    db.add(scope)
+    db.flush()
+    return scope
+
+
 def seed_rbac_core(db: Session) -> None:
     role_by_code: dict[str, Role] = {}
     for role_code in SYSTEM_ROLE_FAMILIES:
@@ -145,18 +183,50 @@ def seed_rbac_core(db: Session) -> None:
         if role_code is None or role_code not in role_by_code:
             continue
 
+        tenant_id = str(user["tenant_id"])
+
+        # Deterministic scope chain used by Tier 1 evaluation and tests.
+        tenant_scope = _get_or_create_scope(
+            db,
+            tenant_id=tenant_id,
+            scope_type=SCOPE_TYPE_TENANT,
+            scope_value=tenant_id,
+            parent_scope_id=None,
+        )
+        plant_scope = _get_or_create_scope(
+            db,
+            tenant_id=tenant_id,
+            scope_type=SCOPE_TYPE_PLANT,
+            scope_value="PLANT_01",
+            parent_scope_id=tenant_scope.id,
+        )
+        line_scope = _get_or_create_scope(
+            db,
+            tenant_id=tenant_id,
+            scope_type=SCOPE_TYPE_LINE,
+            scope_value="LINE_A",
+            parent_scope_id=plant_scope.id,
+        )
+        station_scope = _get_or_create_scope(
+            db,
+            tenant_id=tenant_id,
+            scope_type=SCOPE_TYPE_STATION,
+            scope_value="STATION_01",
+            parent_scope_id=line_scope.id,
+        )
+
         user_role = db.scalar(
             select(UserRole).where(
                 UserRole.user_id == str(user["user_id"]),
                 UserRole.role_id == role_by_code[role_code].id,
-                UserRole.tenant_id == str(user["tenant_id"]),
+                UserRole.tenant_id == tenant_id,
             )
         )
         if user_role is None:
             user_role = UserRole(
                 user_id=str(user["user_id"]),
                 role_id=role_by_code[role_code].id,
-                tenant_id=str(user["tenant_id"]),
+                tenant_id=tenant_id,
                 is_active=True,
             )
             db.add(user_role)
@@ -165,19 +235,37 @@ def seed_rbac_core(db: Session) -> None:
             user_role.is_active = True
             db.flush()
 
-        tenant_scope = db.scalar(
+        legacy_tenant_scope = db.scalar(
             select(RoleScope).where(
                 RoleScope.user_role_id == user_role.id,
                 RoleScope.scope_type == SCOPE_TYPE_TENANT,
-                RoleScope.scope_value == str(user["tenant_id"]),
+                RoleScope.scope_value == tenant_id,
             )
         )
-        if tenant_scope is None:
+        if legacy_tenant_scope is None:
             db.add(
                 RoleScope(
                     user_role_id=user_role.id,
                     scope_type=SCOPE_TYPE_TENANT,
-                    scope_value=str(user["tenant_id"]),
+                    scope_value=tenant_id,
+                )
+            )
+
+        assignment = db.scalar(
+            select(UserRoleAssignment).where(
+                UserRoleAssignment.user_id == str(user["user_id"]),
+                UserRoleAssignment.role_id == role_by_code[role_code].id,
+                UserRoleAssignment.scope_id == station_scope.id,
+            )
+        )
+        if assignment is None:
+            db.add(
+                UserRoleAssignment(
+                    user_id=str(user["user_id"]),
+                    role_id=role_by_code[role_code].id,
+                    scope_id=station_scope.id,
+                    is_primary=True,
+                    is_active=True,
                 )
             )
 
@@ -198,12 +286,39 @@ def has_permission(
         return False
 
     # Impersonation path: resolve permissions from acting role's family set directly.
-    # This fully replaces the DB lookup — the DB is not consulted for acting role grants.
+    # This fully replaces the DB lookup; DB grants are not consulted for acting role grants.
     acting = getattr(identity, "acting_role_code", None)
     if acting:
         acting_families = SYSTEM_ROLE_FAMILIES.get(acting, set())
         return required_family in acting_families
 
+    now = datetime.now(timezone.utc)
+
+    # Preferred path: new multi-scope assignment table.
+    assignment_statement = (
+        select(UserRoleAssignment.id)
+        .join(RolePermission, RolePermission.role_id == UserRoleAssignment.role_id)
+        .join(Permission, Permission.id == RolePermission.permission_id)
+        .join(Scope, Scope.id == UserRoleAssignment.scope_id)
+        .where(
+            UserRoleAssignment.user_id == identity.user_id,
+            UserRoleAssignment.is_active.is_(True),
+            or_(UserRoleAssignment.valid_from.is_(None), UserRoleAssignment.valid_from <= now),
+            or_(UserRoleAssignment.valid_to.is_(None), UserRoleAssignment.valid_to >= now),
+            Scope.tenant_id == identity.tenant_id,
+            Permission.family == required_family,
+            RolePermission.scope_type == SCOPE_TYPE_TENANT,
+            or_(
+                RolePermission.scope_value == identity.tenant_id,
+                RolePermission.scope_value == SCOPE_WILDCARD,
+            ),
+        )
+        .limit(1)
+    )
+    if db.scalar(assignment_statement) is not None:
+        return True
+
+    # Backward-compatible fallback: legacy user_roles + role_scopes.
     tenant_scope_exists = exists(
         select(RoleScope.id).where(
             RoleScope.user_role_id == UserRole.id,
@@ -215,7 +330,7 @@ def has_permission(
         )
     )
 
-    statement = (
+    fallback_statement = (
         select(UserRole.id)
         .join(RolePermission, RolePermission.role_id == UserRole.role_id)
         .join(Permission, Permission.id == RolePermission.permission_id)
@@ -234,4 +349,4 @@ def has_permission(
         .limit(1)
     )
 
-    return db.scalar(statement) is not None
+    return db.scalar(fallback_statement) is not None

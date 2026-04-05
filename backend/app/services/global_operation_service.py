@@ -121,6 +121,12 @@ def build_work_order_operation_summaries(db: Session, work_order_id: int) -> lis
         history_total = len(operation_history)
         delay_frequency = (delayed_count / history_total) if history_total > 0 else 0
 
+        historical_cycle_minutes = [
+            _derive_cycle_time_minutes(item.actual_start, item.actual_end)
+            for item in operation_history
+        ]
+        historical_cycle_minutes = [value for value in historical_cycle_minutes if value is not None]
+
         historical_cycle_deltas = [
             _derive_cycle_time_delta(item)
             for item in operation_history
@@ -140,9 +146,9 @@ def build_work_order_operation_summaries(db: Session, work_order_id: int) -> lis
                 cycle_time_delta,
                 delayed_count,
                 delay_frequency,
-                delayed_count >= REPEAT_DELAY_MIN_COUNT,
+                history_total >= REPEAT_DELAY_MIN_COUNT,
                 qc_fail_count,
-                _derive_stddev([int(value) for value in historical_cycle_deltas]) >= HIGH_VARIANCE_STDDEV_THRESHOLD_MINUTES,
+                _derive_stddev([int(value) for value in historical_cycle_minutes]) >= HIGH_VARIANCE_STDDEV_THRESHOLD_MINUTES,
                 delay_frequency >= OFTEN_LATE_FREQUENCY_THRESHOLD,
             )
         )
