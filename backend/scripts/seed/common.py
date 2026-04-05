@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models.execution import ExecutionEvent
 from app.models.master import Operation, ProductionOrder, WorkOrder, StatusEnum
+from app.models.station_claim import OperationClaim, OperationClaimAuditLog
 from app.repositories.operation_repository import get_operation_by_id
 from app.schemas.operation import OperationAbortRequest, OperationCompleteRequest, OperationStartRequest
 from app.services.operation_service import abort_operation, complete_operation, start_operation
@@ -35,6 +36,10 @@ def reset_seed_dataset(db: Session) -> None:
 
     wo_ids = list(db.scalars(select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))))
     if wo_ids:
+        operation_ids = list(db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids))))
+        if operation_ids:
+            db.execute(delete(OperationClaimAuditLog).where(OperationClaimAuditLog.operation_id.in_(operation_ids)))
+            db.execute(delete(OperationClaim).where(OperationClaim.operation_id.in_(operation_ids)))
         db.execute(delete(ExecutionEvent).where(ExecutionEvent.work_order_id.in_(wo_ids)))
         db.execute(delete(Operation).where(Operation.work_order_id.in_(wo_ids)))
         db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))

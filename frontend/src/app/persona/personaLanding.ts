@@ -1,6 +1,6 @@
 import type { AuthUser } from "../api/authApi";
 
-export type Persona = "OPR" | "SUP" | "IEP" | "QCI" | "PMG" | "EXE";
+export type Persona = "OPR" | "SUP" | "IEP" | "QC" | "PMG" | "EXE" | "ADM";
 export type ResolvedPersona = Persona | "DENY";
 export type OperationLens = "supervisor" | "ie" | "qc";
 export type PersonaEnforcementMode = "DEV" | "STRICT";
@@ -14,30 +14,67 @@ const DEFAULT_LANDING_BY_PERSONA: Record<Persona, string> = {
   OPR: "/station",
   SUP: "/operations?lens=supervisor",
   IEP: "/operations?lens=ie",
-  QCI: "/operations?lens=qc",
+  QC: "/operations?lens=qc",
   PMG: "/dashboard",
   EXE: "/dashboard",
+  ADM: "/dashboard",
 };
 
 const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
   OPR: [{ label: "Station Execution", to: "/station" }],
-  SUP: [{ label: "Global Operations", to: "/operations?lens=supervisor" }],
-  IEP: [{ label: "Global Operations", to: "/operations?lens=ie" }],
-  QCI: [{ label: "Global Operations", to: "/operations?lens=qc" }],
+  SUP: [
+    { label: "Global Operations", to: "/operations?lens=supervisor" },
+    { label: "Production Orders", to: "/production-orders" },
+    { label: "Work Orders", to: "/work-orders" },
+    { label: "Routes", to: "/routes" },
+    { label: "Quality", to: "/quality" },
+    { label: "Defects", to: "/defects" },
+  ],
+  IEP: [
+    { label: "Global Operations", to: "/operations?lens=ie" },
+    { label: "Production Orders", to: "/production-orders" },
+    { label: "Work Orders", to: "/work-orders" },
+    { label: "Routes", to: "/routes" },
+    { label: "Traceability", to: "/traceability" },
+    { label: "Quality", to: "/quality" },
+  ],
+  QC: [
+    { label: "Global Operations", to: "/operations?lens=qc" },
+    { label: "Quality", to: "/quality" },
+    { label: "Defects", to: "/defects" },
+    { label: "Traceability", to: "/traceability" },
+    { label: "Production Orders", to: "/production-orders" },
+    { label: "Work Orders", to: "/work-orders" },
+    { label: "Routes", to: "/routes" },
+  ],
   PMG: [
     { label: "Dashboard", to: "/dashboard" },
-    { label: "Global Operations", to: "/operations?lens=supervisor" },
+    { label: "OEE Deep Dive", to: "/performance/oee-deep-dive" },
+    { label: "Global Operations", to: "/operations" },
+    { label: "Production Orders", to: "/production-orders" },
+    { label: "Work Orders", to: "/work-orders" },
+    { label: "Routes", to: "/routes" },
+    { label: "Dispatch", to: "/dispatch" },
+    { label: "Quality", to: "/quality" },
+    { label: "Defects", to: "/defects" },
+    { label: "Traceability", to: "/traceability" },
+    { label: "Scheduling", to: "/scheduling" },
   ],
   EXE: [{ label: "Dashboard", to: "/dashboard" }],
+  ADM: [
+    { label: "Dashboard", to: "/dashboard" },
+    { label: "Settings", to: "/settings" },
+  ],
 };
 
 const ALLOWED_LENSES_BY_PERSONA: Record<Persona, OperationLens[]> = {
   OPR: [],
   SUP: ["supervisor"],
   IEP: ["ie"],
-  QCI: ["qc"],
+  QC: ["qc"],
   PMG: ["supervisor", "ie", "qc"],
   EXE: [],
+  ADM: [],
 };
 
 const PERSONA_ENFORCEMENT_MODE: PersonaEnforcementMode =
@@ -80,13 +117,16 @@ export function resolvePersonaFromRoleCode(roleCode?: string | null): ResolvedPe
     return "IEP";
   }
   if (normalizedRoleCode === "QCI" || normalizedRoleCode === "QAL") {
-    return "QCI";
+    return "QC";
   }
   if (normalizedRoleCode === "PMG") {
     return "PMG";
   }
   if (normalizedRoleCode === "EXE") {
     return "EXE";
+  }
+  if (normalizedRoleCode === "ADM" || normalizedRoleCode === "OTS") {
+    return "ADM";
   }
 
   if (PERSONA_ENFORCEMENT_MODE === "STRICT") {
@@ -148,7 +188,7 @@ export function getFallbackOperationLens(persona: ResolvedPersona): OperationLen
 }
 
 export function canAccessDashboard(persona: ResolvedPersona): boolean {
-  return persona === "PMG" || persona === "EXE";
+  return persona === "PMG" || persona === "EXE" || persona === "ADM";
 }
 
 export function canAccessStation(persona: ResolvedPersona): boolean {
@@ -166,6 +206,46 @@ export function canAccessOperations(persona: ResolvedPersona, lens?: string | nu
   }
 
   return allowedLenses.includes(lens as OperationLens);
+}
+
+function canAccessProductionOrders(persona: ResolvedPersona): boolean {
+  return persona === "SUP" || persona === "IEP" || persona === "QC" || persona === "PMG";
+}
+
+function canAccessWorkOrders(persona: ResolvedPersona): boolean {
+  return canAccessProductionOrders(persona);
+}
+
+function canAccessRoutes(persona: ResolvedPersona): boolean {
+  return persona === "SUP" || persona === "IEP" || persona === "QC" || persona === "PMG";
+}
+
+function canAccessQuality(persona: ResolvedPersona): boolean {
+  return persona === "SUP" || persona === "IEP" || persona === "QC" || persona === "PMG";
+}
+
+function canAccessDefects(persona: ResolvedPersona): boolean {
+  return persona === "SUP" || persona === "QC" || persona === "PMG";
+}
+
+function canAccessTraceability(persona: ResolvedPersona): boolean {
+  return persona === "IEP" || persona === "QC" || persona === "PMG";
+}
+
+function canAccessDispatch(persona: ResolvedPersona): boolean {
+  return persona === "PMG";
+}
+
+function canAccessScheduling(persona: ResolvedPersona): boolean {
+  return persona === "PMG";
+}
+
+function canAccessOeeDeepDive(persona: ResolvedPersona): boolean {
+  return persona === "PMG" || persona === "EXE";
+}
+
+function canAccessSettings(persona: ResolvedPersona): boolean {
+  return persona === "ADM";
 }
 
 function getNormalizedLens(search: string): string | null {
@@ -186,6 +266,10 @@ export function isRouteAllowedForPersona(persona: ResolvedPersona, pathname: str
     return canAccessDashboard(persona);
   }
 
+  if (pathname === "/home") {
+    return true;
+  }
+
   if (pathname === "/operations") {
     return canAccessOperations(persona, getNormalizedLens(search));
   }
@@ -196,6 +280,50 @@ export function isRouteAllowedForPersona(persona: ResolvedPersona, pathname: str
 
   if (pathname === "/station" || pathname === "/station-execution") {
     return canAccessStation(persona);
+  }
+
+  if (pathname === "/production-orders") {
+    return canAccessProductionOrders(persona);
+  }
+
+  if (pathname.startsWith("/production-orders/") && pathname.endsWith("/work-orders")) {
+    return canAccessWorkOrders(persona);
+  }
+
+  if (pathname === "/work-orders" || pathname.startsWith("/work-orders/")) {
+    return canAccessWorkOrders(persona);
+  }
+
+  if (pathname === "/routes" || pathname.startsWith("/routes/")) {
+    return canAccessRoutes(persona);
+  }
+
+  if (pathname === "/quality") {
+    return canAccessQuality(persona);
+  }
+
+  if (pathname === "/defects") {
+    return canAccessDefects(persona);
+  }
+
+  if (pathname === "/traceability") {
+    return canAccessTraceability(persona);
+  }
+
+  if (pathname === "/dispatch") {
+    return canAccessDispatch(persona);
+  }
+
+  if (pathname === "/scheduling") {
+    return canAccessScheduling(persona);
+  }
+
+  if (pathname === "/performance/oee-deep-dive") {
+    return canAccessOeeDeepDive(persona);
+  }
+
+  if (pathname === "/settings") {
+    return canAccessSettings(persona);
   }
 
   return false;

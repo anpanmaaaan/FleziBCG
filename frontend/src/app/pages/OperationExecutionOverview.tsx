@@ -1,7 +1,7 @@
 // Operation Execution Overview - Gantt Chart ONLY
 // Click bar to navigate to detailed view
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router";
 import { 
   ArrowLeft,
@@ -107,6 +107,11 @@ export function OperationExecutionOverview() {
   const [derivedAt, setDerivedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [breakdownVisibleCount, setBreakdownVisibleCount] = useState(80);
+
+  useEffect(() => {
+    setBreakdownVisibleCount(80);
+  }, [woId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -163,26 +168,35 @@ export function OperationExecutionOverview() {
   }, [woId]);
 
   // Read-only visual summary from backend-derived timeline statuses.
-  const completedOperations = operations.filter((op) => op.status === "Completed").length;
-  const inProgressOperations = operations.filter((op) => op.status === "Running").length;
-  const totalOperations = operations.length;
+  const stats = useMemo(() => {
+    const completedOperations = operations.filter((op) => op.status === "Completed").length;
+    const inProgressOperations = operations.filter((op) => op.status === "Running").length;
+    const totalOperations = operations.length;
 
-  const stats = {
-    totalOperations,
-    completedOperations,
-    inProgressOperations,
-    overallProgress: calcProgressPercent({
-      completedQty: completedOperations,
-      targetQty: totalOperations,
-    }),
-  };
+    return {
+      totalOperations,
+      completedOperations,
+      inProgressOperations,
+      overallProgress: calcProgressPercent({
+        completedQty: completedOperations,
+        targetQty: totalOperations,
+      }),
+    };
+  }, [operations]);
 
-  const handleOperationClick = (operation: OperationExecutionGantt) => {
+  const breakdownItems = useMemo(
+    () => operations.slice(0, breakdownVisibleCount),
+    [operations, breakdownVisibleCount],
+  );
+  const hasMoreBreakdownItems = breakdownVisibleCount < operations.length;
+  const hiddenBreakdownItemCount = Math.max(operations.length - breakdownVisibleCount, 0);
+
+  const handleOperationClick = useCallback((operation: OperationExecutionGantt) => {
     const overviewOperation = operation as OverviewOperation;
     const canonicalOperationId = String(overviewOperation.operationId);
     setSelectedOperationId(canonicalOperationId);
     navigate(`/operations/${canonicalOperationId}/detail`);
-  };
+  }, [navigate]);
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
@@ -292,7 +306,7 @@ export function OperationExecutionOverview() {
               Operations Breakdown
             </h3>
             <div className="space-y-2 text-sm">
-              {operations.map((op) => (
+              {breakdownItems.map((op) => (
                 <div 
                   key={op.id} 
                   className="flex items-center justify-between p-2 rounded hover:bg-gray-50 cursor-pointer"
@@ -312,6 +326,16 @@ export function OperationExecutionOverview() {
                   </div>
                 </div>
               ))}
+              {hasMoreBreakdownItems && (
+                <div className="pt-2">
+                  <button
+                    onClick={() => setBreakdownVisibleCount((prev) => prev + 120)}
+                    className="w-full py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    Load more operations ({hiddenBreakdownItemCount} remaining)
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

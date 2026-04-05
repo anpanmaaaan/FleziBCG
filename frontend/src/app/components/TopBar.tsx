@@ -1,11 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { Clock, ChevronDown, Bell } from 'lucide-react';
+import { useNavigate } from 'react-router';
+
+import { useAuth } from '../auth/AuthContext';
+import { ImpersonationSwitcher } from './ImpersonationSwitcher';
 
 interface TopBarProps {
   currentPage?: string;
 }
 
 export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
+  const navigate = useNavigate();
+  const { currentUser, logout, logoutAll } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showPlantDropdown, setShowPlantDropdown] = useState(false);
   const [showLangDropdown, setShowLangDropdown] = useState(false);
@@ -13,6 +19,7 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [selectedPlant, setSelectedPlant] = useState('DMES');
   const [selectedLanguage, setSelectedLanguage] = useState({ code: 'GB', name: 'English', flag: '🇬🇧' });
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   const plantRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
@@ -73,6 +80,36 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
     { code: 'JP', name: '日本語', flag: '🇯🇵' },
   ];
 
+  const handleLogout = async () => {
+    if (isSigningOut) {
+      return;
+    }
+
+    setIsSigningOut(true);
+    try {
+      await logout();
+      navigate('/login', { replace: true });
+    } finally {
+      setIsSigningOut(false);
+      setShowUserDropdown(false);
+    }
+  };
+
+  const handleLogoutAll = async () => {
+    if (isSigningOut) {
+      return;
+    }
+
+    setIsSigningOut(true);
+    try {
+      await logoutAll();
+      navigate('/login', { replace: true });
+    } finally {
+      setIsSigningOut(false);
+      setShowUserDropdown(false);
+    }
+  };
+
   return (
     <div className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 sticky top-0 z-20">
       {/* Left: Current Page Title */}
@@ -129,6 +166,8 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
           <Clock className="w-4 h-4 text-white" />
           <span className="font-mono font-semibold">{formatTime(currentTime)}</span>
         </div>
+
+        <ImpersonationSwitcher roleCode={currentUser?.role_code} />
 
         {/* Notifications */}
         <div className="relative" ref={notifRef}>
@@ -235,9 +274,9 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
             className="flex items-center gap-2 pl-3 pr-2 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
           >
             <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white font-semibold">
-              A
+              {(currentUser?.username?.[0] || 'U').toUpperCase()}
             </div>
-            <span className="font-medium">Anna</span>
+            <span className="font-medium">{currentUser?.username || 'User'}</span>
             <ChevronDown className="w-4 h-4 text-gray-500" />
           </button>
 
@@ -245,8 +284,8 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
           {showUserDropdown && (
             <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
               <div className="px-4 py-3 border-b border-gray-100">
-                <p className="text-sm font-semibold text-gray-900">Anna</p>
-                <p className="text-xs text-gray-500">anna@dmes.com</p>
+                <p className="text-sm font-semibold text-gray-900">{currentUser?.username || 'User'}</p>
+                <p className="text-xs text-gray-500">{currentUser?.email || '-'}</p>
               </div>
               <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                 My Profile
@@ -258,8 +297,19 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
                 Help & Support
               </button>
               <div className="border-t border-gray-100 my-1"></div>
-              <button className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                Sign Out
+              <button
+                onClick={handleLogoutAll}
+                disabled={isSigningOut}
+                className="w-full text-left px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 transition-colors disabled:opacity-50"
+              >
+                Logout all sessions
+              </button>
+              <button
+                onClick={handleLogout}
+                disabled={isSigningOut}
+                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+              >
+                {isSigningOut ? 'Signing out...' : 'Logout'}
               </button>
             </div>
           )}

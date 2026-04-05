@@ -17,6 +17,7 @@ import { Traceability } from "./pages/Traceability";
 import { APSScheduling } from "./pages/APSScheduling";
 import { StationExecution } from "./pages/StationExecution";
 import { OEEDeepDive } from "./pages/OEEDeepDive";
+import { GanttStressTestPage } from "./pages/GanttStressTestPage";
 import { PersonaLandingRedirect } from "./persona/PersonaLandingRedirect";
 import { RequireAuth } from "./auth/RequireAuth";
 
@@ -73,6 +74,9 @@ export const router = createBrowserRouter([
       
       // APS Scheduling
       { path: "scheduling", Component: APSScheduling },
+
+      // Dev-only stress harness for virtualized Gantt rows
+      ...(import.meta.env.DEV ? [{ path: "dev/gantt-stress", Component: GanttStressTestPage }] : []),
       
       // Settings
       { path: "settings", Component: Dashboard }, // Placeholder

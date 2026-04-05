@@ -26,6 +26,10 @@ export class HttpError extends Error {
 
 const API_PREFIX = "/api";
 
+const isDevAuthDebugEnabled = () => {
+  return Boolean(import.meta.env?.DEV && import.meta.env?.VITE_HTTP_DEBUG_AUTH === "1");
+};
+
 let getHttpContext: (() => HttpContext) | null = null;
 let onUnauthorized: (() => void) | null = null;
 
@@ -80,10 +84,21 @@ const buildHeaders = (headers?: Record<string, string>, body?: unknown): Headers
 
 export const request = async <T>(path: string, options: RequestOptions = {}): Promise<T> => {
   const { method = "GET", headers, body, signal } = options;
+  const requestHeaders = buildHeaders(headers, body);
+
+  if (isDevAuthDebugEnabled()) {
+    const hasAuth = requestHeaders.has("Authorization");
+    const normalized = normalizePath(path);
+    if (hasAuth) {
+      console.debug(`[httpClient] Authorization attached: ${method} ${normalized}`);
+    } else {
+      console.debug(`[httpClient] No Authorization header: ${method} ${normalized}`);
+    }
+  }
 
   const response = await fetch(normalizePath(path), {
     method,
-    headers: buildHeaders(headers, body),
+    headers: requestHeaders,
     body: body === undefined ? undefined : JSON.stringify(body),
     signal,
   });

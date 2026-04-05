@@ -72,6 +72,7 @@ class Operation(Base):
     sequence: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    station_scope_value: Mapped[str] = mapped_column(String(128), nullable=False, default="STATION_01", index=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default=StatusEnum.pending.value)
     planned_start: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     planned_end: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

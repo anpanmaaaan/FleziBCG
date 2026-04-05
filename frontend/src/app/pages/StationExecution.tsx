@@ -4,8 +4,9 @@ import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { StatsCard } from "../components/StatsCard";
 import { toast } from "sonner";
-import { Play, ClipboardList, CheckCircle, AlertTriangle } from "lucide-react";
+import { Play, ClipboardList, CheckCircle, AlertTriangle, RefreshCw, Lock } from "lucide-react";
 import { operationApi, type OperationDetail } from "../api/operationApi";
+import { stationApi, type StationQueueItem } from "../api/stationApi";
 import {
   mapExecutionStatusBadgeVariant,
   mapExecutionStatusText,
@@ -18,18 +19,63 @@ export function StationExecution() {
   const [operationId, setOperationId] = useState<string>(queryOperationId);
   const [operation, setOperation] = useState<OperationDetail | null>(null);
   const [loading, setLoading] = useState(false);
+  const [queueLoading, setQueueLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [claimLoading, setClaimLoading] = useState(false);
   const [goodQty, setGoodQty] = useState<number>(0);
   const [scrapQty, setScrapQty] = useState<number>(0);
+  const [stationScope, setStationScope] = useState<string>("-");
+  const [queueItems, setQueueItems] = useState<StationQueueItem[]>([]);
+
+  useEffect(() => {
+    void refreshQueue();
+  }, []);
 
   useEffect(() => {
     if (queryOperationId) {
       setOperationId(queryOperationId);
-      fetchOperation(queryOperationId);
+      void fetchOperation(queryOperationId);
     }
   }, [queryOperationId]);
 
   const isCanonicalOperationId = (value: string) => /^\d+$/.test(value.trim());
+
+  const selectedQueueItem = operation
+    ? queueItems.find((item) => item.operation_id === operation.id) ?? null
+    : null;
+  const claimState = selectedQueueItem?.claim.state ?? "none";
+  const canExecuteByClaim = claimState === "mine";
+
+  const refreshQueue = async () => {
+    setQueueLoading(true);
+    try {
+      const data = await stationApi.getQueue();
+      setStationScope(data.station_scope_value || "-");
+      setQueueItems(data.items);
+
+      if (data.items.length === 0) {
+        setOperation(null);
+        return;
+      }
+
+      if (operation && data.items.some((item) => item.operation_id === operation.id)) {
+        return;
+      }
+
+      const preferred = queryOperationId && /^\d+$/.test(queryOperationId)
+        ? data.items.find((item) => item.operation_id === Number(queryOperationId))
+        : null;
+      const next = preferred ?? data.items[0];
+      setOperationId(String(next.operation_id));
+      setSearchParams({ operationId: String(next.operation_id) });
+      await fetchOperation(String(next.operation_id));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load station queue.";
+      toast.error(message);
+    } finally {
+      setQueueLoading(false);
+    }
+  };
 
   const fetchOperation = async (id: string) => {
     const trimmedId = id.trim();
@@ -48,7 +94,7 @@ export function StationExecution() {
     setOperation(null);
 
     try {
-      const data = await operationApi.get(trimmedId);
+      const data = await stationApi.getOperationDetail(Number(trimmedId));
       setOperation(data);
       setGoodQty(data.good_qty || 0);
       setScrapQty(data.scrap_qty || 0);
@@ -58,6 +104,42 @@ export function StationExecution() {
       toast.error(message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const selectQueueOperation = async (item: StationQueueItem) => {
+    setOperationId(String(item.operation_id));
+    setSearchParams({ operationId: String(item.operation_id) });
+    await fetchOperation(String(item.operation_id));
+  };
+
+  const claimOperation = async () => {
+    if (!operation) return;
+    setClaimLoading(true);
+    try {
+      await stationApi.claim(operation.id, {});
+      toast.success("Operation claimed.");
+      await refreshQueue();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to claim operation.";
+      toast.error(message);
+    } finally {
+      setClaimLoading(false);
+    }
+  };
+
+  const releaseClaim = async () => {
+    if (!operation) return;
+    setClaimLoading(true);
+    try {
+      await stationApi.release(operation.id, { reason: "operator_release" });
+      toast.success("Claim released.");
+      await refreshQueue();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to release claim.";
+      toast.error(message);
+    } finally {
+      setClaimLoading(false);
     }
   };
 
@@ -74,6 +156,7 @@ export function StationExecution() {
     } finally {
       setActionLoading(false);
       await fetchOperation(String(operation.id));
+      await refreshQueue();
     }
   };
 
@@ -94,6 +177,7 @@ export function StationExecution() {
     } finally {
       setActionLoading(false);
       await fetchOperation(String(operation.id));
+      await refreshQueue();
     }
   };
 
@@ -112,6 +196,7 @@ export function StationExecution() {
     } finally {
       setActionLoading(false);
       await fetchOperation(String(operation.id));
+      await refreshQueue();
     }
   };
 
@@ -122,33 +207,90 @@ export function StationExecution() {
         showBackButton={false}
         actions={
           <div className="flex items-center gap-2">
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={operationId}
-              onChange={(e) => setOperationId(e.target.value)}
-              placeholder="Enter numeric operation_id"
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
+            <span className="text-xs text-gray-600">Scope: {stationScope}</span>
             <button
-              onClick={() => fetchOperation(operationId)}
-              disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              onClick={() => void refreshQueue()}
+              disabled={queueLoading}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
-              Load
+              <RefreshCw className="inline w-4 h-4 mr-1" /> Refresh Queue
             </button>
           </div>
         }
       />
 
       <div className="p-6 flex-1 overflow-auto">
-        {!operation ? (
-          <div className="text-center py-20 text-gray-500">
-            {loading ? "Loading operation..." : "Enter an operation ID and click Load."}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-full">
+          <div className="xl:col-span-1 border rounded-lg p-4 bg-gray-50 overflow-auto">
+            <h2 className="font-semibold text-gray-900 mb-3">Station Queue</h2>
+            {queueLoading && <p className="text-sm text-gray-500">Loading queue...</p>}
+            {!queueLoading && queueItems.length === 0 && (
+              <p className="text-sm text-gray-500">No PENDING or IN_PROGRESS operations for this station.</p>
+            )}
+            <div className="space-y-2">
+              {queueItems.map((item) => {
+                const active = operation?.id === item.operation_id;
+                const isLocked = item.claim.state === "other";
+                return (
+                  <button
+                    key={item.operation_id}
+                    type="button"
+                    onClick={() => void selectQueueOperation(item)}
+                    className={`w-full text-left p-3 rounded-lg border transition ${
+                      active
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200 bg-white hover:border-gray-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium text-sm text-gray-900">{item.operation_number}</p>
+                      <StatusBadge variant={mapExecutionStatusBadgeVariant(item.status)}>
+                        {mapExecutionStatusText(item.status)}
+                      </StatusBadge>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-1">{item.name}</p>
+                    <p className="text-xs text-gray-500 mt-1">WO {item.work_order_number} · PO {item.production_order_number}</p>
+                    {item.claim.state === "mine" && (
+                      <p className="text-xs text-green-700 mt-2">Claimed by you</p>
+                    )}
+                    {isLocked && (
+                      <p className="text-xs text-orange-700 mt-2"><Lock className="inline w-3 h-3 mr-1" />Claimed by other operator</p>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <details className="mt-4 border-t pt-3">
+              <summary className="text-sm text-gray-600 cursor-pointer">Manual operation ID fallback</summary>
+              <div className="mt-3 flex items-center gap-2">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={operationId}
+                  onChange={(e) => setOperationId(e.target.value)}
+                  placeholder="Enter numeric operation_id"
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-full"
+                />
+                <button
+                  onClick={() => void fetchOperation(operationId)}
+                  disabled={loading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  Load
+                </button>
+              </div>
+            </details>
           </div>
-        ) : (
-          <div className="space-y-6">
+
+          <div className="xl:col-span-2 space-y-6">
+          {!operation ? (
+            <div className="text-center py-20 text-gray-500 border rounded-lg bg-white">
+              {loading ? "Loading operation..." : "Select an operation from station queue."}
+            </div>
+          ) : (
+            <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white p-4 rounded-lg border">
                 <div className="flex items-center justify-between mb-3">
@@ -202,11 +344,43 @@ export function StationExecution() {
               </div>
             </div>
 
+            <div className="bg-white p-4 rounded-lg border">
+              {claimState === "none" && (
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm text-gray-700">Claim required before execution actions.</p>
+                  <button
+                    onClick={claimOperation}
+                    disabled={claimLoading}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    Claim Operation
+                  </button>
+                </div>
+              )}
+              {claimState === "mine" && (
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm text-green-700 font-medium">Operation claimed by you.</p>
+                  <button
+                    onClick={releaseClaim}
+                    disabled={claimLoading}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Release Claim
+                  </button>
+                </div>
+              )}
+              {claimState === "other" && (
+                <div className="text-sm text-orange-700 font-medium">
+                  Claimed by another operator. Execution actions are disabled.
+                </div>
+              )}
+            </div>
+
             <div className="bg-white p-4 rounded-lg border space-y-4">
               {operation.status === "PENDING" && (
                 <button
                   onClick={startOperation}
-                  disabled={actionLoading}
+                  disabled={actionLoading || !canExecuteByClaim}
                   className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                 >
                   <Play className="inline w-4 h-4 mr-2" /> Start Operation
@@ -241,14 +415,14 @@ export function StationExecution() {
                   <div className="flex flex-wrap gap-3">
                     <button
                       onClick={reportQuantity}
-                      disabled={actionLoading}
+                      disabled={actionLoading || !canExecuteByClaim}
                       className="flex-1 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
                     >
                       <ClipboardList className="inline w-4 h-4 mr-2" /> Report Quantity
                     </button>
                     <button
                       onClick={completeOperation}
-                      disabled={actionLoading}
+                      disabled={actionLoading || !canExecuteByClaim}
                       className="flex-1 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
                     >
                       <CheckCircle className="inline w-4 h-4 mr-2" /> Complete Operation
@@ -266,11 +440,13 @@ export function StationExecution() {
 
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <AlertTriangle className="w-4 h-4 text-orange-500" />
-                <span>Backend validates rules; frontend is UI-only.</span>
+                <span>Backend validates claim + execution rules; frontend is UI-only.</span>
               </div>
             </div>
           </div>
         )}
+          </div>
+        </div>
       </div>
     </div>
   );

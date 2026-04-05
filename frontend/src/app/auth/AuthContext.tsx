@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { authApi, type AuthUser } from "../api/authApi";
 import { setHttpContextProvider, setUnauthorizedHandler } from "../api/httpClient";
@@ -11,7 +11,8 @@ interface AuthContextValue {
   currentUser: AuthUser | null;
   token: string | null;
   login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  logoutAll: () => Promise<void>;
   refreshCurrentUser: () => Promise<void>;
 }
 
@@ -41,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => getStoredToken());
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const isLoggingOutRef = useRef(false);
 
   useEffect(() => {
     setHttpContextProvider(() => ({
@@ -93,14 +95,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await refreshCurrentUser(response.access_token);
   }, [refreshCurrentUser]);
 
-  const logout = useCallback(() => {
+  const clearLocalAuthState = useCallback(() => {
     setToken(null);
     setStoredToken(null);
     setCurrentUser(null);
   }, []);
 
+  const logout = useCallback(async () => {
+    if (isLoggingOutRef.current) {
+      return;
+    }
+
+    isLoggingOutRef.current = true;
+    try {
+      await authApi.logout();
+    } catch {
+      // Best effort only: local logout must always succeed.
+    } finally {
+      clearLocalAuthState();
+      isLoggingOutRef.current = false;
+    }
+  }, [clearLocalAuthState]);
+
+  const logoutAll = useCallback(async () => {
+    if (isLoggingOutRef.current) {
+      return;
+    }
+
+    isLoggingOutRef.current = true;
+    try {
+      await authApi.logoutAll();
+    } catch {
+      // Best effort only: local logout must always succeed.
+    } finally {
+      clearLocalAuthState();
+      isLoggingOutRef.current = false;
+    }
+  }, [clearLocalAuthState]);
+
   useEffect(() => {
-    setUnauthorizedHandler(() => logout());
+    setUnauthorizedHandler(() => {
+      void logout();
+    });
   }, [logout]);
 
   const value = useMemo<AuthContextValue>(
@@ -111,9 +147,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token,
       login,
       logout,
+      logoutAll,
       refreshCurrentUser,
     }),
-    [currentUser, isInitializing, token, login, logout, refreshCurrentUser],
+    [currentUser, isInitializing, token, login, logout, logoutAll, refreshCurrentUser],
   );
 
   // TODO(Phase 6B): Add persona enforcement wiring based on authenticated role_code.

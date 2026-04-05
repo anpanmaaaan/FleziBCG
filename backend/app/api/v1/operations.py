@@ -12,6 +12,7 @@ from app.schemas.operation import (
 )
 from app.security.dependencies import RequestIdentity, require_action, require_permission
 from app.services.operation_service import abort_operation, derive_operation_detail, start_operation, report_quantity, complete_operation
+from app.services.station_claim_service import ensure_operation_claim_owned_by_identity
 
 router = APIRouter()
 
@@ -48,6 +49,11 @@ def start_operation_endpoint(
         raise HTTPException(status_code=404, detail="Operation not found")
 
     try:
+        ensure_operation_claim_owned_by_identity(db, identity, operation_id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+
+    try:
         return start_operation(db, operation, request, tenant_id=identity.tenant_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -65,6 +71,11 @@ def report_quantity_endpoint(
         raise HTTPException(status_code=404, detail="Operation not found")
 
     try:
+        ensure_operation_claim_owned_by_identity(db, identity, operation_id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+
+    try:
         return report_quantity(db, operation, request, tenant_id=identity.tenant_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -80,6 +91,11 @@ def complete_operation_endpoint(
     operation = get_operation_by_id(db, operation_id)
     if not operation or operation.tenant_id != identity.tenant_id:
         raise HTTPException(status_code=404, detail="Operation not found")
+
+    try:
+        ensure_operation_claim_owned_by_identity(db, identity, operation_id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
 
     try:
         return complete_operation(db, operation, request, tenant_id=identity.tenant_id)

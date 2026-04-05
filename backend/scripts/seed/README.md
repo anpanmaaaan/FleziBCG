@@ -151,6 +151,10 @@ python -m backend.scripts.verify_impersonation.py
 python -m backend.scripts.seed.seed_all.py
   → Populate S1–S4 scenarios
   → Run integrated verification (S1, S2, S3, S4 checks)
+
+python -m scripts.seed.seed_station_execution_opr
+  → Create dedicated Station Execution demo dataset for OPR user `operator`
+  → Seeds operations scoped to `STATION_01` with mixed states (PENDING + IN_PROGRESS)
 ```
 
 ---

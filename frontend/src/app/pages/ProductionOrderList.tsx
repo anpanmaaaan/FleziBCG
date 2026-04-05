@@ -3,6 +3,7 @@ import { Search, Plus, Edit, Trash2, Eye, Filter, Download, ChevronDown, Setting
 import { ColumnManagerDialog, ColumnConfig } from "../components/ColumnManagerDialog";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
+import { productionOrderApi } from "../api/productionOrderApi";
 
 interface ProductionOrderRow {
   id: string | number;
@@ -220,12 +221,7 @@ export function ProductionOrderList() {
       setError(null);
 
       try {
-        const response = await fetch('/api/v1/production-orders');
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(errorText || `Failed to load production orders (${response.status})`);
-        }
-        const data = await response.json();
+        const data = await productionOrderApi.list();
         if (!Array.isArray(data)) {
           throw new Error('Unexpected response from production orders endpoint');
         }

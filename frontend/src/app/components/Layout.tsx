@@ -8,10 +8,12 @@ import {
   getPersonaEnforcementMode,
   getMenuItemsForPersona,
   isRouteAllowedForPersona,
-  resolvePersonaFromUser,
+  resolvePersonaFromRoleCode,
 } from "../persona/personaLanding.ts";
 import { AccessDeniedScreen } from "./AccessDeniedScreen";
+import { ActiveImpersonationBanner } from "./ActiveImpersonationBanner";
 import { TopBar } from "./TopBar";
+import { useImpersonation } from "../impersonation/ImpersonationContext";
 
 function getIconForPath(path: string) {
   if (path.startsWith("/dashboard")) {
@@ -26,9 +28,10 @@ function getIconForPath(path: string) {
 export function Layout() {
   const location = useLocation();
   const { currentUser } = useAuth();
+  const { effectiveRoleCode } = useImpersonation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  const persona = resolvePersonaFromUser(currentUser);
+  const persona = resolvePersonaFromRoleCode(effectiveRoleCode ?? currentUser?.role_code ?? null);
   const enforcementMode = getPersonaEnforcementMode();
 
   if (persona === "DENY" && enforcementMode === "STRICT") {
@@ -94,6 +97,7 @@ export function Layout() {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <TopBar currentPage={currentPageTitle} />
+        <ActiveImpersonationBanner />
         <div className="flex-1 overflow-auto">
           <Outlet />
         </div>

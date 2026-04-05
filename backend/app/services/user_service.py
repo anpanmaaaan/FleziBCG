@@ -51,7 +51,7 @@ def get_or_create_user(
 
 def seed_demo_users(db: Session) -> None:
     """Seed demo users and assign them to roles via user_roles."""
-    from app.models.rbac import UserRole, RoleScope
+    from app.models.rbac import Scope, UserRole, UserRoleAssignment, RoleScope
 
     # Get all system roles (they should be created by seed_rbac_core).
     roles_by_code = {}
@@ -72,6 +72,58 @@ def seed_demo_users(db: Session) -> None:
     ]
 
     tenant_id = "default"
+
+    station_scope = db.scalar(
+        select(Scope).where(
+            Scope.tenant_id == tenant_id,
+            Scope.scope_type == "station",
+            Scope.scope_value == "STATION_01",
+        )
+    )
+
+    if station_scope is None:
+        tenant_scope = db.scalar(
+            select(Scope).where(
+                Scope.tenant_id == tenant_id,
+                Scope.scope_type == "tenant",
+                Scope.scope_value == tenant_id,
+            )
+        )
+        if tenant_scope is None:
+            tenant_scope = Scope(
+                tenant_id=tenant_id,
+                scope_type="tenant",
+                scope_value=tenant_id,
+                parent_scope_id=None,
+            )
+            db.add(tenant_scope)
+            db.flush()
+
+        line_scope = db.scalar(
+            select(Scope).where(
+                Scope.tenant_id == tenant_id,
+                Scope.scope_type == "line",
+                Scope.scope_value == "LINE_A",
+            )
+        )
+        if line_scope is None:
+            line_scope = Scope(
+                tenant_id=tenant_id,
+                scope_type="line",
+                scope_value="LINE_A",
+                parent_scope_id=tenant_scope.id,
+            )
+            db.add(line_scope)
+            db.flush()
+
+        station_scope = Scope(
+            tenant_id=tenant_id,
+            scope_type="station",
+            scope_value="STATION_01",
+            parent_scope_id=line_scope.id,
+        )
+        db.add(station_scope)
+        db.flush()
 
     for user_id, username, password, email, role_code in demo_users:
         user = get_or_create_user(
@@ -96,26 +148,52 @@ def seed_demo_users(db: Session) -> None:
             )
         )
         if existing_ur:
-            continue
+            user_role = existing_ur
+        else:
+            # Create user_role.
+            user_role = UserRole(
+                user_id=user.user_id,
+                role_id=roles_by_code[role_code].id,
+                tenant_id=tenant_id,
+                is_active=True,
+            )
+            db.add(user_role)
+            db.flush()
 
-        # Create user_role.
-        user_role = UserRole(
-            user_id=user.user_id,
-            role_id=roles_by_code[role_code].id,
-            tenant_id=tenant_id,
-            is_active=True,
-        )
-        db.add(user_role)
-        db.flush()
-
-        # Create role_scope.
-        db.add(
-            RoleScope(
-                user_role_id=user_role.id,
-                scope_type="tenant",
-                scope_value=tenant_id,
+        existing_scope = db.scalar(
+            select(RoleScope).where(
+                RoleScope.user_role_id == user_role.id,
+                RoleScope.scope_type == "tenant",
+                RoleScope.scope_value == tenant_id,
             )
         )
+        if existing_scope is None:
+            db.add(
+                RoleScope(
+                    user_role_id=user_role.id,
+                    scope_type="tenant",
+                    scope_value=tenant_id,
+                )
+            )
+
+        if role_code == "OPR":
+            assignment = db.scalar(
+                select(UserRoleAssignment).where(
+                    UserRoleAssignment.user_id == user.user_id,
+                    UserRoleAssignment.role_id == user_role.role_id,
+                    UserRoleAssignment.scope_id == station_scope.id,
+                )
+            )
+            if assignment is None:
+                db.add(
+                    UserRoleAssignment(
+                        user_id=user.user_id,
+                        role_id=user_role.role_id,
+                        scope_id=station_scope.id,
+                        is_primary=True,
+                        is_active=True,
+                    )
+                )
 
     db.commit()
     logger.info("Demo users seeded.")

@@ -30,4 +30,16 @@ export const authApi = {
   me() {
     return request<AuthUser>("/v1/auth/me");
   },
+
+  logout() {
+    return request<{ status: string; revoked_session_id: string }>("/v1/auth/logout", {
+      method: "POST",
+    });
+  },
+
+  logoutAll() {
+    return request<{ status: string; revoked_count: number }>("/v1/auth/logout-all", {
+      method: "POST",
+    });
+  },
 };

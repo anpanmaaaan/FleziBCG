@@ -8,6 +8,12 @@ import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { StatsCard } from "../components/StatsCard";
 import { toast } from "sonner";
+import {
+  productionOrderApi,
+  type ProductionOrderDetailFromAPI,
+  type ProductionOrderSummaryFromAPI,
+  type WorkOrderSummaryFromAPI,
+} from "../api/productionOrderApi";
 
 // Work Order Execution (aggregate status)
 interface WorkOrderExecution {
@@ -29,33 +35,6 @@ interface WorkOrderExecution {
 }
 
 // Backend response structures
-interface WorkOrderFromAPI {
-  id: number;
-  workOrderNumber: string;
-  status: string;
-  plannedStart: string | null;
-  plannedEnd: string | null;
-  actualStart: string | null;
-  actualEnd: string | null;
-  operationsCount: number;
-  completedOperations: number;
-  overallProgress: number;
-}
-
-interface ProductionOrderFromAPI {
-  id: number;
-  orderNumber: string;
-  productName: string;
-  quantity: number;
-  status: string;
-  routeId: string | null;
-  workOrders: WorkOrderFromAPI[];
-}
-
-interface ProductionOrderSummaryFromAPI {
-  id: number;
-}
-
 // Helper to format datetime strings for display
 const formatDateTime = (dateStr: string | null | undefined): string => {
   if (!dateStr) return '-';
@@ -75,7 +54,7 @@ const formatDateTime = (dateStr: string | null | undefined): string => {
 
 // Normalize backend work order to frontend interface
 const normalizeWorkOrder = (
-  backendWO: WorkOrderFromAPI,
+  backendWO: WorkOrderSummaryFromAPI,
   productionOrderId: number | string,
   productName: string
 ): WorkOrderExecution => {
@@ -137,14 +116,8 @@ export function OperationList() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const hasProductionOrderFilter = Boolean(orderId);
 
-  const loadProductionOrder = async (productionOrderId: string | number): Promise<ProductionOrderFromAPI> => {
-    const response = await fetch(`/api/v1/production-orders/${productionOrderId}`);
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || `Failed to load work orders (${response.status})`);
-    }
-
-    return response.json();
+  const loadProductionOrder = async (productionOrderId: string | number): Promise<ProductionOrderDetailFromAPI> => {
+    return productionOrderApi.get(productionOrderId);
   };
 
   useEffect(() => {
@@ -162,13 +135,7 @@ export function OperationList() {
           return;
         }
 
-        const productionOrdersResponse = await fetch("/api/v1/production-orders");
-        if (!productionOrdersResponse.ok) {
-          const errorText = await productionOrdersResponse.text();
-          throw new Error(errorText || `Failed to load production orders (${productionOrdersResponse.status})`);
-        }
-
-        const productionOrders: ProductionOrderSummaryFromAPI[] = await productionOrdersResponse.json();
+        const productionOrders: ProductionOrderSummaryFromAPI[] = await productionOrderApi.list();
         const orderDetails = await Promise.all(
           productionOrders.map((productionOrder) => loadProductionOrder(productionOrder.id))
         );

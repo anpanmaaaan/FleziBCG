@@ -3,6 +3,7 @@ import { router } from './routes';
 import { Toaster } from './components/ui/sonner';
 import { useEffect } from 'react';
 import { AuthProvider } from './auth/AuthContext';
+import { ImpersonationProvider } from './impersonation/ImpersonationContext';
 
 export default function App() {
   // Suppress Recharts internal key warnings (known library issue)
@@ -26,7 +27,9 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <RouterProvider router={router} />
+      <ImpersonationProvider>
+        <RouterProvider router={router} />
+      </ImpersonationProvider>
       <Toaster />
     </AuthProvider>
   );
