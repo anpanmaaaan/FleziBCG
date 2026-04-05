@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
+from app.config.settings import settings
 from app.models.impersonation import ImpersonationAuditLog, ImpersonationSession
 from app.repositories.impersonation_repository import (
     get_active_impersonation_session,
@@ -15,7 +16,7 @@ from app.security.rbac import FORBIDDEN_ACTING_ROLES, SYSTEM_ROLE_FAMILIES
 logger = logging.getLogger(__name__)
 
 ALLOWED_IMPERSONATORS = frozenset({"ADM", "OTS"})
-MAX_DURATION_MINUTES = 480
+MAX_DURATION_MINUTES = settings.impersonation_max_duration_minutes
 
 
 def _normalize(code: str | None) -> str | None:

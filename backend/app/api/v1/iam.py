@@ -39,6 +39,7 @@ def me_capabilities(
             email=identity.email,
             tenant_id=identity.tenant_id,
             role_code=identity.role_code,
+            session_id=identity.session_id,
         ),
         assignments=assignments,
         primary_assignment=primary_assignment,

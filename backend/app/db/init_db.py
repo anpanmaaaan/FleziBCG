@@ -8,6 +8,7 @@ from app.models.execution import ExecutionEvent
 from app.models.rbac import Role, Permission, RolePermission, UserRole, RoleScope, Scope, UserRoleAssignment
 from app.models.impersonation import ImpersonationSession, ImpersonationAuditLog
 from app.models.approval import ApprovalRule, ApprovalRequest, ApprovalDecision, ApprovalAuditLog
+from app.models.session import Session, SessionAuditLog
 from app.models.user import User
 from app.security.rbac import seed_rbac_core
 from app.services.approval_service import seed_approval_rules

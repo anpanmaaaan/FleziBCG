@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "change-me"
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 480
+    impersonation_max_duration_minutes: int = 480
     auth_default_users_json: str = (
         '[{"user_id":"u-demo","username":"demo","email":"demo@mes.local",'
         '"password":"demo123","tenant_id":"default","role_code":"SUPERVISOR"}]'

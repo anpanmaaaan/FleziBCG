@@ -12,6 +12,7 @@ class AuthUser(BaseModel):
     email: str | None = None
     tenant_id: str
     role_code: str | None = None
+    session_id: str | None = None
 
 
 class LoginResponse(BaseModel):

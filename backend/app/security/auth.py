@@ -19,6 +19,7 @@ class AuthIdentity:
     email: str | None
     tenant_id: str
     role_code: str | None
+    session_id: str | None = None
 
 
 def _settings() -> Settings:
@@ -91,6 +92,7 @@ def create_access_token(identity: AuthIdentity) -> str:
         "email": identity.email,
         "tenant_id": identity.tenant_id,
         "role_code": identity.role_code,
+        "session_id": identity.session_id,
         "exp": expire_at,
     }
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
@@ -115,6 +117,7 @@ def decode_access_token(token: str) -> AuthIdentity | None:
         email=str(payload.get("email")) if payload.get("email") is not None else None,
         tenant_id=str(tenant_id),
         role_code=str(payload.get("role_code")) if payload.get("role_code") is not None else None,
+        session_id=str(payload.get("session_id")) if payload.get("session_id") is not None else None,
     )
 
 
@@ -160,5 +163,6 @@ def authenticate_user_db(
         email=user.email,
         tenant_id=tenant_id,
         role_code=role_code,
+        session_id=None,
     )
 

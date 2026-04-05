@@ -15,6 +15,7 @@ class RequestIdentity:
     tenant_id: str
     role_code: str | None
     is_authenticated: bool
+    session_id: str | None = field(default=None)
     impersonation_session_id: int | None = field(default=None)
     acting_role_code: str | None = field(default=None)
 
@@ -43,16 +44,33 @@ def get_request_identity(
             tenant_id=auth_identity.tenant_id,
             role_code=auth_identity.role_code,
             is_authenticated=True,
+            session_id=auth_identity.session_id,
         )
 
     tenant = x_tenant_id or "default"
     return _anonymous_identity(tenant)
 
 
-def require_authenticated_identity(request: Request) -> RequestIdentity:
+def _get_security_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def require_authenticated_identity(request: Request, db=Depends(_get_security_db)) -> RequestIdentity:
     auth_identity: AuthIdentity | None = getattr(request.state, "auth_identity", None)
     if not auth_identity:
         raise HTTPException(status_code=401, detail="Authentication required")
+
+    if not auth_identity.session_id:
+        raise HTTPException(status_code=401, detail="Session is missing")
+
+    from app.services.session_service import is_session_active
+
+    if not is_session_active(db, auth_identity.session_id, auth_identity.tenant_id):
+        raise HTTPException(status_code=401, detail="Session is invalid or revoked")
 
     # TODO(Phase 6B): Introduce authorization/persona enforcement in dedicated policy layer.
     return RequestIdentity(
@@ -62,15 +80,8 @@ def require_authenticated_identity(request: Request) -> RequestIdentity:
         tenant_id=auth_identity.tenant_id,
         role_code=auth_identity.role_code,
         is_authenticated=True,
+        session_id=auth_identity.session_id,
     )
-
-
-def _get_security_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 _AUDITED_FAMILIES = frozenset({"EXECUTE", "APPROVE", "CONFIGURE"})
@@ -96,6 +107,7 @@ def require_permission(permission_family: PermissionFamily):
                 tenant_id=identity.tenant_id,
                 role_code=identity.role_code,
                 is_authenticated=identity.is_authenticated,
+                session_id=identity.session_id,
                 impersonation_session_id=active_session.id,
                 acting_role_code=active_session.acting_role_code,
             )
