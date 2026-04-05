@@ -8,7 +8,7 @@ from app.schemas.approval import (
     ApprovalDecisionResponse,
     ApprovalRequestResponse,
 )
-from app.security.dependencies import RequestIdentity, require_authenticated_identity, require_permission
+from app.security.dependencies import RequestIdentity, require_action, require_permission
 from app.services.approval_service import (
     create_approval_request,
     decide_approval_request,
@@ -30,7 +30,7 @@ def get_db():
 def create_approval(
     request_data: ApprovalCreateRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_authenticated_identity),
+    identity: RequestIdentity = Depends(require_action("approval.create")),
 ):
     """
     Submit an approval request.
@@ -73,7 +73,7 @@ def decide_approval(
     request_id: int,
     decide_data: ApprovalDecideRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_permission("APPROVE")),
+    identity: RequestIdentity = Depends(require_action("approval.decide")),
 ):
     """
     Approve or reject a pending approval request.

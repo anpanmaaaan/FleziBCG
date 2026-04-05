@@ -10,7 +10,7 @@ from app.schemas.operation import (
     OperationReportQuantityRequest,
     OperationStartRequest,
 )
-from app.security.dependencies import RequestIdentity, require_permission
+from app.security.dependencies import RequestIdentity, require_action, require_permission
 from app.services.operation_service import abort_operation, derive_operation_detail, start_operation, report_quantity, complete_operation
 
 router = APIRouter()
@@ -41,7 +41,7 @@ def start_operation_endpoint(
     operation_id: int,
     request: OperationStartRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_permission("EXECUTE")),
+    identity: RequestIdentity = Depends(require_action("execution.start")),
 ):
     operation = get_operation_by_id(db, operation_id)
     if not operation or operation.tenant_id != identity.tenant_id:
@@ -58,7 +58,7 @@ def report_quantity_endpoint(
     operation_id: int,
     request: OperationReportQuantityRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_permission("EXECUTE")),
+    identity: RequestIdentity = Depends(require_action("execution.report_quantity")),
 ):
     operation = get_operation_by_id(db, operation_id)
     if not operation or operation.tenant_id != identity.tenant_id:
@@ -75,7 +75,7 @@ def complete_operation_endpoint(
     operation_id: int,
     request: OperationCompleteRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_permission("EXECUTE")),
+    identity: RequestIdentity = Depends(require_action("execution.complete")),
 ):
     operation = get_operation_by_id(db, operation_id)
     if not operation or operation.tenant_id != identity.tenant_id:

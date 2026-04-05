@@ -23,6 +23,17 @@ SYSTEM_ROLE_FAMILIES: dict[str, set[PermissionFamily]] = {
     "OTS": {"VIEW", "ADMIN"},
 }
 
+ACTION_CODE_REGISTRY: dict[str, PermissionFamily] = {
+    "execution.start": "EXECUTE",
+    "execution.complete": "EXECUTE",
+    "execution.report_quantity": "EXECUTE",
+    "approval.create": "APPROVE",
+    "approval.decide": "APPROVE",
+    "admin.impersonation.create": "ADMIN",
+    "admin.impersonation.revoke": "ADMIN",
+    "admin.user.manage": "ADMIN",
+}
+
 ROLE_ALIASES: dict[str, str] = {
     "OPERATOR": "OPR",
     "SUPERVISOR": "SUP",
@@ -97,18 +108,49 @@ def _get_or_create_role(db: Session, code: str) -> Role:
     if role:
         return role
 
-    role = Role(code=code, name=code, description=f"System role {code}", is_system=True)
+    role = Role(
+        code=code,
+        name=code,
+        description=f"System role {code}",
+        role_type="system",
+        is_system=True,
+        is_active=True,
+    )
     db.add(role)
     db.flush()
     return role
 
 
 def _get_or_create_permission(db: Session, family: PermissionFamily) -> Permission:
-    permission = db.scalar(select(Permission).where(Permission.family == family))
+    permission = db.scalar(select(Permission).where(Permission.code == family))
     if permission:
+        if permission.family != family or permission.action_code is not None:
+            permission.family = family
+            permission.action_code = None
+            db.flush()
         return permission
 
-    permission = Permission(code=family, family=family, description=f"{family} permission family")
+    permission = Permission(code=family, family=family, action_code=None, description=f"{family} permission family")
+    db.add(permission)
+    db.flush()
+    return permission
+
+
+def _get_or_create_action_permission(db: Session, action_code: str, family: PermissionFamily) -> Permission:
+    permission = db.scalar(select(Permission).where(Permission.code == action_code))
+    if permission:
+        if permission.action_code != action_code or permission.family != family:
+            permission.action_code = action_code
+            permission.family = family
+            db.flush()
+        return permission
+
+    permission = Permission(
+        code=action_code,
+        family=family,
+        action_code=action_code,
+        description=f"Action permission: {action_code}",
+    )
     db.add(permission)
     db.flush()
     return permission
@@ -155,6 +197,10 @@ def seed_rbac_core(db: Session) -> None:
     for family in ("VIEW", "EXECUTE", "APPROVE", "CONFIGURE", "ADMIN"):
         permission_by_family[family] = _get_or_create_permission(db, family)
 
+    permission_by_action: dict[str, Permission] = {}
+    for action_code, family in ACTION_CODE_REGISTRY.items():
+        permission_by_action[action_code] = _get_or_create_action_permission(db, action_code, family)
+
     for role_code, families in SYSTEM_ROLE_FAMILIES.items():
         role = role_by_code[role_code]
         for family in families:
@@ -167,16 +213,39 @@ def seed_rbac_core(db: Session) -> None:
                     RolePermission.scope_value == SCOPE_WILDCARD,
                 )
             )
-            if existing_link:
+            if existing_link is None:
+                db.add(
+                    RolePermission(
+                        role_id=role.id,
+                        permission_id=permission.id,
+                        scope_type=SCOPE_TYPE_TENANT,
+                        scope_value=SCOPE_WILDCARD,
+                        effect="allow",
+                    )
+                )
+
+        for action_code, family in ACTION_CODE_REGISTRY.items():
+            if family not in families:
                 continue
-            db.add(
-                RolePermission(
-                    role_id=role.id,
-                    permission_id=permission.id,
-                    scope_type=SCOPE_TYPE_TENANT,
-                    scope_value=SCOPE_WILDCARD,
+            action_permission = permission_by_action[action_code]
+            existing_action_link = db.scalar(
+                select(RolePermission).where(
+                    RolePermission.role_id == role.id,
+                    RolePermission.permission_id == action_permission.id,
+                    RolePermission.scope_type == SCOPE_TYPE_TENANT,
+                    RolePermission.scope_value == SCOPE_WILDCARD,
                 )
             )
+            if existing_action_link is None:
+                db.add(
+                    RolePermission(
+                        role_id=role.id,
+                        permission_id=action_permission.id,
+                        scope_type=SCOPE_TYPE_TENANT,
+                        scope_value=SCOPE_WILDCARD,
+                        effect="allow",
+                    )
+                )
 
     for user in _load_default_users():
         role_code = _normalize_role_code(user.get("role_code"))
@@ -185,7 +254,6 @@ def seed_rbac_core(db: Session) -> None:
 
         tenant_id = str(user["tenant_id"])
 
-        # Deterministic scope chain used by Tier 1 evaluation and tests.
         tenant_scope = _get_or_create_scope(
             db,
             tenant_id=tenant_id,
@@ -273,7 +341,6 @@ def seed_rbac_core(db: Session) -> None:
 
 
 def normalize_role_code(raw_role_code: str | None) -> str | None:
-    """Public alias for role code normalization with alias resolution."""
     return _normalize_role_code(raw_role_code)
 
 
@@ -287,89 +354,178 @@ def has_permission(
     if not identity.is_authenticated:
         return False
 
-    # Impersonation path: resolve permissions from acting role's family set directly.
-    # This fully replaces the DB lookup; DB grants are not consulted for acting role grants.
     acting = getattr(identity, "acting_role_code", None)
     if acting:
         acting_families = SYSTEM_ROLE_FAMILIES.get(acting, set())
         return required_family in acting_families
 
+    result = _evaluate_permission_rows(
+        db,
+        identity=identity,
+        required_family=required_family,
+        required_action_code=None,
+        target_scope_type=target_scope_type,
+        target_scope_value=target_scope_value,
+    )
+    return bool(result)
+
+
+def has_action(
+    db: Session,
+    identity: IdentityLike,
+    action_code: str,
+    target_scope_type: str | None = None,
+    target_scope_value: str | None = None,
+) -> bool:
+    if not identity.is_authenticated:
+        return False
+
+    acting = getattr(identity, "acting_role_code", None)
+    if acting:
+        acting_families = SYSTEM_ROLE_FAMILIES.get(acting, set())
+        required_family = ACTION_CODE_REGISTRY.get(action_code)
+        if required_family is None:
+            return False
+        return required_family in acting_families
+
+    result = _evaluate_permission_rows(
+        db,
+        identity=identity,
+        required_family=None,
+        required_action_code=action_code,
+        target_scope_type=target_scope_type,
+        target_scope_value=target_scope_value,
+    )
+    return bool(result)
+
+
+def _evaluate_permission_rows(
+    db: Session,
+    *,
+    identity: IdentityLike,
+    required_family: PermissionFamily | None,
+    required_action_code: str | None,
+    target_scope_type: str | None,
+    target_scope_value: str | None,
+) -> bool | None:
     now = datetime.now(timezone.utc)
 
-    # Preferred path: new multi-scope assignment table.
     assignment_rows = list(
-        db.execute(
-            select(UserRoleAssignment, Scope)
-            .join(RolePermission, RolePermission.role_id == UserRoleAssignment.role_id)
-            .join(Permission, Permission.id == RolePermission.permission_id)
-            .join(Scope, Scope.id == UserRoleAssignment.scope_id)
-            .where(
-                UserRoleAssignment.user_id == identity.user_id,
-                UserRoleAssignment.is_active.is_(True),
-                or_(UserRoleAssignment.valid_from.is_(None), UserRoleAssignment.valid_from <= now),
-                or_(UserRoleAssignment.valid_to.is_(None), UserRoleAssignment.valid_to >= now),
-                Scope.tenant_id == identity.tenant_id,
-                Permission.family == required_family,
-                RolePermission.scope_type == SCOPE_TYPE_TENANT,
-                or_(
-                    RolePermission.scope_value == identity.tenant_id,
-                    RolePermission.scope_value == SCOPE_WILDCARD,
-                ),
-            )
-        )
+        db.execute(_build_assignment_query(identity, now, required_family, required_action_code))
     )
 
-    if assignment_rows:
-        # If no target scope is requested, permission union across roles is enough.
-        if target_scope_type is None or target_scope_value is None:
-            return True
-
-        for assignment, scope in assignment_rows:
-            if _scope_contains(
+    allow_match = False
+    deny_match = False
+    for assignment, _scope, effect in assignment_rows:
+        in_scope = True
+        if target_scope_type is not None and target_scope_value is not None:
+            in_scope = _scope_contains(
                 db,
                 tenant_id=identity.tenant_id,
                 assignment_scope_id=assignment.scope_id,
                 target_scope_type=target_scope_type,
                 target_scope_value=target_scope_value,
-            ):
-                return True
-
-    # Backward-compatible fallback: legacy user_roles + role_scopes.
-    fallback_rows = list(
-        db.execute(
-            select(UserRole, RoleScope)
-            .join(RolePermission, RolePermission.role_id == UserRole.role_id)
-            .join(Permission, Permission.id == RolePermission.permission_id)
-            .outerjoin(RoleScope, RoleScope.user_role_id == UserRole.id)
-            .where(
-                UserRole.user_id == identity.user_id,
-                UserRole.tenant_id == identity.tenant_id,
-                UserRole.is_active.is_(True),
-                Permission.family == required_family,
-                RolePermission.scope_type == SCOPE_TYPE_TENANT,
-                or_(
-                    RolePermission.scope_value == identity.tenant_id,
-                    RolePermission.scope_value == SCOPE_WILDCARD,
-                ),
             )
-        )
-    )
 
-    if not fallback_rows:
+        if not in_scope:
+            continue
+        if effect == "deny":
+            deny_match = True
+        else:
+            allow_match = True
+
+    if deny_match:
         return False
-
-    if target_scope_type is None or target_scope_value is None:
+    if allow_match:
         return True
 
-    for _user_role, role_scope in fallback_rows:
-        if role_scope is None:
-            continue
-        if role_scope.scope_type == SCOPE_TYPE_TENANT and role_scope.scope_value in (identity.tenant_id, SCOPE_WILDCARD):
-            return True
-        if role_scope.scope_type == target_scope_type and role_scope.scope_value == target_scope_value:
-            return True
+    fallback_rows = list(
+        db.execute(_build_fallback_query(identity, required_family, required_action_code))
+    )
 
-    return False
+    allow_match = False
+    deny_match = False
+    for _user_role, role_scope, effect in fallback_rows:
+        if target_scope_type is None or target_scope_value is None:
+            in_scope = True
+        elif role_scope is None:
+            in_scope = False
+        elif role_scope.scope_type == SCOPE_TYPE_TENANT and role_scope.scope_value in (identity.tenant_id, SCOPE_WILDCARD):
+            in_scope = True
+        else:
+            in_scope = role_scope.scope_type == target_scope_type and role_scope.scope_value == target_scope_value
+
+        if not in_scope:
+            continue
+        if effect == "deny":
+            deny_match = True
+        else:
+            allow_match = True
+
+    if deny_match:
+        return False
+    if allow_match:
+        return True
+    return None
+
+
+def _build_assignment_query(
+    identity: IdentityLike,
+    now: datetime,
+    required_family: PermissionFamily | None,
+    required_action_code: str | None,
+):
+    statement = (
+        select(UserRoleAssignment, Scope, RolePermission.effect)
+        .join(RolePermission, RolePermission.role_id == UserRoleAssignment.role_id)
+        .join(Permission, Permission.id == RolePermission.permission_id)
+        .join(Scope, Scope.id == UserRoleAssignment.scope_id)
+        .where(
+            UserRoleAssignment.user_id == identity.user_id,
+            UserRoleAssignment.is_active.is_(True),
+            or_(UserRoleAssignment.valid_from.is_(None), UserRoleAssignment.valid_from <= now),
+            or_(UserRoleAssignment.valid_to.is_(None), UserRoleAssignment.valid_to >= now),
+            Scope.tenant_id == identity.tenant_id,
+            RolePermission.scope_type == SCOPE_TYPE_TENANT,
+            or_(
+                RolePermission.scope_value == identity.tenant_id,
+                RolePermission.scope_value == SCOPE_WILDCARD,
+            ),
+        )
+    )
+    if required_family is not None:
+        statement = statement.where(Permission.family == required_family)
+    if required_action_code is not None:
+        statement = statement.where(Permission.action_code == required_action_code)
+    return statement
+
+
+def _build_fallback_query(
+    identity: IdentityLike,
+    required_family: PermissionFamily | None,
+    required_action_code: str | None,
+):
+    statement = (
+        select(UserRole, RoleScope, RolePermission.effect)
+        .join(RolePermission, RolePermission.role_id == UserRole.role_id)
+        .join(Permission, Permission.id == RolePermission.permission_id)
+        .outerjoin(RoleScope, RoleScope.user_role_id == UserRole.id)
+        .where(
+            UserRole.user_id == identity.user_id,
+            UserRole.tenant_id == identity.tenant_id,
+            UserRole.is_active.is_(True),
+            RolePermission.scope_type == SCOPE_TYPE_TENANT,
+            or_(
+                RolePermission.scope_value == identity.tenant_id,
+                RolePermission.scope_value == SCOPE_WILDCARD,
+            ),
+        )
+    )
+    if required_family is not None:
+        statement = statement.where(Permission.family == required_family)
+    if required_action_code is not None:
+        statement = statement.where(Permission.action_code == required_action_code)
+    return statement
 
 
 def _scope_contains(
@@ -381,10 +537,7 @@ def _scope_contains(
     target_scope_value: str,
 ) -> bool:
     assignment_scope = db.get(Scope, assignment_scope_id)
-    if assignment_scope is None:
-        return False
-
-    if assignment_scope.tenant_id != tenant_id:
+    if assignment_scope is None or assignment_scope.tenant_id != tenant_id:
         return False
 
     if assignment_scope.scope_type == SCOPE_TYPE_TENANT:

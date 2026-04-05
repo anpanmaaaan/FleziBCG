@@ -4,7 +4,7 @@ from fastapi import Depends, Header, HTTPException, Request
 
 from app.db.session import SessionLocal
 from app.security.auth import AuthIdentity
-from app.security.rbac import PermissionFamily, has_permission
+from app.security.rbac import PermissionFamily, has_action, has_permission
 
 
 @dataclass
@@ -120,6 +120,47 @@ def require_permission(permission_family: PermissionFamily):
                 db,
                 active_session,
                 permission_family,
+                endpoint=str(request.url),
+            )
+
+        return effective_identity
+
+    return dependency
+
+
+def require_action(action_code: str):
+    def dependency(
+        request: Request,
+        identity: RequestIdentity = Depends(require_authenticated_identity),
+        db=Depends(_get_security_db),
+    ) -> RequestIdentity:
+        from app.repositories.impersonation_repository import get_active_impersonation_session
+        from app.services.impersonation_service import log_impersonation_permission_use
+
+        effective_identity = identity
+        active_session = get_active_impersonation_session(db, identity.user_id, identity.tenant_id)
+        if active_session is not None:
+            effective_identity = RequestIdentity(
+                user_id=identity.user_id,
+                username=identity.username,
+                email=identity.email,
+                tenant_id=identity.tenant_id,
+                role_code=identity.role_code,
+                is_authenticated=identity.is_authenticated,
+                session_id=identity.session_id,
+                impersonation_session_id=active_session.id,
+                acting_role_code=active_session.acting_role_code,
+            )
+
+        if not has_action(db, effective_identity, action_code):
+            raise HTTPException(status_code=403, detail=f"Missing required action: {action_code}")
+
+        if active_session is not None:
+            # Preserve existing audit taxonomy by logging through permission family slot.
+            log_impersonation_permission_use(
+                db,
+                active_session,
+                permission_family=f"ACTION:{action_code}",
                 endpoint=str(request.url),
             )
 

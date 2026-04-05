@@ -12,8 +12,14 @@ class Role(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     code: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
+    tenant_id: Mapped[str | None] = mapped_column(String(64), nullable=True, default=None, index=True)
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    role_type: Mapped[str] = mapped_column(String(16), nullable=False, default="system")
+    base_role_id: Mapped[int | None] = mapped_column(ForeignKey("roles.id"), nullable=True, default=None)
+    owner_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True, default=None)
+    review_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_system: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
@@ -24,6 +30,7 @@ class Role(Base):
         back_populates="role",
         cascade="all, delete-orphan",
     )
+    base_role: Mapped["Role | None"] = relationship("Role", remote_side=[id])
 
 
 class Permission(Base):
@@ -32,6 +39,7 @@ class Permission(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     code: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     family: Mapped[str] = mapped_column(String(32), nullable=False)
+    action_code: Mapped[str | None] = mapped_column(String(128), nullable=True, default=None, index=True)
     description: Mapped[str | None] = mapped_column(String(256), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
@@ -49,6 +57,7 @@ class RolePermission(Base):
     permission_id: Mapped[int] = mapped_column(ForeignKey("permissions.id"), nullable=False)
     scope_type: Mapped[str] = mapped_column(String(32), nullable=False)
     scope_value: Mapped[str] = mapped_column(String(128), nullable=False)
+    effect: Mapped[str] = mapped_column(String(8), nullable=False, default="allow")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     role: Mapped[Role] = relationship("Role", back_populates="permissions")

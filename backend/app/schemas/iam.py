@@ -35,3 +35,21 @@ class MeCapabilitiesResponse(BaseModel):
     assignments: list[RoleAssignmentSummary]
     primary_assignment: RoleAssignmentSummary | None = None
     impersonation: ImpersonationSummary
+
+
+class CreateCustomRoleRequest(BaseModel):
+    code: str
+    name: str
+    description: str | None = None
+    base_role_code: str
+    allow_action_codes: list[str] = []
+
+
+class CustomRoleResponse(BaseModel):
+    id: int
+    code: str
+    tenant_id: str
+    role_type: str
+    base_role_id: int | None = None
+    owner_user_id: str | None = None
+    is_active: bool

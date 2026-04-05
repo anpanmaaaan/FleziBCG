@@ -1,12 +1,18 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
 from app.repositories.impersonation_repository import get_active_impersonation_session
 from app.schemas.auth import AuthUser
-from app.schemas.iam import ImpersonationSummary, MeCapabilitiesResponse, RoleAssignmentSummary
-from app.security.dependencies import RequestIdentity, require_authenticated_identity
-from app.services.iam_service import get_role_assignments_for_identity
+from app.schemas.iam import (
+    CreateCustomRoleRequest,
+    CustomRoleResponse,
+    ImpersonationSummary,
+    MeCapabilitiesResponse,
+    RoleAssignmentSummary,
+)
+from app.security.dependencies import RequestIdentity, require_action, require_authenticated_identity
+from app.services.iam_service import create_custom_role, get_role_assignments_for_identity
 
 router = APIRouter(prefix="/iam", tags=["iam"])
 
@@ -49,4 +55,34 @@ def me_capabilities(
             acting_role_code=active_session.acting_role_code if active_session is not None else None,
             expires_at=active_session.expires_at if active_session is not None else None,
         ),
+    )
+
+
+@router.post("/roles/custom", response_model=CustomRoleResponse)
+def create_tenant_custom_role(
+    payload: CreateCustomRoleRequest,
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(require_action("admin.user.manage")),
+) -> CustomRoleResponse:
+    try:
+        role = create_custom_role(
+            db,
+            tenant_id=identity.tenant_id,
+            code=payload.code,
+            name=payload.name,
+            description=payload.description,
+            base_role_code=payload.base_role_code,
+            owner_user_id=identity.user_id,
+            allow_action_codes=payload.allow_action_codes,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return CustomRoleResponse(
+        id=role.id,
+        code=role.code,
+        tenant_id=role.tenant_id or identity.tenant_id,
+        role_type=role.role_type,
+        base_role_id=role.base_role_id,
+        owner_user_id=role.owner_user_id,
+        is_active=role.is_active,
     )

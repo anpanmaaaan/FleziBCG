@@ -69,12 +69,12 @@ CREATE INDEX IF NOT EXISTS ix_approval_audit_logs_request
     ON approval_audit_logs(request_id);
 
 -- Seed default approval rules
-INSERT INTO approval_rules (action_type, approver_role_code, tenant_id) VALUES
-    ('QC_HOLD',    'QAL', '*'),
-    ('QC_RELEASE', 'QAL', '*'),
-    ('SCRAP',      'QAL', '*'),
-    ('SCRAP',      'PMG', '*'),
-    ('REWORK',     'QAL', '*'),
-    ('WO_SPLIT',   'PMG', '*'),
-    ('WO_MERGE',   'PMG', '*')
+INSERT INTO approval_rules (action_type, approver_role_code, tenant_id, is_active) VALUES
+    ('QC_HOLD',    'QAL', '*', TRUE),
+    ('QC_RELEASE', 'QAL', '*', TRUE),
+    ('SCRAP',      'QAL', '*', TRUE),
+    ('SCRAP',      'PMG', '*', TRUE),
+    ('REWORK',     'QAL', '*', TRUE),
+    ('WO_SPLIT',   'PMG', '*', TRUE),
+    ('WO_MERGE',   'PMG', '*', TRUE)
 ON CONFLICT (action_type, approver_role_code, tenant_id) DO NOTHING;
