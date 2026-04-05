@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Literal
 
-from sqlalchemy import exists, or_, select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.config.settings import Settings
@@ -281,6 +281,8 @@ def has_permission(
     db: Session,
     identity: IdentityLike,
     required_family: PermissionFamily,
+    target_scope_type: str | None = None,
+    target_scope_value: str | None = None,
 ) -> bool:
     if not identity.is_authenticated:
         return False
@@ -295,58 +297,122 @@ def has_permission(
     now = datetime.now(timezone.utc)
 
     # Preferred path: new multi-scope assignment table.
-    assignment_statement = (
-        select(UserRoleAssignment.id)
-        .join(RolePermission, RolePermission.role_id == UserRoleAssignment.role_id)
-        .join(Permission, Permission.id == RolePermission.permission_id)
-        .join(Scope, Scope.id == UserRoleAssignment.scope_id)
-        .where(
-            UserRoleAssignment.user_id == identity.user_id,
-            UserRoleAssignment.is_active.is_(True),
-            or_(UserRoleAssignment.valid_from.is_(None), UserRoleAssignment.valid_from <= now),
-            or_(UserRoleAssignment.valid_to.is_(None), UserRoleAssignment.valid_to >= now),
-            Scope.tenant_id == identity.tenant_id,
-            Permission.family == required_family,
-            RolePermission.scope_type == SCOPE_TYPE_TENANT,
-            or_(
-                RolePermission.scope_value == identity.tenant_id,
-                RolePermission.scope_value == SCOPE_WILDCARD,
-            ),
+    assignment_rows = list(
+        db.execute(
+            select(UserRoleAssignment, Scope)
+            .join(RolePermission, RolePermission.role_id == UserRoleAssignment.role_id)
+            .join(Permission, Permission.id == RolePermission.permission_id)
+            .join(Scope, Scope.id == UserRoleAssignment.scope_id)
+            .where(
+                UserRoleAssignment.user_id == identity.user_id,
+                UserRoleAssignment.is_active.is_(True),
+                or_(UserRoleAssignment.valid_from.is_(None), UserRoleAssignment.valid_from <= now),
+                or_(UserRoleAssignment.valid_to.is_(None), UserRoleAssignment.valid_to >= now),
+                Scope.tenant_id == identity.tenant_id,
+                Permission.family == required_family,
+                RolePermission.scope_type == SCOPE_TYPE_TENANT,
+                or_(
+                    RolePermission.scope_value == identity.tenant_id,
+                    RolePermission.scope_value == SCOPE_WILDCARD,
+                ),
+            )
         )
-        .limit(1)
     )
-    if db.scalar(assignment_statement) is not None:
-        return True
+
+    if assignment_rows:
+        # If no target scope is requested, permission union across roles is enough.
+        if target_scope_type is None or target_scope_value is None:
+            return True
+
+        for assignment, scope in assignment_rows:
+            if _scope_contains(
+                db,
+                tenant_id=identity.tenant_id,
+                assignment_scope_id=assignment.scope_id,
+                target_scope_type=target_scope_type,
+                target_scope_value=target_scope_value,
+            ):
+                return True
 
     # Backward-compatible fallback: legacy user_roles + role_scopes.
-    tenant_scope_exists = exists(
-        select(RoleScope.id).where(
-            RoleScope.user_role_id == UserRole.id,
-            RoleScope.scope_type == SCOPE_TYPE_TENANT,
-            or_(
-                RoleScope.scope_value == identity.tenant_id,
-                RoleScope.scope_value == SCOPE_WILDCARD,
-            ),
+    fallback_rows = list(
+        db.execute(
+            select(UserRole, RoleScope)
+            .join(RolePermission, RolePermission.role_id == UserRole.role_id)
+            .join(Permission, Permission.id == RolePermission.permission_id)
+            .outerjoin(RoleScope, RoleScope.user_role_id == UserRole.id)
+            .where(
+                UserRole.user_id == identity.user_id,
+                UserRole.tenant_id == identity.tenant_id,
+                UserRole.is_active.is_(True),
+                Permission.family == required_family,
+                RolePermission.scope_type == SCOPE_TYPE_TENANT,
+                or_(
+                    RolePermission.scope_value == identity.tenant_id,
+                    RolePermission.scope_value == SCOPE_WILDCARD,
+                ),
+            )
         )
     )
 
-    fallback_statement = (
-        select(UserRole.id)
-        .join(RolePermission, RolePermission.role_id == UserRole.role_id)
-        .join(Permission, Permission.id == RolePermission.permission_id)
-        .where(
-            UserRole.user_id == identity.user_id,
-            UserRole.tenant_id == identity.tenant_id,
-            UserRole.is_active.is_(True),
-            Permission.family == required_family,
-            RolePermission.scope_type == SCOPE_TYPE_TENANT,
-            or_(
-                RolePermission.scope_value == identity.tenant_id,
-                RolePermission.scope_value == SCOPE_WILDCARD,
-            ),
-            tenant_scope_exists,
+    if not fallback_rows:
+        return False
+
+    if target_scope_type is None or target_scope_value is None:
+        return True
+
+    for _user_role, role_scope in fallback_rows:
+        if role_scope is None:
+            continue
+        if role_scope.scope_type == SCOPE_TYPE_TENANT and role_scope.scope_value in (identity.tenant_id, SCOPE_WILDCARD):
+            return True
+        if role_scope.scope_type == target_scope_type and role_scope.scope_value == target_scope_value:
+            return True
+
+    return False
+
+
+def _scope_contains(
+    db: Session,
+    *,
+    tenant_id: str,
+    assignment_scope_id: int,
+    target_scope_type: str,
+    target_scope_value: str,
+) -> bool:
+    assignment_scope = db.get(Scope, assignment_scope_id)
+    if assignment_scope is None:
+        return False
+
+    if assignment_scope.tenant_id != tenant_id:
+        return False
+
+    if assignment_scope.scope_type == SCOPE_TYPE_TENANT:
+        return assignment_scope.scope_value in (tenant_id, SCOPE_WILDCARD)
+
+    target_scope = db.scalar(
+        select(Scope).where(
+            Scope.tenant_id == tenant_id,
+            Scope.scope_type == target_scope_type,
+            Scope.scope_value == target_scope_value,
         )
-        .limit(1)
     )
 
-    return db.scalar(fallback_statement) is not None
+    if target_scope is None:
+        # Missing hierarchy data: fallback to exact scope match behavior.
+        return (
+            assignment_scope.scope_type == target_scope_type
+            and assignment_scope.scope_value == target_scope_value
+        )
+
+    cursor = target_scope
+    visited_ids: set[int] = set()
+    while cursor is not None and cursor.id not in visited_ids:
+        visited_ids.add(cursor.id)
+        if cursor.id == assignment_scope.id:
+            return True
+        if cursor.parent_scope_id is None:
+            break
+        cursor = db.get(Scope, cursor.parent_scope_id)
+
+    return False

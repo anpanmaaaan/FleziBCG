@@ -1,0 +1,37 @@
+from datetime import datetime
+
+from pydantic import BaseModel
+
+from app.schemas.auth import AuthUser
+
+
+class ScopeSummary(BaseModel):
+    id: int
+    tenant_id: str
+    scope_type: str
+    scope_value: str
+    parent_scope_id: int | None = None
+
+
+class RoleAssignmentSummary(BaseModel):
+    assignment_id: int | None = None
+    role_code: str
+    is_primary: bool = False
+    is_active: bool = True
+    valid_from: datetime | None = None
+    valid_to: datetime | None = None
+    scope: ScopeSummary
+
+
+class ImpersonationSummary(BaseModel):
+    active: bool
+    session_id: int | None = None
+    acting_role_code: str | None = None
+    expires_at: datetime | None = None
+
+
+class MeCapabilitiesResponse(BaseModel):
+    user: AuthUser
+    assignments: list[RoleAssignmentSummary]
+    primary_assignment: RoleAssignmentSummary | None = None
+    impersonation: ImpersonationSummary

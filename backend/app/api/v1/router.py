@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import approvals, auth, dashboard, execution_timeline, impersonations, operations, production_orders
+from app.api.v1 import approvals, auth, dashboard, execution_timeline, iam, impersonations, operations, production_orders
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth.router)
@@ -10,6 +10,7 @@ api_router.include_router(operations.router)
 api_router.include_router(execution_timeline.router)
 api_router.include_router(impersonations.router)
 api_router.include_router(approvals.router)
+api_router.include_router(iam.router)
 
 @api_router.get("/ping")
 def ping():
