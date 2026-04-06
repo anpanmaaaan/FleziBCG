@@ -14,6 +14,8 @@ IN_PROGRESS
   -> Clock Off
 COMPLETED / ABORTED
 
+Note: “Pending” is a UI representation for operators; backend enum remains PLANNED.
+
 Execution transitions are event-driven. Clock On records OP_STARTED and Clock Off records OP_COMPLETED. Lifecycle state is derived from execution events and enforced by backend guards.
 
 ## 3) Operator Responsibilities
