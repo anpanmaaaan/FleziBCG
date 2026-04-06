@@ -27,11 +27,15 @@ export interface OperationDetail {
 export interface ReportQuantityPayload {
   good_qty: number;
   scrap_qty: number;
-  operator_id: number | null;
+  operator_id: string | null;
 }
 
 interface OperatorPayload {
-  operator_id: number | null;
+  operator_id: string | null;
+}
+
+interface CompletePayload extends OperatorPayload {
+  completed_at?: string;
 }
 
 const OPERATION_BASE_PATH = "/v1/operations";
@@ -58,7 +62,7 @@ export const operationApi = {
     });
   },
 
-  complete(operationId: string | number, payload: OperatorPayload = { operator_id: null }) {
+  complete(operationId: string | number, payload: CompletePayload = { operator_id: null }) {
     return request<OperationDetail>(`${operationPath(operationId)}/complete`, {
       method: "POST",
       body: payload,

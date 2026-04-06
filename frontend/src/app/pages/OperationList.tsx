@@ -22,7 +22,7 @@ interface WorkOrderExecution {
   productionOrderId: string | number;
   productName: string;
   productionLine: string;
-  status: 'Planned' | 'Pending' | 'In Progress' | 'Completed' | 'Completed Late' | 'Late' | 'Blocked' | 'Aborted';
+  status: 'Pending' | 'In Progress' | 'Completed' | 'Completed Late' | 'Late' | 'Blocked' | 'Aborted';
   overallProgress: number; // 0-100
   operationsCount: number;
   completedOperations: number;
@@ -93,7 +93,7 @@ const normalizeWorkOrder = (
 // Map backend status strings to UI statuses
 const mapBackendStatus = (status: string): WorkOrderExecution['status'] => {
   const statusMap: Record<string, WorkOrderExecution['status']> = {
-    'PLANNED': 'Planned',
+    'PLANNED': 'Pending',
     'PENDING': 'Pending',
     'IN_PROGRESS': 'In Progress',
     'COMPLETED': 'Completed',
@@ -192,7 +192,6 @@ export function OperationList() {
       case 'Completed': return 'success';
       case 'Completed Late': return 'warning';
       case 'In Progress': return 'info';
-      case 'Planned': return 'neutral';
       case 'Pending': return 'neutral';
       case 'Late': return 'error';
       case 'Blocked': return 'error';
@@ -208,7 +207,6 @@ export function OperationList() {
       case 'In Progress': return <Clock className="w-5 h-5 text-blue-600 animate-spin" style={{ animationDuration: '4s' }} />;
       case 'Late': return <AlertCircle className="w-5 h-5 text-red-600" />;
       case 'Aborted': return <AlertTriangle className="w-5 h-5 text-red-700" />;
-      case 'Planned': return <Clock className="w-5 h-5 text-gray-400" />;
       case 'Pending': return <Clock className="w-5 h-5 text-gray-400" />;
       default: return null;
     }
@@ -332,7 +330,6 @@ export function OperationList() {
                   className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">All Status</option>
-                  <option value="Planned">Planned</option>
                   <option value="Pending">Pending</option>
                   <option value="In Progress">In Progress</option>
                   <option value="Late">Late</option>

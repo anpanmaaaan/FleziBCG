@@ -3,13 +3,22 @@ import type { OperationExecutionStatus } from "../operationApi";
 type StatusBadgeVariant = "success" | "warning" | "error" | "info" | "neutral";
 
 export const mapExecutionStatusText = (status: OperationExecutionStatus): string => {
-  switch (status) {
+  const normalizedStatus = String(status).toUpperCase();
+
+  switch (normalizedStatus) {
+    case "PLANNED":
+      // Current semantics: PLANNED is execution-pending for UI purposes.
+      return "Pending";
     case "PENDING":
       return "Pending";
     case "IN_PROGRESS":
       return "In Progress";
     case "COMPLETED":
       return "Completed";
+    case "COMPLETED_LATE":
+      return "Completed Late";
+    case "ABORTED":
+      return "Aborted";
     case "BLOCKED":
       return "Blocked";
     case "LATE":
@@ -22,14 +31,20 @@ export const mapExecutionStatusText = (status: OperationExecutionStatus): string
 export const mapExecutionStatusBadgeVariant = (
   status: OperationExecutionStatus,
 ): StatusBadgeVariant => {
-  switch (status) {
+  const normalizedStatus = String(status).toUpperCase();
+
+  switch (normalizedStatus) {
     case "COMPLETED":
       return "success";
+    case "COMPLETED_LATE":
+      return "warning";
     case "IN_PROGRESS":
       return "info";
+    case "PLANNED":
     case "PENDING":
       return "neutral";
     case "BLOCKED":
+    case "ABORTED":
       return "error";
     case "LATE":
       return "warning";

@@ -2,9 +2,9 @@
 // Time-based positioning, NOT percentage-based
 // ISA-95 compliant
 
-import { memo, useMemo } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { FixedSizeList, type ListChildComponentProps } from 'react-window';
-import { Clock, AlertTriangle } from 'lucide-react';
+import { Clock, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
 
 // ============ TYPES ============
 export interface OperationExecutionGantt {
@@ -12,6 +12,7 @@ export interface OperationExecutionGantt {
   sequence: number;
   name: string;
   workstation: string;
+  area?: string;
   operatorName?: string;
   status: 'Not Started' | 'Running' | 'Completed' | 'Delayed' | 'Blocked';
   
@@ -29,19 +30,29 @@ export interface OperationExecutionGantt {
   qcRequired?: boolean;
 }
 
+type GanttTimelineMode = 'shift' | 'day' | 'week' | 'fit_all' | 'fit_selection';
+
+export type GanttClickContext = {
+  mode: GanttTimelineMode;
+  groupBy: 'none' | 'workstation' | 'area';
+  viewportStart: number;
+  viewportEnd: number;
+};
+
 interface GanttChartProps {
   operations: OperationExecutionGantt[];
-  onOperationClick?: (operation: OperationExecutionGantt) => void;
+  onOperationClick?: (operation: OperationExecutionGantt, context: GanttClickContext) => void;
   selectedOperationId?: string;
   timeZone?: string; // 'shift' or 'day'
+  groupBy?: 'none' | 'workstation' | 'area';
+  /** Restored mode from back-navigation. Takes priority over timeZone. */
+  initialMode?: GanttTimelineMode;
 }
 
-type TimeScale = {
-  start: number;
-  end: number;
-  duration: number;
-  startDate: Date;
-  endDate: Date;
+type GanttViewport = {
+  visibleStartMs: number;
+  visibleEndMs: number;
+  mode: GanttTimelineMode;
 };
 
 type TimeGridLine = {
@@ -50,11 +61,58 @@ type TimeGridLine = {
   isHour: boolean;
 };
 
+type NormalizedOperationExecutionGantt = {
+  raw: OperationExecutionGantt;
+  id: string;
+  status: OperationExecutionGantt['status'];
+  sequence: number;
+  name: string;
+  workstation: string;
+  area?: string;
+  operatorName?: string;
+  plannedStartMs: number;
+  plannedEndMs: number;
+  actualStartMs?: number;
+  actualEndMs?: number;
+  currentTimeMs?: number;
+  delayMinutes?: number;
+  qcRequired?: boolean;
+};
+
+type GanttRowGroup = {
+  id: string;
+  label: string;
+  summary: GanttGroupSummary;
+  operations: NormalizedOperationExecutionGantt[];
+};
+
+type GanttGroupSummary = {
+  total: number;
+  running: number;
+  blocked: number;
+  delayed: number;
+};
+
+type GanttRenderRow =
+  | {
+      type: 'group';
+      groupKey: string;
+      groupLabel: string;
+      summary: GanttGroupSummary;
+      collapsed: boolean;
+    }
+  | {
+      type: 'operation';
+      operation: NormalizedOperationExecutionGantt;
+    };
+
 type GanttRowData = {
-  operations: OperationExecutionGantt[];
+  rows: GanttRenderRow[];
   selectedOperationId?: string;
-  timeScale: TimeScale;
+  viewport: GanttViewport;
+  nowMs: number;
   onOperationClick?: (operation: OperationExecutionGantt) => void;
+  onGroupToggle: (groupKey: string) => void;
 };
 
 const ROW_HEIGHT_PX = 64;
@@ -62,12 +120,10 @@ const ROWS_VIEWPORT_HEIGHT_PX = 640;
 const LABEL_WIDTH_PX = 256;
 const LABEL_GAP_PX = 16;
 const TIMELINE_LEFT_OFFSET_PX = LABEL_WIDTH_PX + LABEL_GAP_PX;
+const MIN_TIMELINE_DURATION_MS = 60 * 1000;
+const GROUP_THRESHOLD = 200;
 
 // ============ TIME UTILITIES ============
-const parseTime = (timeStr: string): Date => {
-  return new Date(timeStr);
-};
-
 const formatTime = (date: Date): string => {
   return date.toLocaleTimeString('en-US', { 
     hour: '2-digit', 
@@ -83,73 +139,177 @@ const formatTimeShort = (date: Date): string => {
   });
 };
 
-const calculateTimeScale = (operations: OperationExecutionGantt[]): TimeScale | null => {
+const resolveTimelineMode = (timeZone: string | undefined): GanttTimelineMode => {
+  if (timeZone === 'day') {
+    return 'day';
+  }
+  if (timeZone === 'week') {
+    return 'week';
+  }
+  if (timeZone === 'fit_all') {
+    return 'fit_all';
+  }
+  if (timeZone === 'fit_selection') {
+    return 'fit_selection';
+  }
+  return 'shift';
+};
+
+const normalizeOperation = (op: OperationExecutionGantt): NormalizedOperationExecutionGantt => {
+  const plannedStartMs = new Date(op.plannedStart).getTime();
+  const plannedEndMs = new Date(op.plannedEnd).getTime();
+
+  return {
+    raw: op,
+    id: op.id,
+    status: op.status,
+    sequence: op.sequence,
+    name: op.name,
+    workstation: op.workstation,
+    area: op.area,
+    operatorName: op.operatorName,
+    plannedStartMs,
+    plannedEndMs,
+    actualStartMs: op.actualStart ? new Date(op.actualStart).getTime() : undefined,
+    actualEndMs: op.actualEnd ? new Date(op.actualEnd).getTime() : undefined,
+    currentTimeMs: op.currentTime ? new Date(op.currentTime).getTime() : undefined,
+    delayMinutes: op.delayMinutes,
+    qcRequired: op.qcRequired,
+  };
+};
+
+const buildShiftViewport = (anchorMs: number): GanttViewport => {
+  const shiftDurationMs = 8 * 60 * 60 * 1000;
+  const anchorDate = new Date(anchorMs);
+  const shiftStartDate = new Date(anchorDate);
+  shiftStartDate.setHours(Math.floor(anchorDate.getHours() / 8) * 8, 0, 0, 0);
+  const visibleStartMs = shiftStartDate.getTime();
+  return {
+    visibleStartMs,
+    visibleEndMs: visibleStartMs + shiftDurationMs,
+    mode: 'shift',
+  };
+};
+
+const buildDayViewport = (anchorMs: number): GanttViewport => {
+  const startDate = new Date(anchorMs);
+  startDate.setHours(0, 0, 0, 0);
+  const visibleStartMs = startDate.getTime();
+  return {
+    visibleStartMs,
+    visibleEndMs: visibleStartMs + 24 * 60 * 60 * 1000,
+    mode: 'day',
+  };
+};
+
+const buildWeekViewport = (anchorMs: number): GanttViewport => {
+  const startDate = new Date(anchorMs);
+  const dayOfWeek = startDate.getDay();
+  const mondayOffset = (dayOfWeek + 6) % 7;
+  startDate.setDate(startDate.getDate() - mondayOffset);
+  startDate.setHours(0, 0, 0, 0);
+  const visibleStartMs = startDate.getTime();
+  return {
+    visibleStartMs,
+    visibleEndMs: visibleStartMs + 7 * 24 * 60 * 60 * 1000,
+    mode: 'week',
+  };
+};
+
+const buildFitAllViewport = (operations: NormalizedOperationExecutionGantt[]): GanttViewport | null => {
   if (operations.length === 0) {
     return null;
   }
 
-  let minTime = Number.POSITIVE_INFINITY;
-  let maxTime = Number.NEGATIVE_INFINITY;
+  let minMs = Number.POSITIVE_INFINITY;
+  let maxMs = Number.NEGATIVE_INFINITY;
 
   for (const op of operations) {
-    const times = [
-      parseTime(op.plannedStart).getTime(),
-      parseTime(op.plannedEnd).getTime(),
-      op.actualStart ? parseTime(op.actualStart).getTime() : 0,
-      op.actualEnd ? parseTime(op.actualEnd).getTime() : 0,
-      op.currentTime ? parseTime(op.currentTime).getTime() : 0,
-    ];
-
-    for (const value of times) {
-      if (value <= 0) {
+    const values = [op.plannedStartMs, op.plannedEndMs, op.actualStartMs, op.actualEndMs];
+    for (const value of values) {
+      if (typeof value !== 'number' || Number.isNaN(value)) {
         continue;
       }
-      if (value < minTime) {
-        minTime = value;
+      if (value < minMs) {
+        minMs = value;
       }
-      if (value > maxTime) {
-        maxTime = value;
+      if (value > maxMs) {
+        maxMs = value;
       }
     }
   }
 
-  if (!Number.isFinite(minTime) || !Number.isFinite(maxTime)) {
+  if (!Number.isFinite(minMs) || !Number.isFinite(maxMs)) {
     return null;
   }
 
-  const baseDuration = Math.max(maxTime - minTime, 1);
-  const padding = baseDuration * 0.1;
-  const timelineStart = minTime - padding;
-  const timelineEnd = maxTime + padding;
-  const timelineDuration = Math.max(timelineEnd - timelineStart, 1);
-
+  const duration = Math.max(maxMs - minMs, MIN_TIMELINE_DURATION_MS);
+  const padding = duration * 0.1;
   return {
-    start: timelineStart,
-    end: timelineEnd,
-    duration: timelineDuration,
-    startDate: new Date(timelineStart),
-    endDate: new Date(timelineEnd),
+    visibleStartMs: minMs - padding,
+    visibleEndMs: maxMs + padding,
+    mode: 'fit_all',
   };
 };
 
-const buildTimeGrid = (timeScale: TimeScale): TimeGridLine[] => {
-  const gridLines: TimeGridLine[] = [];
-  const duration = timeScale.duration;
-  const hourInMs = 60 * 60 * 1000;
-
-  // Determine interval based on duration
-  let interval = hourInMs; // 1 hour default
-  if (duration < 4 * hourInMs) {
-    interval = 30 * 60 * 1000; // 30 minutes for short durations
-  } else if (duration > 12 * hourInMs) {
-    interval = 2 * hourInMs; // 2 hours for long durations
+const buildFitSelectionViewport = (
+  operations: NormalizedOperationExecutionGantt[],
+  selectedOperationId: string | undefined,
+): GanttViewport | null => {
+  if (!selectedOperationId) {
+    return null;
+  }
+  const selected = operations.find((op) => op.id === selectedOperationId);
+  if (!selected) {
+    return null;
   }
 
-  let currentTime = Math.ceil(timeScale.start / interval) * interval;
+  const startMs = selected.actualStartMs ?? selected.plannedStartMs;
+  const endMs = selected.actualEndMs ?? selected.plannedEndMs;
+  const duration = Math.max(endMs - startMs, MIN_TIMELINE_DURATION_MS);
+  const padding = Math.max(duration * 0.5, 30 * 60 * 1000);
 
-  while (currentTime <= timeScale.end) {
-    const position = ((currentTime - timeScale.start) / timeScale.duration) * 100;
-    const date = new Date(currentTime);
+  return {
+    visibleStartMs: startMs - padding,
+    visibleEndMs: endMs + padding,
+    mode: 'fit_selection',
+  };
+};
+
+const chooseGridInterval = (durationMs: number, mode: GanttTimelineMode): number => {
+  const intervalCandidatesMs = [
+    15 * 60 * 1000,
+    30 * 60 * 1000,
+    60 * 60 * 1000,
+    2 * 60 * 60 * 1000,
+    3 * 60 * 60 * 1000,
+    4 * 60 * 60 * 1000,
+    6 * 60 * 60 * 1000,
+    8 * 60 * 60 * 1000,
+    12 * 60 * 60 * 1000,
+    24 * 60 * 60 * 1000,
+  ];
+
+  const hardCap = mode === 'week' ? 84 : 48;
+  for (const intervalMs of intervalCandidatesMs) {
+    const tickCount = Math.ceil(durationMs / intervalMs) + 1;
+    if (tickCount <= hardCap) {
+      return intervalMs;
+    }
+  }
+  return intervalCandidatesMs[intervalCandidatesMs.length - 1];
+};
+
+const buildTimeGrid = (viewport: GanttViewport): TimeGridLine[] => {
+  const gridLines: TimeGridLine[] = [];
+  const durationMs = Math.max(viewport.visibleEndMs - viewport.visibleStartMs, MIN_TIMELINE_DURATION_MS);
+  const intervalMs = chooseGridInterval(durationMs, viewport.mode);
+
+  let currentTimeMs = Math.ceil(viewport.visibleStartMs / intervalMs) * intervalMs;
+
+  while (currentTimeMs <= viewport.visibleEndMs) {
+    const position = ((currentTimeMs - viewport.visibleStartMs) / durationMs) * 100;
+    const date = new Date(currentTimeMs);
 
     gridLines.push({
       position,
@@ -157,48 +317,52 @@ const buildTimeGrid = (timeScale: TimeScale): TimeGridLine[] => {
       isHour: date.getMinutes() === 0,
     });
 
-    currentTime += interval;
+    currentTimeMs += intervalMs;
   }
 
   return gridLines;
 };
 
-const timeToPosition = (timeStr: string, timeScale: TimeScale): number => {
-  const time = parseTime(timeStr).getTime();
-  const position = ((time - timeScale.start) / timeScale.duration) * 100;
+const timeToPosition = (timeMs: number, viewport: GanttViewport): number => {
+  const durationMs = Math.max(viewport.visibleEndMs - viewport.visibleStartMs, MIN_TIMELINE_DURATION_MS);
+  const position = ((timeMs - viewport.visibleStartMs) / durationMs) * 100;
   return Math.max(0, Math.min(100, position));
 };
 
-const getBarGeometry = (op: OperationExecutionGantt, timeScale: TimeScale) => {
-  let startTime: string;
-  let endTime: string;
+const getBarGeometry = (
+  op: NormalizedOperationExecutionGantt,
+  viewport: GanttViewport,
+  nowMs: number,
+) => {
+  let startTimeMs: number;
+  let endTimeMs: number;
 
   if (op.status === 'Not Started') {
-    startTime = op.plannedStart;
-    endTime = op.plannedEnd;
+    startTimeMs = op.plannedStartMs;
+    endTimeMs = op.plannedEndMs;
   } else if (op.status === 'Running') {
-    startTime = op.actualStart || op.plannedStart;
-    endTime = op.currentTime || op.plannedEnd;
+    startTimeMs = op.actualStartMs ?? op.plannedStartMs;
+    endTimeMs = op.currentTimeMs ?? nowMs;
   } else {
-    startTime = op.actualStart || op.plannedStart;
-    endTime = op.actualEnd || op.plannedEnd;
+    startTimeMs = op.actualStartMs ?? op.plannedStartMs;
+    endTimeMs = op.actualEndMs ?? op.plannedEndMs;
   }
 
-  const left = timeToPosition(startTime, timeScale);
-  const right = timeToPosition(endTime, timeScale);
+  const left = timeToPosition(startTimeMs, viewport);
+  const right = timeToPosition(endTimeMs, viewport);
   const width = Math.max(right - left, 0.5);
 
   return { left, width };
 };
 
-const getPlannedWindow = (op: OperationExecutionGantt, timeScale: TimeScale) => {
-  const left = timeToPosition(op.plannedStart, timeScale);
-  const right = timeToPosition(op.plannedEnd, timeScale);
+const getPlannedWindow = (op: NormalizedOperationExecutionGantt, viewport: GanttViewport) => {
+  const left = timeToPosition(op.plannedStartMs, viewport);
+  const right = timeToPosition(op.plannedEndMs, viewport);
   const width = Math.max(right - left, 0.5);
   return { left, width };
 };
 
-const getBarStyle = (op: OperationExecutionGantt) => {
+const getBarStyle = (op: NormalizedOperationExecutionGantt) => {
   switch (op.status) {
     case 'Not Started':
       return 'bg-gray-300 border-2 border-dashed border-gray-400';
@@ -215,6 +379,61 @@ const getBarStyle = (op: OperationExecutionGantt) => {
   }
 };
 
+const createEmptyGroupSummary = (): GanttGroupSummary => ({
+  total: 0,
+  running: 0,
+  blocked: 0,
+  delayed: 0,
+});
+
+const resolveEffectiveGroupBy = (
+  groupBy: GanttChartProps['groupBy'],
+  operationCount: number,
+): NonNullable<GanttChartProps['groupBy']> => {
+  if (groupBy) {
+    return groupBy;
+  }
+
+  return operationCount > GROUP_THRESHOLD ? 'workstation' : 'none';
+};
+
+const getGroupLabel = (
+  operation: NormalizedOperationExecutionGantt,
+  groupMode: Exclude<NonNullable<GanttChartProps['groupBy']>, 'none'>,
+): string => {
+  if (groupMode === 'area') {
+    return operation.area?.trim() || 'Unassigned Area';
+  }
+
+  return operation.workstation.trim() || 'Unassigned Workstation';
+};
+
+const formatGroupModeLabel = (groupMode: NonNullable<GanttChartProps['groupBy']>): string => {
+  if (groupMode === 'workstation') {
+    return 'Workstation';
+  }
+  if (groupMode === 'area') {
+    return 'Area';
+  }
+  return 'Flat';
+};
+
+const formatTimelineModeLabel = (mode: GanttTimelineMode): string => {
+  if (mode === 'fit_selection') {
+    return 'Fit Selection';
+  }
+  if (mode === 'fit_all') {
+    return 'Fit All';
+  }
+  return mode.charAt(0).toUpperCase() + mode.slice(1);
+};
+
+const renderSummaryPill = (label: string, value: number, className: string) => (
+  <span className={`inline-flex items-center rounded-full px-2.5 py-1 font-medium ${className}`}>
+    {label}: {value}
+  </span>
+);
+
 const areRowPropsEqual = (
   prevProps: ListChildComponentProps<GanttRowData>,
   nextProps: ListChildComponentProps<GanttRowData>,
@@ -225,25 +444,49 @@ const areRowPropsEqual = (
 
   const prevData = prevProps.data;
   const nextData = nextProps.data;
-  const prevOp = prevData.operations[prevProps.index];
-  const nextOp = nextData.operations[nextProps.index];
+  const prevRow = prevData.rows[prevProps.index];
+  const nextRow = nextData.rows[nextProps.index];
 
-  if (!prevOp || !nextOp) {
+  if (!prevRow || !nextRow || prevRow.type !== nextRow.type) {
     return false;
   }
 
-  if (prevOp !== nextOp || prevOp.id !== nextOp.id) {
-    return false;
-  }
+  if (prevRow.type === 'group') {
+    if (
+      prevRow.groupKey !== nextRow.groupKey ||
+      prevRow.groupLabel !== nextRow.groupLabel ||
+      prevRow.collapsed !== nextRow.collapsed ||
+      prevRow.summary.total !== nextRow.summary.total ||
+      prevRow.summary.running !== nextRow.summary.running ||
+      prevRow.summary.blocked !== nextRow.summary.blocked ||
+      prevRow.summary.delayed !== nextRow.summary.delayed
+    ) {
+      return false;
+    }
+  } else {
+    const prevOp = prevRow.operation;
+    const nextOp = nextRow.operation;
 
-  if (prevData.timeScale !== nextData.timeScale) {
-    return false;
-  }
+    if (prevOp !== nextOp || prevOp.id !== nextOp.id) {
+      return false;
+    }
 
-  const wasSelected = prevData.selectedOperationId === prevOp.id;
-  const isSelected = nextData.selectedOperationId === nextOp.id;
-  if (wasSelected !== isSelected) {
-    return false;
+    if (prevData.viewport !== nextData.viewport) {
+      return false;
+    }
+
+    if (
+      prevData.nowMs !== nextData.nowMs &&
+      (prevOp.status === 'Running' || nextOp.status === 'Running')
+    ) {
+      return false;
+    }
+
+    const wasSelected = prevData.selectedOperationId === prevOp.id;
+    const isSelected = nextData.selectedOperationId === nextOp.id;
+    if (wasSelected !== isSelected) {
+      return false;
+    }
   }
 
   const prevStyle = prevProps.style;
@@ -257,10 +500,68 @@ const areRowPropsEqual = (
 };
 
 const GanttRow = memo(function GanttRow({ index, style, data }: ListChildComponentProps<GanttRowData>) {
-  const op = data.operations[index];
+  const row = data.rows[index];
+
+  if (!row) {
+    return null;
+  }
+
+  if (row.type === 'group') {
+    const GroupIcon = row.collapsed ? ChevronRight : ChevronDown;
+
+    return (
+      <div
+        style={style}
+        className="flex border-b border-slate-200 bg-slate-50/95"
+      >
+        <div className="flex h-full items-center" style={{ width: LABEL_WIDTH_PX, paddingRight: LABEL_GAP_PX }}>
+          <div
+            className="flex h-full w-full cursor-pointer items-center gap-3 rounded-md px-3 focus:outline-none focus:ring-2 focus:ring-blue-300"
+            onClick={() => data.onGroupToggle(row.groupKey)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                data.onGroupToggle(row.groupKey);
+              }
+            }}
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-slate-700">
+              <GroupIcon className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold text-slate-900">{row.groupLabel}</div>
+              <div className="text-xs text-slate-500">{row.summary.total} operations</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-3 pr-4">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+            {renderSummaryPill('Total', row.summary.total, 'bg-slate-200 text-slate-700')}
+            {renderSummaryPill('Running', row.summary.running, 'bg-blue-100 text-blue-700')}
+            {renderSummaryPill('Blocked', row.summary.blocked, 'bg-red-100 text-red-700')}
+            {renderSummaryPill('Delayed', row.summary.delayed, 'bg-amber-100 text-amber-800')}
+          </div>
+          <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            {row.collapsed ? 'Collapsed' : 'Expanded'}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const op = row.operation;
   const isSelected = op.id === data.selectedOperationId;
-  const barGeo = getBarGeometry(op, data.timeScale);
-  const plannedGeo = getPlannedWindow(op, data.timeScale);
+  const barGeo = getBarGeometry(op, data.viewport, data.nowMs);
+  const plannedGeo = getPlannedWindow(op, data.viewport);
+  const hoverEndMs =
+    op.status === 'Not Started'
+      ? op.plannedEndMs
+      : op.status === 'Running'
+        ? (op.currentTimeMs ?? data.nowMs)
+        : (op.actualEndMs ?? op.plannedEndMs);
 
   if (import.meta.env.DEV && typeof window !== 'undefined') {
     const debugRenderCount = window.localStorage.getItem('gantt.debug.row.renders') === '1';
@@ -270,7 +571,19 @@ const GanttRow = memo(function GanttRow({ index, style, data }: ListChildCompone
   }
 
   return (
-    <div style={style} className="flex border-b border-gray-100">
+    <div
+      style={style}
+      className="flex border-b border-gray-100 cursor-pointer"
+      onClick={() => data.onOperationClick?.(op.raw)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          data.onOperationClick?.(op.raw);
+        }
+      }}
+    >
       <div className="flex h-full items-center" style={{ width: LABEL_WIDTH_PX, paddingRight: LABEL_GAP_PX }}>
         <div className="flex items-center gap-3 w-full">
           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${
@@ -301,7 +614,10 @@ const GanttRow = memo(function GanttRow({ index, style, data }: ListChildCompone
         )}
 
         <div
-          onClick={() => data.onOperationClick?.(op)}
+          onClick={(event) => {
+            event.stopPropagation();
+            data.onOperationClick?.(op.raw);
+          }}
           className={`absolute top-3 bottom-3 rounded cursor-pointer transition-all ${getBarStyle(op)} ${
             isSelected ? 'ring-4 ring-blue-300 ring-opacity-50 shadow-lg' : 'hover:shadow-md'
           }`}
@@ -331,12 +647,10 @@ const GanttRow = memo(function GanttRow({ index, style, data }: ListChildCompone
 
         <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
           <div className="absolute top-0 left-2 text-xs text-gray-600 bg-white px-1 rounded">
-            {op.actualStart ? formatTime(parseTime(op.actualStart)) : formatTime(parseTime(op.plannedStart))}
+            {formatTime(new Date(op.actualStartMs ?? op.plannedStartMs))}
           </div>
           <div className="absolute top-0 right-2 text-xs text-gray-600 bg-white px-1 rounded">
-            {op.actualEnd ? formatTime(parseTime(op.actualEnd)) :
-             op.currentTime ? formatTime(parseTime(op.currentTime)) :
-             formatTime(parseTime(op.plannedEnd))}
+            {formatTime(new Date(hoverEndMs))}
           </div>
         </div>
       </div>
@@ -349,38 +663,310 @@ export function GanttChart({
   operations, 
   onOperationClick, 
   selectedOperationId,
-  timeZone = 'shift'
+  timeZone = 'shift',
+  groupBy,
+  initialMode,
 }: GanttChartProps) {
-  void timeZone;
+  // `initialMode` (from back-navigation) takes priority over timeZone.
+  const initialTimelineMode = useMemo(
+    () => initialMode ?? resolveTimelineMode(timeZone),
+    [initialMode, timeZone],
+  );
+  const [timelineMode, setTimelineMode] = useState<GanttTimelineMode>(initialTimelineMode);
+  const [hasUserSelectedTimelineMode, setHasUserSelectedTimelineMode] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
 
-  // ============ TIME SCALE CALCULATION ============
-  const timeScale = useMemo(() => calculateTimeScale(operations), [operations]);
+  useEffect(() => {
+    if (!hasUserSelectedTimelineMode) {
+      setTimelineMode(initialTimelineMode);
+    }
+  }, [hasUserSelectedTimelineMode, initialTimelineMode]);
+
+  const normalizedOperations = useMemo(
+    () => operations.map((op) => normalizeOperation(op)),
+    [operations],
+  );
+
+  const effectiveGroupBy = useMemo(
+    () => resolveEffectiveGroupBy(groupBy, normalizedOperations.length),
+    [groupBy, normalizedOperations.length],
+  );
+
+  const groupedRows = useMemo<GanttRowGroup[]>(() => {
+    if (effectiveGroupBy === 'none') {
+      return [];
+    }
+
+    if (
+      effectiveGroupBy === 'area' &&
+      !normalizedOperations.some((op) => Boolean(op.area?.trim()))
+    ) {
+      return [];
+    }
+
+    const groupMap = new Map<string, GanttRowGroup>();
+    for (const op of normalizedOperations) {
+      const label = getGroupLabel(op, effectiveGroupBy);
+      const key = `${effectiveGroupBy}:${label}`;
+      const existing = groupMap.get(key);
+      if (existing) {
+        existing.operations.push(op);
+        existing.summary.total += 1;
+        if (op.status === 'Running') {
+          existing.summary.running += 1;
+        }
+        if (op.status === 'Blocked') {
+          existing.summary.blocked += 1;
+        }
+        if (op.status === 'Delayed') {
+          existing.summary.delayed += 1;
+        }
+      } else {
+        const summary = createEmptyGroupSummary();
+        summary.total = 1;
+        if (op.status === 'Running') {
+          summary.running = 1;
+        }
+        if (op.status === 'Blocked') {
+          summary.blocked = 1;
+        }
+        if (op.status === 'Delayed') {
+          summary.delayed = 1;
+        }
+
+        groupMap.set(key, {
+          id: key,
+          label,
+          summary,
+          operations: [op],
+        });
+      }
+    }
+
+    return Array.from(groupMap.values());
+  }, [normalizedOperations, effectiveGroupBy]);
+
+  const isGroupedRendering = effectiveGroupBy !== 'none' && groupedRows.length > 0;
+
+  useEffect(() => {
+    setCollapsedGroups(new Set());
+  }, [effectiveGroupBy]);
+
+  const flattenedOperations = useMemo(
+    () => normalizedOperations,
+    [normalizedOperations],
+  );
+
+  const renderRows = useMemo<GanttRenderRow[]>(() => {
+    if (!isGroupedRendering) {
+      return normalizedOperations.map((operation) => ({
+        type: 'operation',
+        operation,
+      }));
+    }
+
+    return groupedRows.flatMap((group) => {
+      const collapsed = collapsedGroups.has(group.id);
+      const rows: GanttRenderRow[] = [
+        {
+          type: 'group',
+          groupKey: group.id,
+          groupLabel: group.label,
+          summary: group.summary,
+          collapsed,
+        },
+      ];
+
+      if (collapsed) {
+        return rows;
+      }
+
+      return rows.concat(
+        group.operations.map((operation) => ({
+          type: 'operation',
+          operation,
+        })),
+      );
+    });
+  }, [collapsedGroups, groupedRows, isGroupedRendering, normalizedOperations]);
+
+  const handleGroupToggle = (groupKey: string) => {
+    setCollapsedGroups((previous) => {
+      const next = new Set(previous);
+      if (next.has(groupKey)) {
+        next.delete(groupKey);
+      } else {
+        next.add(groupKey);
+      }
+      return next;
+    });
+  };
+
+  const visibleOperationCount = useMemo(
+    () => renderRows.filter((row) => row.type === 'operation').length,
+    [renderRows],
+  );
+
+  const timelineControls = useMemo(
+    () => [
+      {
+        mode: 'shift' as const,
+        label: 'Shift',
+        title: 'Focus on the active shift horizon.',
+      },
+      {
+        mode: 'day' as const,
+        label: 'Day',
+        title: 'Expand the viewport to the current day.',
+      },
+      {
+        mode: 'week' as const,
+        label: 'Week',
+        title: 'Expand the viewport to the full week.',
+      },
+      {
+        mode: 'fit_selection' as const,
+        label: 'Fit Selection',
+        title: selectedOperationId
+          ? 'Analyze the selected operation in a focused window.'
+          : 'Select an operation to enable focused analysis.',
+        disabled: !selectedOperationId,
+      },
+      {
+        mode: 'fit_all' as const,
+        label: 'Fit All',
+        title: 'Analyze the full work order horizon without changing the default mode.',
+        badge: 'Analyze',
+        secondary: true,
+      },
+    ],
+    [selectedOperationId],
+  );
+
+  const handleTimelineModeSelect = (mode: GanttTimelineMode) => {
+    setHasUserSelectedTimelineMode(true);
+    setTimelineMode(mode);
+  };
+
+  const anchorMs = useMemo(() => {
+    const selected = selectedOperationId
+      ? flattenedOperations.find((op) => op.id === selectedOperationId)
+      : undefined;
+    if (selected) {
+      return selected.plannedStartMs;
+    }
+
+    if (flattenedOperations.length > 0) {
+      return flattenedOperations[0].plannedStartMs;
+    }
+    return Date.now();
+  }, [flattenedOperations, selectedOperationId]);
+
+  const viewport = useMemo(() => {
+    if (flattenedOperations.length === 0) {
+      return null;
+    }
+
+    if (timelineMode === 'fit_all') {
+      const fitAllViewport = buildFitAllViewport(flattenedOperations);
+      if (fitAllViewport) {
+        return fitAllViewport;
+      }
+    }
+
+    if (timelineMode === 'fit_selection') {
+      const fitSelectionViewport = buildFitSelectionViewport(flattenedOperations, selectedOperationId);
+      if (fitSelectionViewport) {
+        return fitSelectionViewport;
+      }
+      const fallbackFitAll = buildFitAllViewport(flattenedOperations);
+      if (fallbackFitAll) {
+        return fallbackFitAll;
+      }
+    }
+
+    if (timelineMode === 'day') {
+      return buildDayViewport(anchorMs);
+    }
+
+    if (timelineMode === 'week') {
+      return buildWeekViewport(anchorMs);
+    }
+
+    return buildShiftViewport(anchorMs);
+  }, [flattenedOperations, timelineMode, anchorMs, selectedOperationId]);
+
+  const nowMs = useMemo(() => {
+    let maxCurrentTimeMs = Number.NEGATIVE_INFINITY;
+    for (const op of flattenedOperations) {
+      if (op.status !== 'Running') {
+        continue;
+      }
+      if (typeof op.currentTimeMs === 'number' && op.currentTimeMs > maxCurrentTimeMs) {
+        maxCurrentTimeMs = op.currentTimeMs;
+      }
+    }
+    if (Number.isFinite(maxCurrentTimeMs)) {
+      return maxCurrentTimeMs;
+    }
+    return Date.now();
+  }, [flattenedOperations]);
 
   // ============ TIME GRID ============
   const timeGrid = useMemo(() => {
-    if (!timeScale) {
+    if (!viewport) {
       return [] as TimeGridLine[];
     }
-    return buildTimeGrid(timeScale);
-  }, [timeScale]);
+    return buildTimeGrid(viewport);
+  }, [viewport]);
+
+  const nowIndicatorPosition = useMemo(() => {
+    if (!viewport) {
+      return null;
+    }
+    if (nowMs < viewport.visibleStartMs || nowMs > viewport.visibleEndMs) {
+      return null;
+    }
+    return timeToPosition(nowMs, viewport);
+  }, [viewport, nowMs]);
+
+  // Wrap onOperationClick to inject click context (mode, groupBy, viewport).
+  const wrappedOnOperationClick = useMemo<GanttRowData['onOperationClick']>(() => {
+    if (!onOperationClick || !viewport) {
+      return undefined;
+    }
+    return (op: OperationExecutionGantt) => {
+      onOperationClick(op, {
+        mode: timelineMode,
+        groupBy: effectiveGroupBy,
+        viewportStart: viewport.visibleStartMs,
+        viewportEnd: viewport.visibleEndMs,
+      });
+    };
+  }, [onOperationClick, timelineMode, effectiveGroupBy, viewport]);
 
   // All hooks must run before any early return.
-  // rowData is only consumed in the render path below that guards timeScale !== null.
+  // rowData is only consumed in the render path below that guards viewport !== null.
   const rowData = useMemo<GanttRowData | null>(() => {
-    if (!timeScale) {
+    if (!viewport) {
       return null;
     }
     return {
-      operations,
+      rows: renderRows,
       selectedOperationId,
-      timeScale,
-      onOperationClick,
+      viewport,
+      nowMs,
+      onOperationClick: wrappedOnOperationClick,
+      onGroupToggle: handleGroupToggle,
     };
-  }, [operations, selectedOperationId, timeScale, onOperationClick]);
+  }, [renderRows, selectedOperationId, viewport, nowMs, wrappedOnOperationClick]);
 
-  const listHeight = Math.min(ROWS_VIEWPORT_HEIGHT_PX, Math.max(operations.length * ROW_HEIGHT_PX, ROW_HEIGHT_PX));
+  const listHeight = Math.min(
+    ROWS_VIEWPORT_HEIGHT_PX,
+    Math.max(renderRows.length * ROW_HEIGHT_PX, ROW_HEIGHT_PX),
+  );
 
-  if (!timeScale || operations.length === 0 || rowData === null) {
+  if (!viewport || flattenedOperations.length === 0 || rowData === null) {
     return (
       <div className="text-center py-12 text-gray-500">
         <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -398,7 +984,46 @@ export function GanttChart({
           <div>
             <h3 className="text-lg font-bold">Operation Execution Timeline</h3>
             <div className="text-sm text-gray-500 mt-1">
-              Time-based Gantt • {formatTime(timeScale.startDate)} → {formatTime(timeScale.endDate)}
+              Time-based Gantt • {formatTime(new Date(viewport.visibleStartMs))} → {formatTime(new Date(viewport.visibleEndMs))}
+              {' '}• {flattenedOperations.length} ops
+              {' '}• {isGroupedRendering ? `Grouped by ${formatGroupModeLabel(effectiveGroupBy)}` : 'Flat view'}
+              {' '}• Mode: {formatTimelineModeLabel(timelineMode)}
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {timelineControls.map((control) => {
+                const isActive = control.mode === timelineMode;
+                const isDisabled = control.disabled === true;
+
+                return (
+                  <button
+                    key={control.mode}
+                    type="button"
+                    title={control.title}
+                    disabled={isDisabled}
+                    onClick={() => handleTimelineModeSelect(control.mode)}
+                    className={[
+                      'inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors',
+                      isActive
+                        ? control.secondary
+                          ? 'border-slate-900 bg-slate-900 text-white'
+                          : 'border-blue-600 bg-blue-600 text-white'
+                        : control.secondary
+                          ? 'border-slate-300 bg-slate-50 text-slate-700 hover:border-slate-400 hover:bg-slate-100'
+                          : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50',
+                      isDisabled ? 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400 hover:border-gray-200 hover:bg-gray-100' : '',
+                    ].join(' ')}
+                  >
+                    <span>{control.label}</span>
+                    {control.badge && (
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                        isActive ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {control.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
           
@@ -442,6 +1067,11 @@ export function GanttChart({
                   </div>
                 </div>
               ))}
+              {nowIndicatorPosition !== null && (
+                <div className="absolute top-0 bottom-0 pointer-events-none" style={{ left: `${nowIndicatorPosition}%` }}>
+                  <div className="h-full border-l-2 border-blue-500" />
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -458,15 +1088,27 @@ export function GanttChart({
                 style={{ left: `${grid.position}%` }}
               />
             ))}
+            {nowIndicatorPosition !== null && (
+              <div
+                className="absolute top-0 bottom-0 border-l-2 border-blue-200"
+                style={{ left: `${nowIndicatorPosition}%` }}
+              />
+            )}
           </div>
 
           <FixedSizeList
             height={listHeight}
             width="100%"
-            itemCount={operations.length}
+            itemCount={renderRows.length}
             itemSize={ROW_HEIGHT_PX}
             itemData={rowData}
-            itemKey={(index, data) => data.operations[index]?.id ?? String(index)}
+            itemKey={(index, data) => {
+              const row = data.rows[index];
+              if (!row) {
+                return String(index);
+              }
+              return row.type === 'group' ? `group:${row.groupKey}` : row.operation.id;
+            }}
           >
             {GanttRow}
           </FixedSizeList>
@@ -481,6 +1123,12 @@ export function GanttChart({
           <span>Gaps and overlaps are visible</span>
           <span>•</span>
           <span>Planned window shown as background reference</span>
+          {isGroupedRendering && (
+            <>
+              <span>•</span>
+              <span>{renderRows.length - visibleOperationCount} group headers in virtual list</span>
+            </>
+          )}
         </div>
       </div>
     </div>

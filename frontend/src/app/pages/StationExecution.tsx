@@ -7,12 +7,15 @@ import { toast } from "sonner";
 import { Play, ClipboardList, CheckCircle, AlertTriangle, RefreshCw, Lock } from "lucide-react";
 import { operationApi, type OperationDetail } from "../api/operationApi";
 import { stationApi, type StationQueueItem } from "../api/stationApi";
+import { HttpError } from "../api/httpClient";
+import { useAuth } from "../auth/AuthContext";
 import {
   mapExecutionStatusBadgeVariant,
   mapExecutionStatusText,
 } from "../api/mappers/executionMapper";
 
 export function StationExecution() {
+  const { currentUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryOperationId = searchParams.get("operationId") || "";
 
@@ -45,6 +48,7 @@ export function StationExecution() {
     : null;
   const claimState = selectedQueueItem?.claim.state ?? "none";
   const canExecuteByClaim = claimState === "mine";
+  const canClockOnByStatus = operation?.status === "PENDING" || operation?.status === "PLANNED";
 
   const refreshQueue = async () => {
     setQueueLoading(true);
@@ -148,11 +152,19 @@ export function StationExecution() {
     setActionLoading(true);
 
     try {
-      const data = await operationApi.start(operation.id);
+      const data = await operationApi.start(operation.id, {
+        operator_id: currentUser?.user_id ?? null,
+      });
       toast.success("Operation updated to " + mapExecutionStatusText(data.status) + ".");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Action failed.";
-      toast.error(message);
+      if (err instanceof HttpError && err.status === 403) {
+        toast.error("Claim required");
+      } else if (err instanceof HttpError && err.status === 409) {
+        toast.error("Already started");
+      } else {
+        const message = err instanceof Error ? err.message : "Action failed.";
+        toast.error(message);
+      }
     } finally {
       setActionLoading(false);
       await fetchOperation(String(operation.id));
@@ -183,16 +195,25 @@ export function StationExecution() {
 
   const completeOperation = async () => {
     if (!operation) return;
-    const confirmed = window.confirm("Confirm complete operation?");
+    const confirmed = window.confirm("Confirm clock off / complete operation?");
     if (!confirmed) return;
     setActionLoading(true);
 
     try {
-      const data = await operationApi.complete(operation.id);
+      const data = await operationApi.complete(operation.id, {
+        operator_id: currentUser?.user_id ?? null,
+        completed_at: new Date().toISOString(),
+      });
       toast.success("Operation updated to " + mapExecutionStatusText(data.status) + ".");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Action failed.";
-      toast.error(message);
+      if (err instanceof HttpError && err.status === 403) {
+        toast.error("Claim required");
+      } else if (err instanceof HttpError && err.status === 409) {
+        toast.error("Operation already completed");
+      } else {
+        const message = err instanceof Error ? err.message : "Action failed.";
+        toast.error(message);
+      }
     } finally {
       setActionLoading(false);
       await fetchOperation(String(operation.id));
@@ -377,13 +398,14 @@ export function StationExecution() {
             </div>
 
             <div className="bg-white p-4 rounded-lg border space-y-4">
-              {operation.status === "PENDING" && (
+              {canClockOnByStatus && (
                 <button
                   onClick={startOperation}
                   disabled={actionLoading || !canExecuteByClaim}
+                  title={!canExecuteByClaim ? "Claim required" : undefined}
                   className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                 >
-                  <Play className="inline w-4 h-4 mr-2" /> Start Operation
+                  <Play className="inline w-4 h-4 mr-2" /> Clock On
                 </button>
               )}
 
@@ -423,9 +445,10 @@ export function StationExecution() {
                     <button
                       onClick={completeOperation}
                       disabled={actionLoading || !canExecuteByClaim}
+                      title={!canExecuteByClaim ? "Claim required" : undefined}
                       className="flex-1 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
                     >
-                      <CheckCircle className="inline w-4 h-4 mr-2" /> Complete Operation
+                      <CheckCircle className="inline w-4 h-4 mr-2" /> Clock Off
                     </button>
                   </div>
                 </>

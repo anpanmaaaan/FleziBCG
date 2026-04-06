@@ -246,8 +246,41 @@ def main() -> None:
         _print_results(checks)
         raise SystemExit(1)
 
-    op_id = int(queue_items[0]["operation_id"])
-    initial_claim_state = str(queue_items[0].get("claim", {}).get("state"))
+    target_item = next(
+        (
+            item
+            for item in queue_items
+            if str(item.get("claim", {}).get("state")) in {"none", "mine"}
+        ),
+        None,
+    )
+    if target_item is None:
+        seed_station_execution_for_opr()
+        token_a, user_a = _login(client, OPERATOR_A_USERNAME)
+        queue_resp = client.get("/api/v1/station/queue", headers=_auth_headers(token_a))
+        queue_items = queue_resp.json().get("items", []) if queue_resp.status_code == 200 else []
+        target_item = next(
+            (
+                item
+                for item in queue_items
+                if str(item.get("claim", {}).get("state")) in {"none", "mine"}
+            ),
+            None,
+        )
+
+    if target_item is None:
+        checks.append(
+            Check(
+                name="Step 2b - Initial claim state shape",
+                passed=False,
+                detail="No claimable queue item found (all items are claimed by other operators).",
+            )
+        )
+        _print_results(checks)
+        raise SystemExit(1)
+
+    op_id = int(target_item["operation_id"])
+    initial_claim_state = str(target_item.get("claim", {}).get("state"))
     checks.append(
         Check(
             name="Step 2b - Initial claim state shape",

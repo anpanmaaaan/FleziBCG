@@ -48,6 +48,27 @@ def get_operation_by_id(db: Session, operation_id: int) -> Operation | None:
     return db.scalar(statement)
 
 
+def get_in_progress_operations_by_station(
+    db: Session,
+    *,
+    tenant_id: str,
+    station_scope_value: str,
+    exclude_operation_id: int | None = None,
+) -> list[Operation]:
+    statement = (
+        select(Operation)
+        .where(
+            Operation.tenant_id == tenant_id,
+            Operation.station_scope_value == station_scope_value,
+            Operation.status == StatusEnum.in_progress.value,
+        )
+        .order_by(Operation.id.asc())
+    )
+    if exclude_operation_id is not None:
+        statement = statement.where(Operation.id != exclude_operation_id)
+    return list(db.scalars(statement))
+
+
 def count_operations(db: Session) -> int:
     statement = select(func.count()).select_from(Operation)
     return db.scalar(statement) or 0

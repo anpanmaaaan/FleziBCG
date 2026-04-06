@@ -50,7 +50,7 @@ export const enRegistry: I18nRegistry = {
   "operations.ie.label.qc_fail_count": "QC Fail Count",
   "operations.ie.label.route_step": "Route Step",
   "operations.ie.group.unassigned": "Unassigned",
-  "operations.status.planned": "Planned",
+  "operations.status.planned": "Ready",
   "operations.status.completed_late": "Completed Late",
   "operations.status.pending": "Pending",
   "operations.status.in_progress": "In Progress",

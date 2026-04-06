@@ -102,7 +102,7 @@ def create_operation(
         work_order_id=work_order.id,
         sequence=sequence,
         name=name,
-        status=StatusEnum.planned.value,
+        status=StatusEnum.pending.value,
         planned_start=_dt(planned_start),
         planned_end=_dt(planned_end),
         quantity=quantity,
@@ -121,7 +121,12 @@ def run_start(db: Session, operation_id: int, started_at: datetime | None = None
     operation = get_operation_by_id(db, operation_id)
     if operation is None:
         raise ValueError(f"Operation {operation_id} not found")
-    start_operation(db, operation, OperationStartRequest(operator_id="seed-user", started_at=started_at), tenant_id=TENANT_ID)
+    start_operation(
+        db,
+        operation,
+        OperationStartRequest(operator_id=f"seed-user-{operation_id}", started_at=started_at),
+        tenant_id=TENANT_ID,
+    )
     refreshed = get_operation_by_id(db, operation_id)
     if refreshed is None:
         raise ValueError(f"Operation {operation_id} missing after start")

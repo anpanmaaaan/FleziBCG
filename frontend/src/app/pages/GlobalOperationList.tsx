@@ -512,7 +512,7 @@ export function GlobalOperationList() {
                       <option value="DELAYED">{t("operations.supervisor.status.delayed", "Delayed")}</option>
                     )}
                     <option value="PENDING">Pending</option>
-                    <option value="PLANNED">{t("operations.status.planned", "Planned")}</option>
+                    <option value="PLANNED">{t("operations.status.planned", "Ready")}</option>
                     <option value="IN_PROGRESS">{t("operations.status.in_progress", "In Progress")}</option>
                     <option value="COMPLETED">{t("operations.status.completed", "Completed")}</option>
                     <option value="COMPLETED_LATE">{t("operations.status.completed_late", "Completed Late")}</option>

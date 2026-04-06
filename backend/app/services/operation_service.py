@@ -8,6 +8,7 @@ from app.models.master import StatusEnum
 from app.repositories.execution_event_repository import create_execution_event, get_events_for_operation
 from app.repositories.operation_repository import (
     get_operation_by_id,
+    get_in_progress_operations_by_station,
     mark_operation_started,
     mark_operation_reported,
     mark_operation_completed,
@@ -21,6 +22,14 @@ from app.schemas.operation import (
     OperationAbortRequest,
 )
 from app.services.work_order_execution_service import recompute_work_order
+
+
+class StartOperationConflictError(ValueError):
+    pass
+
+
+class CompleteOperationConflictError(ValueError):
+    pass
 
 
 def _parse_timestamp(value: Optional[str]) -> Optional[datetime]:
@@ -39,6 +48,8 @@ def _derive_status(events: list) -> str:
         return StatusEnum.completed.value
     if any(event.event_type == ExecutionEventType.OP_STARTED.value for event in events):
         return StatusEnum.in_progress.value
+    # Current model intentionally converges PLANNED as execution-pending state.
+    # UI mapping is responsible for rendering this as Pending/Ready for operators.
     return StatusEnum.planned.value
 
 
@@ -97,12 +108,27 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
 def start_operation(db: Session, operation, request: OperationStartRequest, tenant_id: str = "default") -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
-    if operation.status in (
-        StatusEnum.in_progress.value,
-        StatusEnum.completed.value,
-        StatusEnum.aborted.value,
-    ):
-        raise ValueError("Operation already started or completed; cannot start again.")
+    if operation.status != StatusEnum.pending.value:
+        raise StartOperationConflictError("Operation must be PENDING to start.")
+
+    operator_id = (request.operator_id or "").strip()
+    if operator_id:
+        running_candidates = get_in_progress_operations_by_station(
+            db,
+            tenant_id=tenant_id,
+            station_scope_value=operation.station_scope_value,
+            exclude_operation_id=operation.id,
+        )
+        for running_op in running_candidates:
+            running_events = get_events_for_operation(db, running_op.id)
+            for event in running_events:
+                if event.event_type != ExecutionEventType.OP_STARTED.value:
+                    continue
+                event_operator_id = str(event.payload.get("operator_id") or "").strip()
+                if event_operator_id == operator_id:
+                    raise StartOperationConflictError(
+                        "Operator already has a RUNNING operation at this station."
+                    )
 
     start_time = request.started_at or datetime.utcnow()
     payload = {
@@ -183,10 +209,10 @@ def complete_operation(
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
-    if operation.status in (StatusEnum.completed.value, StatusEnum.aborted.value):
-        raise ValueError("Operation already completed; cannot complete again.")
+    if operation.status == StatusEnum.completed.value:
+        raise CompleteOperationConflictError("Operation already completed; cannot complete again.")
     if operation.status != StatusEnum.in_progress.value:
-        raise ValueError("Operation must be IN_PROGRESS to complete.")
+        raise CompleteOperationConflictError("Operation must be IN_PROGRESS to complete.")
 
     completed_at = request.completed_at or datetime.utcnow()
     payload = {

@@ -235,7 +235,39 @@ def main() -> None:
         _print_results(checks)
         raise SystemExit(1)
 
-    target_operation_id = int(queue_items[0]["operation_id"])
+    target_item = next(
+        (
+            item
+            for item in queue_items
+            if str(item.get("claim", {}).get("state")) in {"none", "mine"}
+        ),
+        None,
+    )
+    if target_item is None:
+        checks.append(
+            Check(
+                name="Target operation selection",
+                passed=False,
+                detail="No claimable operation found (all are claimed by other operators).",
+            )
+        )
+        _print_results(checks)
+        raise SystemExit(1)
+
+    target_operation_id = int(target_item["operation_id"])
+    if str(target_item.get("claim", {}).get("state")) == "mine":
+        normalize_release = client.post(
+            f"/api/v1/station/queue/{target_operation_id}/release",
+            headers=_auth_headers(token_a),
+            json={"reason": "normalize_before_verify"},
+        )
+        checks.append(
+            Check(
+                name="Normalize pre-existing mine claim",
+                passed=normalize_release.status_code == 200,
+                detail=f"status={normalize_release.status_code}",
+            )
+        )
 
     start_without_claim = client.post(
         f"/api/v1/operations/{target_operation_id}/start",

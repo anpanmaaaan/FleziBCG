@@ -2,7 +2,7 @@
 // Deep dive into a single operation execution
 
 import { useEffect, useState } from "react";
-import { useNavigate, useParams, Link } from "react-router";
+import { useNavigate, useParams, useSearchParams, Link } from "react-router";
 import {
   Clock,
   AlertTriangle,
@@ -164,10 +164,32 @@ type TabType = "overview" | "quality" | "materials" | "timeline" | "documents";
 export function OperationExecutionDetail() {
   const { operationId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [operation, setOperation] = useState<OperationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Gantt back-navigation context restored from URL params.
+  const fromGantt = searchParams.get('from') === 'gantt';
+  const ganttWoId = searchParams.get('woId');
+  const ganttMode = searchParams.get('mode');
+  const ganttGroupBy = searchParams.get('groupBy');
+  const ganttSel = searchParams.get('sel');
+
+  const handleBack = () => {
+    if (fromGantt && ganttWoId) {
+      const restoreParams = new URLSearchParams();
+      if (ganttMode) restoreParams.set('mode', ganttMode);
+      if (ganttGroupBy) restoreParams.set('groupBy', ganttGroupBy);
+      if (ganttSel) restoreParams.set('sel', ganttSel);
+      navigate(`/work-orders/${ganttWoId}/operations?${restoreParams.toString()}`);
+    } else if (operation) {
+      navigate(`/work-orders/${operation.work_order_id}/operations`);
+    } else {
+      navigate(-1);
+    }
+  };
 
   useEffect(() => {
     const loadOperation = async () => {
@@ -250,11 +272,11 @@ export function OperationExecutionDetail() {
         title={
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate("/work-orders/" + operation.work_order_id + "/operations")}
+              onClick={handleBack}
               className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Overview
+              {fromGantt ? 'Back to Gantt' : 'Back to Overview'}
             </button>
             <div>
               <div className="text-sm text-gray-500">

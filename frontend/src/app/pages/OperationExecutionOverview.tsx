@@ -2,7 +2,7 @@
 // Click bar to navigate to detailed view
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, Link } from "react-router";
+import { useNavigate, useParams, useSearchParams, Link } from "react-router";
 import { 
   ArrowLeft,
   ExternalLink,
@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 import { StatsCard } from "../components/StatsCard";
-import { GanttChart, OperationExecutionGantt } from "../components/GanttChart";
+import { GanttChart, OperationExecutionGantt, type GanttClickContext } from "../components/GanttChart";
 import { request } from "../api/httpClient";
 import type { OperationExecutionStatus } from "../api/operationApi";
 import {
@@ -99,7 +99,14 @@ const toOverviewOperation = (operation: ExecutionTimelineOperation): OverviewOpe
 export function OperationExecutionOverview() {
   const { woId } = useParams();
   const navigate = useNavigate();
-  const [selectedOperationId, setSelectedOperationId] = useState<string | undefined>();
+  const [searchParams] = useSearchParams();
+
+  // Restore Gantt context from back-navigation params.
+  const restoredMode = searchParams.get('mode') as 'shift' | 'day' | 'week' | 'fit_all' | 'fit_selection' | null;
+  const restoredGroupBy = searchParams.get('groupBy') as 'none' | 'workstation' | 'area' | null;
+  const restoredSelectedId = searchParams.get('sel') ?? undefined;
+
+  const [selectedOperationId, setSelectedOperationId] = useState<string | undefined>(restoredSelectedId);
   const [operations, setOperations] = useState<OverviewOperation[]>([]);
   const [productionOrderId, setProductionOrderId] = useState<number | null>(null);
   const [productionOrderNumber, setProductionOrderNumber] = useState<string | null>(null);
@@ -191,12 +198,20 @@ export function OperationExecutionOverview() {
   const hasMoreBreakdownItems = breakdownVisibleCount < operations.length;
   const hiddenBreakdownItemCount = Math.max(operations.length - breakdownVisibleCount, 0);
 
-  const handleOperationClick = useCallback((operation: OperationExecutionGantt) => {
+  const handleOperationClick = useCallback((operation: OperationExecutionGantt, context: GanttClickContext) => {
     const overviewOperation = operation as OverviewOperation;
     const canonicalOperationId = String(overviewOperation.operationId);
     setSelectedOperationId(canonicalOperationId);
-    navigate(`/operations/${canonicalOperationId}/detail`);
-  }, [navigate]);
+
+    const params = new URLSearchParams({
+      from: 'gantt',
+      woId: String(woId ?? ''),
+      mode: context.mode,
+      groupBy: context.groupBy,
+      sel: canonicalOperationId,
+    });
+    navigate(`/operations/${canonicalOperationId}/detail?${params.toString()}`);
+  }, [navigate, woId]);
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
@@ -296,6 +311,8 @@ export function OperationExecutionOverview() {
           operations={operations}
           onOperationClick={handleOperationClick}
           selectedOperationId={selectedOperationId}
+          initialMode={restoredMode ?? undefined}
+          groupBy={restoredGroupBy ?? undefined}
         />
 
         {/* Additional Info */}
@@ -310,7 +327,7 @@ export function OperationExecutionOverview() {
                 <div 
                   key={op.id} 
                   className="flex items-center justify-between p-2 rounded hover:bg-gray-50 cursor-pointer"
-                  onClick={() => handleOperationClick(op)}
+                  onClick={() => navigate(`/operations/${String(op.operationId)}/detail`)}
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs text-gray-500">{op.sequence}</span>
