@@ -1,3 +1,7 @@
+
+
+
+
 # start app
 cd backend
 source .venv/bin/activate
@@ -8,7 +12,7 @@ npm install
 npm run dev
 
 # DB login
-docker compose -f docker/docker-compose.dev.yml up -d
+docker compose -f docker/docker-compose.db.yml up -d
 
 Open http://localhost:8978
 User: flelibcg

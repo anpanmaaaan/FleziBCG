@@ -15,7 +15,7 @@ fi
 
 # Create database schema via PostgreSQL (Docker-based)
 echo "→ Creating database schema"
-echo "ℹ️ Note: Ensure Docker-based PostgreSQL is running (docker compose -f docker/docker-compose.dev.yml up -d)"
+echo "ℹ️ Note: Ensure Docker-based PostgreSQL is running (docker compose -f docker/docker-compose.db.yml up -d)"
 python -m app.db.init_db
 echo "✅ Backend rebuild completed"
 echo "ℹ️ Seed data: python -m scripts.seed.seed_all"

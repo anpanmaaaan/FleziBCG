@@ -1,25 +1,25 @@
-# DEV Database Stack
+# DB-Only Stack
 
-This folder defines the Codespaces-only development database stack:
+This folder defines the database-only Docker stack:
 - PostgreSQL on port 5432
 - CloudBeaver Community on port 8978
 
 ## Start
 
 ```bash
-docker compose -f docker/docker-compose.dev.yml up -d
+docker compose -f docker/docker-compose.db.yml up -d
 ```
 
 ## Stop
 
 ```bash
-docker compose -f docker/docker-compose.dev.yml down
+docker compose -f docker/docker-compose.db.yml down
 ```
 
 ## Reset DB completely
 
 ```bash
-docker compose -f docker/docker-compose.dev.yml down -v
+docker compose -f docker/docker-compose.db.yml down -v
 ```
 
 This removes the PostgreSQL named volume and resets database contents.
@@ -30,7 +30,7 @@ Current repo state does not include a checked-in Alembic configuration.
 Use the existing schema init step, then run the deterministic seed set:
 
 ```bash
-docker compose -f docker/docker-compose.dev.yml up -d
+docker compose -f docker/docker-compose.db.yml up -d
 cd backend
 /workspaces/FleziBCG/.venv/bin/python -m app.db.init_db
 /workspaces/FleziBCG/.venv/bin/python -m scripts.seed.seed_all

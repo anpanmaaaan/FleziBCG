@@ -10,6 +10,6 @@ rm -rf frontend/dist frontend/.vite
 rm -rf tmp .temp .cache
 
 # Note: PostgreSQL data is in Docker volume (postgres_data) managed by docker compose
-# To fully reset: docker compose -f docker/docker-compose.dev.yml down -v
+# To fully reset: docker compose -f docker/docker-compose.db.yml down -v
 
 echo "✅ Workspace cleaned."
