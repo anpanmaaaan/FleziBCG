@@ -5,7 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.models.execution import ExecutionEventType
 from app.models.master import StatusEnum
-from app.repositories.execution_event_repository import create_execution_event, get_events_for_operation
+from app.repositories.execution_event_repository import (
+    create_execution_event,
+    get_events_for_operation,
+)
 from app.repositories.operation_repository import (
     get_operation_by_id,
     get_in_progress_operations_by_station,
@@ -24,6 +27,10 @@ from app.schemas.operation import (
 from app.services.work_order_execution_service import recompute_work_order
 
 
+# WHY: Execution state machine: PENDING→IN_PROGRESS→COMPLETED|ABORTED.
+# State is *derived* from the append-only ExecutionEvent log, NOT stored
+# directly. The snapshot fields on Operation (status, actual_start, etc.)
+# are materialized caches updated in the same transaction for query performance.
 class StartOperationConflictError(ValueError):
     pass
 
@@ -44,7 +51,9 @@ def _parse_timestamp(value: Optional[str]) -> Optional[datetime]:
 def _derive_status(events: list) -> str:
     if any(event.event_type == ExecutionEventType.OP_ABORTED.value for event in events):
         return StatusEnum.aborted.value
-    if any(event.event_type == ExecutionEventType.OP_COMPLETED.value for event in events):
+    if any(
+        event.event_type == ExecutionEventType.OP_COMPLETED.value for event in events
+    ):
         return StatusEnum.completed.value
     if any(event.event_type == ExecutionEventType.OP_STARTED.value for event in events):
         return StatusEnum.in_progress.value
@@ -69,9 +78,13 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
 
     for event in events:
         if event.event_type == ExecutionEventType.OP_STARTED.value:
-            actual_start = _parse_timestamp(event.payload.get("started_at")) or actual_start
+            actual_start = (
+                _parse_timestamp(event.payload.get("started_at")) or actual_start
+            )
         if event.event_type == ExecutionEventType.OP_COMPLETED.value:
-            actual_end = _parse_timestamp(event.payload.get("completed_at")) or actual_end
+            actual_end = (
+                _parse_timestamp(event.payload.get("completed_at")) or actual_end
+            )
         if event.event_type == ExecutionEventType.QTY_REPORTED.value:
             good_qty += int(event.payload.get("good_qty", 0))
             scrap_qty += int(event.payload.get("scrap_qty", 0))
@@ -105,12 +118,17 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
     )
 
 
-def start_operation(db: Session, operation, request: OperationStartRequest, tenant_id: str = "default") -> OperationDetail:
+def start_operation(
+    db: Session, operation, request: OperationStartRequest, tenant_id: str = "default"
+) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
     if operation.status != StatusEnum.pending.value:
         raise StartOperationConflictError("Operation must be PENDING to start.")
 
+    # EDGE: An operator can only run one operation at a time per station.
+    # We scan all IN_PROGRESS operations at the same station and check
+    # their OP_STARTED events for a matching operator_id.
     operator_id = (request.operator_id or "").strip()
     if operator_id:
         running_candidates = get_in_progress_operations_by_station(
@@ -173,7 +191,9 @@ def report_quantity(
         raise ValueError("Quantities must be non-negative.")
 
     if request.good_qty + request.scrap_qty <= 0:
-        raise ValueError("At least one of good_qty or scrap_qty must be greater than zero.")
+        raise ValueError(
+            "At least one of good_qty or scrap_qty must be greater than zero."
+        )
 
     payload = {
         "operator_id": request.operator_id,
@@ -192,7 +212,9 @@ def report_quantity(
     )
 
     # Snapshot update as derived state in service.
-    operation = mark_operation_reported(db, operation, request.good_qty, request.scrap_qty)
+    operation = mark_operation_reported(
+        db, operation, request.good_qty, request.scrap_qty
+    )
 
     operation = get_operation_by_id(db, operation.id)
     if not operation:
@@ -210,9 +232,13 @@ def complete_operation(
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
     if operation.status == StatusEnum.completed.value:
-        raise CompleteOperationConflictError("Operation already completed; cannot complete again.")
+        raise CompleteOperationConflictError(
+            "Operation already completed; cannot complete again."
+        )
     if operation.status != StatusEnum.in_progress.value:
-        raise CompleteOperationConflictError("Operation must be IN_PROGRESS to complete.")
+        raise CompleteOperationConflictError(
+            "Operation must be IN_PROGRESS to complete."
+        )
 
     completed_at = request.completed_at or datetime.utcnow()
     payload = {

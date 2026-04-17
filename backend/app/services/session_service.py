@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config.settings import settings
@@ -82,7 +82,9 @@ def revoke_session(
     return True
 
 
-def revoke_all_sessions_for_user(db: Session, *, user_id: str, tenant_id: str, reason: str) -> int:
+def revoke_all_sessions_for_user(
+    db: Session, *, user_id: str, tenant_id: str, reason: str
+) -> int:
     now = datetime.now(timezone.utc)
     active_sessions = list(
         db.scalars(
@@ -110,7 +112,9 @@ def revoke_all_sessions_for_user(db: Session, *, user_id: str, tenant_id: str, r
     return len(active_sessions)
 
 
-def list_user_sessions(db: Session, *, user_id: str, tenant_id: str) -> list[AuthSession]:
+def list_user_sessions(
+    db: Session, *, user_id: str, tenant_id: str
+) -> list[AuthSession]:
     return list(
         db.scalars(
             select(AuthSession)

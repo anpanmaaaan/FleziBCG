@@ -59,7 +59,9 @@ def _get_security_db():
         db.close()
 
 
-def require_authenticated_identity(request: Request, db=Depends(_get_security_db)) -> RequestIdentity:
+def require_authenticated_identity(
+    request: Request, db=Depends(_get_security_db)
+) -> RequestIdentity:
     auth_identity: AuthIdentity | None = getattr(request.state, "auth_identity", None)
     if not auth_identity:
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -84,6 +86,9 @@ def require_authenticated_identity(request: Request, db=Depends(_get_security_db
     )
 
 
+# WHY: Only EXECUTE, APPROVE, CONFIGURE actions performed under impersonation
+# are audit-logged. VIEW and ADMIN are excluded because VIEW is read-only
+# (low risk) and ADMIN impersonation is forbidden by FORBIDDEN_ACTING_ROLES.
 _AUDITED_FAMILIES = frozenset({"EXECUTE", "APPROVE", "CONFIGURE"})
 
 
@@ -93,11 +98,19 @@ def require_permission(permission_family: PermissionFamily):
         identity: RequestIdentity = Depends(require_authenticated_identity),
         db=Depends(_get_security_db),
     ) -> RequestIdentity:
-        from app.repositories.impersonation_repository import get_active_impersonation_session
+        from app.repositories.impersonation_repository import (
+            get_active_impersonation_session,
+        )
         from app.services.impersonation_service import log_impersonation_permission_use
 
+        # WHY: Impersonation is resolved here (not in the route handler) so that
+        # every permission-gated endpoint automatically picks up the acting role.
+        # The real user_id is preserved — identity.user_id always refers to the
+        # actual human, never the impersonated persona.
         effective_identity = identity
-        active_session = get_active_impersonation_session(db, identity.user_id, identity.tenant_id)
+        active_session = get_active_impersonation_session(
+            db, identity.user_id, identity.tenant_id
+        )
 
         if active_session is not None:
             effective_identity = RequestIdentity(
@@ -113,7 +126,10 @@ def require_permission(permission_family: PermissionFamily):
             )
 
         if not has_permission(db, effective_identity, permission_family):
-            raise HTTPException(status_code=403, detail=f"Missing required permission: {permission_family}")
+            raise HTTPException(
+                status_code=403,
+                detail=f"Missing required permission: {permission_family}",
+            )
 
         if active_session is not None and permission_family in _AUDITED_FAMILIES:
             log_impersonation_permission_use(
@@ -134,11 +150,15 @@ def require_action(action_code: str):
         identity: RequestIdentity = Depends(require_authenticated_identity),
         db=Depends(_get_security_db),
     ) -> RequestIdentity:
-        from app.repositories.impersonation_repository import get_active_impersonation_session
+        from app.repositories.impersonation_repository import (
+            get_active_impersonation_session,
+        )
         from app.services.impersonation_service import log_impersonation_permission_use
 
         effective_identity = identity
-        active_session = get_active_impersonation_session(db, identity.user_id, identity.tenant_id)
+        active_session = get_active_impersonation_session(
+            db, identity.user_id, identity.tenant_id
+        )
         if active_session is not None:
             effective_identity = RequestIdentity(
                 user_id=identity.user_id,
@@ -153,7 +173,9 @@ def require_action(action_code: str):
             )
 
         if not has_action(db, effective_identity, action_code):
-            raise HTTPException(status_code=403, detail=f"Missing required action: {action_code}")
+            raise HTTPException(
+                status_code=403, detail=f"Missing required action: {action_code}"
+            )
 
         if active_session is not None:
             # Preserve existing audit taxonomy by logging through permission family slot.

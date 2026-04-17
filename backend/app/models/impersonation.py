@@ -16,9 +16,15 @@ class ImpersonationSession(Base):
     acting_role_code: Mapped[str] = mapped_column(String(32), nullable=False)
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False)
     reason: Mapped[str] = mapped_column(String(512), nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
     audit_logs: Mapped[list["ImpersonationAuditLog"]] = relationship(
         "ImpersonationAuditLog",
@@ -41,13 +47,23 @@ class ImpersonationAuditLog(Base):
     __tablename__ = "impersonation_audit_logs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    session_id: Mapped[int] = mapped_column(ForeignKey("impersonation_sessions.id"), nullable=False, index=True)
+    session_id: Mapped[int] = mapped_column(
+        ForeignKey("impersonation_sessions.id"), nullable=False, index=True
+    )
     real_user_id: Mapped[str] = mapped_column(String(64), nullable=False)
     acting_role_code: Mapped[str] = mapped_column(String(32), nullable=False)
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False)
     event_type: Mapped[str] = mapped_column(String(64), nullable=False)
-    permission_family: Mapped[str | None] = mapped_column(String(64), nullable=True, default=None)
-    endpoint: Mapped[str | None] = mapped_column(String(256), nullable=True, default=None)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    permission_family: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, default=None
+    )
+    endpoint: Mapped[str | None] = mapped_column(
+        String(256), nullable=True, default=None
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
-    session: Mapped[ImpersonationSession] = relationship("ImpersonationSession", back_populates="audit_logs")
+    session: Mapped[ImpersonationSession] = relationship(
+        "ImpersonationSession", back_populates="audit_logs"
+    )

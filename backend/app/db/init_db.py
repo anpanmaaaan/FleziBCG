@@ -6,15 +6,28 @@ from app.db.base import Base
 from app.db.session import engine
 from app.db.session import SessionLocal
 
-# ✅ Import ALL models here
-from app.models.master import ProductionOrder, WorkOrder, Operation
-from app.models.execution import ExecutionEvent
-from app.models.rbac import Role, Permission, RolePermission, UserRole, RoleScope, Scope, UserRoleAssignment
-from app.models.impersonation import ImpersonationSession, ImpersonationAuditLog
-from app.models.approval import ApprovalRule, ApprovalRequest, ApprovalDecision, ApprovalAuditLog
-from app.models.session import Session, SessionAuditLog
-from app.models.station_claim import OperationClaim, OperationClaimAuditLog
-from app.models.user import User
+# ✅ Import ALL models here so SQLAlchemy registers them with Base.metadata
+from app.models.master import ProductionOrder, WorkOrder, Operation  # noqa: F401
+from app.models.execution import ExecutionEvent  # noqa: F401
+from app.models.rbac import (  # noqa: F401
+    Role,  # noqa: F401
+    Permission,  # noqa: F401
+    RolePermission,  # noqa: F401
+    UserRole,  # noqa: F401
+    RoleScope,  # noqa: F401
+    Scope,  # noqa: F401
+    UserRoleAssignment,  # noqa: F401
+)
+from app.models.impersonation import ImpersonationSession, ImpersonationAuditLog  # noqa: F401
+from app.models.approval import (  # noqa: F401
+    ApprovalRule,  # noqa: F401
+    ApprovalRequest,  # noqa: F401
+    ApprovalDecision,  # noqa: F401
+    ApprovalAuditLog,  # noqa: F401
+)
+from app.models.session import Session, SessionAuditLog  # noqa: F401
+from app.models.station_claim import OperationClaim, OperationClaimAuditLog  # noqa: F401
+from app.models.user import User  # noqa: F401
 from app.security.rbac import seed_rbac_core
 from app.services.approval_service import seed_approval_rules
 from app.services.user_service import seed_demo_users
@@ -32,9 +45,14 @@ def _apply_sql_migrations() -> None:
     with engine.begin() as conn:
         for migration_file in migration_files:
             sql_text = migration_file.read_text(encoding="utf-8")
-            statements = [statement.strip() for statement in sql_text.split(";") if statement.strip()]
+            statements = [
+                statement.strip()
+                for statement in sql_text.split(";")
+                if statement.strip()
+            ]
             for statement in statements:
                 conn.execute(text(statement))
+
 
 def init_db():
     _apply_sql_migrations()

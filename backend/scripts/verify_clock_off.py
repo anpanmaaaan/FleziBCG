@@ -8,6 +8,7 @@ Checks:
 4) Double Clock Off -> 409 and no duplicate OP_COMPLETED
 5) Clock On OP A -> Clock Off OP A -> Clock On OP B (same station) -> PASS
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -217,15 +218,27 @@ def _seed_operations(db) -> tuple[int, int]:
 def _cleanup(db) -> None:
     operation_ids = list(
         db.scalars(
-            select(Operation.id).where(Operation.operation_number.like(f"PH6-CLOCKOFF-%-{_SUFFIX}"))
+            select(Operation.id).where(
+                Operation.operation_number.like(f"PH6-CLOCKOFF-%-{_SUFFIX}")
+            )
         )
     )
     if operation_ids:
-        db.execute(delete(OperationClaimAuditLog).where(OperationClaimAuditLog.operation_id.in_(operation_ids)))
-        db.execute(delete(OperationClaim).where(OperationClaim.operation_id.in_(operation_ids)))
-        db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(operation_ids)))
+        db.execute(
+            delete(OperationClaimAuditLog).where(
+                OperationClaimAuditLog.operation_id.in_(operation_ids)
+            )
+        )
+        db.execute(
+            delete(OperationClaim).where(OperationClaim.operation_id.in_(operation_ids))
+        )
+        db.execute(
+            delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(operation_ids))
+        )
 
-    wo_ids = list(db.scalars(select(WorkOrder.id).where(WorkOrder.work_order_number == WO_NUMBER)))
+    wo_ids = list(
+        db.scalars(select(WorkOrder.id).where(WorkOrder.work_order_number == WO_NUMBER))
+    )
     if wo_ids:
         db.execute(delete(Operation).where(Operation.work_order_id.in_(wo_ids)))
         db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
@@ -333,7 +346,9 @@ def main() -> None:
     )
     with SessionLocal() as db:
         completed_events_after_first = _count_completed_events(db, op_a_id)
-    complete_a_status = complete_a.json().get("status") if complete_a.status_code == 200 else "-"
+    complete_a_status = (
+        complete_a.json().get("status") if complete_a.status_code == 200 else "-"
+    )
     checks.append(
         Check(
             name="3) Clock On -> Clock Off",
@@ -361,7 +376,8 @@ def main() -> None:
     checks.append(
         Check(
             name="4) Double Clock Off",
-            passed=complete_again_a.status_code == 409 and completed_events_after_second == 1,
+            passed=complete_again_a.status_code == 409
+            and completed_events_after_second == 1,
             detail=(
                 f"second_complete_status={complete_again_a.status_code}, "
                 f"completed_events={completed_events_after_second}"
@@ -384,7 +400,9 @@ def main() -> None:
     checks.append(
         Check(
             name="5) Start OP B after Clock Off OP A",
-            passed=claim_b.status_code == 200 and start_b.status_code == 200 and start_b_status == "IN_PROGRESS",
+            passed=claim_b.status_code == 200
+            and start_b.status_code == 200
+            and start_b_status == "IN_PROGRESS",
             detail=(
                 f"claim_b_status={claim_b.status_code}, start_b_status={start_b.status_code}, "
                 f"operation_status={start_b_status}"

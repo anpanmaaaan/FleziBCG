@@ -72,13 +72,21 @@ def _derive_shift_code(now: datetime) -> str:
     return "C"
 
 
-def get_dashboard_summary(db, tenant_id: str, shift: str | None = None) -> DashboardSummaryResponse:
+def get_dashboard_summary(
+    db, tenant_id: str, shift: str | None = None
+) -> DashboardSummaryResponse:
     now = datetime.now(timezone.utc)
     work_orders = get_work_orders_for_dashboard(db, tenant_id=tenant_id)
-    operation_status_counts = get_operation_status_counts_for_dashboard(db, tenant_id=tenant_id)
+    operation_status_counts = get_operation_status_counts_for_dashboard(
+        db, tenant_id=tenant_id
+    )
 
-    late_count = sum(1 for work_order in work_orders if _is_late_work_order(work_order, now))
-    at_risk_count = sum(1 for work_order in work_orders if _is_at_risk_work_order(work_order, now))
+    late_count = sum(
+        1 for work_order in work_orders if _is_late_work_order(work_order, now)
+    )
+    at_risk_count = sum(
+        1 for work_order in work_orders if _is_at_risk_work_order(work_order, now)
+    )
     total_count = len(work_orders)
     on_time_count = max(total_count - late_count - at_risk_count, 0)
 
@@ -117,14 +125,18 @@ def get_dashboard_summary(db, tenant_id: str, shift: str | None = None) -> Dashb
 def get_dashboard_health(db, tenant_id: str) -> DashboardHealthResponse:
     now = datetime.now(timezone.utc)
     work_orders = get_work_orders_for_dashboard(db, tenant_id=tenant_id)
-    blocked_counts_by_work_order = get_blocked_operation_counts_by_work_order(db, tenant_id=tenant_id)
+    blocked_counts_by_work_order = get_blocked_operation_counts_by_work_order(
+        db, tenant_id=tenant_id
+    )
 
     bottlenecks: list[DashboardBottleneckItem] = []
     risks: list[DashboardRiskWorkOrderItem] = []
 
     # TODO: Add work-center aggregation when work-center code is available in domain model.
     for work_order in work_orders:
-        blocked_count = int(blocked_counts_by_work_order.get(work_order.work_order_number, 0))
+        blocked_count = int(
+            blocked_counts_by_work_order.get(work_order.work_order_number, 0)
+        )
         is_late = _is_late_work_order(work_order, now)
         is_at_risk = _is_at_risk_work_order(work_order, now)
 

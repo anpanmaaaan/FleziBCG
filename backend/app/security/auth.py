@@ -9,6 +9,9 @@ from sqlalchemy.orm import Session
 
 from app.config.settings import Settings
 
+# WHY: Argon2 is the primary hash scheme. The deprecated="auto" setting allows
+# transparent rehashing if a future scheme is added, without invalidating
+# existing password hashes.
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 
@@ -49,17 +52,23 @@ def _load_default_users() -> list[dict[str, str]]:
             {
                 "user_id": str(item.get("user_id", username)),
                 "username": username,
-                "email": str(item.get("email")) if item.get("email") is not None else None,
+                "email": str(item.get("email"))
+                if item.get("email") is not None
+                else None,
                 "password": password,
                 "tenant_id": tenant_id,
-                "role_code": str(item.get("role_code")) if item.get("role_code") is not None else None,
+                "role_code": str(item.get("role_code"))
+                if item.get("role_code") is not None
+                else None,
             }
         )
     return users
 
 
 def _verify_password(plain_password: str, stored_password: str) -> bool:
-    # Check if the stored password is a hash (starts with algorithm prefix)
+    # EDGE: Stored password may be a hash ($argon2, $2b, $pbkdf2) from the DB,
+    # or a plain-text value from auth_default_users_json config fallback.
+    # Plain comparison is intentional for the config path only.
     if stored_password.startswith(("$2", "$argon2", "$pbkdf2")):
         return pwd_context.verify(plain_password, stored_password)
     # Fallback: plain comparison (for non-hashed passwords in config)
@@ -86,6 +95,9 @@ def create_access_token(identity: AuthIdentity) -> str:
     settings = _settings()
     expires_delta = timedelta(minutes=settings.jwt_access_token_expire_minutes)
     expire_at = datetime.now(timezone.utc) + expires_delta
+    # WHY: JWT carries identity claims only (sub, tenant, role_code). It does NOT
+    # encode permissions — authorization is checked per-request against the DB.
+    # role_code in the token is a display hint, not a security gate.
     payload = {
         "sub": identity.user_id,
         "username": identity.username,
@@ -95,13 +107,17 @@ def create_access_token(identity: AuthIdentity) -> str:
         "session_id": identity.session_id,
         "exp": expire_at,
     }
-    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    return jwt.encode(
+        payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm
+    )
 
 
 def decode_access_token(token: str) -> AuthIdentity | None:
     settings = _settings()
     try:
-        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+        payload = jwt.decode(
+            token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm]
+        )
     except JWTError:
         return None
 
@@ -116,8 +132,12 @@ def decode_access_token(token: str) -> AuthIdentity | None:
         username=str(username),
         email=str(payload.get("email")) if payload.get("email") is not None else None,
         tenant_id=str(tenant_id),
-        role_code=str(payload.get("role_code")) if payload.get("role_code") is not None else None,
-        session_id=str(payload.get("session_id")) if payload.get("session_id") is not None else None,
+        role_code=str(payload.get("role_code"))
+        if payload.get("role_code") is not None
+        else None,
+        session_id=str(payload.get("session_id"))
+        if payload.get("session_id") is not None
+        else None,
     )
 
 
@@ -165,4 +185,3 @@ def authenticate_user_db(
         role_code=role_code,
         session_id=None,
     )
-

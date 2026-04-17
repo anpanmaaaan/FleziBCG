@@ -15,6 +15,9 @@ from app.security.rbac import FORBIDDEN_ACTING_ROLES, SYSTEM_ROLE_FAMILIES
 
 logger = logging.getLogger(__name__)
 
+# INVARIANT: Only ADM and OTS may create impersonation sessions.
+# This is the entry guard; FORBIDDEN_ACTING_ROLES in rbac.py is the
+# complementary guard preventing ADM/OTS from being *targets*.
 ALLOWED_IMPERSONATORS = frozenset({"ADM", "OTS"})
 MAX_DURATION_MINUTES = settings.impersonation_max_duration_minutes
 
@@ -79,6 +82,8 @@ def create_impersonation_session(
             f"duration_minutes {duration} exceeds maximum {MAX_DURATION_MINUTES}"
         )
 
+    # INVARIANT: One active session per user per tenant. This prevents
+    # stacking sessions to combine permission families.
     if has_active_session(db, real_user_id, tenant_id):
         raise ValueError(
             "An active impersonation session already exists. Revoke it first."
@@ -160,7 +165,13 @@ def log_impersonation_permission_use(
     endpoint: str = "",
 ) -> None:
     try:
-        _log_event(db, session, "PERMISSION_USED", permission_family=permission_family, endpoint=endpoint)
+        _log_event(
+            db,
+            session,
+            "PERMISSION_USED",
+            permission_family=permission_family,
+            endpoint=endpoint,
+        )
         db.commit()
     except Exception:
         logger.exception(

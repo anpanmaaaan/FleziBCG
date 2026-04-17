@@ -76,4 +76,3 @@ class DashboardRiskWorkOrderItem(BaseSchema):
 class DashboardHealthResponse(BaseSchema):
     bottlenecks: list[DashboardBottleneckItem]
     risk_work_orders: list[DashboardRiskWorkOrderItem]
-

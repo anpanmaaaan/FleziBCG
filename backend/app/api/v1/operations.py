@@ -10,7 +10,11 @@ from app.schemas.operation import (
     OperationReportQuantityRequest,
     OperationStartRequest,
 )
-from app.security.dependencies import RequestIdentity, require_action, require_permission
+from app.security.dependencies import (
+    RequestIdentity,
+    require_action,
+    require_permission,
+)
 from app.services.operation_service import (
     CompleteOperationConflictError,
     StartOperationConflictError,
@@ -69,7 +73,9 @@ def start_operation_endpoint(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
-@router.post("/operations/{operation_id}/report-quantity", response_model=OperationDetail)
+@router.post(
+    "/operations/{operation_id}/report-quantity", response_model=OperationDetail
+)
 def report_quantity_endpoint(
     operation_id: int,
     request: OperationReportQuantityRequest,
@@ -130,4 +136,3 @@ def abort_operation_endpoint(
         return abort_operation(db, operation, request, tenant_id=identity.tenant_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-

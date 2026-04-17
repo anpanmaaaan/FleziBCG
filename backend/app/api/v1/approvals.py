@@ -8,7 +8,11 @@ from app.schemas.approval import (
     ApprovalDecisionResponse,
     ApprovalRequestResponse,
 )
-from app.security.dependencies import RequestIdentity, require_action, require_permission
+from app.security.dependencies import (
+    RequestIdentity,
+    require_action,
+    require_permission,
+)
 from app.services.approval_service import (
     create_approval_request,
     decide_approval_request,

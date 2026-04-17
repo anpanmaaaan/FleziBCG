@@ -45,7 +45,9 @@ def get_or_create_user(
     )
     db.add(user)
     db.flush()
-    logger.info("User created: user_id=%s username=%s tenant=%s", user_id, username, tenant_id)
+    logger.info(
+        "User created: user_id=%s username=%s tenant=%s", user_id, username, tenant_id
+    )
     return user
 
 
@@ -58,7 +60,9 @@ def seed_demo_users(db: Session) -> None:
     for role_code in ["ADM", "PMG", "SUP", "OPR", "QAL"]:
         role = db.scalar(select(Role).where(Role.code == role_code))
         if role is None:
-            logger.warning("Role %s not found; skipping seed user assignment", role_code)
+            logger.warning(
+                "Role %s not found; skipping seed user assignment", role_code
+            )
             continue
         roles_by_code[role_code] = role
 
@@ -136,7 +140,9 @@ def seed_demo_users(db: Session) -> None:
         )
 
         if role_code not in roles_by_code:
-            logger.warning("Role %s not found for user %s; skipping", role_code, username)
+            logger.warning(
+                "Role %s not found for user %s; skipping", role_code, username
+            )
             continue
 
         # Check if user_role already exists.

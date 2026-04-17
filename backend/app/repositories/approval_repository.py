@@ -1,7 +1,12 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.approval import ApprovalAuditLog, ApprovalDecision, ApprovalRequest, ApprovalRule
+from app.models.approval import (
+    ApprovalAuditLog,
+    ApprovalDecision,
+    ApprovalRequest,
+    ApprovalRule,
+)
 
 
 def get_rules_for_action(

@@ -2,7 +2,10 @@ from collections import defaultdict
 from datetime import datetime, timezone
 
 from app.models.execution import ExecutionEvent, ExecutionEventType
-from app.schemas.execution_timeline import ExecutionTimelineOperation, WorkOrderExecutionTimeline
+from app.schemas.execution_timeline import (
+    ExecutionTimelineOperation,
+    WorkOrderExecutionTimeline,
+)
 
 TIMING_TOLERANCE_MINUTES = 0
 
@@ -34,7 +37,11 @@ def _align_for_diff(reference_time: datetime, planned_end: datetime) -> datetime
 
 
 def _derive_actual_start(operation, events: list[ExecutionEvent]) -> datetime | None:
-    started_events = [event for event in events if event.event_type == ExecutionEventType.OP_STARTED.value]
+    started_events = [
+        event
+        for event in events
+        if event.event_type == ExecutionEventType.OP_STARTED.value
+    ]
     if started_events:
         # Deterministic ordering even when created_at timestamps are equal.
         started_events.sort(key=lambda event: (event.created_at, event.id))
@@ -45,7 +52,11 @@ def _derive_actual_start(operation, events: list[ExecutionEvent]) -> datetime | 
 
 
 def _derive_actual_end(operation, events: list[ExecutionEvent]) -> datetime | None:
-    completed_events = [event for event in events if event.event_type == ExecutionEventType.OP_COMPLETED.value]
+    completed_events = [
+        event
+        for event in events
+        if event.event_type == ExecutionEventType.OP_COMPLETED.value
+    ]
     if completed_events:
         # Deterministic ordering even when created_at timestamps are equal.
         completed_events.sort(key=lambda event: (event.created_at, event.id))
@@ -56,14 +67,18 @@ def _derive_actual_end(operation, events: list[ExecutionEvent]) -> datetime | No
 
 
 def _derive_status(operation, events: list[ExecutionEvent]) -> str:
-    if any(event.event_type == ExecutionEventType.OP_COMPLETED.value for event in events):
+    if any(
+        event.event_type == ExecutionEventType.OP_COMPLETED.value for event in events
+    ):
         return "COMPLETED"
     if any(event.event_type == ExecutionEventType.OP_STARTED.value for event in events):
         return "IN_PROGRESS"
     return operation.status or "PENDING"
 
 
-def _derive_delay_minutes(status: str, planned_end: datetime | None, actual_end: datetime | None) -> int | None:
+def _derive_delay_minutes(
+    status: str, planned_end: datetime | None, actual_end: datetime | None
+) -> int | None:
     if planned_end is None:
         # No plan baseline means delay cannot be computed reliably.
         return None
@@ -92,7 +107,9 @@ def _derive_timing_status(delay_minutes: int | None) -> str:
     return "ON_TIME"
 
 
-def build_work_order_execution_timeline(work_order, events: list[ExecutionEvent]) -> WorkOrderExecutionTimeline:
+def build_work_order_execution_timeline(
+    work_order, events: list[ExecutionEvent]
+) -> WorkOrderExecutionTimeline:
     events_by_operation_id: dict[int, list[ExecutionEvent]] = defaultdict(list)
     for event in events:
         events_by_operation_id[event.operation_id].append(event)

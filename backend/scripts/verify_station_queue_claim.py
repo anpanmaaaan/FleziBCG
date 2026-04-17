@@ -7,10 +7,10 @@ Checks end-to-end behavior expected by frontend:
 3) Claim conflict is enforced.
 4) Execution write actions enforce mandatory claim ownership.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -45,13 +45,17 @@ def _auth_headers(token: str) -> dict[str, str]:
     }
 
 
-def _login(client: TestClient, username: str, password: str = PASSWORD) -> tuple[str, dict]:
+def _login(
+    client: TestClient, username: str, password: str = PASSWORD
+) -> tuple[str, dict]:
     response = client.post(
         "/api/v1/auth/login",
         json={"username": username, "password": password},
     )
     if response.status_code != 200:
-        raise RuntimeError(f"Login failed for {username}: {response.status_code} {response.text}")
+        raise RuntimeError(
+            f"Login failed for {username}: {response.status_code} {response.text}"
+        )
 
     body = response.json()
     return body["access_token"], body["user"]
@@ -177,7 +181,9 @@ def _ensure_operator_b_with_same_station_scope_as_a() -> None:
 def _get_queue_items(client: TestClient, token: str) -> list[dict]:
     response = client.get("/api/v1/station/queue", headers=_auth_headers(token))
     if response.status_code != 200:
-        raise RuntimeError(f"Queue request failed: {response.status_code} {response.text}")
+        raise RuntimeError(
+            f"Queue request failed: {response.status_code} {response.text}"
+        )
     return response.json().get("items", [])
 
 
@@ -224,14 +230,18 @@ def main() -> None:
 
     # 2) Queue and pick operation
     queue_resp = client.get("/api/v1/station/queue", headers=_auth_headers(token_a))
-    queue_items = queue_resp.json().get("items", []) if queue_resp.status_code == 200 else []
+    queue_items = (
+        queue_resp.json().get("items", []) if queue_resp.status_code == 200 else []
+    )
 
     # Ensure deterministic queue test data exists if environment has none.
     if queue_resp.status_code == 200 and len(queue_items) == 0:
         seed_station_execution_for_opr()
         token_a, user_a = _login(client, OPERATOR_A_USERNAME)
         queue_resp = client.get("/api/v1/station/queue", headers=_auth_headers(token_a))
-        queue_items = queue_resp.json().get("items", []) if queue_resp.status_code == 200 else []
+        queue_items = (
+            queue_resp.json().get("items", []) if queue_resp.status_code == 200 else []
+        )
 
     has_items = queue_resp.status_code == 200 and len(queue_items) > 0
     checks.append(
@@ -258,7 +268,9 @@ def main() -> None:
         seed_station_execution_for_opr()
         token_a, user_a = _login(client, OPERATOR_A_USERNAME)
         queue_resp = client.get("/api/v1/station/queue", headers=_auth_headers(token_a))
-        queue_items = queue_resp.json().get("items", []) if queue_resp.status_code == 200 else []
+        queue_items = (
+            queue_resp.json().get("items", []) if queue_resp.status_code == 200 else []
+        )
         target_item = next(
             (
                 item
@@ -330,7 +342,8 @@ def main() -> None:
     checks.append(
         Check(
             name="Step 4 - Queue reflects claim state=mine",
-            passed=state_after_claim == "mine" and claimed_by_after_claim == operator_a_user_id,
+            passed=state_after_claim == "mine"
+            and claimed_by_after_claim == operator_a_user_id,
             detail=(
                 f"state={state_after_claim}, claimed_by_user_id={claimed_by_after_claim}, "
                 f"expected={operator_a_user_id}"

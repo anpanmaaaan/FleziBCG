@@ -4,7 +4,12 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.approval import ApprovalAuditLog, ApprovalDecision, ApprovalRequest, ApprovalRule
+from app.models.approval import (
+    ApprovalAuditLog,
+    ApprovalDecision,
+    ApprovalRequest,
+    ApprovalRule,
+)
 from app.repositories.approval_repository import (
     get_approver_role_codes,
     get_pending_requests,
@@ -14,9 +19,16 @@ from app.schemas.approval import ApprovalCreateRequest, ApprovalDecideRequest
 
 logger = logging.getLogger(__name__)
 
-VALID_ACTION_TYPES = frozenset({
-    "QC_HOLD", "QC_RELEASE", "SCRAP", "REWORK", "WO_SPLIT", "WO_MERGE",
-})
+VALID_ACTION_TYPES = frozenset(
+    {
+        "QC_HOLD",
+        "QC_RELEASE",
+        "SCRAP",
+        "REWORK",
+        "WO_SPLIT",
+        "WO_MERGE",
+    }
+)
 
 # Default rules: (action_type, approver_role_code), tenant_id="*"
 _DEFAULT_RULES: list[tuple[str, str]] = [
@@ -141,7 +153,9 @@ def decide_approval_request(
             f"Request {request_id} is not pending (status={appr_req.status!r})"
         )
 
-    # Requester-equals-decider check uses real user_id — impersonation does not bypass this.
+    # INVARIANT (separation of duties): requester_id != decider_user_id.
+    # Uses the *real* user_id even under impersonation, so an admin
+    # impersonating a QAL cannot approve their own request.
     if appr_req.requester_id == decider_user_id:
         raise ValueError("Requester cannot approve their own request")
 

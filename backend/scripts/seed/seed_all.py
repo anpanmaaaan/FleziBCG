@@ -8,7 +8,9 @@ from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.master import StatusEnum, WorkOrder
 from app.services.global_operation_service import build_work_order_operation_summaries
-from app.services.work_order_execution_service import build_work_order_summary_projection
+from app.services.work_order_execution_service import (
+    build_work_order_summary_projection,
+)
 
 from .common import SEED_PREFIX, reset_seed_dataset
 from .scenario_s1_normal_completion import seed as seed_s1
@@ -29,11 +31,15 @@ def _coerce_projection_int(value: object, *, field: str) -> int:
         return value
     if isinstance(value, str):
         return int(value)
-    raise TypeError(f"Expected int-compatible value for '{field}', got {type(value).__name__}")
+    raise TypeError(
+        f"Expected int-compatible value for '{field}', got {type(value).__name__}"
+    )
 
 
 def _fetch_work_order_by_number(db, wo_number: str) -> WorkOrder:
-    work_order = db.scalar(select(WorkOrder).where(WorkOrder.work_order_number == wo_number))
+    work_order = db.scalar(
+        select(WorkOrder).where(WorkOrder.work_order_number == wo_number)
+    )
     if work_order is None:
         raise ValueError(f"Work order not found: {wo_number}")
     return work_order
@@ -107,7 +113,11 @@ def _verify_non_regression(db) -> list[VerificationResult]:
     results: list[VerificationResult] = []
 
     all_seed_wos = list(
-        db.scalars(select(WorkOrder).where(WorkOrder.work_order_number.like(f"{SEED_PREFIX}-%")))
+        db.scalars(
+            select(WorkOrder).where(
+                WorkOrder.work_order_number.like(f"{SEED_PREFIX}-%")
+            )
+        )
     )
 
     stuck_late = []
@@ -168,7 +178,11 @@ def main() -> None:
         s4_contexts = seed_s4(db)
 
         results: list[VerificationResult] = []
-        results.extend(_verify_s1_s2(db, s1.work_order.work_order_number, s2.work_order.work_order_number))
+        results.extend(
+            _verify_s1_s2(
+                db, s1.work_order.work_order_number, s2.work_order.work_order_number
+            )
+        )
         results.append(_verify_s3_supervisor(db, s3.work_order.id))
         results.append(_verify_s4_ie(db, s4_contexts[-1].work_order.id))
         results.extend(_verify_non_regression(db))

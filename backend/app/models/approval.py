@@ -10,7 +10,9 @@ from app.db.base import Base
 class ApprovalRule(Base):
     __tablename__ = "approval_rules"
     __table_args__ = (
-        UniqueConstraint("action_type", "approver_role_code", "tenant_id", name="uq_approval_rule"),
+        UniqueConstraint(
+            "action_type", "approver_role_code", "tenant_id", name="uq_approval_rule"
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

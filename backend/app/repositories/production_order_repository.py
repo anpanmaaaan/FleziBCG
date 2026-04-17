@@ -5,7 +5,9 @@ from sqlalchemy.orm.session import Session
 from app.models.master import ProductionOrder, WorkOrder
 
 
-def get_production_orders(db: Session, tenant_id: str | None = None) -> list[ProductionOrder]:
+def get_production_orders(
+    db: Session, tenant_id: str | None = None
+) -> list[ProductionOrder]:
     statement = (
         select(ProductionOrder)
         .options(selectinload(ProductionOrder.work_orders))
@@ -16,7 +18,9 @@ def get_production_orders(db: Session, tenant_id: str | None = None) -> list[Pro
     return list(db.scalars(statement))
 
 
-def get_production_order_by_id(db: Session, order_id: int, tenant_id: str | None = None) -> ProductionOrder | None:
+def get_production_order_by_id(
+    db: Session, order_id: int, tenant_id: str | None = None
+) -> ProductionOrder | None:
     statement = (
         select(ProductionOrder)
         .where(ProductionOrder.id == order_id)
@@ -29,7 +33,9 @@ def get_production_order_by_id(db: Session, order_id: int, tenant_id: str | None
     return db.scalar(statement)
 
 
-def get_production_order_by_number(db: Session, order_number: str, tenant_id: str | None = None) -> ProductionOrder | None:
+def get_production_order_by_number(
+    db: Session, order_number: str, tenant_id: str | None = None
+) -> ProductionOrder | None:
     statement = (
         select(ProductionOrder)
         .where(ProductionOrder.order_number == order_number)

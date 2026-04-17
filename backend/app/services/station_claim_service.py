@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config.settings import settings
@@ -38,10 +38,14 @@ def _effective_role(identity: RequestIdentity) -> str:
 
 def ensure_operator_context(identity: RequestIdentity) -> None:
     if _effective_role(identity) != "OPR":
-        raise PermissionError("Station queue and claims are only available to OPR context.")
+        raise PermissionError(
+            "Station queue and claims are only available to OPR context."
+        )
 
 
-def resolve_station_scope(db: Session, identity: RequestIdentity) -> StationScopeContext:
+def resolve_station_scope(
+    db: Session, identity: RequestIdentity
+) -> StationScopeContext:
     statement = (
         select(UserRoleAssignment, Scope)
         .join(Role, Role.id == UserRoleAssignment.role_id)
@@ -91,7 +95,9 @@ def _log_claim_event(
     )
 
 
-def _get_unreleased_claim_for_update(db: Session, tenant_id: str, operation_id: int) -> OperationClaim | None:
+def _get_unreleased_claim_for_update(
+    db: Session, tenant_id: str, operation_id: int
+) -> OperationClaim | None:
     statement = (
         select(OperationClaim)
         .where(
@@ -104,6 +110,10 @@ def _get_unreleased_claim_for_update(db: Session, tenant_id: str, operation_id: 
     return db.scalar(statement)
 
 
+# WHY: Claim expiry is evaluated lazily on every read/write access, not via
+# a background timer. This eliminates clock-skew race conditions between
+# a scheduler and the request path. The trade-off is a slightly stale
+# "expires_at" display until the next access.
 def _expire_claim_if_needed(
     db: Session,
     claim: OperationClaim | None,
@@ -180,7 +190,9 @@ def get_station_scoped_operation(
     return operation
 
 
-def _to_claim_state(identity: RequestIdentity, claim: OperationClaim | None) -> tuple[str, datetime | None, str | None]:
+def _to_claim_state(
+    identity: RequestIdentity, claim: OperationClaim | None
+) -> tuple[str, datetime | None, str | None]:
     if claim is None:
         return ("none", None, None)
     if claim.claimed_by_user_id == identity.user_id:
@@ -199,9 +211,15 @@ def get_station_queue(db: Session, identity: RequestIdentity) -> tuple[str, list
         .where(
             Operation.tenant_id == identity.tenant_id,
             Operation.station_scope_value == station_scope.scope_value,
-            Operation.status.in_([StatusEnum.pending.value, StatusEnum.in_progress.value]),
+            Operation.status.in_(
+                [StatusEnum.pending.value, StatusEnum.in_progress.value]
+            ),
         )
-        .order_by(Operation.planned_start.asc().nullslast(), Operation.planned_end.asc().nullslast(), Operation.id.asc())
+        .order_by(
+            Operation.planned_start.asc().nullslast(),
+            Operation.planned_end.asc().nullslast(),
+            Operation.id.asc(),
+        )
     )
 
     rows = list(db.execute(statement))
@@ -218,13 +236,17 @@ def get_station_queue(db: Session, identity: RequestIdentity) -> tuple[str, list
             )
         )
         for claim in claim_rows:
-            claims[claim.operation_id] = _expire_claim_if_needed(db, claim, identity=identity)
+            claims[claim.operation_id] = _expire_claim_if_needed(
+                db, claim, identity=identity
+            )
 
     db.commit()
 
     items: list[dict] = []
     for operation, work_order, production_order in rows:
-        state, expires_at, claimed_by_user_id = _to_claim_state(identity, claims.get(operation.id))
+        state, expires_at, claimed_by_user_id = _to_claim_state(
+            identity, claims.get(operation.id)
+        )
         items.append(
             {
                 "operation_id": operation.id,
@@ -256,13 +278,21 @@ def claim_operation(
 ) -> tuple[OperationClaim, str]:
     ensure_operator_context(identity)
     station_scope = resolve_station_scope(db, identity)
-    _validate_operation_for_station(db, identity=identity, station_scope=station_scope, operation_id=operation_id)
+    _validate_operation_for_station(
+        db, identity=identity, station_scope=station_scope, operation_id=operation_id
+    )
 
-    ttl = duration_minutes if duration_minutes is not None else settings.claim_default_ttl_minutes
+    ttl = (
+        duration_minutes
+        if duration_minutes is not None
+        else settings.claim_default_ttl_minutes
+    )
     if ttl <= 0:
         raise ValueError("duration_minutes must be greater than zero")
     if ttl > settings.claim_max_ttl_minutes:
-        raise ValueError(f"duration_minutes exceeds max allowed ({settings.claim_max_ttl_minutes})")
+        raise ValueError(
+            f"duration_minutes exceeds max allowed ({settings.claim_max_ttl_minutes})"
+        )
 
     claim = _get_unreleased_claim_for_update(db, identity.tenant_id, operation_id)
     claim = _expire_claim_if_needed(db, claim, identity=identity)
@@ -315,14 +345,18 @@ def release_operation_claim(
 ) -> tuple[OperationClaim, str]:
     ensure_operator_context(identity)
     station_scope = resolve_station_scope(db, identity)
-    _validate_operation_for_station(db, identity=identity, station_scope=station_scope, operation_id=operation_id)
+    _validate_operation_for_station(
+        db, identity=identity, station_scope=station_scope, operation_id=operation_id
+    )
 
     claim = _get_unreleased_claim_for_update(db, identity.tenant_id, operation_id)
     claim = _expire_claim_if_needed(db, claim, identity=identity)
     if claim is None:
         raise LookupError("No active claim to release")
 
-    if claim.claimed_by_user_id != identity.user_id and not _has_admin_support_override(identity):
+    if claim.claimed_by_user_id != identity.user_id and not _has_admin_support_override(
+        identity
+    ):
         raise PermissionError("Only the claim owner may release this claim")
 
     now = datetime.now(timezone.utc)
@@ -342,10 +376,14 @@ def release_operation_claim(
     return claim, station_scope.scope_value
 
 
-def get_operation_claim_status(db: Session, identity: RequestIdentity, operation_id: int) -> dict:
+def get_operation_claim_status(
+    db: Session, identity: RequestIdentity, operation_id: int
+) -> dict:
     ensure_operator_context(identity)
     station_scope = resolve_station_scope(db, identity)
-    _validate_operation_for_station(db, identity=identity, station_scope=station_scope, operation_id=operation_id)
+    _validate_operation_for_station(
+        db, identity=identity, station_scope=station_scope, operation_id=operation_id
+    )
 
     claim = _get_unreleased_claim_for_update(db, identity.tenant_id, operation_id)
     claim = _expire_claim_if_needed(db, claim, identity=identity)
@@ -369,5 +407,7 @@ def ensure_operation_claim_owned_by_identity(
     claim = _expire_claim_if_needed(db, claim, identity=identity)
     if claim is None or claim.claimed_by_user_id != identity.user_id:
         db.commit()
-        raise PermissionError("Operation must be claimed by you before execution actions.")
+        raise PermissionError(
+            "Operation must be claimed by you before execution actions."
+        )
     db.commit()

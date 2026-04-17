@@ -17,6 +17,7 @@ EC-11  Audit log: PERMISSION_USED entry present for EXECUTE
 EC-12  Audit log: SESSION_REVOKED entry present
 EC-13  S1-S4 seed regression still passes
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -32,9 +33,8 @@ from app.models.impersonation import ImpersonationAuditLog, ImpersonationSession
 from app.models.rbac import Role, UserRole, RoleScope
 from app.repositories.impersonation_repository import get_active_impersonation_session
 from app.schemas.impersonation import ImpersonationCreateRequest
-from app.security.rbac import SYSTEM_ROLE_FAMILIES, IdentityLike, has_permission
+from app.security.rbac import IdentityLike, has_permission
 from app.services.impersonation_service import (
-    ALLOWED_IMPERSONATORS,
     create_impersonation_session,
     revoke_impersonation_session,
 )
@@ -66,6 +66,7 @@ def _make_identity(user_id: str, acting_role: str | None = None) -> IdentityLike
 # ---------------------------------------------------------------------------
 # Fixture setup / teardown helpers
 # ---------------------------------------------------------------------------
+
 
 def _create_user_role(db, user_id: str, role_code: str) -> UserRole:
     role = db.scalar(select(Role).where(Role.code == role_code))
@@ -107,7 +108,11 @@ def _delete_test_users(db) -> None:
         )
     )
     for s in sessions:
-        db.execute(delete(ImpersonationAuditLog).where(ImpersonationAuditLog.session_id == s.id))
+        db.execute(
+            delete(ImpersonationAuditLog).where(
+                ImpersonationAuditLog.session_id == s.id
+            )
+        )
     db.execute(
         delete(ImpersonationSession).where(
             ImpersonationSession.real_user_id.in_([ADM_USER, OTS_USER, OPR_USER])
@@ -119,6 +124,7 @@ def _delete_test_users(db) -> None:
 # ---------------------------------------------------------------------------
 # Individual checks
 # ---------------------------------------------------------------------------
+
 
 def check_ec1_adm_no_impersonation_cannot_execute(db) -> Check:
     ident = _make_identity(ADM_USER)
@@ -338,6 +344,7 @@ def check_ec11_audit_log_permission_used(db) -> Check:
         )
 
     from app.services.impersonation_service import log_impersonation_permission_use
+
     log_impersonation_permission_use(db, active, "EXECUTE", endpoint="/test/verify")
 
     entries = list(
@@ -390,6 +397,7 @@ def check_ec13_seed_regression() -> Check:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     init_db()

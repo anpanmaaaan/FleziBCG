@@ -7,10 +7,21 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.config.settings import Settings
-from app.models.rbac import Permission, Role, RolePermission, RoleScope, Scope, UserRole, UserRoleAssignment
+from app.models.rbac import (
+    Permission,
+    Role,
+    RolePermission,
+    RoleScope,
+    Scope,
+    UserRole,
+    UserRoleAssignment,
+)
 
 PermissionFamily = Literal["VIEW", "EXECUTE", "APPROVE", "CONFIGURE", "ADMIN"]
 
+# INVARIANT: These mappings are FROZEN per Phase 6 governance. Do NOT modify
+# without a Phase 7+ design gate. ADM/OTS intentionally lack EXECUTE —
+# they must impersonate an OPR to perform execution actions.
 SYSTEM_ROLE_FAMILIES: dict[str, set[PermissionFamily]] = {
     "OPR": {"EXECUTE"},
     "SUP": {"VIEW", "EXECUTE"},
@@ -51,7 +62,9 @@ SCOPE_TYPE_STATION = "station"
 SCOPE_TYPE_EQUIPMENT = "equipment"
 SCOPE_WILDCARD = "*"
 
-# Roles that cannot be the target of impersonation.
+# INVARIANT: ADM/OTS cannot be impersonation *targets*. An admin impersonating
+# another admin would circumvent audit separation. Only non-elevated roles
+# (OPR, SUP, etc.) may be used as acting_role_code.
 FORBIDDEN_ACTING_ROLES: frozenset[str] = frozenset({"ADM", "OTS"})
 
 
@@ -89,7 +102,9 @@ def _load_default_users() -> list[dict[str, str | None]]:
         username = str(item.get("username", "")).strip()
         user_id = str(item.get("user_id", username)).strip()
         tenant_id = str(item.get("tenant_id", "default")).strip() or "default"
-        role_code = _normalize_role_code(str(item.get("role_code")) if item.get("role_code") is not None else None)
+        role_code = _normalize_role_code(
+            str(item.get("role_code")) if item.get("role_code") is not None else None
+        )
         if not username or not user_id:
             continue
         users.append(
@@ -130,13 +145,20 @@ def _get_or_create_permission(db: Session, family: PermissionFamily) -> Permissi
             db.flush()
         return permission
 
-    permission = Permission(code=family, family=family, action_code=None, description=f"{family} permission family")
+    permission = Permission(
+        code=family,
+        family=family,
+        action_code=None,
+        description=f"{family} permission family",
+    )
     db.add(permission)
     db.flush()
     return permission
 
 
-def _get_or_create_action_permission(db: Session, action_code: str, family: PermissionFamily) -> Permission:
+def _get_or_create_action_permission(
+    db: Session, action_code: str, family: PermissionFamily
+) -> Permission:
     permission = db.scalar(select(Permission).where(Permission.code == action_code))
     if permission:
         if permission.action_code != action_code or permission.family != family:
@@ -199,7 +221,9 @@ def seed_rbac_core(db: Session) -> None:
 
     permission_by_action: dict[str, Permission] = {}
     for action_code, family in ACTION_CODE_REGISTRY.items():
-        permission_by_action[action_code] = _get_or_create_action_permission(db, action_code, family)
+        permission_by_action[action_code] = _get_or_create_action_permission(
+            db, action_code, family
+        )
 
     for role_code, families in SYSTEM_ROLE_FAMILIES.items():
         role = role_by_code[role_code]
@@ -354,6 +378,9 @@ def has_permission(
     if not identity.is_authenticated:
         return False
 
+    # WHY: When impersonating, permission is resolved from the *acting* role's
+    # static family set — the real user's DB-stored permissions are bypassed.
+    # This ensures impersonation cannot silently escalate beyond the acting role.
     acting = getattr(identity, "acting_role_code", None)
     if acting:
         acting_families = SYSTEM_ROLE_FAMILIES.get(acting, set())
@@ -411,9 +438,15 @@ def _evaluate_permission_rows(
     now = datetime.now(timezone.utc)
 
     assignment_rows = list(
-        db.execute(_build_assignment_query(identity, now, required_family, required_action_code))
+        db.execute(
+            _build_assignment_query(
+                identity, now, required_family, required_action_code
+            )
+        )
     )
 
+    # WHY: Deny-wins evaluation — a single "deny" row overrides any number of
+    # "allow" rows. This prevents permission escalation via additive grants.
     allow_match = False
     deny_match = False
     for assignment, _scope, effect in assignment_rows:
@@ -440,7 +473,9 @@ def _evaluate_permission_rows(
         return True
 
     fallback_rows = list(
-        db.execute(_build_fallback_query(identity, required_family, required_action_code))
+        db.execute(
+            _build_fallback_query(identity, required_family, required_action_code)
+        )
     )
 
     allow_match = False
@@ -450,10 +485,16 @@ def _evaluate_permission_rows(
             in_scope = True
         elif role_scope is None:
             in_scope = False
-        elif role_scope.scope_type == SCOPE_TYPE_TENANT and role_scope.scope_value in (identity.tenant_id, SCOPE_WILDCARD):
+        elif role_scope.scope_type == SCOPE_TYPE_TENANT and role_scope.scope_value in (
+            identity.tenant_id,
+            SCOPE_WILDCARD,
+        ):
             in_scope = True
         else:
-            in_scope = role_scope.scope_type == target_scope_type and role_scope.scope_value == target_scope_value
+            in_scope = (
+                role_scope.scope_type == target_scope_type
+                and role_scope.scope_value == target_scope_value
+            )
 
         if not in_scope:
             continue
@@ -483,8 +524,14 @@ def _build_assignment_query(
         .where(
             UserRoleAssignment.user_id == identity.user_id,
             UserRoleAssignment.is_active.is_(True),
-            or_(UserRoleAssignment.valid_from.is_(None), UserRoleAssignment.valid_from <= now),
-            or_(UserRoleAssignment.valid_to.is_(None), UserRoleAssignment.valid_to >= now),
+            or_(
+                UserRoleAssignment.valid_from.is_(None),
+                UserRoleAssignment.valid_from <= now,
+            ),
+            or_(
+                UserRoleAssignment.valid_to.is_(None),
+                UserRoleAssignment.valid_to >= now,
+            ),
             Scope.tenant_id == identity.tenant_id,
             RolePermission.scope_type == SCOPE_TYPE_TENANT,
             or_(
@@ -558,6 +605,9 @@ def _scope_contains(
             and assignment_scope.scope_value == target_scope_value
         )
 
+    # WHY: Walk up the scope tree (station→line→plant→tenant) to check if
+    # the user's assignment scope contains the target. visited_ids guards
+    # against cycles in malformed scope hierarchies.
     cursor = target_scope
     visited_ids: set[int] = set()
     while cursor is not None and cursor.id not in visited_ids:

@@ -3,20 +3,26 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.db.session import SessionLocal
 from app.repositories.production_order_repository import (
     get_production_order_by_id,
     get_production_order_by_number,
     get_production_orders,
 )
+from app.repositories.work_order_repository import get_work_order_by_id_or_number
+from app.schemas.operation import OperationListItem
+from app.schemas.production_order import (
+    ProductionOrderDetail,
+    ProductionOrderSummary,
+    WorkOrderSummary,
+)
+from app.security.dependencies import RequestIdentity, require_permission
+from app.services.global_operation_service import build_work_order_operation_summaries
+from app.services.work_order_execution_service import (
+    build_work_order_summary_projection,
+)
 
 logger = logging.getLogger(__name__)
-from app.schemas.production_order import ProductionOrderDetail, ProductionOrderSummary, WorkOrderSummary
-from app.schemas.operation import OperationListItem
-from app.db.session import SessionLocal
-from app.services.global_operation_service import build_work_order_operation_summaries
-from app.services.work_order_execution_service import build_work_order_summary_projection
-from app.security.dependencies import RequestIdentity, require_permission
-from app.repositories.work_order_repository import get_work_order_by_id_or_number
 
 router = APIRouter()
 
@@ -35,7 +41,9 @@ def _compute_production_order_progress(order) -> int | None:
     total = len(order.work_orders)
     if total == 0:
         return None
-    completed = sum(1 for wo in order.work_orders if wo.status in {"COMPLETED", "COMPLETED_LATE"})
+    completed = sum(
+        1 for wo in order.work_orders if wo.status in {"COMPLETED", "COMPLETED_LATE"}
+    )
     return int(completed * 100 / total)
 
 
@@ -88,7 +96,7 @@ def read_production_orders(
     try:
         orders = get_production_orders(db, tenant_id=identity.tenant_id)
         return [_build_production_order_summary(order) for order in orders]
-    except Exception as exc:
+    except Exception:
         logger.exception("Failed to load production orders")
         raise HTTPException(status_code=500, detail="Failed to load production orders")
 
@@ -103,10 +111,14 @@ def read_production_order(
         order = None
 
         if order_id.isdigit():
-            order = get_production_order_by_id(db, int(order_id), tenant_id=identity.tenant_id)
+            order = get_production_order_by_id(
+                db, int(order_id), tenant_id=identity.tenant_id
+            )
 
         if order is None:
-            order = get_production_order_by_number(db, order_id, tenant_id=identity.tenant_id)
+            order = get_production_order_by_number(
+                db, order_id, tenant_id=identity.tenant_id
+            )
 
         if not order:
             raise HTTPException(status_code=404, detail="Production order not found")
@@ -147,7 +159,9 @@ def read_work_order_operations(
     db: Session = Depends(get_db),
     identity: RequestIdentity = Depends(require_permission("VIEW")),
 ):
-    work_order = get_work_order_by_id_or_number(db, str(wo_id), tenant_id=identity.tenant_id)
+    work_order = get_work_order_by_id_or_number(
+        db, str(wo_id), tenant_id=identity.tenant_id
+    )
     if not work_order:
         raise HTTPException(status_code=404, detail="Work order not found")
     return build_work_order_operation_summaries(db, wo_id)

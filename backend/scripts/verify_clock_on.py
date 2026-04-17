@@ -8,6 +8,7 @@ Checks:
 4) Start OP A, then start OP B at same station -> 409
 5) Complete OP A, then start OP B -> PASS
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -217,15 +218,27 @@ def _seed_operations(db) -> tuple[int, int]:
 def _cleanup(db) -> None:
     operation_ids = list(
         db.scalars(
-            select(Operation.id).where(Operation.operation_number.like(f"PH6-CLOCK-%-{_SUFFIX}"))
+            select(Operation.id).where(
+                Operation.operation_number.like(f"PH6-CLOCK-%-{_SUFFIX}")
+            )
         )
     )
     if operation_ids:
-        db.execute(delete(OperationClaimAuditLog).where(OperationClaimAuditLog.operation_id.in_(operation_ids)))
-        db.execute(delete(OperationClaim).where(OperationClaim.operation_id.in_(operation_ids)))
-        db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(operation_ids)))
+        db.execute(
+            delete(OperationClaimAuditLog).where(
+                OperationClaimAuditLog.operation_id.in_(operation_ids)
+            )
+        )
+        db.execute(
+            delete(OperationClaim).where(OperationClaim.operation_id.in_(operation_ids))
+        )
+        db.execute(
+            delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(operation_ids))
+        )
 
-    wo_ids = list(db.scalars(select(WorkOrder.id).where(WorkOrder.work_order_number == WO_NUMBER)))
+    wo_ids = list(
+        db.scalars(select(WorkOrder.id).where(WorkOrder.work_order_number == WO_NUMBER))
+    )
     if wo_ids:
         db.execute(delete(Operation).where(Operation.work_order_id.in_(wo_ids)))
         db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
@@ -303,7 +316,9 @@ def main() -> None:
     checks.append(
         Check(
             name="2) Claim + start",
-            passed=claim_a.status_code == 200 and start_a.status_code == 200 and start_a_status == "IN_PROGRESS",
+            passed=claim_a.status_code == 200
+            and start_a.status_code == 200
+            and start_a_status == "IN_PROGRESS",
             detail=(
                 f"claim_status={claim_a.status_code}, start_status={start_a.status_code}, "
                 f"operation_status={start_a_status}"
@@ -339,7 +354,8 @@ def main() -> None:
     checks.append(
         Check(
             name="4) Start OP A then OP B same station",
-            passed=claim_b.status_code == 200 and start_b_while_a_running.status_code == 409,
+            passed=claim_b.status_code == 200
+            and start_b_while_a_running.status_code == 409,
             detail=f"claim_status={claim_b.status_code}, start_status={start_b_while_a_running.status_code}",
         )
     )
@@ -355,11 +371,17 @@ def main() -> None:
         headers=headers,
         json={"operator_id": USER_ID},
     )
-    start_b_status = start_b_after_complete.json().get("status") if start_b_after_complete.status_code == 200 else "-"
+    start_b_status = (
+        start_b_after_complete.json().get("status")
+        if start_b_after_complete.status_code == 200
+        else "-"
+    )
     checks.append(
         Check(
             name="5) Complete OP A then start OP B",
-            passed=complete_a.status_code == 200 and start_b_after_complete.status_code == 200 and start_b_status == "IN_PROGRESS",
+            passed=complete_a.status_code == 200
+            and start_b_after_complete.status_code == 200
+            and start_b_status == "IN_PROGRESS",
             detail=(
                 f"complete_status={complete_a.status_code}, start_status={start_b_after_complete.status_code}, "
                 f"operation_status={start_b_status}"

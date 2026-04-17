@@ -15,7 +15,9 @@ def get_operations_by_work_order(db: Session, work_order_id: int) -> list[Operat
     return list(db.scalars(statement))
 
 
-def get_operations_by_numbers(db: Session, operation_numbers: list[str]) -> list[Operation]:
+def get_operations_by_numbers(
+    db: Session, operation_numbers: list[str]
+) -> list[Operation]:
     if not operation_numbers:
         return []
 
@@ -43,7 +45,9 @@ def get_operation_by_id(db: Session, operation_id: int) -> Operation | None:
     statement = (
         select(Operation)
         .where(Operation.id == operation_id)
-        .options(selectinload(Operation.work_order).selectinload(WorkOrder.production_order))
+        .options(
+            selectinload(Operation.work_order).selectinload(WorkOrder.production_order)
+        )
     )
     return db.scalar(statement)
 
@@ -75,11 +79,13 @@ def count_operations(db: Session) -> int:
 
 
 def count_operations_by_status(db: Session, status: str) -> int:
-    statement = select(func.count()).select_from(Operation).where(Operation.status == status)
+    statement = (
+        select(func.count()).select_from(Operation).where(Operation.status == status)
+    )
     return db.scalar(statement) or 0
 
 
-def mark_operation_started(db: Session, operation: Operation, started_at):
+def mark_operation_started(db: Session, operation: Operation, started_at) -> Operation:
     operation.status = StatusEnum.in_progress.value
     if operation.actual_start is None:
         operation.actual_start = started_at
@@ -95,7 +101,7 @@ def mark_operation_reported(
     operation: Operation,
     good_qty: int,
     scrap_qty: int,
-):
+) -> Operation:
     operation.completed_qty = (operation.completed_qty or 0) + good_qty + scrap_qty
     operation.good_qty = (operation.good_qty or 0) + good_qty
     operation.scrap_qty = (operation.scrap_qty or 0) + scrap_qty
@@ -106,7 +112,9 @@ def mark_operation_reported(
     return operation
 
 
-def mark_operation_completed(db: Session, operation: Operation, completed_at: datetime):
+def mark_operation_completed(
+    db: Session, operation: Operation, completed_at: datetime
+) -> Operation:
     operation.status = StatusEnum.completed.value
     operation.actual_end = completed_at
 
@@ -116,7 +124,9 @@ def mark_operation_completed(db: Session, operation: Operation, completed_at: da
     return operation
 
 
-def mark_operation_aborted(db: Session, operation: Operation, aborted_at: datetime):
+def mark_operation_aborted(
+    db: Session, operation: Operation, aborted_at: datetime
+) -> Operation:
     operation.status = StatusEnum.aborted.value
     if operation.actual_end is None:
         operation.actual_end = aborted_at
