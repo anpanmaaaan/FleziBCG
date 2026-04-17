@@ -25,6 +25,9 @@ class ProductionOrderSummary(BaseSchema):
     product_name: str
     quantity: int
     status: str
+    # EDGE: Most PO-level fields are Optional — not all manufacturing
+    # scenarios use serial_number, lot_id, customer, etc. The schema is
+    # wide to accommodate diverse order types.
     serial_number: str | None = None
     lot_id: str | None = None
     customer: str | None = None
@@ -39,6 +42,8 @@ class ProductionOrderSummary(BaseSchema):
     planned_completion_date: datetime | None = None
     actual_start_date: datetime | None = None
     actual_completion_date: datetime | None = None
+    # WHY: progress is Optional int (not float) — None means "no work orders
+    # exist yet"; 0 means "work orders exist but none completed".
     progress: int | None = None
 
 

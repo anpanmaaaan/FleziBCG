@@ -10,6 +10,8 @@ from app.repositories.operation_repository import (
 )
 from app.schemas.operation import OperationListItem
 
+# INTENT: Domain heuristic constants for supervisor alerting. These are
+# business-tunable thresholds, not arbitrary magic numbers.
 REPEAT_DELAY_MIN_COUNT = 2
 OFTEN_LATE_FREQUENCY_THRESHOLD = 0.5
 HIGH_VARIANCE_STDDEV_THRESHOLD_MINUTES = 20

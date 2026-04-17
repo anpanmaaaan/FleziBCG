@@ -34,6 +34,8 @@ SYSTEM_ROLE_FAMILIES: dict[str, set[PermissionFamily]] = {
     "OTS": {"VIEW", "ADMIN"},
 }
 
+# INTENT: Maps fine-grained action codes to their parent permission family.
+# Used for both static impersonation checks and DB-backed permission lookups.
 ACTION_CODE_REGISTRY: dict[str, PermissionFamily] = {
     "execution.start": "EXECUTE",
     "execution.complete": "EXECUTE",
@@ -45,6 +47,9 @@ ACTION_CODE_REGISTRY: dict[str, PermissionFamily] = {
     "admin.user.manage": "ADMIN",
 }
 
+# EDGE: Aliases are resolved at check time in _normalize_role_code, never
+# persisted in the DB. This allows seed data to use human-friendly names
+# (e.g., "OPERATOR") while the canonical code ("OPR") is the stored value.
 ROLE_ALIASES: dict[str, str] = {
     "OPERATOR": "OPR",
     "SUPERVISOR": "SUP",
@@ -407,6 +412,8 @@ def has_action(
     if not identity.is_authenticated:
         return False
 
+    # INTENT: Mirrors has_permission's impersonation path — acting role is
+    # checked against static SYSTEM_ROLE_FAMILIES, not DB permissions.
     acting = getattr(identity, "acting_role_code", None)
     if acting:
         acting_families = SYSTEM_ROLE_FAMILIES.get(acting, set())

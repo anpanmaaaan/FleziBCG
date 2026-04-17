@@ -42,6 +42,9 @@ def get_operations_by_names(db: Session, operation_names: list[str]) -> list[Ope
 
 
 def get_operation_by_id(db: Session, operation_id: int) -> Operation | None:
+    # WHY: selectinload eagerly fetches the parent chain (WO→PO) in a single
+    # additional query, avoiding N+1 when callers access work_order or
+    # production_order attributes.
     statement = (
         select(Operation)
         .where(Operation.id == operation_id)
@@ -87,6 +90,8 @@ def count_operations_by_status(db: Session, status: str) -> int:
 
 def mark_operation_started(db: Session, operation: Operation, started_at) -> Operation:
     operation.status = StatusEnum.in_progress.value
+    # INVARIANT: actual_start is set only on the first start event. Subsequent
+    # reporting or re-start calls must not overwrite the original timestamp.
     if operation.actual_start is None:
         operation.actual_start = started_at
 
@@ -102,6 +107,8 @@ def mark_operation_reported(
     good_qty: int,
     scrap_qty: int,
 ) -> Operation:
+    # WHY: Quantities are accumulated (+=) not replaced. Each QTY_REPORTED
+    # event adds to the running total; the event log is the source of truth.
     operation.completed_qty = (operation.completed_qty or 0) + good_qty + scrap_qty
     operation.good_qty = (operation.good_qty or 0) + good_qty
     operation.scrap_qty = (operation.scrap_qty or 0) + scrap_qty

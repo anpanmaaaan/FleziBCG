@@ -24,9 +24,13 @@ class OperationClaim(Base):
     claimed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+    # INTENT: Auto-release mechanism. If an operator abandons a station without
+    # explicitly releasing, the claim expires after claim_default_ttl_minutes.
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
+    # WHY: released_at is NULL while the claim is active. A non-NULL value
+    # means the operator (or supervisor) explicitly released the station.
     released_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None
     )
@@ -41,6 +45,8 @@ class OperationClaimAuditLog(Base):
     __tablename__ = "operation_claim_audit_logs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # WHY: Nullable because audit events can be recorded before a claim row
+    # exists (e.g., failed claim attempts or queue entries).
     claim_id: Mapped[int | None] = mapped_column(
         ForeignKey("operation_claims.id"), nullable=True, index=True
     )

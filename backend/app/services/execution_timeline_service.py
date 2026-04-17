@@ -22,7 +22,8 @@ def _parse_event_timestamp(value: object) -> datetime | None:
 
 
 def _event_time(event: ExecutionEvent, payload_key: str) -> datetime:
-    # Event payload timestamp is preferred; fallback to append-only event created_at.
+    # INTENT: Payload timestamp is preferred because events may be backfilled
+    # with an explicit timestamp; created_at is a fallback for legacy events.
     parsed = _parse_event_timestamp(event.payload.get(payload_key))
     return parsed or event.created_at
 
@@ -37,6 +38,8 @@ def _align_for_diff(reference_time: datetime, planned_end: datetime) -> datetime
 
 
 def _derive_actual_start(operation, events: list[ExecutionEvent]) -> datetime | None:
+    # EDGE: Uses the first OP_STARTED event (deterministic by created_at, id)
+    # rather than the last, because re-starts are not part of the state machine.
     started_events = [
         event
         for event in events
@@ -52,6 +55,8 @@ def _derive_actual_start(operation, events: list[ExecutionEvent]) -> datetime | 
 
 
 def _derive_actual_end(operation, events: list[ExecutionEvent]) -> datetime | None:
+    # EDGE: Uses the last OP_COMPLETED event — if multiple completions exist
+    # (e.g., partial completions), the final one is the authoritative end time.
     completed_events = [
         event
         for event in events

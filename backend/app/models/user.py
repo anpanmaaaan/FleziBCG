@@ -9,11 +9,16 @@ from app.db.base import Base
 
 class User(Base):
     __tablename__ = "users"
+    # INVARIANT: Same username may exist in different tenants (multi-tenant
+    # isolation). The unique constraint is on the (username, tenant_id) pair,
+    # NOT on username alone.
     __table_args__ = (
         UniqueConstraint("username", "tenant_id", name="uq_username_tenant"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    # WHY: user_id is a separate string identifier (not the auto-int PK) because
+    # it is carried in JWT claims and used across service boundaries.
     user_id: Mapped[str] = mapped_column(
         String(64), nullable=False, unique=True, index=True
     )

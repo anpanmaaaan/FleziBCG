@@ -71,6 +71,9 @@ def create_impersonation_session(
             f"Elevated roles cannot be impersonated: {sorted(FORBIDDEN_ACTING_ROLES)}"
         )
 
+    # EDGE: Positive validation against SYSTEM_ROLE_FAMILIES — acting_role must
+    # be a known system role, not just "not forbidden". Prevents typos or
+    # invented role codes from creating sessions with empty permission sets.
     if acting_role not in SYSTEM_ROLE_FAMILIES:
         raise ValueError(
             f"acting_role_code {acting_role!r} is not a recognised system role"
@@ -129,6 +132,8 @@ def revoke_impersonation_session(
     if session is None or session.tenant_id != tenant_id:
         raise LookupError("Impersonation session not found")
 
+    # INVARIANT: Only the session creator may revoke. This prevents one admin
+    # from silently revoking another admin's active impersonation.
     if session.real_user_id != requesting_user_id:
         raise PermissionError("Not authorized to revoke this session")
 
@@ -164,6 +169,9 @@ def log_impersonation_permission_use(
     permission_family: str,
     endpoint: str = "",
 ) -> None:
+    # EDGE: Exception is intentionally swallowed — a failed audit write must
+    # not block the permission-gated operation itself. The logger.exception
+    # call preserves the stack trace for operational alerting.
     try:
         _log_event(
             db,

@@ -35,6 +35,8 @@ def get_db():
         db.close()
 
 
+# INTENT: PO-level progress is percentage of completed work orders, not
+# operations — distinct from operation-level progress in operation_service.
 def _compute_production_order_progress(order) -> int | None:
     if not order.work_orders:
         return None
@@ -107,6 +109,8 @@ def read_production_order(
     db: Session = Depends(get_db),
     identity: RequestIdentity = Depends(require_permission("VIEW")),
 ):
+    # EDGE: order_id is a string — try numeric ID first, then fall back to
+    # order_number lookup, allowing clients to use either identifier.
     try:
         order = None
 

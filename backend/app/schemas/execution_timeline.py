@@ -6,6 +6,8 @@ from pydantic import Field
 from app.schemas.common import BaseSchema
 
 
+# WHY: Literal, not Enum — TimingStatus is a derived classification computed
+# at query time, not stored in the DB, so enum registry is unnecessary.
 TimingStatus = Literal["EARLY", "ON_TIME", "LATE"]
 
 
@@ -20,6 +22,8 @@ class ExecutionTimelineOperation(BaseSchema):
     planned_end: datetime | None = None
     actual_start: datetime | None = None
     actual_end: datetime | None = None
+    # EDGE: delay_minutes is None when the operation has not started — zero
+    # delay and no-data are semantically different for Gantt visualization.
     delay_minutes: int | None = None
     timing_status: TimingStatus = "ON_TIME"
     qc_required: bool = False

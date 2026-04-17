@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from app.models.master import Operation
 
 
+# INTENT: This enum defines the alphabet of the execution state machine.
+# _derive_status() in operation_service maps these to StatusEnum values.
 class ExecutionEventType(str, Enum):
     OP_STARTED = "OP_STARTED"
     QTY_REPORTED = "QTY_REPORTED"
@@ -38,6 +40,8 @@ class ExecutionEvent(Base):
         ForeignKey("operations.id"), nullable=False
     )
     payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    # WHY: Default "default" preserves backward compatibility with
+    # pre-multi-tenant seed data. New events always receive an explicit tenant_id.
     tenant_id: Mapped[str] = mapped_column(
         String(64), nullable=False, default="default"
     )

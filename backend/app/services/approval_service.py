@@ -113,6 +113,8 @@ def create_approval_request(
     db.add(appr_req)
     db.flush()
 
+    # INVARIANT: Audit log is written in the same transaction as the request.
+    # If the commit fails, neither the request nor its audit trail persists.
     _log_event(
         db,
         appr_req,
@@ -159,6 +161,8 @@ def decide_approval_request(
     if appr_req.requester_id == decider_user_id:
         raise ValueError("Requester cannot approve their own request")
 
+    # WHY: Approval rules are DB-driven (ApprovalRule table), not a static map.
+    # Tenants can override the default rules without code changes.
     allowed_roles = get_approver_role_codes(db, appr_req.action_type, tenant_id)
     if not allowed_roles:
         raise ValueError(
@@ -175,6 +179,9 @@ def decide_approval_request(
     appr_req.status = decision_value
     appr_req.updated_at = datetime.now(timezone.utc)
 
+    # INVARIANT: impersonation_session_id records which session was active at
+    # decision time, even if the session is later revoked. This preserves the
+    # audit trail for the "who approved under which persona" question.
     decision_record = ApprovalDecision(
         request_id=appr_req.id,
         decider_id=decider_user_id,

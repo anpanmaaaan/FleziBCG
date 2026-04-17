@@ -13,6 +13,8 @@ class BottleneckScopeType(str, Enum):
     WORK_ORDER = "WORK_ORDER"
 
 
+# WHY: BLOCKED is a dashboard visualization status for bottleneck analysis,
+# not an execution state — the execution state machine has no BLOCKED state.
 class BottleneckStatusCode(str, Enum):
     NORMAL = "NORMAL"
     DELAYED = "DELAYED"
@@ -25,6 +27,8 @@ class RiskLevelCode(str, Enum):
     HIGH = "HIGH"
 
 
+# WHY: Enum codes only, not human text — backend returns codes, frontend
+# maps to translated strings via i18n.
 class RiskReasonCode(str, Enum):
     LATE_SCHEDULE = "LATE_SCHEDULE"
     UPSTREAM_DELAY = "UPSTREAM_DELAY"

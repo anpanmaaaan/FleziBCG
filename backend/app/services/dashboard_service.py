@@ -24,6 +24,8 @@ from app.schemas.dashboard import (
 RISK_WINDOW_MINUTES = 120
 
 
+# EDGE: Naive/aware datetime normalization before subtraction — the DB may
+# return naive timestamps while Python datetime.now(timezone.utc) is aware.
 def _normalize_datetime_for_diff(value: datetime, reference: datetime) -> datetime:
     if value.tzinfo is None and reference.tzinfo is not None:
         return value.replace(tzinfo=reference.tzinfo)

@@ -8,6 +8,9 @@ def to_camel(string: str) -> str:
     return parts[0] + "".join(word.capitalize() for word in parts[1:])
 
 
+# INTENT: alias_generator + populate_by_name enables the API to accept/return
+# camelCase JSON while Python code uses snake_case — single conversion point
+# for the entire schema layer.
 class BaseSchema(BaseModel):
     model_config = {
         "from_attributes": True,

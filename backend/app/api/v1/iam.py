@@ -32,6 +32,9 @@ def get_db():
         db.close()
 
 
+# INTENT: Capabilities endpoint returns full identity context (roles,
+# assignments, impersonation state) so the frontend can derive persona UX
+# without extra round-trips.
 @router.get("/me/capabilities", response_model=MeCapabilitiesResponse)
 def me_capabilities(
     db: Session = Depends(get_db),
@@ -71,6 +74,9 @@ def me_capabilities(
     )
 
 
+# WHY: require_action("admin.user.manage") — custom role creation is an
+# ADMIN-tier system action, not a CONFIGURE action, because it affects
+# RBAC globally.
 @router.post("/roles/custom", response_model=CustomRoleResponse)
 def create_tenant_custom_role(
     payload: CreateCustomRoleRequest,

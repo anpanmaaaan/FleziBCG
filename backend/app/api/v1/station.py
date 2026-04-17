@@ -32,6 +32,9 @@ def get_db():
         db.close()
 
 
+# INTENT: Station endpoints use require_authenticated_identity (not EXECUTE
+# permission) — station queue visibility and claim/release are available to
+# any authenticated OPR; execution mutations route through operations.py.
 @router.get("/queue", response_model=StationQueueResponse)
 def read_station_queue(
     db: Session = Depends(get_db),
@@ -72,6 +75,8 @@ def claim_station_operation(
             expires_at=claim.expires_at,
             state="mine" if claim.claimed_by_user_id == identity.user_id else "other",
         )
+    # INVARIANT: ClaimConflictError → 409 — only one active claim per
+    # operation at a time. The service layer enforces mutual exclusion.
     except ClaimConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except PermissionError as exc:

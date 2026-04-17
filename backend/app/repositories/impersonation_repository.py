@@ -12,6 +12,8 @@ def get_active_impersonation_session(
     tenant_id: str,
 ) -> ImpersonationSession | None:
     now = datetime.now(timezone.utc)
+    # WHY: .limit(1) + order_by DESC returns the most recently created active
+    # session. A user may have multiple expired sessions but at most one active.
     statement = (
         select(ImpersonationSession)
         .where(
@@ -28,6 +30,8 @@ def get_active_impersonation_session(
     return db.scalar(statement)
 
 
+# EDGE: No tenant_id filter — lookup by PK is unambiguous. Service layer
+# validates tenant context before acting on the returned session.
 def get_session_by_id(db: Session, session_id: int) -> ImpersonationSession | None:
     return db.scalar(
         select(ImpersonationSession).where(ImpersonationSession.id == session_id)

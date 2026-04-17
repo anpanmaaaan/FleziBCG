@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from app.models.master import Operation, WorkOrder
 
 
+# INVARIANT: Every dashboard query filters by tenant_id. Dashboard data must
+# never leak across tenant boundaries.
 def get_work_orders_for_dashboard(db: Session, tenant_id: str) -> list[WorkOrder]:
     statement = (
         select(WorkOrder).where(WorkOrder.tenant_id == tenant_id).order_by(WorkOrder.id)

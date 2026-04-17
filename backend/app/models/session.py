@@ -10,6 +10,8 @@ from app.db.base import Base
 class Session(Base):
     __tablename__ = "sessions"
 
+    # WHY: String PK (not auto-int) because session_id is the JWT "jti" claim,
+    # generated at token-creation time and carried in every request header.
     session_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
@@ -17,6 +19,8 @@ class Session(Base):
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
+    # INTENT: Explicit revocation with audit trail. revoke_reason records why
+    # (e.g., "logout", "admin_force", "password_change") for incident review.
     revoked_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None
     )

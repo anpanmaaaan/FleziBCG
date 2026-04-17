@@ -9,6 +9,8 @@ from app.db.base import Base
 
 class ApprovalRule(Base):
     __tablename__ = "approval_rules"
+    # INVARIANT: (action_type, approver_role_code, tenant_id) must be unique
+    # to prevent duplicate rule grants that would break approval logic.
     __table_args__ = (
         UniqueConstraint(
             "action_type", "approver_role_code", "tenant_id", name="uq_approval_rule"
@@ -18,6 +20,8 @@ class ApprovalRule(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     action_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     approver_role_code: Mapped[str] = mapped_column(String(32), nullable=False)
+    # WHY: Wildcard "*" makes the rule apply to all tenants. Tenant-specific
+    # rules override the wildcard when both exist (see approval_repository ordering).
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, default="*")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -63,6 +67,8 @@ class ApprovalDecision(Base):
     decider_role_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
     decision: Mapped[str] = mapped_column(String(32), nullable=False)
     comment: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    # INVARIANT: Links the decision to an impersonation session (if any) so the
+    # audit trail always records who really approved, even under impersonation.
     impersonation_session_id: Mapped[int | None] = mapped_column(
         ForeignKey("impersonation_sessions.id"), nullable=True
     )

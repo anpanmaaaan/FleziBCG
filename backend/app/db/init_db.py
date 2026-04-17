@@ -6,7 +6,9 @@ from app.db.base import Base
 from app.db.session import engine
 from app.db.session import SessionLocal
 
-# ✅ Import ALL models here so SQLAlchemy registers them with Base.metadata
+# INVARIANT: Every model file must be imported here so that SQLAlchemy
+# registers the table with Base.metadata before create_all() runs.
+# Forgetting an import causes a silent missing-table bug.
 from app.models.master import ProductionOrder, WorkOrder, Operation  # noqa: F401
 from app.models.execution import ExecutionEvent  # noqa: F401
 from app.models.rbac import (  # noqa: F401
@@ -55,8 +57,13 @@ def _apply_sql_migrations() -> None:
 
 
 def init_db():
+    # WHY: SQL migrations run before create_all() so that ALTER TABLE
+    # statements see existing tables, and create_all() only adds any
+    # tables not yet covered by migrations.
     _apply_sql_migrations()
     Base.metadata.create_all(bind=engine)
+    # INTENT: Seed order matters — RBAC roles/permissions first, then approval
+    # rules (which reference role codes), then demo users (which reference roles).
     with SessionLocal() as db:
         seed_rbac_core(db)
         seed_approval_rules(db)

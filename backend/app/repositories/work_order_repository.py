@@ -5,6 +5,8 @@ from app.models.master import WorkOrder
 
 
 def get_work_order_by_id(db: Session, work_order_id: int) -> WorkOrder | None:
+    # WHY: selectinload eagerly fetches operations in one additional query,
+    # avoiding N+1 when callers iterate over work_order.operations.
     statement = (
         select(WorkOrder)
         .options(selectinload(WorkOrder.operations))
@@ -27,6 +29,8 @@ def get_work_order_by_id_or_number(
         .where(WorkOrder.tenant_id == tenant_id)
     )
 
+    # EDGE: work_order_ref may be a numeric string ("123") or an alphanumeric
+    # WO number ("WO-001"). isdigit() distinguishes ID lookup from number lookup.
     if work_order_ref.isdigit():
         statement = statement.where(WorkOrder.id == int(work_order_ref))
     else:

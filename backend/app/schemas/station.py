@@ -5,13 +5,19 @@ from pydantic import BaseModel, Field
 
 class ClaimRequest(BaseModel):
     reason: str | None = None
+    # EDGE: duration_minutes is Optional — when None, the service layer
+    # applies a default claim TTL. ge=1 prevents zero-length claims.
     duration_minutes: int | None = Field(default=None, ge=1)
 
 
+# WHY: ReleaseClaimRequest requires a mandatory reason — release is an
+# audit-significant action. Contrast with ClaimRequest.reason which is Optional.
 class ReleaseClaimRequest(BaseModel):
     reason: str = Field(min_length=1, max_length=512)
 
 
+# INTENT: ClaimSummary is embedded inside StationQueueItem — provides inline
+# claim visibility so the frontend renders claim state without a second call.
 class ClaimSummary(BaseModel):
     state: str
     expires_at: datetime | None = None

@@ -7,6 +7,9 @@ from app.security.auth import AuthIdentity
 from app.security.rbac import PermissionFamily, has_action, has_permission
 
 
+# INTENT: RequestIdentity separates authentication from authorization context.
+# user_id always refers to the real human, even under impersonation.
+# acting_role_code carries the impersonated role for RBAC checks.
 @dataclass
 class RequestIdentity:
     user_id: str
@@ -66,6 +69,9 @@ def require_authenticated_identity(
     if not auth_identity:
         raise HTTPException(status_code=401, detail="Authentication required")
 
+    # INVARIANT: Session validity is checked on every authenticated request,
+    # not just at login. This enables real-time revocation (e.g., admin
+    # revoking a compromised session takes effect immediately).
     if not auth_identity.session_id:
         raise HTTPException(status_code=401, detail="Session is missing")
 
@@ -144,6 +150,9 @@ def require_permission(permission_family: PermissionFamily):
     return dependency
 
 
+# INTENT: require_action mirrors require_permission but resolves via
+# ACTION_CODE_REGISTRY → family, supporting fine-grained action codes
+# (e.g., "execution.start") alongside coarse permission families.
 def require_action(action_code: str):
     def dependency(
         request: Request,

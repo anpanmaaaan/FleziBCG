@@ -52,6 +52,9 @@ class Permission(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     code: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    # INTENT: Groups related permissions (VIEW, EXECUTE, APPROVE, CONFIGURE, ADMIN)
+    # into families. The frozen role→family map in rbac.py security module is the
+    # authoritative source; this column stores the family label.
     family: Mapped[str] = mapped_column(String(32), nullable=False)
     action_code: Mapped[str | None] = mapped_column(
         String(128), nullable=True, default=None, index=True
@@ -68,6 +71,8 @@ class Permission(Base):
 
 class RolePermission(Base):
     __tablename__ = "role_permissions"
+    # INVARIANT: Prevents double-granting the same permission to a role within
+    # the same scope. Without this, permission checks could count duplicates.
     __table_args__ = (
         UniqueConstraint(
             "role_id",

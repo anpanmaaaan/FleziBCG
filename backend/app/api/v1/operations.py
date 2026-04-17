@@ -49,6 +49,9 @@ def read_operation(
     return derive_operation_detail(db, operation)
 
 
+# INTENT: All execution-state mutations flow through this operations API —
+# station APIs handle claim/release only. This is the single write surface
+# for the execution state machine.
 @router.post("/operations/{operation_id}/start", response_model=OperationDetail)
 def start_operation_endpoint(
     operation_id: int,
@@ -56,6 +59,8 @@ def start_operation_endpoint(
     db: Session = Depends(get_db),
     identity: RequestIdentity = Depends(require_action("execution.start")),
 ):
+    # EDGE: Tenant isolation checked in-route (defense-in-depth) because
+    # get_operation_by_id does not filter by tenant.
     operation = get_operation_by_id(db, operation_id)
     if not operation or operation.tenant_id != identity.tenant_id:
         raise HTTPException(status_code=404, detail="Operation not found")
@@ -121,6 +126,9 @@ def complete_operation_endpoint(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
+# WHY: abort uses require_permission("EXECUTE") instead of require_action —
+# abort is a coarser permission that does not require a station claim,
+# allowing supervisors to abort remotely.
 @router.post("/operations/{operation_id}/abort", response_model=OperationDetail)
 def abort_operation_endpoint(
     operation_id: int,

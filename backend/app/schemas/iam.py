@@ -30,6 +30,9 @@ class ImpersonationSummary(BaseModel):
     expires_at: datetime | None = None
 
 
+# INTENT: MeCapabilitiesResponse bundles user identity + role assignments +
+# impersonation state in one response — avoids multiple round-trips for
+# frontend persona hydration.
 class MeCapabilitiesResponse(BaseModel):
     user: AuthUser
     assignments: list[RoleAssignmentSummary]
@@ -42,6 +45,8 @@ class CreateCustomRoleRequest(BaseModel):
     name: str
     description: str | None = None
     base_role_code: str
+    # EDGE: allow_action_codes defaults to empty list — a custom role with no
+    # explicit actions inherits only the base role's permission family.
     allow_action_codes: list[str] = []
 
 

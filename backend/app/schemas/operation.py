@@ -48,11 +48,15 @@ class OperationDetail(OperationListItem):
     qc_required: bool = False
 
 
+# EDGE: operator_id is Optional in all mutation requests — when omitted, the
+# service layer defaults to the authenticated user's identity.
 class OperationStartRequest(BaseModel):
     operator_id: str | None = None
     started_at: datetime | None = None
 
 
+# INVARIANT: good_qty is the only required field — scrap defaults to 0.
+# Total reported = good_qty + scrap_qty.
 class OperationReportQuantityRequest(BaseModel):
     good_qty: int
     scrap_qty: int = 0

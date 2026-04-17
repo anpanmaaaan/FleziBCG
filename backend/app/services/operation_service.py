@@ -48,6 +48,8 @@ def _parse_timestamp(value: Optional[str]) -> Optional[datetime]:
         return None
 
 
+# INTENT: Terminal states (ABORTED, COMPLETED) are checked first because
+# they are irreversible — once reached, no subsequent event changes them.
 def _derive_status(events: list) -> str:
     if any(event.event_type == ExecutionEventType.OP_ABORTED.value for event in events):
         return StatusEnum.aborted.value
@@ -154,6 +156,8 @@ def start_operation(
         "started_at": start_time.isoformat(),
     }
 
+    # INVARIANT: Event is appended before the snapshot is updated.
+    # The event log is the source of truth; the snapshot is a cache.
     create_execution_event(
         db=db,
         event_type=ExecutionEventType.OP_STARTED.value,
@@ -231,6 +235,9 @@ def complete_operation(
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
+    # EDGE: Two-step status check gives distinct error messages — a COMPLETED
+    # operation gets a "cannot complete again" error, while a PLANNED one
+    # gets "must be IN_PROGRESS". This helps operators diagnose issues.
     if operation.status == StatusEnum.completed.value:
         raise CompleteOperationConflictError(
             "Operation already completed; cannot complete again."

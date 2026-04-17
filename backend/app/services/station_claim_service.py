@@ -29,6 +29,8 @@ def _normalize_role(role_code: str | None) -> str:
     return role_code.strip().upper()
 
 
+# INTENT: Resolves the effective role for station access, preferring the
+# impersonated (acting) role over the user's own role.
 def _effective_role(identity: RequestIdentity) -> str:
     acting_role = _normalize_role(identity.acting_role_code)
     if acting_role:
@@ -43,6 +45,8 @@ def ensure_operator_context(identity: RequestIdentity) -> None:
         )
 
 
+# EDGE: Station scope is resolved from UserRoleAssignment, isolating the
+# operator to their assigned station(s) within the tenant.
 def resolve_station_scope(
     db: Session, identity: RequestIdentity
 ) -> StationScopeContext:
@@ -95,6 +99,8 @@ def _log_claim_event(
     )
 
 
+# INVARIANT: SELECT FOR UPDATE prevents concurrent claims on the same
+# operation. The row lock is held until the transaction commits.
 def _get_unreleased_claim_for_update(
     db: Session, tenant_id: str, operation_id: int
 ) -> OperationClaim | None:
@@ -330,6 +336,9 @@ def claim_operation(
     return claim, station_scope.scope_value
 
 
+# EDGE: Admin/OTS impersonating OPR can release any claim at the station,
+# not just their own. This is the only claim operation where impersonation
+# breaks the normal ownership constraint.
 def _has_admin_support_override(identity: RequestIdentity) -> bool:
     role = _normalize_role(identity.role_code)
     acting = _normalize_role(identity.acting_role_code)

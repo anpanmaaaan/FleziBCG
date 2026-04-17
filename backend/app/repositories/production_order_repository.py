@@ -8,11 +8,15 @@ from app.models.master import ProductionOrder, WorkOrder
 def get_production_orders(
     db: Session, tenant_id: str | None = None
 ) -> list[ProductionOrder]:
+    # WHY: selectinload eagerly loads work_orders in one additional query,
+    # avoiding N+1 on list endpoints.
     statement = (
         select(ProductionOrder)
         .options(selectinload(ProductionOrder.work_orders))
         .order_by(ProductionOrder.id)
     )
+    # EDGE: When tenant_id is None, returns all tenants. Used only by
+    # system-level admin queries; normal API always supplies a tenant_id.
     if tenant_id is not None:
         statement = statement.where(ProductionOrder.tenant_id == tenant_id)
     return list(db.scalars(statement))

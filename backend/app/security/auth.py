@@ -75,6 +75,8 @@ def _verify_password(plain_password: str, stored_password: str) -> bool:
     return plain_password == stored_password
 
 
+# INTENT: Config-defined users short-circuit before DB lookup, enabling
+# bootstrap login when the database is empty or unreachable.
 def authenticate_user(username: str, password: str) -> AuthIdentity | None:
     for user in _load_default_users():
         if user["username"] != username:
@@ -151,6 +153,8 @@ def authenticate_user_db(
     from app.models.rbac import Role, UserRole
     from app.models.user import User
 
+    # INVARIANT: Tenant isolation enforced at query time — a valid username
+    # in tenant A must not authenticate in tenant B.
     user = db.scalar(
         select(User).where(
             User.username == username,
@@ -164,7 +168,9 @@ def authenticate_user_db(
     if not _verify_password(password, user.password_hash):
         return None
 
-    # Fetch the user's role from user_roles for this tenant.
+    # WHY: Role comes from UserRole (role assignment), not a column on User.
+    # A user may hold different roles across tenants; UserRole is the
+    # authoritative source. The returned role_code is a JWT display hint.
     user_role = db.scalar(
         select(UserRole)
         .join(Role, Role.id == UserRole.role_id)

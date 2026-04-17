@@ -28,6 +28,8 @@ def get_db():
         db.close()
 
 
+# INTENT: Login is unauthenticated — no dependency guard. Identity is
+# established here, not assumed.
 @router.post("/login", response_model=LoginResponse)
 def login(request: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:
     identity = authenticate_user_db(db, request.username, request.password)
@@ -68,6 +70,8 @@ def logout(
     db: Session = Depends(get_db),
     identity: RequestIdentity = Depends(require_authenticated_identity),
 ):
+    # EDGE: session_id may be None for JWTs issued before session tracking
+    # was added; reject rather than silently skip revocation.
     if identity.session_id is None:
         raise HTTPException(status_code=401, detail="Session is missing")
     ok = revoke_session(
@@ -118,6 +122,8 @@ def list_sessions(
     return SessionListResponse(sessions=sessions)
 
 
+# WHY: ADMIN permission required — session revocation for other users is a
+# privileged system action, not a self-service operation.
 @router.delete("/sessions/{session_id}")
 def admin_revoke_session(
     session_id: str,

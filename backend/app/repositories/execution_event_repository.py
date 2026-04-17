@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from app.models.execution import ExecutionEvent
 
 
+# INTENT: This is the only write path for execution events. The append-only
+# event log is the source of truth for operation status (via _derive_status).
 def create_execution_event(
     db: Session,
     event_type: str,
@@ -28,6 +30,9 @@ def create_execution_event(
 
 
 def get_events_for_operation(db: Session, operation_id: int) -> list[ExecutionEvent]:
+    # WHY: Order by created_at alone may not be stable if two events share the
+    # same timestamp (sub-ms inserts). Adding id as tiebreaker guarantees
+    # deterministic chronological order.
     statement = (
         select(ExecutionEvent)
         .where(ExecutionEvent.operation_id == operation_id)

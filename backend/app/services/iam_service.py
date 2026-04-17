@@ -70,7 +70,9 @@ def get_role_assignments_for_identity(
     if assignments:
         return assignments
 
-    # Backward-compatible fallback to legacy user_roles + role_scopes.
+    # INTENT: Backward-compatible fallback for tenants that still use the
+    # legacy UserRole + RoleScope tables. Once all tenants migrate to
+    # UserRoleAssignment, this branch can be removed.
     legacy_rows = list(
         db.execute(
             select(UserRole, Role, RoleScope)
@@ -125,6 +127,8 @@ def create_custom_role(
     owner_user_id: str,
     allow_action_codes: list[str] | None = None,
 ) -> Role:
+    # INVARIANT: Custom role must derive from a system role. This ensures
+    # the base permission set is well-defined and auditable.
     base_role = db.scalar(select(Role).where(Role.code == base_role_code))
     if base_role is None or base_role.role_type != "system":
         raise ValueError("Custom role must derive from an existing system role")
@@ -162,6 +166,9 @@ def create_custom_role(
     db.add(custom_role)
     db.flush()
 
+    # EDGE: Permissions are cloned as a snapshot, not a live reference.
+    # Changes to the base role's permissions after cloning do NOT propagate.
+    # This is intentional — custom roles are frozen at creation time.
     base_permissions = list(
         db.scalars(select(RolePermission).where(RolePermission.role_id == base_role.id))
     )

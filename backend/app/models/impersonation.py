@@ -32,12 +32,16 @@ class ImpersonationSession(Base):
         cascade="all, delete-orphan",
     )
 
+    # INTENT: Computed property, not stored. Avoids stale boolean in DB when
+    # the session times out naturally (expires_at) or is explicitly revoked.
     @property
     def is_active(self) -> bool:
         if self.revoked_at is not None:
             return False
         now = datetime.now(timezone.utc)
         expires = self.expires_at
+        # EDGE: PostgreSQL may return timezone-naive datetimes depending on
+        # driver settings. Treat naive values as UTC to avoid comparison errors.
         if expires.tzinfo is None:
             expires = expires.replace(tzinfo=timezone.utc)
         return now < expires

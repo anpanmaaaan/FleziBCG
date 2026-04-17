@@ -31,11 +31,16 @@ class Settings(BaseSettings):
     # the absolute cap; individual claims use claim_default_ttl_minutes.
     claim_default_ttl_minutes: int = 60
     claim_max_ttl_minutes: int = 480
+    # EDGE: JSON string (not a list) because env vars are always strings.
+    # Parsed at startup by user_service.seed_demo_users(). Must be valid JSON
+    # array of user objects with user_id, username, password, tenant_id, role_code.
     auth_default_users_json: str = (
         '[{"user_id":"u-demo","username":"demo","email":"demo@mes.local",'
         '"password":"demo123","tenant_id":"default","role_code":"SUPERVISOR"}]'
     )
 
+    # WHY: Two env_file sources — docker/.env.db for containerized DB creds,
+    # backend/.env for local dev overrides. Later files take precedence.
     model_config = SettingsConfigDict(
         env_file=(ROOT_DIR / "docker" / ".env.db", ROOT_DIR / "backend" / ".env"),
         env_file_encoding="utf-8",

@@ -15,6 +15,8 @@ def get_rules_for_action(
     tenant_id: str,
 ) -> list[ApprovalRule]:
     """Return active rules for the given action, checking tenant-specific and wildcard."""
+    # INTENT: Match both tenant-specific rules AND wildcard ("*") rules in a
+    # single query. Wildcard rules act as defaults for all tenants.
     statement = (
         select(ApprovalRule)
         .where(
@@ -22,6 +24,8 @@ def get_rules_for_action(
             ApprovalRule.is_active.is_(True),
             ApprovalRule.tenant_id.in_([tenant_id, "*"]),
         )
+        # WHY: DESC ordering puts tenant-specific rules (e.g., "tenant-A")
+        # before the wildcard ("*"), so callers see overrides first.
         .order_by(ApprovalRule.tenant_id.desc())  # tenant-specific before wildcard
     )
     return list(db.scalars(statement).all())

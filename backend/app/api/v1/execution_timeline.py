@@ -19,6 +19,8 @@ def get_db():
         db.close()
 
 
+# INTENT: Read-only visualization endpoint — no execution-state mutation.
+# Safe for any role with VIEW permission.
 @router.get(
     "/work-orders/{work_order_id}/execution-timeline",
     response_model=WorkOrderExecutionTimeline,
