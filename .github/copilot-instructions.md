@@ -1,9 +1,9 @@
-# MES Lite — Project Instructions
+# MOM Lite — Project Instructions
 Before coding, read .github/agent/CODING_RULES.md and .github/agent/SOURCE_STRUCTURE.md.
 
 ## Project Overview
 
-Lightweight Manufacturing Execution System (MES). Modular monolith — do NOT split into microservices.
+Lightweight Manufacturing Operations Management (MOM) system, ISA‑95 aligned. Modular monolith — do NOT split into microservices.
 
 | Area | Path | Stack |
 |------|------|-------|
@@ -17,12 +17,12 @@ Lightweight Manufacturing Execution System (MES). Modular monolith — do NOT sp
 # Backend
 cd backend
 pip install -r requirements.txt
-uvicorn app.main:app --reload                # Dev: http://localhost:8000
+uvicorn app.main:app --reload --port 8010     # Dev: http://localhost:8010
 
 # Frontend
 cd frontend
 npm install
-npm run dev                                  # Dev: http://localhost:3000
+npm run dev                                  # Dev: http://localhost:5173 (Vite default)
 npm run build                                # Production build (must pass with zero TS errors)
 
 # Docker (all services)
@@ -39,37 +39,41 @@ python scripts/verify_impersonation.py       # Impersonation verification
 ## Architecture Rules
 
 - **Backend is source of truth** — frontend is a dumb view, never derives execution state
-- **Event-driven execution** — `ExecutionEvent` is append-only; status is derived, not stored
-- **Tenant isolation mandatory** — every repository query MUST filter by `tenant_id`
+- **Event-driven execution** — `ExecutionEvent` is append-only; status is derived from events. A cached `status` column exists on `Operation` as a materialized projection, updated in the same transaction as the event write.
+- **Tenant isolation mandatory** — tenant isolation is enforced at the route/service boundary. Repository functions MAY assume tenant context is already validated by the caller. Not every repository function filters by `tenant_id` directly.
 - **Service layer owns business rules** — repositories are data access only, routes are thin
 - **Pydantic schemas** for all request/response contracts
 - **Backend returns enums/codes only** — no translated text (i18n-ready)
 
 ## Execution Flow (LOCKED)
 
-Entry: Work Order → Operations → Station Execution (the only write surface).
+Entry: Work Order → Operations. Execution state mutations occur in the **operations API / service layer**. Station APIs handle station **claim/release** only.
 
 ```
-PENDING ──[start]──→ IN_PROGRESS ──[report_qty]──→ IN_PROGRESS
+PLANNED ──[start]──→ IN_PROGRESS ──[report_qty]──→ IN_PROGRESS
                           │
-                     [complete] or [block]
+                     [complete] or [abort]
                           ↓
-                    COMPLETED or BLOCKED
+                    COMPLETED or ABORTED
 ```
 
+Valid states: `PLANNED`, `IN_PROGRESS`, `COMPLETED`, `ABORTED`. No other states exist.
+- `PENDING` does NOT exist — the initial state is `PLANNED`.
+- `BLOCKED` does NOT exist — the abort terminal state is `ABORTED`.
+- Status is **derived** from the append-only `ExecutionEvent` log via `_derive_status()`. A cached `status` column on `Operation` is a materialized projection, not the source of truth.
 - Execution entry starts at Work Order, NOT Production Order
 - Operation is the smallest execution unit
-- Station Execution is the only write surface
+- **Station Execution** is a UI/UX concept (the operator's write surface). Under the hood, execution mutations flow through `app/api/v1/operations.py` → `app/services/operation_service.py`. Station APIs (`app/api/v1/station.py`) handle station **claim/release** only — they do NOT mutate execution state.
 - Do NOT introduce screens mixing PO, WO, and Operation execution semantics
 
 ## Backend Module Map
 
 | Layer | Path | Purpose |
 |-------|------|---------|
-| Routes | `app/api/v1/` | Thin handlers (auth, operations, dashboard, approval, impersonation, iam, station) |
-| Services | `app/services/` | Business logic (operation_service, approval_service, impersonation_service, iam_service) |
+| Routes | `app/api/v1/` | Thin handlers (auth, operations, dashboard, approval, impersonation, iam, station, execution_timeline, production_orders) |
+| Services | `app/services/` | Business logic (operation_service, approval_service, impersonation_service, iam_service, dashboard_service, global_operation_service, work_order_execution_service, station_claim_service, session_service, user_service, execution_timeline_service) |
 | Repositories | `app/repositories/` | Data access with tenant filtering |
-| Models | `app/models/` | SQLAlchemy ORM (master, execution, rbac, approval, impersonation, station_claim) |
+| Models | `app/models/` | SQLAlchemy ORM (master, execution, rbac, approval, impersonation, station_claim, user, session) |
 | Schemas | `app/schemas/` | Pydantic request/response |
 | Security | `app/security/` | JWT auth, RBAC permission checks, route dependencies |
 | DB | `app/db/` | Session factory, base, init (migrations + seed) |
@@ -81,9 +85,9 @@ PENDING ──[start]──→ IN_PROGRESS ──[report_qty]──→ IN_PROGRE
 | Pages | `src/app/pages/` | LoginPage, Dashboard, StationExecution, GlobalOperationList |
 | API | `src/app/api/` | API clients; `httpClient.ts` auto-injects Bearer token + X-Tenant-ID |
 | Auth | `src/app/auth/` | AuthContext, RequireAuth guard |
-| Persona | `src/app/persona/` | Role→landing page redirect (UX only, NOT authorization) |
-| i18n | `src/app/i18n/` | Phase 5A key infrastructure (not wired to runtime yet) |
-| Components | `src/app/components/` | Layout, GanttChart, StatusBadge, ImpersonationBanner |
+| Persona | `src/app/persona/` | Role→landing page redirect + route visibility gating (UX only, NOT authorization) |
+| i18n | `src/app/i18n/` | i18n key infrastructure; `useI18n` hook is wired and used at runtime |
+| Components | `src/app/components/` | Layout, GanttChart, StatusBadge, ActiveImpersonationBanner, TopBar, PageHeader |
 | Routes | `src/app/routes.tsx` | React Router tree |
 
 ## Coding Conventions
@@ -117,6 +121,27 @@ Full governance specification: `docs/system/mes-business-logic-v1.md`
 - Frozen role→family mappings. Do NOT modify without Phase 7+ design gate.
 - OPR→EXECUTE, SUP→VIEW+EXECUTE, IEP→VIEW+CONFIGURE, QAL→VIEW+APPROVE, PMG→VIEW+APPROVE, ADM→VIEW+ADMIN
 
+**MOM Business Roles (official role set for all new features):**
+
+| Code | MOM Role | Domain | Permissions | Forbidden |
+|------|----------|--------|-------------|-----------|
+| OPR | Operator | Shop-floor execution | EXECUTE | Cannot approve, configure, or admin |
+| SUP | Supervisor | Shift oversight | VIEW, EXECUTE | Cannot approve or admin |
+| IEP | IE / Process Engineer | Routing, standards | VIEW, CONFIGURE | Cannot execute or approve |
+| QAL | QC Lead / Approver | Quality approval | VIEW, APPROVE | Cannot execute or admin |
+| PMG | Production Manager | Planning approval | VIEW, APPROVE | Cannot execute or admin |
+| ADM | Administrator | System admin | VIEW, ADMIN | Cannot execute (must impersonate OPR) |
+
+**Non-MOM / Technical Roles (exist in code, NOT part of MOM business role set):**
+
+| Code | Purpose | Permissions | Notes |
+|------|---------|-------------|-------|
+| OTS | On-The-Spot support | VIEW, ADMIN | Can impersonate; same restrictions as ADM. System/support role only. |
+| QCI | QC Inspector | VIEW | Read-only variant for QC viewing. |
+| EXE | Execution viewer | VIEW | Read-only technical viewer. |
+
+Non-MOM roles MUST NOT be used as targets for new MOM features. New features MUST map to the official MOM role set above.
+
 **Separation of duties:**
 - `requester_id ≠ decider_user_id` — even under impersonation
 - Both RBAC check AND approval_rules check must pass
@@ -133,7 +158,7 @@ Full governance specification: `docs/system/mes-business-logic-v1.md`
 
 **Authentication vs Authorization are completely separate:**
 - JWT proves identity only; do NOT encode permissions in JWT
-- Authorization is checked per-request on the backend
+- `role_code` is carried in the JWT as a **display hint**, not a security gate — authorization is checked per-request on the backend via `has_permission()` against the static role→family map
 
 ### Forbidden Without Phase 7+ Gate
 
