@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Plus, Edit, Trash2, Eye, Copy, Download, Search, ArrowUpDown, Calendar, ChevronDown, Edit2 } from "lucide-react";
 import { useNavigate } from "react-router";
-import { routes as initialRoutes } from "../data/mockData";
-import { Switch } from "../components/ui/switch";
+import { routes as initialRoutes } from "@/app/data/mockData";
+import { Switch } from "@/app/components/ui/switch";
 
 export function RouteList() {
   const navigate = useNavigate();

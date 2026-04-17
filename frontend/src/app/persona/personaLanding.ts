@@ -1,4 +1,4 @@
-import type { AuthUser } from "../api/authApi";
+import type { AuthUser } from "@/app/api";
 
 export type Persona = "OPR" | "SUP" | "IEP" | "QC" | "PMG" | "EXE" | "ADM";
 export type ResolvedPersona = Persona | "DENY";

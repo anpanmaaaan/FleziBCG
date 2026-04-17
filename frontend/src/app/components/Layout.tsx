@@ -2,18 +2,18 @@ import { Link, Navigate, Outlet, useLocation } from "react-router";
 import { ChevronLeft, ChevronRight, LayoutDashboard, Layers, PlayCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { useAuth } from "../auth/AuthContext";
+import { useAuth } from "@/app/auth";
 import {
   getDefaultLandingForPersona,
   getPersonaEnforcementMode,
   getMenuItemsForPersona,
   isRouteAllowedForPersona,
   resolvePersonaFromRoleCode,
-} from "../persona/personaLanding.ts";
+} from "@/app/persona";
 import { AccessDeniedScreen } from "./AccessDeniedScreen";
 import { ActiveImpersonationBanner } from "./ActiveImpersonationBanner";
 import { TopBar } from "./TopBar";
-import { useImpersonation } from "../impersonation/ImpersonationContext";
+import { useImpersonation } from "@/app/impersonation";
 
 function getIconForPath(path: string) {
   if (path.startsWith("/dashboard")) {

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { useAuth } from "../auth/AuthContext";
-import { useImpersonation } from "../impersonation/ImpersonationContext";
+import { useAuth } from "@/app/auth";
+import { useImpersonation } from "@/app/impersonation";
 
 const ALLOWED_ACTING_ROLES = ["OPR", "SUP", "IEP", "QCI", "QAL", "PMG", "EXE"];
 

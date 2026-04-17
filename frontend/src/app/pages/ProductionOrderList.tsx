@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
 import { Search, Plus, Edit, Trash2, Eye, Filter, Download, ChevronDown, Settings, ArrowUpDown, Calendar } from "lucide-react";
-import { ColumnManagerDialog, ColumnConfig } from "../components/ColumnManagerDialog";
+import { ColumnManagerDialog, ColumnConfig } from "@/app/components";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
-import { productionOrderApi } from "../api/productionOrderApi";
+import { productionOrderApi } from "@/app/api";
 
 interface ProductionOrderRow {
   id: string | number;

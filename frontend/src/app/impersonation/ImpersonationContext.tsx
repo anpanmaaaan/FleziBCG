@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { impersonationApi, type ImpersonationSession } from "../api/impersonationApi";
-import { useAuth } from "../auth/AuthContext";
+import { impersonationApi, type ImpersonationSession } from "@/app/api";
+import { useAuth } from "@/app/auth";
 
 interface StartImpersonationInput {
   acting_role_code: string;

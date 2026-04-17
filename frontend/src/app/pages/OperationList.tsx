@@ -4,16 +4,16 @@
 import { useState, useMemo, useEffect } from "react";
 import { useLocation, useParams, useNavigate } from "react-router";
 import { Search, CheckCircle, Clock, AlertCircle, ChevronRight, AlertTriangle, Info } from "lucide-react";
-import { PageHeader } from "../components/PageHeader";
-import { StatusBadge } from "../components/StatusBadge";
-import { StatsCard } from "../components/StatsCard";
+import { PageHeader } from "@/app/components";
+import { StatusBadge } from "@/app/components";
+import { StatsCard } from "@/app/components";
 import { toast } from "sonner";
 import {
   productionOrderApi,
   type ProductionOrderDetailFromAPI,
   type ProductionOrderSummaryFromAPI,
   type WorkOrderSummaryFromAPI,
-} from "../api/productionOrderApi";
+} from "@/app/api";
 
 // Work Order Execution (aggregate status)
 interface WorkOrderExecution {

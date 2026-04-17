@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { useImpersonation } from "../impersonation/ImpersonationContext";
+import { useImpersonation } from "@/app/impersonation";
 
 function getStructuredScopeLabel(activeSession: {
   acting_scope_type?: string | null;

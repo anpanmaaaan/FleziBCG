@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Clock, ChevronDown, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
-import { useAuth } from '../auth/AuthContext';
+import { useAuth } from '@/app/auth';
 import { ImpersonationSwitcher } from './ImpersonationSwitcher';
 
 interface TopBarProps {

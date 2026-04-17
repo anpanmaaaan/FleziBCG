@@ -5,7 +5,7 @@ import {
   CheckCircle, FileText, ArrowLeft, Download, Save, Plus,
   ChevronDown, ChevronRight, Edit2, Copy, Trash2, X
 } from "lucide-react";
-import { PageHeader } from "../components/PageHeader";
+import { PageHeader } from "@/app/components";
 
 // Types
 interface Operation {

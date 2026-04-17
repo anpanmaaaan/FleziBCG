@@ -12,15 +12,15 @@ import {
   Clock,
   AlertTriangle,
 } from "lucide-react";
-import { PageHeader } from "../components/PageHeader";
-import { StatsCard } from "../components/StatsCard";
-import { GanttChart, OperationExecutionGantt, type GanttClickContext } from "../components/GanttChart";
-import { request } from "../api/httpClient";
-import type { OperationExecutionStatus } from "../api/operationApi";
+import { PageHeader } from "@/app/components";
+import { StatsCard } from "@/app/components";
+import { GanttChart, OperationExecutionGantt, type GanttClickContext } from "@/app/components";
+import { request } from "@/app/api";
+import type { OperationExecutionStatus } from "@/app/api";
 import {
   mapExecutionStatusText,
   getProgressPercentage as calcProgressPercent,
-} from "../api/mappers/executionMapper";
+} from "@/app/api";
 
 type OverviewOperation = OperationExecutionGantt & {
   operationId: number;

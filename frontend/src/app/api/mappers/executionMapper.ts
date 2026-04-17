@@ -1,4 +1,4 @@
-import type { OperationExecutionStatus } from "../operationApi";
+import type { OperationExecutionStatus } from "@/app/api/operationApi";
 
 type StatusBadgeVariant = "success" | "warning" | "error" | "info" | "neutral";
 

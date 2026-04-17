@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Breadcrumb } from '../components/Breadcrumb';
+import { Breadcrumb } from '@/app/components';
 import {
   Activity,
   TrendingUp,
@@ -41,7 +41,7 @@ import {
   getTopLossInsight,
   getNextShiftRiskPrediction,
   getWhatIfEstimation
-} from '../data/oee-mock-data';
+} from '@/app/data/oee-mock-data';
 
 type TimeRange = 'today' | 'shift' | '7days' | 'month';
 type ShiftType = 'all' | 'day' | 'night';

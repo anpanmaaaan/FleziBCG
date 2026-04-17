@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
-import { authApi, type AuthUser } from "../api/authApi";
-import { setHttpContextProvider, setUnauthorizedHandler } from "../api/httpClient";
+import { authApi, type AuthUser } from "@/app/api";
+import { setHttpContextProvider, setUnauthorizedHandler } from "@/app/api";
 
 const AUTH_TOKEN_KEY = "mes.auth.token";
 

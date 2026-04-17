@@ -1,17 +1,17 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router";
-import { PageHeader } from "../components/PageHeader";
-import { StatusBadge } from "../components/StatusBadge";
+import { PageHeader } from "@/app/components";
+import { StatusBadge } from "@/app/components";
 import { toast } from "sonner";
 import { RefreshCw, Lock, X, ChevronDown } from "lucide-react";
-import { operationApi, type OperationDetail } from "../api/operationApi";
-import { stationApi, type StationQueueItem } from "../api/stationApi";
-import { HttpError } from "../api/httpClient";
-import { useAuth } from "../auth/AuthContext";
+import { operationApi, type OperationDetail } from "@/app/api";
+import { stationApi, type StationQueueItem } from "@/app/api";
+import { HttpError } from "@/app/api";
+import { useAuth } from "@/app/auth";
 import {
   mapExecutionStatusBadgeVariant,
   mapExecutionStatusText,
-} from "../api/mappers/executionMapper";
+} from "@/app/api";
 
 // ── Numeric Keypad Overlay ────────────────────────────────────────────────────
 
@@ -221,7 +221,7 @@ export function StationExecution() {
   const [queueItems, setQueueItems] = useState<StationQueueItem[]>([]);
   const [queueOverlayOpen, setQueueOverlayOpen] = useState(false);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Initial queue load on mount
   useEffect(() => { void refreshQueue(); }, []);
 
   useEffect(() => {
@@ -229,7 +229,7 @@ export function StationExecution() {
       setOperationId(queryOperationId);
       void fetchOperation(queryOperationId);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Intentional: run only when queryOperationId changes
   }, [queryOperationId]);
 
   const isCanonicalOperationId = (value: string) => /^\d+$/.test(value.trim());

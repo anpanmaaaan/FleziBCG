@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Search, ChevronDown, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router";
-import { PageHeader } from "../components/PageHeader";
+import { PageHeader } from "@/app/components";
 
 export function Production() {
   const navigate = useNavigate();

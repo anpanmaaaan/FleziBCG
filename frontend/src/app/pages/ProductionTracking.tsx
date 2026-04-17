@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Search, Play, Pause, CheckCircle, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router";
-import { productionLines } from "../data/mockData";
-import { PageHeader } from "../components/PageHeader";
+import { productionLines } from "@/app/data/mockData";
+import { PageHeader } from "@/app/components";
 
 interface Worker {
   id: string;

@@ -1,4 +1,4 @@
-import type { I18nRegistry } from "../keys";
+import type { I18nRegistry } from "@/app/i18n/keys";
 
 // EN placeholder registry for Phase 5A infrastructure only.
 // No runtime language switching is enabled in this phase.

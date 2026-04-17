@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { PageHeader } from '../components/PageHeader';
-import { GanttChart, type OperationExecutionGantt } from '../components/GanttChart';
+import { PageHeader } from '@/app/components';
+import { GanttChart, type OperationExecutionGantt } from '@/app/components';
 
 const BASE_START = new Date('2026-04-05T08:00:00Z').getTime();
 

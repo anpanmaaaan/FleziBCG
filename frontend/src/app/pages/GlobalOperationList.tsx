@@ -3,19 +3,19 @@ import { useNavigate, useSearchParams } from "react-router";
 import { AlertTriangle, CheckCircle, ChevronRight, Clock, Search } from "lucide-react";
 import { toast } from "sonner";
 
-import { operationMonitorApi } from "../api/operationMonitorApi";
-import { mapExecutionStatusBadgeVariant, mapExecutionStatusText } from "../api/mappers/executionMapper";
-import { useAuth } from "../auth/AuthContext";
-import { PageHeader } from "../components/PageHeader";
-import { StatsCard } from "../components/StatsCard";
-import { StatusBadge } from "../components/StatusBadge";
-import { useI18n } from "../i18n";
+import { operationMonitorApi } from "@/app/api";
+import { mapExecutionStatusBadgeVariant, mapExecutionStatusText } from "@/app/api";
+import { useAuth } from "@/app/auth";
+import { PageHeader } from "@/app/components";
+import { StatsCard } from "@/app/components";
+import { StatusBadge } from "@/app/components";
+import { useI18n } from "@/app/i18n";
 import {
   getAllowedOperationLenses,
   getFallbackOperationLens,
   resolvePersonaFromUser,
   type OperationLens,
-} from "../persona/personaLanding.ts";
+} from "@/app/persona";
 
 type SupervisorBucket = "BLOCKED" | "DELAYED" | "IN_PROGRESS" | "OTHER";
 type MonitoringLens = "IE_PROCESS" | "SUPERVISOR" | "QC";

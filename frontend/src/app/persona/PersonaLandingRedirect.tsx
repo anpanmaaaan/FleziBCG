@@ -1,6 +1,6 @@
 import { Navigate } from "react-router";
 
-import { useAuth } from "../auth/AuthContext";
+import { useAuth } from "@/app/auth";
 import { getDefaultLandingForPersona, resolvePersonaFromUser } from "./personaLanding.ts";
 
 export function PersonaLandingRedirect() {

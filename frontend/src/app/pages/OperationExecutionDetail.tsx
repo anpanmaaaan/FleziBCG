@@ -17,16 +17,16 @@ import {
   ExternalLink,
   ArrowLeft,
 } from "lucide-react";
-import { PageHeader } from "../components/PageHeader";
-import { StatusBadge } from "../components/StatusBadge";
-import { StatsCard } from "../components/StatsCard";
-import { operationApi, type OperationDetail } from "../api/operationApi";
+import { PageHeader } from "@/app/components";
+import { StatusBadge } from "@/app/components";
+import { StatsCard } from "@/app/components";
+import { operationApi, type OperationDetail } from "@/app/api";
 import {
   mapExecutionStatusText,
   mapExecutionStatusBadgeVariant,
   getProgressPercentage as calcProgressPercent,
   getYieldRate as calcYieldRate,
-} from "../api/mappers/executionMapper";
+} from "@/app/api";
 
 interface QCCheckpoint {
   id: string;

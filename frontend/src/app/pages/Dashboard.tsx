@@ -22,7 +22,7 @@ import {
   Legend,
   ResponsiveContainer
 } from "recharts";
-import { dashboardApi, type DashboardHealthResponse, type DashboardSummaryResponse } from "../api/dashboardApi";
+import { dashboardApi, type DashboardHealthResponse, type DashboardSummaryResponse } from "@/app/api";
 
 interface KPICardProps {
   title: string;

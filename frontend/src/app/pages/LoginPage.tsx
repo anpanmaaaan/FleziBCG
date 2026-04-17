@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
 
-import { useAuth } from "../auth/AuthContext";
+import { useAuth } from "@/app/auth";
 
 export function LoginPage() {
   const { isAuthenticated, isInitializing, login } = useAuth();
@@ -62,7 +62,7 @@ export function LoginPage() {
                 id="username"
                 type="text"
                 autoComplete="username"
-                // eslint-disable-next-line jsx-a11y/no-autofocus
+                // autoFocus is intentional on login page for UX
                 autoFocus
                 required
                 value={username}
