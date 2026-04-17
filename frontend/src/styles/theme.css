@@ -39,6 +39,43 @@
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: #334155;
   --sidebar-ring: #3B82F6;
+
+  /* ── Status tokens ── */
+  --status-pending: #94a3b8;
+  --status-pending-bg: #f1f5f9;
+  --status-in-progress: #3b82f6;
+  --status-in-progress-bg: #eff6ff;
+  --status-completed: #10b981;
+  --status-completed-bg: #ecfdf5;
+  --status-blocked: #ef4444;
+  --status-blocked-bg: #fef2f2;
+  --status-delayed: #f59e0b;
+  --status-delayed-bg: #fffbeb;
+  --status-on-hold: #8b5cf6;
+  --status-on-hold-bg: #f5f3ff;
+  --status-cancelled: #6b7280;
+  --status-cancelled-bg: #f3f4f6;
+
+  /* ── Brand / CTA ── */
+  --brand-cta: #33B2C1;
+  --brand-cta-hover: #2a9aa8;
+
+  /* ── Surface ── */
+  --surface-page: #f8fafc;
+  --surface-table-header: #f8fafc;
+  --surface-table-stripe: #f9fafb;
+  --surface-divider: #e5e7eb;
+
+  /* ── Chart extended ── */
+  --chart-6: #8b5cf6;
+  --chart-7: #9333ea;
+  --chart-grid: #e5e7eb;
+  --chart-axis: #6b7280;
+  --chart-tooltip-bg: #ffffff;
+  --chart-tooltip-border: #e5e7eb;
+
+  /* ── Focus ── */
+  --focus-ring: var(--ring);
 }
 
 .dark {
@@ -117,6 +154,38 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-status-pending: var(--status-pending);
+  --color-status-pending-bg: var(--status-pending-bg);
+  --color-status-in-progress: var(--status-in-progress);
+  --color-status-in-progress-bg: var(--status-in-progress-bg);
+  --color-status-completed: var(--status-completed);
+  --color-status-completed-bg: var(--status-completed-bg);
+  --color-status-blocked: var(--status-blocked);
+  --color-status-blocked-bg: var(--status-blocked-bg);
+  --color-status-delayed: var(--status-delayed);
+  --color-status-delayed-bg: var(--status-delayed-bg);
+  --color-status-on-hold: var(--status-on-hold);
+  --color-status-on-hold-bg: var(--status-on-hold-bg);
+  --color-status-cancelled: var(--status-cancelled);
+  --color-status-cancelled-bg: var(--status-cancelled-bg);
+
+  --color-brand-cta: var(--brand-cta);
+  --color-brand-cta-hover: var(--brand-cta-hover);
+
+  --color-surface-page: var(--surface-page);
+  --color-surface-table-header: var(--surface-table-header);
+  --color-surface-table-stripe: var(--surface-table-stripe);
+  --color-surface-divider: var(--surface-divider);
+
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-axis: var(--chart-axis);
+  --color-chart-tooltip-bg: var(--chart-tooltip-bg);
+  --color-chart-tooltip-border: var(--chart-tooltip-border);
+
+  --color-focus-ring: var(--focus-ring);
 }
 
 @layer base {
