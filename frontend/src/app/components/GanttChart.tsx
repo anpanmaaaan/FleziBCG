@@ -451,7 +451,7 @@ const areRowPropsEqual = (
     return false;
   }
 
-  if (prevRow.type === 'group') {
+  if (prevRow.type === 'group' && nextRow.type === 'group') {
     if (
       prevRow.groupKey !== nextRow.groupKey ||
       prevRow.groupLabel !== nextRow.groupLabel ||
@@ -463,7 +463,7 @@ const areRowPropsEqual = (
     ) {
       return false;
     }
-  } else {
+  } else if (prevRow.type === 'operation' && nextRow.type === 'operation') {
     const prevOp = prevRow.operation;
     const nextOp = nextRow.operation;
 

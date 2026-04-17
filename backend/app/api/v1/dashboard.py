@@ -17,8 +17,6 @@ def get_db():
         db.close()
 
 
-# INTENT: Legacy endpoint preserved for backward compatibility — new clients
-# should use /dashboard/summary.
 @router.get("/dashboard", response_model=DashboardSummaryResponse)
 def read_dashboard_legacy(
     db: Session = Depends(get_db),

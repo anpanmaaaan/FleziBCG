@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 
 from sqlalchemy.orm import Session
 
@@ -9,7 +10,7 @@ from .common import ScenarioContext, create_scenario_context, run_complete, run_
 def seed(db: Session) -> ScenarioContext:
     """
     S1: Normal On-Time Completion
-
+    
     Validates:
     - All operations start and complete within planned windows
     - WO status resolves to COMPLETED

@@ -21,9 +21,6 @@ def get_db():
         db.close()
 
 
-# INTENT: _to_response maps ORM model to Pydantic schema field-by-field to
-# avoid leaking internal model attributes (e.g., SQLAlchemy state) into
-# the API contract.
 def _to_response(session) -> ImpersonationResponse:
     return ImpersonationResponse(
         id=session.id,
@@ -39,9 +36,6 @@ def _to_response(session) -> ImpersonationResponse:
     )
 
 
-# WHY: require_authenticated_identity (not require_permission) — impersonation
-# authorization (ADM/OTS only, no admin-to-admin) is enforced in the service
-# layer, not via route-level RBAC.
 @router.post("", response_model=ImpersonationResponse, status_code=201)
 def create_session(
     request_data: ImpersonationCreateRequest,
@@ -71,8 +65,6 @@ def create_session(
     return _to_response(session)
 
 
-# EDGE: Returns None (not 404) when no active impersonation session exists —
-# absence is a normal state, not an error.
 @router.get("/current", response_model=ImpersonationResponse | None)
 def get_current(
     db: Session = Depends(get_db),

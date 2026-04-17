@@ -3,13 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
 from app.schemas.operation import OperationDetail
-from app.schemas.station import (
-    ClaimRequest,
-    ClaimResponse,
-    ReleaseClaimRequest,
-    StationQueueItem,
-    StationQueueResponse,
-)
+from app.schemas.station import ClaimRequest, ClaimResponse, ReleaseClaimRequest, StationQueueItem, StationQueueResponse
 from app.security.dependencies import RequestIdentity, require_authenticated_identity
 from app.services.operation_service import derive_operation_detail
 from app.services.station_claim_service import (
@@ -32,9 +26,6 @@ def get_db():
         db.close()
 
 
-# INTENT: Station endpoints use require_authenticated_identity (not EXECUTE
-# permission) — station queue visibility and claim/release are available to
-# any authenticated OPR; execution mutations route through operations.py.
 @router.get("/queue", response_model=StationQueueResponse)
 def read_station_queue(
     db: Session = Depends(get_db),
@@ -75,8 +66,6 @@ def claim_station_operation(
             expires_at=claim.expires_at,
             state="mine" if claim.claimed_by_user_id == identity.user_id else "other",
         )
-    # INVARIANT: ClaimConflictError → 409 — only one active claim per
-    # operation at a time. The service layer enforces mutual exclusion.
     except ClaimConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except PermissionError as exc:

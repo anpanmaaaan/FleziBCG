@@ -7,7 +7,6 @@ Checks:
 - Execution actions require active claim by caller.
 - Claim conflict/release behavior works as expected.
 """
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -110,9 +109,7 @@ def _ensure_station_scope(db) -> Scope:
     return station_scope
 
 
-def _create_opr_fixture_user(
-    db, *, user_id: str, username: str, with_station_scope: bool
-) -> None:
+def _create_opr_fixture_user(db, *, user_id: str, username: str, with_station_scope: bool) -> None:
     role = db.scalar(select(Role).where(Role.code == "OPR"))
     if role is None:
         raise RuntimeError("Role OPR not found")
@@ -170,9 +167,7 @@ def _login(client: TestClient, username: str) -> str:
         json={"username": username, "password": PASSWORD},
     )
     if response.status_code != 200:
-        raise RuntimeError(
-            f"Login failed for {username}: {response.status_code} {response.text}"
-        )
+        raise RuntimeError(f"Login failed for {username}: {response.status_code} {response.text}")
     body = response.json()
     return body["access_token"]
 
@@ -197,12 +192,8 @@ def main() -> None:
 
     with SessionLocal() as db:
         _cleanup(db)
-        _create_opr_fixture_user(
-            db, user_id=OPR_A_USER_ID, username=OPR_A_USERNAME, with_station_scope=True
-        )
-        _create_opr_fixture_user(
-            db, user_id=OPR_B_USER_ID, username=OPR_B_USERNAME, with_station_scope=True
-        )
+        _create_opr_fixture_user(db, user_id=OPR_A_USER_ID, username=OPR_A_USERNAME, with_station_scope=True)
+        _create_opr_fixture_user(db, user_id=OPR_B_USER_ID, username=OPR_B_USERNAME, with_station_scope=True)
         _create_opr_fixture_user(
             db,
             user_id=OPR_NO_SCOPE_USER_ID,
@@ -231,14 +222,11 @@ def main() -> None:
         )
     )
 
-    queue_no_scope = client.get(
-        "/api/v1/station/queue", headers=_auth_headers(token_no_scope)
-    )
+    queue_no_scope = client.get("/api/v1/station/queue", headers=_auth_headers(token_no_scope))
     checks.append(
         Check(
             name="Queue rejects OPR without station scope",
-            passed=queue_no_scope.status_code == 400
-            and "No station scope assigned" in queue_no_scope.text,
+            passed=queue_no_scope.status_code == 400 and "No station scope assigned" in queue_no_scope.text,
             detail=f"status={queue_no_scope.status_code}, body={queue_no_scope.text}",
         )
     )
@@ -247,39 +235,7 @@ def main() -> None:
         _print_results(checks)
         raise SystemExit(1)
 
-    target_item = next(
-        (
-            item
-            for item in queue_items
-            if str(item.get("claim", {}).get("state")) in {"none", "mine"}
-        ),
-        None,
-    )
-    if target_item is None:
-        checks.append(
-            Check(
-                name="Target operation selection",
-                passed=False,
-                detail="No claimable operation found (all are claimed by other operators).",
-            )
-        )
-        _print_results(checks)
-        raise SystemExit(1)
-
-    target_operation_id = int(target_item["operation_id"])
-    if str(target_item.get("claim", {}).get("state")) == "mine":
-        normalize_release = client.post(
-            f"/api/v1/station/queue/{target_operation_id}/release",
-            headers=_auth_headers(token_a),
-            json={"reason": "normalize_before_verify"},
-        )
-        checks.append(
-            Check(
-                name="Normalize pre-existing mine claim",
-                passed=normalize_release.status_code == 200,
-                detail=f"status={normalize_release.status_code}",
-            )
-        )
+    target_operation_id = int(queue_items[0]["operation_id"])
 
     start_without_claim = client.post(
         f"/api/v1/operations/{target_operation_id}/start",
@@ -290,8 +246,7 @@ def main() -> None:
         Check(
             name="Execution start blocked without claim",
             passed=start_without_claim.status_code == 403
-            and "Operation must be claimed by you before execution actions."
-            in start_without_claim.text,
+            and "Operation must be claimed by you before execution actions." in start_without_claim.text,
             detail=f"status={start_without_claim.status_code}, body={start_without_claim.text}",
         )
     )

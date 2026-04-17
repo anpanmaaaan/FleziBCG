@@ -16,7 +16,6 @@ AP-10 Audit log: REQUEST_CREATED entries exist
 AP-11 Audit log: DECISION_MADE entries exist
 AP-12 S1-S4 seed regression still passes
 """
-
 from __future__ import annotations
 
 import subprocess
@@ -31,6 +30,7 @@ from app.db.session import SessionLocal
 from app.models.approval import ApprovalAuditLog, ApprovalDecision, ApprovalRequest
 from app.models.impersonation import ImpersonationAuditLog, ImpersonationSession
 from app.models.rbac import Role, RoleScope, UserRole
+from app.repositories.approval_repository import get_audit_logs_for_request
 from app.schemas.approval import ApprovalCreateRequest, ApprovalDecideRequest
 from app.schemas.impersonation import ImpersonationCreateRequest
 from app.security.rbac import IdentityLike, has_permission
@@ -70,7 +70,6 @@ _ap_audit_request_ids: list[int] = []  # collected for AP-10/AP-11
 # Fixture helpers
 # ---------------------------------------------------------------------------
 
-
 def _create_user_role(db, user_id: str, role_code: str) -> UserRole:
     role = db.scalar(select(Role).where(Role.code == role_code))
     if role is None:
@@ -87,16 +86,14 @@ def _delete_test_data(db) -> None:
     # Delete approval requests for test users first (cascades to decisions and audit_logs).
     test_requests = list(
         db.scalars(
-            select(ApprovalRequest).where(ApprovalRequest.requester_id.in_(_ALL_USERS))
+            select(ApprovalRequest).where(
+                ApprovalRequest.requester_id.in_(_ALL_USERS)
+            )
         )
     )
     for req in test_requests:
-        db.execute(
-            delete(ApprovalAuditLog).where(ApprovalAuditLog.request_id == req.id)
-        )
-        db.execute(
-            delete(ApprovalDecision).where(ApprovalDecision.request_id == req.id)
-        )
+        db.execute(delete(ApprovalAuditLog).where(ApprovalAuditLog.request_id == req.id))
+        db.execute(delete(ApprovalDecision).where(ApprovalDecision.request_id == req.id))
     db.execute(
         delete(ApprovalRequest).where(ApprovalRequest.requester_id.in_(_ALL_USERS))
     )
@@ -110,11 +107,7 @@ def _delete_test_data(db) -> None:
         )
     )
     for s in sessions:
-        db.execute(
-            delete(ImpersonationAuditLog).where(
-                ImpersonationAuditLog.session_id == s.id
-            )
-        )
+        db.execute(delete(ImpersonationAuditLog).where(ImpersonationAuditLog.session_id == s.id))
     db.execute(
         delete(ImpersonationSession).where(
             ImpersonationSession.real_user_id.in_(_ALL_USERS)
@@ -134,7 +127,6 @@ def _delete_test_data(db) -> None:
 # ---------------------------------------------------------------------------
 # Individual checks
 # ---------------------------------------------------------------------------
-
 
 def check_ap1_correct_approver_can_approve(db) -> Check:
     global _ap1_request_id
@@ -214,9 +206,7 @@ def check_ap3_wrong_role_cannot_decide(db) -> Check:
     _ap_audit_request_ids.append(req.id)
 
     # Also confirm OPR has no APPROVE RBAC permission.
-    opr_ident = IdentityLike(
-        user_id=OPR_USER, tenant_id=TENANT_ID, is_authenticated=True
-    )
+    opr_ident = IdentityLike(user_id=OPR_USER, tenant_id=TENANT_ID, is_authenticated=True)
     opr_has_approve = has_permission(db, opr_ident, "APPROVE")
 
     rejected = False
@@ -274,8 +264,8 @@ def check_ap4_impersonation_self_approval_blocked(db) -> Check:
         decide_approval_request(
             db,
             request_id=req.id,
-            decider_user_id=ADM_USER,  # real user_id — same as requester
-            decider_role_code="QAL",  # acting role via impersonation
+            decider_user_id=ADM_USER,       # real user_id — same as requester
+            decider_role_code="QAL",        # acting role via impersonation
             tenant_id=TENANT_ID,
             decide_data=ApprovalDecideRequest(decision="APPROVED"),
             impersonation_session_id=imp_session.id,
@@ -320,8 +310,8 @@ def check_ap5_impersonation_different_user_can_decide(db) -> Check:
     decision = decide_approval_request(
         db,
         request_id=req.id,
-        decider_user_id=OTS_USER,  # real user — different from OPR_USER ✓
-        decider_role_code="QAL",  # acting role via impersonation
+        decider_user_id=OTS_USER,           # real user — different from OPR_USER ✓
+        decider_role_code="QAL",            # acting role via impersonation
         tenant_id=TENANT_ID,
         decide_data=ApprovalDecideRequest(
             decision="APPROVED", comment="AP-5 impersonated approve"
@@ -518,7 +508,6 @@ def check_ap12_seed_regression() -> Check:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-
 
 def main() -> None:
     init_db()

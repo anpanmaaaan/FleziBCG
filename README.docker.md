@@ -20,6 +20,17 @@ cd /workspaces/FleziBCG
 docker compose up --build
 ```
 
+If Docker Hub is timing out when pulling base images (`python:3.12-slim`, `node:20-alpine`, or `nginx:alpine`), set alternate mirrors before build:
+
+```bash
+export BACKEND_PYTHON_IMAGE=mirror.gcr.io/library/python:3.12-slim
+export FRONTEND_NODE_IMAGE=mirror.gcr.io/library/node:20-alpine
+export FRONTEND_NGINX_IMAGE=mirror.gcr.io/library/nginx:alpine
+docker compose up --build
+```
+
+You can also define `BACKEND_PYTHON_IMAGE`, `FRONTEND_NODE_IMAGE`, and `FRONTEND_NGINX_IMAGE` in a root `.env` file (see `.env.example`).
+
 This starts:
 
 - `db` on port `5432`

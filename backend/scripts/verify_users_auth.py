@@ -13,7 +13,6 @@ AD-7   Impersonation still works with database users
 AD-8   Approval logic still works with database users
 AD-9   S1-S4 seed regression passes
 """
-
 from __future__ import annotations
 
 import subprocess
@@ -27,11 +26,8 @@ from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.rbac import Role, RoleScope, UserRole
 from app.models.user import User
-from app.security.auth import (
-    authenticate_user_db,
-    create_access_token,
-    decode_access_token,
-)
+from app.schemas.auth import LoginRequest
+from app.security.auth import authenticate_user_db, create_access_token, decode_access_token, pwd_context
 from app.services.user_service import get_or_create_user
 
 TENANT_ID = "default"
@@ -59,7 +55,6 @@ def _delete_test_user(db) -> None:
 # ---------------------------------------------------------------------------
 # Individual checks
 # ---------------------------------------------------------------------------
-
 
 def check_ad1_valid_login_returns_token(db) -> Check:
     user = get_or_create_user(
@@ -153,9 +148,7 @@ def check_ad4_login_includes_role(db) -> Check:
     )
     db.add(user_role)
     db.flush()
-    db.add(
-        RoleScope(user_role_id=user_role.id, scope_type="tenant", scope_value=TENANT_ID)
-    )
+    db.add(RoleScope(user_role_id=user_role.id, scope_type="tenant", scope_value=TENANT_ID))
     db.commit()
 
     identity = authenticate_user_db(db, user.username, "correctpassword", TENANT_ID)
@@ -251,9 +244,7 @@ def check_ad7_impersonation_with_db_users(db) -> Check:
     )
     db.add(user_role)
     db.flush()
-    db.add(
-        RoleScope(user_role_id=user_role.id, scope_type="tenant", scope_value=TENANT_ID)
-    )
+    db.add(RoleScope(user_role_id=user_role.id, scope_type="tenant", scope_value=TENANT_ID))
     db.commit()
 
     # Authenticate and create impersonation session.
@@ -278,7 +269,7 @@ def check_ad7_impersonation_with_db_users(db) -> Check:
             ),
         )
         success = session.id is not None
-    except Exception:
+    except Exception as exc:
         success = False
         session = None
 
@@ -320,9 +311,7 @@ def check_ad8_approval_with_db_users(db) -> Check:
     )
     db.add(user_role)
     db.flush()
-    db.add(
-        RoleScope(user_role_id=user_role.id, scope_type="tenant", scope_value=TENANT_ID)
-    )
+    db.add(RoleScope(user_role_id=user_role.id, scope_type="tenant", scope_value=TENANT_ID))
     db.commit()
 
     # Authenticate and create approval request.
@@ -346,7 +335,7 @@ def check_ad8_approval_with_db_users(db) -> Check:
             ),
         )
         success = req.id is not None
-    except Exception:
+    except Exception as exc:
         success = False
         req = None
 
@@ -375,7 +364,6 @@ def check_ad9_seed_regression() -> Check:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-
 
 def main() -> None:
     init_db()

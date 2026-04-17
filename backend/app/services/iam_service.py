@@ -3,22 +3,12 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.rbac import (
-    Permission,
-    Role,
-    RolePermission,
-    RoleScope,
-    Scope,
-    UserRole,
-    UserRoleAssignment,
-)
+from app.models.rbac import Permission, Role, RolePermission, RoleScope, Scope, UserRole, UserRoleAssignment
 from app.security.dependencies import RequestIdentity
 from app.security.rbac import SYSTEM_ROLE_FAMILIES
 
 
-def _in_valid_window(
-    valid_from: datetime | None, valid_to: datetime | None, now: datetime
-) -> bool:
+def _in_valid_window(valid_from: datetime | None, valid_to: datetime | None, now: datetime) -> bool:
     if valid_from is not None and valid_from > now:
         return False
     if valid_to is not None and valid_to < now:
@@ -26,9 +16,7 @@ def _in_valid_window(
     return True
 
 
-def get_role_assignments_for_identity(
-    db: Session, identity: RequestIdentity
-) -> list[dict]:
+def get_role_assignments_for_identity(db: Session, identity: RequestIdentity) -> list[dict]:
     now = datetime.now(timezone.utc)
 
     rows = list(
@@ -70,9 +58,7 @@ def get_role_assignments_for_identity(
     if assignments:
         return assignments
 
-    # INTENT: Backward-compatible fallback for tenants that still use the
-    # legacy UserRole + RoleScope tables. Once all tenants migrate to
-    # UserRoleAssignment, this branch can be removed.
+    # Backward-compatible fallback to legacy user_roles + role_scopes.
     legacy_rows = list(
         db.execute(
             select(UserRole, Role, RoleScope)
@@ -91,9 +77,7 @@ def get_role_assignments_for_identity(
     synthetic_assignment_id = 1
     for user_role, role, role_scope in legacy_rows:
         scope_type = role_scope.scope_type if role_scope is not None else "tenant"
-        scope_value = (
-            role_scope.scope_value if role_scope is not None else identity.tenant_id
-        )
+        scope_value = role_scope.scope_value if role_scope is not None else identity.tenant_id
         fallback_assignments.append(
             {
                 "assignment_id": None,
@@ -127,8 +111,6 @@ def create_custom_role(
     owner_user_id: str,
     allow_action_codes: list[str] | None = None,
 ) -> Role:
-    # INVARIANT: Custom role must derive from a system role. This ensures
-    # the base permission set is well-defined and auditable.
     base_role = db.scalar(select(Role).where(Role.code == base_role_code))
     if base_role is None or base_role.role_type != "system":
         raise ValueError("Custom role must derive from an existing system role")
@@ -148,9 +130,7 @@ def create_custom_role(
     if base_role.code not in {"ADM", "OTS"} and allow_action_codes:
         for action in allow_action_codes:
             if action.startswith("admin."):
-                raise ValueError(
-                    "Custom roles must not grant ADMIN actions beyond baseline"
-                )
+                raise ValueError("Custom roles must not grant ADMIN actions beyond baseline")
 
     custom_role = Role(
         code=normalized_code,
@@ -166,9 +146,6 @@ def create_custom_role(
     db.add(custom_role)
     db.flush()
 
-    # EDGE: Permissions are cloned as a snapshot, not a live reference.
-    # Changes to the base role's permissions after cloning do NOT propagate.
-    # This is intentional — custom roles are frozen at creation time.
     base_permissions = list(
         db.scalars(select(RolePermission).where(RolePermission.role_id == base_role.id))
     )
@@ -190,9 +167,7 @@ def create_custom_role(
 
     allow_action_codes = allow_action_codes or []
     for action in allow_action_codes:
-        permission = db.scalar(
-            select(Permission).where(Permission.action_code == action)
-        )
+        permission = db.scalar(select(Permission).where(Permission.action_code == action))
         if permission is None:
             continue
         key = (permission.id, "tenant", "*")

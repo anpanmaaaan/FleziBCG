@@ -8,11 +8,7 @@ from app.schemas.approval import (
     ApprovalDecisionResponse,
     ApprovalRequestResponse,
 )
-from app.security.dependencies import (
-    RequestIdentity,
-    require_action,
-    require_permission,
-)
+from app.security.dependencies import RequestIdentity, require_action, require_permission
 from app.services.approval_service import (
     create_approval_request,
     decide_approval_request,
@@ -30,9 +26,6 @@ def get_db():
         db.close()
 
 
-# WHY: require_action("approval.create") not require_permission("APPROVE") —
-# any authenticated user may submit a request; only the decision requires
-# APPROVE permission.
 @router.post("", response_model=ApprovalRequestResponse, status_code=201)
 def create_approval(
     request_data: ApprovalCreateRequest,
@@ -46,8 +39,6 @@ def create_approval(
     The effective role (acting_role_code if impersonating, else real role_code)
     is recorded as the requester_role_code for audit purposes.
     """
-    # WHY: effective_role uses acting_role_code under impersonation so the
-    # approval is audited against the persona, not the real admin role.
     effective_role = identity.acting_role_code or identity.role_code
     try:
         appr_req = create_approval_request(

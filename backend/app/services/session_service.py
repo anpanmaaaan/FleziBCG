@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.config.settings import settings
@@ -39,9 +39,6 @@ def get_session(db: Session, session_id: str) -> AuthSession | None:
     return db.scalar(select(AuthSession).where(AuthSession.session_id == session_id))
 
 
-# INVARIANT: Expiry and revocation are independent checks. A session can be
-# revoked before its natural expiry (admin action), or expire without being
-# explicitly revoked. Both must fail is_session_active.
 def is_session_active(db: Session, session_id: str, tenant_id: str) -> bool:
     session = db.scalar(
         select(AuthSession).where(
@@ -67,8 +64,6 @@ def revoke_session(
     session = get_session(db, session_id)
     if session is None or session.tenant_id != tenant_id:
         return False
-    # EDGE: Idempotent — returns True if already revoked, preventing duplicate
-    # audit log entries from retry scenarios.
     if session.revoked_at is not None:
         return True
 
@@ -87,9 +82,7 @@ def revoke_session(
     return True
 
 
-def revoke_all_sessions_for_user(
-    db: Session, *, user_id: str, tenant_id: str, reason: str
-) -> int:
+def revoke_all_sessions_for_user(db: Session, *, user_id: str, tenant_id: str, reason: str) -> int:
     now = datetime.now(timezone.utc)
     active_sessions = list(
         db.scalars(
@@ -117,9 +110,7 @@ def revoke_all_sessions_for_user(
     return len(active_sessions)
 
 
-def list_user_sessions(
-    db: Session, *, user_id: str, tenant_id: str
-) -> list[AuthSession]:
+def list_user_sessions(db: Session, *, user_id: str, tenant_id: str) -> list[AuthSession]:
     return list(
         db.scalars(
             select(AuthSession)

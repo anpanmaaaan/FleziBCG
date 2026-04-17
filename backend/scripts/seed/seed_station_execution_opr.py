@@ -25,38 +25,20 @@ def _dt(value: str) -> datetime:
 def _reset_station_seed(db) -> None:
     po_ids = list(
         db.scalars(
-            select(ProductionOrder.id).where(
-                ProductionOrder.order_number.like(f"{SEED_PREFIX}-%")
-            )
+            select(ProductionOrder.id).where(ProductionOrder.order_number.like(f"{SEED_PREFIX}-%"))
         )
     )
     if not po_ids:
         db.commit()
         return
 
-    wo_ids = list(
-        db.scalars(
-            select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))
-        )
-    )
+    wo_ids = list(db.scalars(select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))))
     if wo_ids:
-        operation_ids = list(
-            db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids)))
-        )
+        operation_ids = list(db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids))))
         if operation_ids:
-            db.execute(
-                delete(OperationClaimAuditLog).where(
-                    OperationClaimAuditLog.operation_id.in_(operation_ids)
-                )
-            )
-            db.execute(
-                delete(OperationClaim).where(
-                    OperationClaim.operation_id.in_(operation_ids)
-                )
-            )
-        db.execute(
-            delete(ExecutionEvent).where(ExecutionEvent.work_order_id.in_(wo_ids))
-        )
+            db.execute(delete(OperationClaimAuditLog).where(OperationClaimAuditLog.operation_id.in_(operation_ids)))
+            db.execute(delete(OperationClaim).where(OperationClaim.operation_id.in_(operation_ids)))
+        db.execute(delete(ExecutionEvent).where(ExecutionEvent.work_order_id.in_(wo_ids)))
         db.execute(delete(Operation).where(Operation.work_order_id.in_(wo_ids)))
         db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
 
@@ -150,9 +132,7 @@ def seed_station_execution_for_opr() -> None:
 
         # Put one operation into IN_PROGRESS so station queue shows mixed states.
         operation_in_progress = db.scalar(
-            select(Operation).where(
-                Operation.operation_number == f"{SEED_PREFIX}-OP-002"
-            )
+            select(Operation).where(Operation.operation_number == f"{SEED_PREFIX}-OP-002")
         )
         if operation_in_progress is None:
             raise RuntimeError("Seeded operation not found: PH6-STATION-OP-002")

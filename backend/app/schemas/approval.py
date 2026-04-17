@@ -3,22 +3,16 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-# WHY: CANCELLED is a terminal state distinct from REJECTED — a requester
-# can cancel their own pending request before a decision is made.
 ApprovalStatus = Literal["PENDING", "APPROVED", "REJECTED", "CANCELLED"]
 ApprovalDecisionType = Literal["APPROVED", "REJECTED"]
 
 
 class ApprovalCreateRequest(BaseModel):
     action_type: str = Field(..., min_length=1, max_length=64)
-    # EDGE: subject_type and subject_ref are Optional — not all approval
-    # actions reference a specific entity (e.g., config-change approvals).
     subject_type: str | None = Field(default=None, max_length=64)
     subject_ref: str | None = Field(default=None, max_length=256)
     reason: str = Field(..., min_length=1, max_length=512)
 
-    # INTENT: Normalize to uppercase for case-insensitive matching against
-    # approval_rules — the DB stores action_type in uppercase.
     @field_validator("action_type")
     @classmethod
     def normalize_action_type(cls, v: str) -> str:

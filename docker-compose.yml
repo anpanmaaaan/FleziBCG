@@ -19,6 +19,8 @@ services:
   backend:
     build:
       context: ./backend
+      args:
+        PYTHON_IMAGE: ${BACKEND_PYTHON_IMAGE:-python:3.12-slim}
     ports:
       - "8010:8010"
     depends_on:
@@ -47,6 +49,9 @@ services:
   frontend:
     build:
       context: ./frontend
+      args:
+        NODE_IMAGE: ${FRONTEND_NODE_IMAGE:-node:20-alpine}
+        NGINX_IMAGE: ${FRONTEND_NGINX_IMAGE:-nginx:alpine}
     ports:
       - "80:80"
     depends_on:

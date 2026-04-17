@@ -10,16 +10,8 @@ from app.models.execution import ExecutionEvent
 from app.models.master import Operation, ProductionOrder, WorkOrder, StatusEnum
 from app.models.station_claim import OperationClaim, OperationClaimAuditLog
 from app.repositories.operation_repository import get_operation_by_id
-from app.schemas.operation import (
-    OperationAbortRequest,
-    OperationCompleteRequest,
-    OperationStartRequest,
-)
-from app.services.operation_service import (
-    abort_operation,
-    complete_operation,
-    start_operation,
-)
+from app.schemas.operation import OperationAbortRequest, OperationCompleteRequest, OperationStartRequest
+from app.services.operation_service import abort_operation, complete_operation, start_operation
 
 SEED_PREFIX = "PH6-DEMO"
 TENANT_ID = "default"
@@ -37,40 +29,18 @@ def _dt(value: str) -> datetime:
 
 
 def reset_seed_dataset(db: Session) -> None:
-    po_ids = list(
-        db.scalars(
-            select(ProductionOrder.id).where(
-                ProductionOrder.order_number.like(f"{SEED_PREFIX}-%")
-            )
-        )
-    )
+    po_ids = list(db.scalars(select(ProductionOrder.id).where(ProductionOrder.order_number.like(f"{SEED_PREFIX}-%"))))
     if not po_ids:
         db.commit()
         return
 
-    wo_ids = list(
-        db.scalars(
-            select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))
-        )
-    )
+    wo_ids = list(db.scalars(select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))))
     if wo_ids:
-        operation_ids = list(
-            db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids)))
-        )
+        operation_ids = list(db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids))))
         if operation_ids:
-            db.execute(
-                delete(OperationClaimAuditLog).where(
-                    OperationClaimAuditLog.operation_id.in_(operation_ids)
-                )
-            )
-            db.execute(
-                delete(OperationClaim).where(
-                    OperationClaim.operation_id.in_(operation_ids)
-                )
-            )
-        db.execute(
-            delete(ExecutionEvent).where(ExecutionEvent.work_order_id.in_(wo_ids))
-        )
+            db.execute(delete(OperationClaimAuditLog).where(OperationClaimAuditLog.operation_id.in_(operation_ids)))
+            db.execute(delete(OperationClaim).where(OperationClaim.operation_id.in_(operation_ids)))
+        db.execute(delete(ExecutionEvent).where(ExecutionEvent.work_order_id.in_(wo_ids)))
         db.execute(delete(Operation).where(Operation.work_order_id.in_(wo_ids)))
         db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
 
@@ -78,9 +48,7 @@ def reset_seed_dataset(db: Session) -> None:
     db.commit()
 
 
-def create_production_order(
-    db: Session, *, scenario_code: str, planned_start: str, planned_end: str
-) -> ProductionOrder:
+def create_production_order(db: Session, *, scenario_code: str, planned_start: str, planned_end: str) -> ProductionOrder:
     production_order = ProductionOrder(
         order_number=f"{SEED_PREFIX}-{scenario_code}-PO",
         route_id=f"{SEED_PREFIX}-{scenario_code}",
@@ -134,7 +102,7 @@ def create_operation(
         work_order_id=work_order.id,
         sequence=sequence,
         name=name,
-        status=StatusEnum.pending.value,
+        status=StatusEnum.planned.value,
         planned_start=_dt(planned_start),
         planned_end=_dt(planned_end),
         quantity=quantity,
@@ -149,38 +117,22 @@ def create_operation(
     return operation
 
 
-def run_start(
-    db: Session, operation_id: int, started_at: datetime | None = None
-) -> Operation:
+def run_start(db: Session, operation_id: int, started_at: datetime | None = None) -> Operation:
     operation = get_operation_by_id(db, operation_id)
     if operation is None:
         raise ValueError(f"Operation {operation_id} not found")
-    start_operation(
-        db,
-        operation,
-        OperationStartRequest(
-            operator_id=f"seed-user-{operation_id}", started_at=started_at
-        ),
-        tenant_id=TENANT_ID,
-    )
+    start_operation(db, operation, OperationStartRequest(operator_id="seed-user", started_at=started_at), tenant_id=TENANT_ID)
     refreshed = get_operation_by_id(db, operation_id)
     if refreshed is None:
         raise ValueError(f"Operation {operation_id} missing after start")
     return refreshed
 
 
-def run_complete(
-    db: Session, operation_id: int, completed_at: datetime | None = None
-) -> Operation:
+def run_complete(db: Session, operation_id: int, completed_at: datetime | None = None) -> Operation:
     operation = get_operation_by_id(db, operation_id)
     if operation is None:
         raise ValueError(f"Operation {operation_id} not found")
-    complete_operation(
-        db,
-        operation,
-        OperationCompleteRequest(operator_id="seed-user", completed_at=completed_at),
-        tenant_id=TENANT_ID,
-    )
+    complete_operation(db, operation, OperationCompleteRequest(operator_id="seed-user", completed_at=completed_at), tenant_id=TENANT_ID)
     refreshed = get_operation_by_id(db, operation_id)
     if refreshed is None:
         raise ValueError(f"Operation {operation_id} missing after completion")
@@ -203,9 +155,7 @@ def run_abort(db: Session, operation_id: int, *, reason_code: str) -> Operation:
     return refreshed
 
 
-def mark_blocked_for_incident_seed(
-    db: Session, operation_id: int, *, reason_code: str
-) -> Operation:
+def mark_blocked_for_incident_seed(db: Session, operation_id: int, *, reason_code: str) -> Operation:
     operation = get_operation_by_id(db, operation_id)
     if operation is None:
         raise ValueError(f"Operation {operation_id} not found")
@@ -242,13 +192,7 @@ def create_scenario_context(
     )
 
     operations: list[Operation] = []
-    for (
-        sequence,
-        planned_start,
-        planned_end,
-        step_suffix,
-        qc_required,
-    ) in operation_plans:
+    for sequence, planned_start, planned_end, step_suffix, qc_required in operation_plans:
         operations.append(
             create_operation(
                 db,

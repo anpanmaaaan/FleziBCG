@@ -19,12 +19,7 @@ def get_db():
         db.close()
 
 
-# INTENT: Read-only visualization endpoint — no execution-state mutation.
-# Safe for any role with VIEW permission.
-@router.get(
-    "/work-orders/{work_order_id}/execution-timeline",
-    response_model=WorkOrderExecutionTimeline,
-)
+@router.get("/work-orders/{work_order_id}/execution-timeline", response_model=WorkOrderExecutionTimeline)
 def read_execution_timeline(
     work_order_id: str,
     db: Session = Depends(get_db),
@@ -32,9 +27,7 @@ def read_execution_timeline(
 ):
     """ExecutionTimeline API - read-only, visualization only."""
     # For visualization only - no execution control.
-    work_order = get_work_order_by_id_or_number(
-        db, work_order_id, tenant_id=identity.tenant_id
-    )
+    work_order = get_work_order_by_id_or_number(db, work_order_id, tenant_id=identity.tenant_id)
     if not work_order:
         raise HTTPException(status_code=404, detail="Work order not found")
 
