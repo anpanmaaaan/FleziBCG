@@ -162,6 +162,8 @@ The system uses **append-only execution events** as its source of truth:
   - `QAL` (QA / Lines) — View + Approve; quality sign-off
   - `PMG` (Production Manager) — View + Approve; planning & approval
   - `EXE` (Execution Reporter) — View only; data entry for external systems
+  - `PLN` (Planner) — View only; production planning (no execution)
+  - `INV` (Inventory) — View only; inventory visibility (no execution)
   - `ADM` (Admin) — Unrestricted; system administration
   - `OTS` (On-the-Spot) — Support/Demo; same privileges as ADM but audit-tagged differently
 - **Properties:** `code`, `name`, `description`, `is_system` (all system roles are is_system=true)
@@ -185,6 +187,8 @@ The system uses **append-only execution events** as its source of truth:
   QAL    → VIEW, APPROVE
   PMG    → VIEW, APPROVE
   EXE    → VIEW
+  PLN    → VIEW
+  INV    → VIEW
   ADM    → VIEW, ADMIN
   OTS    → VIEW, ADMIN
   ```
@@ -339,6 +343,8 @@ When a user logs in, their role_code is mapped to a Persona:
 | QCI → QCI | `/operations?lens=qc` | Quality KPIs; defect tracking |
 | PMG → PMG | `/dashboard` | Production metrics; KPI overview |
 | EXE → EXE | `/dashboard` | Dashboard; read-only reporting |
+| PLN → PMG | `/dashboard` | Planner; read-only dashboard view |
+| INV → PMG | `/dashboard` | Inventory; read-only dashboard view |
 | QAL → QCI | `/operations?lens=qc` | Map QAL (approval role) to QC persona |
 | ADM, OTS → (multiple options) | (no default; free roam) | Admin access to all screens |
 
@@ -384,7 +390,7 @@ Every API endpoint that mutates or returns restricted data requires one of these
 
 | Family | Granted To | Semantics |
 |---|---|---|
-| **VIEW** | OPR, SUP, IEP, QCI, QAL, PMG, EXE, ADM, OTS | Read access to execution, status, KPIs |
+| **VIEW** | OPR, SUP, IEP, QCI, QAL, PMG, EXE, PLN, INV, ADM, OTS | Read access to execution, status, KPIs |
 | **EXECUTE** | OPR, SUP, ADM, OTS | Trigger execution state changes (START, COMPLETE, REPORT, BLOCK, ABORT) |
 | **APPROVE** | QAL, PMG, ADM, OTS | Create/decide approval requests |
 | **CONFIGURE** | IEP, ADM, OTS | Modify parameters (standards, thresholds, process definitions) |

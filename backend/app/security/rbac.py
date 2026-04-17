@@ -32,6 +32,8 @@ SYSTEM_ROLE_FAMILIES: dict[str, set[PermissionFamily]] = {
     "EXE": {"VIEW"},
     "ADM": {"VIEW", "ADMIN"},
     "OTS": {"VIEW", "ADMIN"},
+    "PLN": {"VIEW"},
+    "INV": {"VIEW"},
 }
 
 # INTENT: Maps fine-grained action codes to their parent permission family.
@@ -57,6 +59,8 @@ ROLE_ALIASES: dict[str, str] = {
     "IE": "IEP",
     "PROCESS": "IEP",
     "QA": "QCI",
+    "PLANNER": "PLN",
+    "INVENTORY": "INV",
 }
 
 SCOPE_TYPE_TENANT = "tenant"

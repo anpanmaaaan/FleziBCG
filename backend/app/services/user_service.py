@@ -57,7 +57,7 @@ def seed_demo_users(db: Session) -> None:
 
     # Get all system roles (they should be created by seed_rbac_core).
     roles_by_code = {}
-    for role_code in ["ADM", "PMG", "SUP", "OPR", "QAL"]:
+    for role_code in ["ADM", "PMG", "SUP", "OPR", "QAL", "PLN", "INV"]:
         role = db.scalar(select(Role).where(Role.code == role_code))
         if role is None:
             logger.warning(
@@ -73,6 +73,8 @@ def seed_demo_users(db: Session) -> None:
         ("sup-001", "supervisor", "password123", "supervisor@example.com", "SUP"),
         ("opr-001", "operator", "password123", "operator@example.com", "OPR"),
         ("qal-001", "qa", "password123", "qa@example.com", "QAL"),
+        ("pln-001", "planner", "password123", "planner@example.com", "PLN"),
+        ("inv-001", "inventory", "password123", "inventory@example.com", "INV"),
     ]
 
     tenant_id = "default"

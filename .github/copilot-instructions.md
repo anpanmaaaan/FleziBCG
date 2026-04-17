@@ -119,7 +119,7 @@ Full governance specification: `docs/system/mes-business-logic-v1.md`
 
 **RBAC — 5 permission families (VIEW, EXECUTE, APPROVE, CONFIGURE, ADMIN):**
 - Frozen role→family mappings. Do NOT modify without Phase 7+ design gate.
-- OPR→EXECUTE, SUP→VIEW+EXECUTE, IEP→VIEW+CONFIGURE, QAL→VIEW+APPROVE, PMG→VIEW+APPROVE, ADM→VIEW+ADMIN
+- OPR→EXECUTE, SUP→VIEW+EXECUTE, IEP→VIEW+CONFIGURE, QAL→VIEW+APPROVE, PMG→VIEW+APPROVE, PLN→VIEW, INV→VIEW, ADM→VIEW+ADMIN
 
 **MOM Business Roles (official role set for all new features):**
 
@@ -130,6 +130,8 @@ Full governance specification: `docs/system/mes-business-logic-v1.md`
 | IEP | IE / Process Engineer | Routing, standards | VIEW, CONFIGURE | Cannot execute or approve |
 | QAL | QC Lead / Approver | Quality approval | VIEW, APPROVE | Cannot execute or admin |
 | PMG | Production Manager | Planning approval | VIEW, APPROVE | Cannot execute or admin |
+| PLN | Planner | Production planning | VIEW | Cannot execute, approve, configure, or admin |
+| INV | Inventory | Inventory visibility | VIEW | Cannot execute, approve, configure, or admin |
 | ADM | Administrator | System admin | VIEW, ADMIN | Cannot execute (must impersonate OPR) |
 
 **Non-MOM / Technical Roles (exist in code, NOT part of MOM business role set):**

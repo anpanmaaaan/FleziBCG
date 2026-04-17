@@ -11,6 +11,8 @@ Danh sach account demo duoc seed tu backend va dung de dang nhap vao he thong ME
 | sup-001 | supervisor | password123 | SUP | default |
 | opr-001 | operator | password123 | OPR | default |
 | qal-001 | qa | password123 | QAL | default |
+| pln-001 | planner | password123 | PLN | default |
+| inv-001 | inventory | password123 | INV | default |
 
 ## Ghi chu
 

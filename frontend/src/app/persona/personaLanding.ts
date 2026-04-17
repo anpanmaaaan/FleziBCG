@@ -128,6 +128,9 @@ export function resolvePersonaFromRoleCode(roleCode?: string | null): ResolvedPe
   if (normalizedRoleCode === "ADM" || normalizedRoleCode === "OTS") {
     return "ADM";
   }
+  if (normalizedRoleCode === "PLN" || normalizedRoleCode === "INV") {
+    return "PMG";
+  }
 
   if (PERSONA_ENFORCEMENT_MODE === "STRICT") {
     logResolverOnce(
