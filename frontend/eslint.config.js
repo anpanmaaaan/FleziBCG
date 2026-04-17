@@ -68,4 +68,11 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // National flag SVGs require literal hex colors by design
+    files: ["src/app/components/flags/*.tsx"],
+    rules: {
+      "no-restricted-syntax": "off",
+    },
+  },
 );
