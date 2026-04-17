@@ -469,7 +469,7 @@ export function GlobalOperationList() {
                       nextSearchParams.set("lens", nextLens);
                       setSearchParams(nextSearchParams, { replace: true });
                     }}
-                    className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
                     disabled={allowedOperationLenses.length === 1}
                   >
                     {allowedOperationLenses.includes("ie") && (
@@ -490,14 +490,14 @@ export function GlobalOperationList() {
                       value={searchValue}
                       onChange={(event) => setSearchValue(event.target.value)}
                       placeholder="Search operation, work order, or production order"
-                      className="pl-9 pr-3 py-2 border rounded-lg w-[360px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="pl-9 pr-3 py-2 border rounded-lg w-[360px] focus:outline-none focus:ring-2 focus:ring-focus-ring"
                     />
                   </div>
 
                   <select
                     value={selectedStatus}
                     onChange={(event) => setSelectedStatus(event.target.value)}
-                    className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
                   >
                     {(selectedLens === "SUPERVISOR" || selectedLens === "QC") && (
                       <option value="SUPERVISOR_DEFAULT">
@@ -521,7 +521,7 @@ export function GlobalOperationList() {
                   <select
                     value={selectedProductionOrderId}
                     onChange={(event) => setSelectedProductionOrderId(event.target.value)}
-                    className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
                   >
                     <option value="all">All Production Orders</option>
                     {productionOrderFilters.map((productionOrder) => (
@@ -534,7 +534,7 @@ export function GlobalOperationList() {
                   <select
                     value={groupMode}
                     onChange={(event) => setGroupMode(event.target.value as GroupMode)}
-                    className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
                   >
                     <option value="none">{t("operations.group.none", "No Grouping")}</option>
                     <option value="work_order">{t("operations.group.work_order", "Group by Work Order")}</option>

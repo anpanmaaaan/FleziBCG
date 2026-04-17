@@ -516,7 +516,7 @@ const GanttRow = memo(function GanttRow({ index, style, data }: ListChildCompone
       >
         <div className="flex h-full items-center" style={{ width: LABEL_WIDTH_PX, paddingRight: LABEL_GAP_PX }}>
           <div
-            className="flex h-full w-full cursor-pointer items-center gap-3 rounded-md px-3 focus:outline-none focus:ring-2 focus:ring-blue-300"
+            className="flex h-full w-full cursor-pointer items-center gap-3 rounded-md px-3 focus:outline-none focus:ring-2 focus:ring-focus-ring"
             onClick={() => data.onGroupToggle(row.groupKey)}
             role="button"
             tabIndex={0}
@@ -619,7 +619,7 @@ const GanttRow = memo(function GanttRow({ index, style, data }: ListChildCompone
             data.onOperationClick?.(op.raw);
           }}
           className={`absolute top-3 bottom-3 rounded cursor-pointer transition-all ${getBarStyle(op)} ${
-            isSelected ? 'ring-4 ring-blue-300 ring-opacity-50 shadow-lg' : 'hover:shadow-md'
+            isSelected ? 'ring-4 ring-focus-ring ring-opacity-50 shadow-lg' : 'hover:shadow-md'
           }`}
           style={{
             left: `${barGeo.left}%`,

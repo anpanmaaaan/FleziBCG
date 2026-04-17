@@ -162,7 +162,7 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
         </div>
 
         {/* Time Display */}
-        <div className="flex items-center gap-2 px-3 py-2 text-sm text-white bg-[#33B2C1] rounded-lg">
+        <div className="flex items-center gap-2 px-3 py-2 text-sm text-white bg-brand-cta rounded-lg">
           <Clock className="w-4 h-4 text-white" />
           <span className="font-mono font-semibold">{formatTime(currentTime)}</span>
         </div>

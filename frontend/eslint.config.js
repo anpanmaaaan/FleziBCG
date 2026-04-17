@@ -55,6 +55,17 @@ export default tseslint.config(
           ],
         },
       ],
+
+      // Warn on hardcoded hex color literals — prefer theme tokens
+      "no-restricted-syntax": [
+        "warn",
+        {
+          selector:
+            "Literal[value=/^#[0-9a-fA-F]{3,8}$/]",
+          message:
+            "Avoid hardcoded hex colors. Use a CSS variable / theme token instead.",
+        },
+      ],
     },
   },
 );

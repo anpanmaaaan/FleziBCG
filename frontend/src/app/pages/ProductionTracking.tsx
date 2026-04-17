@@ -48,7 +48,7 @@ export function ProductionTracking() {
             <select
               value={shift}
               onChange={(e) => setShift(e.target.value)}
-              className="px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-focus-ring"
             >
               <option value="1">Shift 1 (6:00 - 14:00)</option>
               <option value="2">Shift 2 (14:00 - 22:00)</option>

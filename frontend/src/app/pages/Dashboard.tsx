@@ -285,11 +285,11 @@ export function Dashboard() {
             </div>
             <ResponsiveContainer width="100%" height={300} key="production-responsive">
               <LineChart data={productionTrendData} id="production-line-chart">
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" key="prod-grid" />
-                <XAxis dataKey="date" stroke="#6b7280" style={{ fontSize: '12px' }} key="prod-xaxis" />
-                <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} key="prod-yaxis" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" key="prod-grid" />
+                <XAxis dataKey="date" stroke="var(--chart-axis)" style={{ fontSize: '12px' }} key="prod-xaxis" />
+                <YAxis stroke="var(--chart-axis)" style={{ fontSize: '12px' }} key="prod-yaxis" />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                  contentStyle={{ backgroundColor: 'var(--chart-tooltip-bg)', border: '1px solid var(--chart-tooltip-border)', borderRadius: '8px' }}
                   key="prod-tooltip"
                 />
                 <Legend wrapperStyle={{ fontSize: '14px' }} key="prod-legend" />
@@ -297,20 +297,20 @@ export function Dashboard() {
                   key="prod-line-planned"
                   type="monotone"
                   dataKey="planned"
-                  stroke="#3b82f6"
+                  stroke="var(--chart-1)"
                   strokeWidth={2}
                   name="Planned"
-                  dot={{ fill: '#3b82f6', r: 4 }}
+                  dot={{ fill: 'var(--chart-1)', r: 4 }}
                   isAnimationActive={false}
                 />
                 <Line
                   key="prod-line-actual"
                   type="monotone"
                   dataKey="actual"
-                  stroke="#10b981"
+                  stroke="var(--chart-2)"
                   strokeWidth={2}
                   name="Actual"
-                  dot={{ fill: '#10b981', r: 4 }}
+                  dot={{ fill: 'var(--chart-2)', r: 4 }}
                   isAnimationActive={false}
                 />
               </LineChart>
@@ -331,11 +331,11 @@ export function Dashboard() {
             </div>
             <ResponsiveContainer width="100%" height={300} key="quality-responsive">
               <BarChart data={qualityTrendData} id="quality-bar-chart">
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" key="qual-grid" />
-                <XAxis dataKey="date" stroke="#6b7280" style={{ fontSize: '12px' }} key="qual-xaxis" />
-                <YAxis domain={[90, 100]} stroke="#6b7280" style={{ fontSize: '12px' }} key="qual-yaxis" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" key="qual-grid" />
+                <XAxis dataKey="date" stroke="var(--chart-axis)" style={{ fontSize: '12px' }} key="qual-xaxis" />
+                <YAxis domain={[90, 100]} stroke="var(--chart-axis)" style={{ fontSize: '12px' }} key="qual-yaxis" />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                  contentStyle={{ backgroundColor: 'var(--chart-tooltip-bg)', border: '1px solid var(--chart-tooltip-border)', borderRadius: '8px' }}
                   formatter={(value: any) => `${value}%`}
                   key="qual-tooltip"
                 />
@@ -343,7 +343,7 @@ export function Dashboard() {
                 <Bar
                   key="qual-bar"
                   dataKey="rate"
-                  fill="#9333ea"
+                  fill="var(--chart-7)"
                   name="Quality Rate"
                   radius={[8, 8, 0, 0]}
                   isAnimationActive={false}

@@ -724,7 +724,7 @@ function OperationDialog({
                 type="text"
                 value={form.sequence}
                 onChange={(e) => setForm({ ...form, sequence: e.target.value })}
-                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
                 required
               />
             </div>
@@ -735,7 +735,7 @@ function OperationDialog({
               <select
                 value={form.type}
                 onChange={(e) => setForm({ ...form, type: e.target.value as any })}
-                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
               >
                 <option value="Setup">Setup</option>
                 <option value="Process">Process</option>
@@ -754,7 +754,7 @@ function OperationDialog({
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
               required
             />
           </div>
@@ -767,7 +767,7 @@ function OperationDialog({
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               rows={3}
-              className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
             />
           </div>
 
@@ -780,7 +780,7 @@ function OperationDialog({
                 type="text"
                 value={form.workCenter}
                 onChange={(e) => setForm({ ...form, workCenter: e.target.value })}
-                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
                 required
               />
             </div>
@@ -792,7 +792,7 @@ function OperationDialog({
                 type="text"
                 value={form.machine}
                 onChange={(e) => setForm({ ...form, machine: e.target.value })}
-                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
               />
             </div>
           </div>
@@ -806,7 +806,7 @@ function OperationDialog({
                 type="number"
                 value={form.setupTime}
                 onChange={(e) => setForm({ ...form, setupTime: Number(e.target.value) })}
-                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
                 min="0"
               />
             </div>
@@ -818,7 +818,7 @@ function OperationDialog({
                 type="number"
                 value={form.runTimePerUnit}
                 onChange={(e) => setForm({ ...form, runTimePerUnit: Number(e.target.value) })}
-                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
                 min="0"
               />
             </div>
@@ -830,7 +830,7 @@ function OperationDialog({
                 type="number"
                 value={form.waitTime}
                 onChange={(e) => setForm({ ...form, waitTime: Number(e.target.value) })}
-                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
                 min="0"
               />
             </div>
@@ -845,7 +845,7 @@ function OperationDialog({
                 type="number"
                 value={form.laborRequired}
                 onChange={(e) => setForm({ ...form, laborRequired: Number(e.target.value) })}
-                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
                 min="0"
               />
             </div>
@@ -856,7 +856,7 @@ function OperationDialog({
               <select
                 value={form.skill}
                 onChange={(e) => setForm({ ...form, skill: e.target.value })}
-                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
               >
                 <option value="">Select Skill</option>
                 {skills.map(skill => (
@@ -871,7 +871,7 @@ function OperationDialog({
               <select
                 value={form.skillLevel}
                 onChange={(e) => setForm({ ...form, skillLevel: e.target.value })}
-                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
               >
                 <option value="">Select Level</option>
                 {skillLevels.map(level => (
@@ -889,7 +889,7 @@ function OperationDialog({
               value={form.workInstructions}
               onChange={(e) => setForm({ ...form, workInstructions: e.target.value })}
               rows={4}
-              className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
               placeholder="Detailed work instructions for operators..."
             />
           </div>

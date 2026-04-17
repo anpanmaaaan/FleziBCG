@@ -73,7 +73,7 @@ export function RouteList() {
                         placeholder="Search"
                         value={searchValues.route}
                         onChange={(e) => setSearchValues(prev => ({ ...prev, route: e.target.value }))}
-                        className="w-full pl-9 pr-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full pl-9 pr-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
                       />
                     </div>
                   </th>
@@ -86,7 +86,7 @@ export function RouteList() {
                       <input
                         type="text"
                         placeholder="MM/DD/YYYY"
-                        className="w-full pr-9 pl-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full pr-9 pl-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
                       />
                       <Calendar className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     </div>
@@ -100,7 +100,7 @@ export function RouteList() {
                       <select
                         value={searchValues.status}
                         onChange={(e) => setSearchValues(prev => ({ ...prev, status: e.target.value }))}
-                        className="w-full appearance-none px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full appearance-none px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
                       >
                         <option value="">Select</option>
                         <option value="Active">Active</option>
@@ -192,7 +192,7 @@ export function RouteList() {
           <select
             value={itemsPerPage}
             onChange={(e) => setItemsPerPage(Number(e.target.value))}
-            className="ml-4 px-3 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="ml-4 px-3 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-focus-ring"
           >
             <option value={10}>10</option>
             <option value={20}>20</option>

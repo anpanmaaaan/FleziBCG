@@ -144,7 +144,7 @@ export function ColumnManagerDialog({ open, onOpenChange, columns, onSave }: Col
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 bg-[#33B2C1] text-white rounded hover:bg-[#2a9aa8]"
+            className="px-4 py-2 bg-brand-cta text-white rounded hover:bg-brand-cta-hover"
           >
             Lưu thay đổi
           </button>

@@ -354,7 +354,7 @@ export function AddProductionOrderDialog({ open, onOpenChange, onSubmit }: AddPr
                   <button
                     onClick={handleSAPSync}
                     disabled={isSyncingSAP}
-                    className="flex items-center gap-2 px-6 py-3 bg-[#33B2C1] text-white rounded-lg hover:bg-[#2a9aa8] disabled:opacity-50"
+                    className="flex items-center gap-2 px-6 py-3 bg-brand-cta text-white rounded-lg hover:bg-brand-cta-hover disabled:opacity-50"
                   >
                     {isSyncingSAP ? (
                       <>
@@ -780,7 +780,7 @@ export function AddProductionOrderDialog({ open, onOpenChange, onSubmit }: AddPr
             <button
               onClick={handleImportSAPOrders}
               disabled={selectedOrders.size === 0}
-              className="px-4 py-2 bg-[#33B2C1] text-white rounded hover:bg-[#2a9aa8] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-brand-cta text-white rounded hover:bg-brand-cta-hover disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Import {selectedOrders.size} Order{selectedOrders.size !== 1 ? 's' : ''}
             </button>
@@ -789,7 +789,7 @@ export function AddProductionOrderDialog({ open, onOpenChange, onSubmit }: AddPr
           {activeTab === 'manual' && (
             <button
               onClick={handleManualSubmit}
-              className="px-4 py-2 bg-[#33B2C1] text-white rounded hover:bg-[#2a9aa8]"
+              className="px-4 py-2 bg-brand-cta text-white rounded hover:bg-brand-cta-hover"
             >
               Create Order
             </button>

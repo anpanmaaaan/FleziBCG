@@ -150,7 +150,7 @@ export function APSScheduling() {
               <select
                 value={algorithm}
                 onChange={(e) => setAlgorithm(e.target.value as any)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
               >
                 <option value="EDD">EDD - Earliest Due Date</option>
                 <option value="SPT">SPT - Shortest Processing Time</option>
@@ -299,7 +299,7 @@ export function APSScheduling() {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-background divide-y divide-surface-divider">
               {sortedOrders.map((order, index) => (
                 <tr key={order.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">

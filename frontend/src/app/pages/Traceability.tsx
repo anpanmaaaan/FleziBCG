@@ -111,8 +111,8 @@ export function Traceability() {
       },
       position: { x: index % 3 * 250, y: Math.floor(index / 3) * 150 },
       style: {
-        background: '#fff',
-        border: '2px solid #3b82f6',
+        background: 'var(--background)',
+        border: '2px solid var(--chart-1)',
         borderRadius: '8px',
         padding: 0,
         width: 200,
@@ -131,11 +131,11 @@ export function Traceability() {
           type: MarkerType.ArrowClosed,
           width: 20,
           height: 20,
-          color: '#3b82f6',
+          color: 'var(--chart-1)',
         },
         style: {
           strokeWidth: 2,
-          stroke: '#3b82f6',
+          stroke: 'var(--chart-1)',
         },
       }));
 
@@ -177,7 +177,7 @@ export function Traceability() {
                 placeholder="Search serial number..."
                 value={searchSerial}
                 onChange={(e) => setSearchSerial(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-96"
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring w-96"
               />
             </div>
 
@@ -253,7 +253,7 @@ export function Traceability() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-background divide-y divide-surface-divider">
                 {filteredSerials.map((serial) => (
                   <tr key={serial.serial_no} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">

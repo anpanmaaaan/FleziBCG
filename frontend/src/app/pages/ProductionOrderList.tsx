@@ -284,7 +284,7 @@ export function ProductionOrderList() {
                               placeholder="MM/DD/YYYY"
                               value={searchValues[column.id] || ''}
                               onChange={(e) => setSearchValues(prev => ({ ...prev, [column.id]: e.target.value }))}
-                              className="w-full pr-9 pl-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full pr-9 pl-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
                             />
                             <Calendar className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
                           </>
@@ -292,7 +292,7 @@ export function ProductionOrderList() {
                           <select
                             value={searchValues[column.id] || ''}
                             onChange={(e) => setSearchValues(prev => ({ ...prev, [column.id]: e.target.value }))}
-                            className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
                           >
                             <option value="">All</option>
                             <option value="High">High</option>
@@ -303,7 +303,7 @@ export function ProductionOrderList() {
                           <select
                             value={searchValues[column.id] || ''}
                             onChange={(e) => setSearchValues(prev => ({ ...prev, [column.id]: e.target.value }))}
-                            className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
                           >
                             <option value="">All</option>
                             <option value="PENDING">Pending</option>
@@ -319,7 +319,7 @@ export function ProductionOrderList() {
                             max="100"
                             value={searchValues[column.id] || ''}
                             onChange={(e) => setSearchValues(prev => ({ ...prev, [column.id]: e.target.value }))}
-                            className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
                           />
                         ) : (
                           <>
@@ -329,7 +329,7 @@ export function ProductionOrderList() {
                               placeholder="Search"
                               value={searchValues[column.id] || ''}
                               onChange={(e) => setSearchValues(prev => ({ ...prev, [column.id]: e.target.value }))}
-                              className="w-full pl-9 pr-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full pl-9 pr-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
                             />
                           </>
                         )}
@@ -408,7 +408,7 @@ export function ProductionOrderList() {
               setItemsPerPage(Number(e.target.value));
               setCurrentPage(1);
             }}
-            className="ml-4 px-3 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="ml-4 px-3 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-focus-ring"
           >
             <option value={30}>30 / page</option>
             <option value={50}>50 / page</option>

@@ -242,7 +242,7 @@ export function OEEDeepDive() {
             <select
               value={shift}
               onChange={(e) => setShift(e.target.value as ShiftType)}
-              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
             >
               <option value="all">All Shifts</option>
               <option value="day">Day Shift</option>
@@ -253,7 +253,7 @@ export function OEEDeepDive() {
             <select
               value={selectedLines[0]}
               onChange={(e) => setSelectedLines([e.target.value])}
-              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
             >
               <option value="all">All Lines</option>
               <option value="line1">Line 1</option>
@@ -465,7 +465,7 @@ export function OEEDeepDive() {
                 <Bar 
                   yAxisId="left" 
                   dataKey="minutes" 
-                  fill="#3b82f6" 
+                  fill="var(--chart-1)" 
                   name="Downtime (min)"
                   isAnimationActive={false}
                 />
@@ -473,7 +473,7 @@ export function OEEDeepDive() {
                   yAxisId="right" 
                   type="monotone" 
                   dataKey="cumulative" 
-                  stroke="#ef4444" 
+                  stroke="var(--chart-5)" 
                   strokeWidth={2} 
                   name="Cumulative %"
                   isAnimationActive={false}
@@ -498,7 +498,7 @@ export function OEEDeepDive() {
                 <Line 
                   type="monotone" 
                   dataKey="target" 
-                  stroke="#94a3b8" 
+                  stroke="var(--status-pending)" 
                   strokeDasharray="5 5" 
                   name="Target"
                   isAnimationActive={false}
@@ -506,14 +506,14 @@ export function OEEDeepDive() {
                 <Area 
                   type="monotone" 
                   dataKey="oee" 
-                  fill="#8b5cf6" 
+                  fill="var(--chart-6)" 
                   fillOpacity={0.1}
                   isAnimationActive={false}
                 />
                 <Line 
                   type="monotone" 
                   dataKey="oee" 
-                  stroke="#8b5cf6" 
+                  stroke="var(--chart-6)" 
                   strokeWidth={2} 
                   name="OEE"
                   isAnimationActive={false}
@@ -521,7 +521,7 @@ export function OEEDeepDive() {
                 <Line 
                   type="monotone" 
                   dataKey="availability" 
-                  stroke="#3b82f6" 
+                  stroke="var(--chart-1)" 
                   strokeWidth={1.5} 
                   name="Availability"
                   isAnimationActive={false}
@@ -529,7 +529,7 @@ export function OEEDeepDive() {
                 <Line 
                   type="monotone" 
                   dataKey="performance" 
-                  stroke="#10b981" 
+                  stroke="var(--chart-2)" 
                   strokeWidth={1.5} 
                   name="Performance"
                   isAnimationActive={false}
@@ -537,7 +537,7 @@ export function OEEDeepDive() {
                 <Line 
                   type="monotone" 
                   dataKey="quality" 
-                  stroke="#6366f1" 
+                  stroke="var(--chart-3)" 
                   strokeWidth={1.5} 
                   name="Quality"
                   isAnimationActive={false}
@@ -576,7 +576,7 @@ export function OEEDeepDive() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-background divide-y divide-surface-divider">
                 {lineComparisonData.map((line, index) => (
                   <tr key={index} className="hover:bg-gray-50 cursor-pointer transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
