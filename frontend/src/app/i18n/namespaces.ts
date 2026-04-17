@@ -6,8 +6,31 @@ export const I18N_NAMESPACES = {
   quality: "quality",
   persona: "persona",
   navigation: "navigation",
+  login: "login",
+  station: "station",
+  home: "home",
+  poList: "poList",
+  woList: "woList",
+  opDetail: "opDetail",
+  opOverview: "opOverview",
+  production: "production",
+  prodTracking: "prodTracking",
+  qcCheckpoints: "qcCheckpoints",
+  routeDetail: "routeDetail",
+  routeList: "routeList",
+  defects: "defects",
+  dispatch: "dispatch",
+  trace: "trace",
+  aps: "aps",
+  oeeDeepDive: "oeeDeepDive",
+  ganttStressTest: "ganttStressTest",
+  topBar: "topBar",
+  accessDenied: "accessDenied",
+  impersonation: "impersonation",
+  addPO: "addPO",
+  columnManager: "columnManager",
+  gantt: "gantt",
+  app: "app",
 } as const;
 
 export type I18nNamespace = (typeof I18N_NAMESPACES)[keyof typeof I18N_NAMESPACES];
-
-// TODO(Phase 5B): Introduce runtime namespace loading strategy.

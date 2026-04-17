@@ -57,7 +57,7 @@ export function RouteDetail() {
   const [editingOperation, setEditingOperation] = useState<Operation | null>(null);
   const [isDirty, setIsDirty] = useState(false);
 
-  // Skills - Automotive Industry (Job Categories)
+  // Skills - Automotive Industry (Role Categories)
   const [skills] = useState<string[]>([
     'Press Operator',
     'Die Setup Technician',

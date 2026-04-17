@@ -49,6 +49,12 @@ python scripts/verify_impersonation.py       # Impersonation verification
 
 Entry: Work Order → Operations. Execution state mutations occur in the **operations API / service layer**. Station APIs handle station **claim/release** only.
 
+### Two-Dimension Status Model
+
+The system uses two orthogonal status dimensions (see `docs/system/mes-business-logic-v1.md` §3 and `docs/adr/ADR-0001-two-dimension-status-model.md`):
+
+**Dimension 1 — ExecutionLifecycleStatus (event-derived, authoritative):**
+
 ```
 PLANNED ──[start]──→ IN_PROGRESS ──[report_qty]──→ IN_PROGRESS
                           │
@@ -57,9 +63,17 @@ PLANNED ──[start]──→ IN_PROGRESS ──[report_qty]──→ IN_PROGRE
                     COMPLETED or ABORTED
 ```
 
-Valid states: `PLANNED`, `IN_PROGRESS`, `COMPLETED`, `ABORTED`. No other states exist.
-- `PENDING` does NOT exist — the initial state is `PLANNED`.
-- `BLOCKED` does NOT exist — the abort terminal state is `ABORTED`.
+Valid execution lifecycle states: `PLANNED`, `IN_PROGRESS`, `COMPLETED`, `ABORTED`. No other lifecycle states exist.
+- `PENDING` is **NOT** an execution lifecycle state. It may exist only as a readiness/dispatch indicator (queue eligibility). The initial execution lifecycle state is `PLANNED`.
+- `BLOCKED` is **NOT** an execution lifecycle state. It belongs to the readiness dimension (dispatch constraint). BLOCK/UNBLOCK events are not yet implemented in code.
+- `COMPLETED_LATE` and `LATE` are WO-level derived display states, not operation lifecycle values.
+
+**Dimension 2 — ReadinessStatus (dispatch/constraint, orthogonal to lifecycle):**
+- `PENDING` — released and queued; eligible for claim/execution
+- `BLOCKED` — constraint prevents execution eligibility (not yet implemented)
+- These are NOT execution lifecycle states. They do not affect `_derive_status()`.
+
+**Key rules:**
 - Status is **derived** from the append-only `ExecutionEvent` log via `_derive_status()`. A cached `status` column on `Operation` is a materialized projection, not the source of truth.
 - Execution entry starts at Work Order, NOT Production Order
 - Operation is the smallest execution unit
@@ -172,6 +186,8 @@ Non-MOM roles MUST NOT be used as targets for new MOM features. New features MUS
 - Modifying execution state machine without updating business logic docs
 - Introducing APS/scheduling logic into execution layer
 - Granting EXECUTE to ADM/OTS
+- Treating PENDING or BLOCKED as execution lifecycle states (they are readiness dimension — see §3 of mes-business-logic-v1.md)
+- Adding BLOCK/UNBLOCK as execution lifecycle transitions (they are readiness constraint changes)
 
 ### Verification Discipline
 

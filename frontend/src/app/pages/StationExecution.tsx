@@ -402,7 +402,7 @@ export function StationExecution() {
     }
   };
 
-  // ── MODE A — Job Selection ────────────────────────────────────────────────
+  // ── MODE A — Operation Selection ──────────────────────────────────────────
   if (!isExecutionMode) {
     return (
       <div className="h-full flex flex-col bg-white">

@@ -1,8 +1,8 @@
 # MES Lite – Business Logic Contract (Phase 6)
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Phase:** 6 (Complete)  
-**Date:** April 3, 2026  
+**Date:** April 17, 2026  
 **Status:** Locked
 
 ---
@@ -11,15 +11,16 @@
 
 1. [System Scope & Core Principles](#1-system-scope--core-principles)
 2. [Core Domain Model & Entity Semantics](#2-core-domain-model--entity-semantics)
-3. [Execution Logic](#3-execution-logic-core-mes-behavior)
-4. [Status Derivation Rules](#4-status-derivation-rules)
-5. [Persona & UX Semantics (Phase 6B)](#5-persona--ux-semantics-phase-6b)
-6. [Authorization & Governance Logic (Phase 6C)](#6-authorization--governance-logic-phase-6c)
-7. [Impersonation (Temporary Elevation)](#7-impersonation-temporary-elevation)
-8. [Approval Engine Logic](#8-approval-engine-logic)
-9. [Authentication & Login Flow](#9-authentication--login-flow)
-10. [Demo & Seed Data Semantics](#10-demo--seed-data-semantics)
-11. [Explicit Non-Goals (Phase Boundary)](#11-explicit-non-goals-phase-boundary)
+3. [Two-Dimension Status Model](#3-two-dimension-status-model)
+4. [Execution Logic](#4-execution-logic-core-mes-behavior)
+5. [Status Derivation Rules](#5-status-derivation-rules)
+6. [Persona & UX Semantics (Phase 6B)](#6-persona--ux-semantics-phase-6b)
+7. [Authorization & Governance Logic (Phase 6C)](#7-authorization--governance-logic-phase-6c)
+8. [Impersonation (Temporary Elevation)](#8-impersonation-temporary-elevation)
+9. [Approval Engine Logic](#9-approval-engine-logic)
+10. [Authentication & Login Flow](#10-authentication--login-flow)
+11. [Demo & Seed Data Semantics](#11-demo--seed-data-semantics)
+12. [Explicit Non-Goals (Phase Boundary)](#12-explicit-non-goals-phase-boundary)
 
 ---
 
@@ -53,12 +54,16 @@ The following areas are **out of scope** for Phase 6 and beyond:
 
 ### 1.3 Event-Driven Execution Philosophy
 
-The system uses **append-only execution events** as its source of truth:
+The system uses **append-only execution events** as its source of truth for execution lifecycle:
 
-- Every state change (START, COMPLETE, BLOCK, etc.) is recorded as an immutable event
-- Status is **derived** from the event log in real-time, never mutated
+- Every execution state change (START, COMPLETE, ABORT, etc.) is recorded as an immutable event
+- **Execution lifecycle status** is **derived** from the event log in real-time, never mutated
 - Events contain only facts (who, what, when, where); no derived state
 - This ensures auditability, replayed history, and idempotency
+
+**Two-Dimension Status Model (v1.1):** The system distinguishes between:
+1. **ExecutionLifecycleStatus** — derived from events: `PLANNED → IN_PROGRESS → COMPLETED | ABORTED`
+2. **ReadinessStatus** — planning/dispatch constraints (e.g., PENDING, BLOCKED, HOLD) that are orthogonal to execution lifecycle. See [§3 Two-Dimension Status Model](#3-two-dimension-status-model).
 
 ### 1.4 Backend-as-Source-of-Truth Principle
 
@@ -96,13 +101,14 @@ The system uses **append-only execution events** as its source of truth:
 
 - **Derived from:** Production Order (1-to-many)
 - **Composition:** Contains 1 or more Operations
-- **Status:** Derived from operation statuses (PENDING, IN_PROGRESS, BLOCKED, COMPLETED, LATE)
+- **Status:** Derived from operation statuses — see [§5 Status Derivation Rules](#5-status-derivation-rules)
 - **Lifecycle:**
-  - PENDING: All operations are pending
+  - PLANNED: All operations are in PLANNED state
   - IN_PROGRESS: At least one operation is in progress
-  - BLOCKED: At least one operation is blocked (no other operations in progress)
   - COMPLETED: All operations are completed
-  - LATE: Completed after planned_end
+  - LATE: Not yet completed AND planned_end < now (forecasting display state)
+  - COMPLETED_LATE: Completed after planned_end (display state)
+  - Note: LATE and COMPLETED_LATE are **WO-level derived display states**, not part of the operation execution lifecycle.
 - **Execution Entry Point:** Users navigate to WOs to see work, not POs
 
 ### 2.3 Operation (OP)
@@ -119,8 +125,9 @@ The system uses **append-only execution events** as its source of truth:
   - `quantity` — Target units to produce
   - `completed_qty`, `good_qty`, `scrap_qty` — Recorded from execution
   - `qc_required` — Flag indicating QC checkpoint needed
-  - `block_reason_code` — Reason if blocked (e.g., "UPSTREAM_DELAY", "MATERIAL")
-- **Status:** Derived from execution events (PENDING, IN_PROGRESS, BLOCKED, COMPLETED, LATE, COMPLETED_LATE)
+  - `block_reason_code` — Reason if blocked (readiness constraint; e.g., "UPSTREAM_DELAY", "MATERIAL")
+- **Execution Lifecycle Status:** Derived from execution events: `PLANNED`, `IN_PROGRESS`, `COMPLETED`, `ABORTED` — see [§3 Two-Dimension Status Model](#3-two-dimension-status-model)
+- **Readiness Status:** Orthogonal dimension for dispatch/constraint state (not yet implemented in code) — see [§3.2](#32-readiness--dispatch-status-dimension-2)
 - **Execution Entry Point:** Station Execution uses `/station-execution?operationId=...` to start, track, complete
 
 ### 2.4 Execution Event
@@ -129,7 +136,7 @@ The system uses **append-only execution events** as its source of truth:
 
 - **Properties:**
   - `operation_id` — Which operation changed
-  - `event_type` — START, REPORT_QUANTITY, COMPLETE, BLOCK, ABORT
+  - `event_type` — START, REPORT_QUANTITY, COMPLETE, ABORT (execution lifecycle events)\n  - Note: BLOCK/UNBLOCK are readiness constraint events, not execution lifecycle events — see [§3.2](#32-readiness--dispatch-status-dimension-2). Not yet implemented in code.
   - `created_by` — User who triggered event
   - `created_at` — Timestamp (server-generated)
   - `payload` — Event-specific data (e.g., quantities for REPORT_QUANTITY, reason for BLOCK)
@@ -227,57 +234,137 @@ The system uses **append-only execution events** as its source of truth:
 
 ---
 
-## 3. Execution Logic (Core MES Behavior)
+## 3. Two-Dimension Status Model
 
-### 3.1 Execution State Machine
+**Added in v1.1 — Resolves authority contradiction found by [Status Model Direction Audit](../audit/status-model-direction-audit.md) — See [ADR-0001](../adr/ADR-0001-two-dimension-status-model.md)**
 
-An operation transitions through states via execution events:
+The system uses **two orthogonal dimensions** to describe an operation's state. These dimensions must never be conflated.
+
+### 3.1 ExecutionLifecycleStatus (Dimension 1)
+
+The execution lifecycle is event-derived, append-only, and authoritative. It answers: **"Where is this operation in the execution flow?"**
 
 ```
-PENDING
-  ↓ (START)
+PLANNED ──[START]──▶ IN_PROGRESS ──[REPORT_QUANTITY]──▶ IN_PROGRESS
+                          │
+                   [COMPLETE] or [ABORT]
+                          ▼
+                   COMPLETED or ABORTED
+```
+
+| Status | Meaning | Event trigger |
+|--------|---------|---------------|
+| `PLANNED` | Operation exists but execution has not started. This is the initial state. | No events recorded |
+| `IN_PROGRESS` | Operator has clocked on; work is active | `START` (OP_STARTED) event |
+| `COMPLETED` | Operator has clocked off; work is finished | `COMPLETE` (OP_COMPLETED) event |
+| `ABORTED` | Operation terminated before completion; will not resume | `ABORT` (OP_ABORTED) event |
+
+**Rules:**
+- Exactly 4 valid values. No other lifecycle states exist.
+- `PENDING` is **NOT** an execution lifecycle state. The initial lifecycle state is `PLANNED`.
+- `BLOCKED` is **NOT** an execution lifecycle state. It belongs to Dimension 2 (Readiness).
+- `COMPLETED_LATE` and `LATE` are **WO-level derived display states**, not operation lifecycle values.
+- Status is derived from the append-only `ExecutionEvent` log via `_derive_status()`. A cached `status` column on `Operation` is a materialized projection, not the source of truth.
+
+### 3.2 Readiness / Dispatch Status (Dimension 2)
+
+The readiness dimension answers: **"Is this operation eligible for dispatch / execution?"**
+
+This dimension is **orthogonal** to execution lifecycle — an operation can be PLANNED (lifecycle) and BLOCKED (readiness) simultaneously.
+
+| Status | Meaning | Implementation status |
+|--------|---------|----------------------|
+| `PENDING` | Released and queued; eligible for claim and execution | Currently expressed as station queue membership; not a separate column |
+| `BLOCKED` | A constraint prevents execution eligibility (upstream delay, material shortage, hold) | Defined in spec; **not yet implemented in code** (no BLOCK/UNBLOCK events or API exist) |
+| `HOLD` | Quality or material hold; requires approval to release | Future — approval engine can gate this |
+| `READY` | All prerequisites met; actively dispatchable | Future — optional explicit readiness flag |
+
+**Rules:**
+- Readiness states are **NOT** part of `ExecutionLifecycleStatus`.
+- Readiness does not affect `_derive_status()` computation.
+- UI may display readiness information alongside lifecycle status (e.g., "Planned — Blocked: Material shortage").
+- When BLOCK/UNBLOCK is implemented, it will be a change to readiness state, not an execution lifecycle transition.
+- A `BLOCKED` operation in `IN_PROGRESS` lifecycle state means work was paused due to a constraint, but the execution lifecycle remains `IN_PROGRESS` — the block is a readiness overlay, not a lifecycle regression.
+
+### 3.3 Mapping: How They Relate
+
+| Lifecycle Status | Possible Readiness | Example scenario |
+|------------------|--------------------|------------------|
+| `PLANNED` | PENDING, BLOCKED, HOLD, READY | Operation created, waiting for dispatch |
+| `IN_PROGRESS` | (active), BLOCKED | Work started; may be paused by constraint |
+| `COMPLETED` | (n/a) | Work finished; readiness is irrelevant |
+| `ABORTED` | (n/a) | Terminated; readiness is irrelevant |
+
+### 3.4 Impact on Existing Code (Follow-Up)
+
+The following items require **coordinated code changes in a follow-up PR** (not in this document update):
+
+1. **DB default alignment:** `Operation.status` column default should be `PLANNED`, not `PENDING`
+2. **Start guard fix:** `start_operation()` should check `PLANNED`, not `PENDING`
+3. **Station queue filter:** Should filter by `PLANNED` (or a future readiness column), not `PENDING`
+4. **Frontend mapper:** Should not map `PLANNED` → "Pending" — use canonical label "Planned"
+5. **BLOCKED handling:** Remove phantom BLOCKED from execution mapper; move to readiness UI when implemented
+6. **GanttChart:** Should use lifecycle status codes internally, not display-label strings
+
+See [ADR-0001](../adr/ADR-0001-two-dimension-status-model.md) for the full implementation plan.
+
+---
+
+## 4. Execution Logic (Core MES Behavior)
+
+### 4.1 Execution State Machine
+
+An operation transitions through **execution lifecycle states** via execution events:
+
+```
+PLANNED
+  ↓ (START / Clock On)
 IN_PROGRESS
   ↓ (REPORT_QUANTITY)
 IN_PROGRESS (multiple reports allowed)
-  ├─ (BLOCK) → BLOCKED
-  │            ↓ (UNBLOCK / resolve upstream)
-  │            (back to IN_PROGRESS)
-  ├─ (COMPLETE) → COMPLETED
-  │                ├─ (within planned_end) → COMPLETED (on-time)
-  │                └─ (after planned_end) → COMPLETED_LATE
+  ├─ (COMPLETE / Clock Off) → COMPLETED
   └─ (ABORT) → ABORTED (terminal)
 ```
 
-### 3.2 Event Types & Semantics
+**Note on BLOCK/UNBLOCK:** These are **readiness constraint changes**, not execution lifecycle transitions. When implemented, a BLOCK event on an IN_PROGRESS operation would set a readiness flag but would NOT change the execution lifecycle status from IN_PROGRESS. See [§3.2](#32-readiness--dispatch-status-dimension-2). **Not yet implemented in code.**
+
+### 4.2 Event Types & Semantics
+
+#### Execution Lifecycle Events (implemented)
 
 | Event Type | Precondition | Effect | Payload |
 |---|---|---|---|
-| **START** | status = PENDING | actual_start = now, status → IN_PROGRESS | operator_id (optional) |
-| **REPORT_QUANTITY** | status ∈ {IN_PROGRESS} | good_qty += amount, scrap_qty += amount | good_qty, scrap_qty (both ≥ 0) |
-| **COMPLETE** | status = IN_PROGRESS | actual_end = now, status → COMPLETED or COMPLETED_LATE | — |
-| **BLOCK** | status ∈ {IN_PROGRESS} | status → BLOCKED | block_reason_code (required) |
-| **UNBLOCK** | status = BLOCKED | status → IN_PROGRESS (resume) | — |
-| **ABORT** | status ∈ {PENDING, IN_PROGRESS, BLOCKED} | status → ABORTED (terminal; cannot resume) | abort_reason_code |
+| **START** | lifecycle_status = PLANNED | actual_start = now, lifecycle_status → IN_PROGRESS | operator_id (optional) |
+| **REPORT_QUANTITY** | lifecycle_status ∈ {IN_PROGRESS} | good_qty += amount, scrap_qty += amount | good_qty, scrap_qty (both ≥ 0) |
+| **COMPLETE** | lifecycle_status = IN_PROGRESS | actual_end = now, lifecycle_status → COMPLETED | — |
+| **ABORT** | lifecycle_status ∈ {PLANNED, IN_PROGRESS} | lifecycle_status → ABORTED (terminal; cannot resume) | abort_reason_code |
 
-### 3.3 Execution Invariants
+#### Readiness Constraint Events (not yet implemented)
+
+| Event Type | Precondition | Effect | Payload | Implementation Status |
+|---|---|---|---|---|
+| **BLOCK** | lifecycle_status = IN_PROGRESS | readiness → BLOCKED (lifecycle stays IN_PROGRESS) | block_reason_code (required) | **Not implemented** |
+| **UNBLOCK** | readiness = BLOCKED | readiness → cleared (lifecycle unchanged) | — | **Not implemented** |
+
+When implemented, BLOCK/UNBLOCK will modify a readiness/constraint dimension, not the execution lifecycle status. See [§3 Two-Dimension Status Model](#3-two-dimension-status-model).
+
+### 4.3 Execution Invariants
 
 **What IS allowed:**
 
 - Multiple REPORT_QUANTITY events for a single operation (partial completion)
-- Blocking and unblocking (BLOCK ↔ IN_PROGRESS allowed multiple times)
 - Quantity reported can exceed planned quantity (no over-production guard in Phase 6)
 - COMPLETE after any number of REPORT_QUANTITY events
-- ABORT from any non-terminal state
+- ABORT from any non-terminal lifecycle state (PLANNED or IN_PROGRESS)
 
 **What is explicitly FORBIDDEN:**
 
-- START on non-PENDING operation (idempotency: second START is rejected)
+- START on non-PLANNED operation (idempotency: second START is rejected)
 - COMPLETE on non-IN_PROGRESS operation
-- BLOCK on non-executing operation
-- Transition PENDING → BLOCKED (must START first)
-- Transition BLOCKED → COMPLETED (must UNBLOCK and return to IN_PROGRESS first)
+- Transition PLANNED → COMPLETED directly (must START first)
+- Treating PENDING or BLOCKED as execution lifecycle states (they are readiness dimension)
 
-### 3.4 Idempotency & Append-Only Guarantees
+### 4.4 Idempotency & Append-Only Guarantees
 
 - **Append-Only Events:** New events are added; old events are never modified or deleted
 - **Status Idempotency:** Computing status by replaying events always yields the same result
@@ -286,38 +373,38 @@ IN_PROGRESS (multiple reports allowed)
 
 ---
 
-## 4. Status Derivation Rules
+## 5. Status Derivation Rules
 
-Status is not stored; it is computed by inspecting the most recent relevant event(s) for each operation.
+Execution lifecycle status is not stored as source of truth; it is computed by inspecting execution events. The cached `status` column on `Operation` is a materialized projection.
 
-### 4.1 Operation Status
+### 5.1 Operation Execution Lifecycle Status
 
 Derived by examining execution events in chronological order:
 
-| Status | Condition | Rule |
+| Lifecycle Status | Condition | Rule |
 |---|---|---|
-| **PENDING** | No START event | Operation has never been started |
-| **IN_PROGRESS** | Latest event is START (no REPORT_QUANTITY after) | Operation has started; no quantity reported yet |
-| **IN_PROGRESS** | Latest non-terminal event is REPORT_QUANTITY or START | Operation is active; quantities being reported |
-| **BLOCKED** | Latest event is BLOCK (and no subsequent UNBLOCK) | Operation is waiting; resources unavailable |
-| **COMPLETED** | Latest event is COMPLETE AND actual_end ≤ planned_end | Finished on or before deadline |
-| **COMPLETED_LATE** | Latest event is COMPLETE AND actual_end > planned_end | Finished but after deadline |
+| **PLANNED** | No START event | Operation has never been started |
+| **IN_PROGRESS** | Latest relevant event is START or REPORT_QUANTITY (no COMPLETE/ABORT) | Operation is active |
+| **COMPLETED** | Latest event is COMPLETE | Finished |
 | **ABORTED** | Latest event is ABORT | Terminated; will not resume |
 
-### 4.2 Work Order Status
+**Note:** `PENDING` and `BLOCKED` are NOT returned by `_derive_status()`. They belong to the readiness dimension (see [§3](#3-two-dimension-status-model)).
 
-Aggregated from all child operations:
+### 5.2 Work Order Derived Display Status
 
-| Status | Condition |
+Aggregated from all child operation lifecycle statuses. These are **display states** for WO-level views:
+
+| Display Status | Condition |
 |---|---|
-| **PENDING** | All child operations are PENDING |
-| **IN_PROGRESS** | At least one operation is IN_PROGRESS AND no operations are BLOCKED |
-| **BLOCKED** | At least one operation is BLOCKED AND no operations are IN_PROGRESS |
+| **PLANNED** | All child operations are in PLANNED lifecycle state |
+| **IN_PROGRESS** | At least one operation is IN_PROGRESS |
 | **COMPLETED** | All child operations are COMPLETED or ABORTED AND at least one is COMPLETED |
-| **COMPLETED_LATE** | All child operations are COMPLETED or ABORTED AND at least one is COMPLETED_LATE AND none are COMPLETED (on-time) |
-| **LATE** | WO not yet completed AND planned_end < now (forecasting) |
+| **COMPLETED_LATE** | All completed AND at least one actual_end > planned_end |
+| **LATE** | WO not yet completed AND planned_end < now (forecasting indicator) |
 
-### 4.3 Progress Calculation
+**Note:** LATE and COMPLETED_LATE are WO-level derived display values, not part of the 4-state operation execution lifecycle.
+
+### 5.3 Progress Calculation
 
 - **Operation Progress (%):** `(completed_qty / quantity) × 100` where completed_qty = good_qty + scrap_qty
 - **Work Order Progress (%):** Average of all child operation progress percentages
@@ -327,11 +414,11 @@ Aggregated from all child operations:
 
 ---
 
-## 5. Persona & UX Semantics (Phase 6B)
+## 6. Persona & UX Semantics (Phase 6B)
 
 **Core Principle:** Persona determines **default landing page** and **menu scope**, not permissions. All authorization is backend-driven.
 
-### 5.1 Persona Resolution
+### 6.1 Persona Resolution
 
 When a user logs in, their role_code is mapped to a Persona:
 
@@ -348,7 +435,7 @@ When a user logs in, their role_code is mapped to a Persona:
 | QAL → QCI | `/operations?lens=qc` | Map QAL (approval role) to QC persona |
 | ADM, OTS → (multiple options) | (no default; free roam) | Admin access to all screens |
 
-### 5.2 Menu Scope by Persona
+### 6.2 Menu Scope by Persona
 
 Each persona has a **default menu** that drives what the user sees. This is UX only.
 
@@ -362,7 +449,7 @@ Each persona has a **default menu** that drives what the user sees. This is UX o
 | **EXE** | • Dashboard | Read-only reporting |
 | **ADM/OTS** | (all available screens) | Unrestricted system access |
 
-### 5.3 Operation Lenses
+### 6.3 Operation Lenses
 
 The Global Operations screen shows different **analytical lenses** based on persona:
 
@@ -372,7 +459,7 @@ The Global Operations screen shows different **analytical lenses** based on pers
 | **ie** | IEP, PMG | Cycle time variance; repeat delays; high-variance operations |
 | **qc** | QCI, QAL, PMG | QC failures; defect rates; scrap trends |
 
-### 5.4 Persona is NOT Authorization
+### 6.4 Persona is NOT Authorization
 
 - A user with OPR persona **can still access** `/dashboard` if the backend permits (no frontend block)
 - Persona is **suggestion only** for the default entry point
@@ -382,21 +469,21 @@ The Global Operations screen shows different **analytical lenses** based on pers
 
 ---
 
-## 6. Authorization & Governance Logic (Phase 6C)
+## 7. Authorization & Governance Logic (Phase 6C)
 
-### 6.1 Permission Families & Role Mapping
+### 7.1 Permission Families & Role Mapping
 
 Every API endpoint that mutates or returns restricted data requires one of these permissions:
 
 | Family | Granted To | Semantics |
 |---|---|---|
 | **VIEW** | OPR, SUP, IEP, QCI, QAL, PMG, EXE, PLN, INV, ADM, OTS | Read access to execution, status, KPIs |
-| **EXECUTE** | OPR, SUP, ADM, OTS | Trigger execution state changes (START, COMPLETE, REPORT, BLOCK, ABORT) |
-| **APPROVE** | QAL, PMG, ADM, OTS | Create/decide approval requests |
-| **CONFIGURE** | IEP, ADM, OTS | Modify parameters (standards, thresholds, process definitions) |
+| **EXECUTE** | OPR, SUP | Trigger execution lifecycle state changes (START, COMPLETE, REPORT, ABORT) |
+| **APPROVE** | QAL, PMG | Create/decide approval requests |
+| **CONFIGURE** | IEP | Modify parameters (standards, thresholds, process definitions) |
 | **ADMIN** | ADM, OTS | System administration (user mgmt, role assignment, audit access) |
 
-### 6.2 Permission Check Flow
+### 7.2 Permission Check Flow
 
 1. **Request arrives at API**
 2. **Decode JWT** → resolve user_id, tenant_id, role_code
@@ -406,7 +493,7 @@ Every API endpoint that mutates or returns restricted data requires one of these
 6. **If impersonating:** Use acting_role_code's permission family directly (skip DB lookup)
 7. **Decision:** 200 OK (permitted) or 403 Forbidden (denied)
 
-### 6.3 Scope Model
+### 7.3 Scope Model
 
 All permissions are scoped:
 
@@ -415,7 +502,7 @@ All permissions are scoped:
 - **Tenant Isolation:** Repositories filter queries by `tenant_id`
 - **Future Scopes:** Plant, Area, Line (not Phase 6)
 
-### 6.4 Separation of Duties Principles
+### 7.4 Separation of Duties Principles
 
 The system enforces several SOD rules:
 
@@ -428,11 +515,11 @@ The system enforces several SOD rules:
 
 ---
 
-## 7. Impersonation (Temporary Elevation)
+## 8. Impersonation (Temporary Elevation)
 
 **Purpose:** Allow ADM/OTS to act as other roles for demo, training, or emergency fixes without permanently granting the role.
 
-### 7.1 Who Can Impersonate (Impersonators)
+### 8.1 Who Can Impersonate (Impersonators)
 
 Only these roles can create an impersonation session:
 
@@ -441,7 +528,7 @@ Only these roles can create an impersonation session:
 
 Everyone else is forbidden; attempting to create a session will raise `PermissionError`.
 
-### 7.2 Which Roles Can Be Acted As (Acting Roles)
+### 8.2 Which Roles Can Be Acted As (Acting Roles)
 
 Impersonators CANNOT act as:
 
@@ -454,7 +541,7 @@ Allowed acting roles:
 
 - `OPR, SUP, IEP, QCI, QAL, PMG, EXE` (any operational role)
 
-### 7.3 Time-Bound Sessions
+### 8.3 Time-Bound Sessions
 
 - **Default Duration:** 60 minutes
 - **Maximum Duration:** 480 minutes (8 hours)
@@ -462,7 +549,7 @@ Allowed acting roles:
 - **Active Check:** Session is active if `revoked_at IS NULL AND expires_at > now()`
 - **Expired sessions** are automatically ignored by `get_active_impersonation_session()`
 
-### 7.4 Permission Resolution During Impersonation
+### 8.4 Permission Resolution During Impersonation
 
 When impersonating:
 
@@ -477,7 +564,7 @@ Example:
 - Acting as: OPR (EXECUTE permission)
 - Call to `/operations/{id}/start` → Requires EXECUTE → Acting as OPR → Granted
 
-### 7.5 Requester ≠ Approver Still Applies During Impersonation
+### 8.5 Requester ≠ Approver Still Applies During Impersonation
 
 **Key Rule:** Even if ADM is impersonating QAL and QAL can approve, ADM themselves CANNOT approve a request they created.
 
@@ -485,7 +572,7 @@ Example:
 - Prevents: ADM (impersonating QAL) creates a QC_HOLD request, then QAL-approves it
 - Allows: ADM (impersonating QAL) approves someone else's QC_HOLD request
 
-### 7.6 Audit Semantics
+### 8.6 Audit Semantics
 
 Every impersonation action is logged:
 
@@ -499,9 +586,9 @@ Audit logs include REAL user_id (even when acting), so there is no ambiguity abo
 
 ---
 
-## 8. Approval Engine Logic
+## 9. Approval Engine Logic
 
-### 8.1 Action Types Requiring Approval
+### 9.1 Action Types Requiring Approval
 
 These actions trigger approval request workflows:
 
@@ -514,7 +601,7 @@ These actions trigger approval request workflows:
 | **WO_SPLIT** | Planner / Manager | PMG (Production Manager) |
 | **WO_MERGE** | Planner / Manager | PMG |
 
-### 8.2 Approval Request Lifecycle
+### 9.2 Approval Request Lifecycle
 
 1. **CREATE (Requester)**
    - User submits request: action_type, subject_ref (op/wo id), reason
@@ -534,7 +621,7 @@ These actions trigger approval request workflows:
    - Once decided, request is immutable
    - Attempting to re-decide raises ValueError
 
-### 8.3 Approval Rule Engine
+### 9.3 Approval Rule Engine
 
 - **approval_rules table** defines (action_type, approver_role_code) pairs
 - **Multi-role rules:** Some actions have multiple valid approvers
@@ -542,14 +629,14 @@ These actions trigger approval request workflows:
 - **get_approver_role_codes()** returns the SET of authorized roles for an action
 - At decision time, `decide_approval_request()` checks `decider_role_code IN approved_roles`
 
-### 8.4 Relationship with RBAC
+### 9.4 Relationship with RBAC
 
 - **RBAC enforces** that approver has APPROVE permission
 - **Approval rules enforce** that approver's role is listed for the action_type
 - Both must be satisfied; neither alone is sufficient
 - Example: PMG can APPROVE (RBAC) but cannot approve QC_HOLD (approval_rules)
 
-### 8.5 Relationship with Impersonation
+### 9.5 Relationship with Impersonation
 
 - **Approver role can be impersonated**
   - ADM (impersonating QAL) can approve QC_HOLD
@@ -561,9 +648,9 @@ These actions trigger approval request workflows:
 
 ---
 
-## 9. Authentication & Login Flow
+## 10. Authentication & Login Flow
 
-### 9.1 Users Table
+### 10.1 Users Table
 
 Store persistent user identities:
 
@@ -575,7 +662,7 @@ Store persistent user identities:
 - `is_active` — Whether login is allowed
 - `created_at`, `updated_at` — Timestamps
 
-### 9.2 Login Flow
+### 10.2 Login Flow
 
 1. **Frontend:** User submits username + password to POST `/api/auth/login`
 2. **Backend Auth:**
@@ -607,7 +694,7 @@ Store persistent user identities:
    - Store token in localStorage as `mes.auth.token`
    - Set in Authorization header for all subsequent API calls
 
-### 9.3 JWT Semantics
+### 10.3 JWT Semantics
 
 **What JWT Contains:**
 - `sub` (user_id) — Identifies the user
@@ -624,7 +711,7 @@ Store persistent user identities:
 
 **Why:** Permissions and impersonation can change mid-session. Deriving at request time guarantees fresh state.
 
-### 9.4 RequireAuth Routing Guard
+### 10.4 RequireAuth Routing Guard
 
 Frontend-side authentication guard (not authorization):
 
@@ -633,7 +720,7 @@ Frontend-side authentication guard (not authorization):
 - If true → Allow access to protected routes
 - Login page auto-redirects authenticated users to "/" (or referrer)
 
-### 9.5 401 Handling (Unauthorized)
+### 10.5 401 Handling (Unauthorized)
 
 - **Backend returns 401** when: Invalid token, expired token, missing Authorization header
 - **Frontend handler:**
@@ -644,9 +731,9 @@ Frontend-side authentication guard (not authorization):
 
 ---
 
-## 10. Demo & Seed Data Semantics
+## 11. Demo & Seed Data Semantics
 
-### 10.1 Seed Scenarios (S1–S4)
+### 11.1 Seed Scenarios (S1–S4)
 
 Four predefined work-order scenarios that exercise core execution logic:
 
@@ -657,7 +744,7 @@ Four predefined work-order scenarios that exercise core execution logic:
 | **S3: In Progress + Block** | WO with 2 OPs; one blocks, one in-progress | BLOCKED status; WO status aggregation; operator message |
 | **S4: Repeat Variance** | Same operation repeats with different cycle times | Variance detection; delay frequency calculation |
 
-### 10.2 Seed Users & Roles
+### 11.2 Seed Users & Roles
 
 Demo users created at init time for testing:
 
@@ -671,13 +758,13 @@ Demo users created at init time for testing:
 
 **Note:** Passwords are lowercase plain text for demo; production deployments must override via environment config or DB seeding.
 
-### 10.3 Seed Data Purpose
+### 11.3 Seed Data Purpose
 
 - **NOT for realism:** Seed WOs may have unrealistic quantities, dates, etc.
 - **FOR validation:** Each seed scenario validates one or two core business rules
 - **Regression testing:** If a seed scenario fails, a core feature is broken
 
-### 10.4 Seed Workflow
+### 11.4 Seed Workflow
 
 ```
 init_db() calls:
@@ -695,27 +782,27 @@ Verification script        → runs S1–S4 checks
 
 ---
 
-## 11. Explicit Non-Goals (Phase Boundary)
+## 12. Explicit Non-Goals (Phase Boundary)
 
-### 11.1 What Phase 6 Does NOT Include
+### 12.1 What Phase 6 Does NOT Include
 
 The following features are **explicitly out of scope** and will not be implemented in Phase 6:
 
-#### 11.1.1 Advanced Planning & Scheduling (APS)
+#### 12.1.1 Advanced Planning & Scheduling (APS)
 
 - No constraint-based scheduling engine
 - No resource leveling or capacity optimization
 - No simulation or what-if analysis
 - Phase 7+ scope
 
-#### 11.1.2 Quality Control Workflow
+#### 12.1.2 Quality Control Workflow
 
 - **No QC Inspection UI:** Operators cannot enter QC measurements or pass/fail decisions in Phase 6
 - **No Sampling Logic:** No statistical sampling plans or AQL-based acceptance
 - **No Disposition Workflow:** "Hold for QC" exists as an approval request, but QC release is manual approval only
 - Phase 7+ scope
 
-#### 11.1.3 Material & Backflush
+#### 12.1.3 Material & Backflush
 
 - No BOM (Bill of Materials) explosion
 - No material allocation or reservations
@@ -723,7 +810,7 @@ The following features are **explicitly out of scope** and will not be implement
 - No pick/pack workflows
 - Phase 8+ scope
 
-#### 11.1.4 External System Integration
+#### 12.1.4 External System Integration
 
 - No EDI (orders from customers)
 - No SAP / ERP integration
@@ -731,7 +818,7 @@ The following features are **explicitly out of scope** and will not be implement
 - No MMS (maintenance management)
 - Phase 8+ scope
 
-#### 11.1.5 Advanced RBAC Features
+#### 12.1.5 Advanced RBAC Features
 
 - **No multi-role assignment per user per tenant** (Phase 6 limitation: 1 role per user-tenant)
 - **No custom roles** (all roles are system-defined)
@@ -739,7 +826,7 @@ The following features are **explicitly out of scope** and will not be implement
 - **No dynamic permission grants** (permissions are static per role)
 - Phase 7+ scope
 
-#### 11.1.6 Single Sign-On & Directory Services
+#### 12.1.6 Single Sign-On & Directory Services
 
 - No LDAP integration
 - No SAML 2.0 federation
@@ -747,7 +834,7 @@ The following features are **explicitly out of scope** and will not be implement
 - No API key authentication (humans only)
 - Phase 7+ scope
 
-#### 11.1.7 Real-Time Streaming
+#### 12.1.7 Real-Time Streaming
 
 - No WebSocket push notifications
 - No Apache Kafka event broker
@@ -755,26 +842,26 @@ The following features are **explicitly out of scope** and will not be implement
 - API polling only
 - Phase 8+ scope
 
-#### 11.1.8 Microservices Architecture
+#### 12.1.8 Microservices Architecture
 
 - System is a **modular monolith**
 - Single FastAPI backend, single PostgreSQL database
 - No service decomposition, API gateway, circuit breakers
 - Monolith must remain for Phases 6–7; Phase 8+ can consider extraction if high-load scenarios emerge
 
-#### 11.1.9 Data Warehouse / Analytics Platform
+#### 12.1.9 Data Warehouse / Analytics Platform
 
 - No analytical data mart
 - No aggregated KPI storage
 - No pre-computed dashboards (real-time queries only)
 - Phase 7+ scope
 
-#### 11.1.10 Mobile Application
+#### 12.1.10 Mobile Application
 
 - Web browser only; no mobile app (iOS/Android)
 - Phase 7+ scope
 
-### 11.2 Why These Are Excluded
+### 12.2 Why These Are Excluded
 
 These features require:
 
@@ -784,7 +871,7 @@ These features require:
 4. **Complex UX patterns** (multi-role selection, attribute matching) that need user research
 5. **Regulatory expertise** (FDA 21 CFR, GxP) that is customer-specific
 
-### 11.3 How to Request Phase 7+
+### 12.3 How to Request Phase 7+
 
 To propose additions beyond Phase 6:
 
@@ -804,6 +891,7 @@ To propose additions beyond Phase 6:
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 1.0 | 2026-04-03 | MES Platform Team | Phase 6 completion; locked |
+| 1.1 | 2026-04-17 | MES Platform Team | Two-Dimension Status Model (§3); reframe PENDING/BLOCKED as readiness dimension; align with execution-lifecycle.md and copilot-instructions.md; see ADR-0001 |
 
 ---
 

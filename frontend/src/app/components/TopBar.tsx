@@ -3,6 +3,7 @@ import { Clock, ChevronDown, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
 import { useAuth } from '@/app/auth';
+import { useI18n, type SupportedLocale } from '@/app/i18n';
 import { ImpersonationSwitcher } from './ImpersonationSwitcher';
 
 interface TopBarProps {
@@ -18,8 +19,8 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [selectedPlant, setSelectedPlant] = useState('DMES');
-  const [selectedLanguage, setSelectedLanguage] = useState({ code: 'GB', name: 'English', flag: '🇬🇧' });
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const { locale, setLocale } = useI18n();
 
   const plantRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
@@ -73,12 +74,11 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
   };
 
   const plants = ['DMES', 'Plant A', 'Plant B', 'Factory 1', 'Factory 2'];
-  const languages = [
-    { code: 'GB', name: 'English', flag: '🇬🇧' },
-    { code: 'VN', name: 'Tiếng Việt', flag: '🇻🇳' },
-    { code: 'CN', name: '中文', flag: '🇨🇳' },
-    { code: 'JP', name: '日本語', flag: '🇯🇵' },
+  const languages: { locale: SupportedLocale; name: string; flag: string }[] = [
+    { locale: 'en', name: 'English', flag: '🇬🇧' },
+    { locale: 'ja', name: '日本語', flag: '🇯🇵' },
   ];
+  const selectedLanguage = languages.find((l) => l.locale === locale) ?? languages[0];
 
   const handleLogout = async () => {
     if (isSigningOut) {
@@ -236,7 +236,7 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
           >
             <span className="text-lg">{selectedLanguage.flag}</span>
-            <span className="font-medium">{selectedLanguage.code}</span>
+            <span className="font-medium">{selectedLanguage.locale.toUpperCase()}</span>
             <ChevronDown className="w-4 h-4 text-gray-500" />
           </button>
 
@@ -245,13 +245,13 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
             <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
               {languages.map((lang) => (
                 <button
-                  key={lang.code}
+                  key={lang.locale}
                   onClick={() => {
-                    setSelectedLanguage(lang);
+                    setLocale(lang.locale);
                     setShowLangDropdown(false);
                   }}
                   className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors flex items-center gap-2 ${
-                    selectedLanguage.code === lang.code ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
+                    locale === lang.locale ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
                   }`}
                 >
                   <span className="text-lg">{lang.flag}</span>
