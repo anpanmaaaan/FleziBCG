@@ -1,9 +1,11 @@
 ## MOM Lite — Coding Entry Instructions
 Before coding, always read these documents in order:
-1. `docs/system/mes-business-logic-v1.md`
-2. `docs/governance/CODING_RULES.md`
-3. `docs/governance/ENGINEERING_DECISIONS.md`
-4. `docs/governance/SOURCE_STRUCTURE.md`
+1. `/workspaces/FleziBCG/.github/agent/AGENT.md`
+2. `docs/system/mes-business-logic-v1.md`
+3. `docs/governance/CODING_RULES.md`
+4. `docs/governance/ENGINEERING_DECISIONS.md`
+5. `docs/governance/SOURCE_STRUCTURE.md`
+
 ## Purpose of this file
 This file is a short entry instruction only.
 It is **not** the authoritative source for:

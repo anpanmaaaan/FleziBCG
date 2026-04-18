@@ -1,0 +1,39 @@
+# MOM Lite — Coding Entry Instructions
+
+Before coding, read these docs in order:
+1. docs/system/mes-business-logic-v1.md
+2. docs/governance/CODING_RULES.md
+3. docs/governance/ENGINEERING_DECISIONS.md
+4. docs/governance/SOURCE_STRUCTURE.md
+
+This file is a short entry pointer only. It is NOT authoritative for engineering rules, business logic, or governance. For all rules, see the docs above.
+
+Project stack:
+- Backend: Python 3.12, FastAPI, SQLAlchemy, PostgreSQL
+- Frontend: React 18, TypeScript, Vite, Tailwind CSS
+- Auth: JWT + Argon2
+- Deployment: local / Docker / on-prem
+
+Hard constraints:
+- Backend is source of truth
+- Execution is event-driven
+- Tenant and scope isolation are mandatory
+- Service layer owns business logic
+- JWT proves identity, not authorization
+- Admin/support are not default production actors
+- AI is advisory by default
+## PR Reminder
+Before opening a PR, determine which type it is:
+- Mechanical PR
+- Intentional Behavior PR
+- Architecture / Contract PR
+Follow the rules in `docs/governance/CODING_RULES.md`.
+---
+## Final Reminder
+When documents disagree:
+1. business logic contract wins
+2. coding rules win next
+3. engineering decisions clarify implementation intent
+4. source structure explains ownership only
+Do not invent a third interpretation in code.
+

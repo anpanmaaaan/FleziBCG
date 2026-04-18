@@ -1,10 +1,8 @@
 # ENGINEERING_DECISIONS
-
 One-page reconciled engineering truths for MOM Lite.
 This file exists to remove ambiguity across instructions, coding rules, and source structure.
 It does not replace the business logic contract.
 It clarifies how engineering implementation decisions should be interpreted.
-
 ---
 ## 1. Authoritative Truths
 ### 1.1 Business truth

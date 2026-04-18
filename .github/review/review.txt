@@ -1,0 +1,351 @@
+Yes. Mình khuyên không chỉ thay CODING_RULES.md, mà nên sắp lại vai trò của cả 3 file để có một source of truth rõ ràng. Hiện tại có 3 vấn đề lớn:
+
+	•	CODING_RULES.md đang là file chuẩn để gate merge và định nghĩa layer/boundary.  
+
+	•	copilot-instructions.md lại đang chứa thêm cả architecture rules, governance lock, role taxonomy, non-goals, và còn tự tham chiếu tới .github/agent/..., trong khi SOURCE_STRUCTURE.md lại nói file nằm ở .github/copilot-instructions.md. Đây là mismatch về vai trò và cả đường dẫn.
+
+	•	tenant isolation đang nói hai kiểu khác nhau giữa CODING_RULES.md và copilot-instructions.md: một bên bắt mọi repository query phải filter tenant, một bên cho phép repository assume tenant đã được validate ở route/service boundary.
+
+Recommendation chính
+
+1) Giữ đúng 1 file normative
+
+Đặt file authoritative là:
+
+docs/governance/CODING_RULES.md
+
+File này là nơi duy nhất chứa:
+
+	•	PR classification
+
+	•	verification gates
+
+	•	layering rules
+
+	•	tenant/scope isolation policy
+
+	•	API rules
+
+	•	DB/migration rules
+
+	•	auth/session rules
+
+	•	AI engineering rules
+
+	•	definition of done
+
+Tức là bản v2 mình draft trước đó nên đi vào đây.
+
+2) Biến 
+
+copilot-instructions.md
+
+thành file ngắn
+
+File này không nên giữ nhiều rule chi tiết nữa. Nó chỉ nên có:
+
+	•	project overview cực ngắn
+
+	•	stack
+
+	•	5–10 hard constraints rất ngắn
+
+	•	link tới file authoritative
+
+Ví dụ:
+
+Before coding, read:
+
+- docs/governance/CODING_RULES.md
+
+- docs/governance/SOURCE_STRUCTURE.md
+
+- docs/system/mes-business-logic-v1.md
+
+This file is not authoritative for engineering rules.
+
+Lý do: hiện file này đang ôm quá nhiều rule chi tiết nên rất dễ drift khỏi CODING_RULES.md.  
+
+3) Thu gọn 
+
+SOURCE_STRUCTURE.md
+
+File này chỉ nên chứa:
+
+	•	repo layout
+
+	•	ownership theo folder
+
+	•	entrypoints
+
+	•	build/runtime surfaces
+
+	•	frozen public baselines
+
+Không nên nhét rule governance hay policy vào đây, ngoài note rất ngắn kiểu:
+
+	•	“see CODING_RULES for conventions”
+
+	•	“see business logic doc for execution semantics”
+
+Bản hiện tại nhìn chung đã gần đúng vai trò này rồi, chỉ cần giữ nó “mỏng” hơn và bỏ các chỗ dễ overlap với rule file.  
+
+
+⸻
+
+
+Cấu trúc file mình khuyên
+
+docs/
+
+├── governance/
+
+│   ├── CODING_RULES.md              # authoritative engineering rules
+
+│   ├── ENGINEERING_DECISIONS.md     # one-page reconciled truths / key decisions
+
+│   ├── VERIFICATION.md              # optional, if you want gates separated out
+
+│   ├── API_CONVENTIONS.md           # optional appendix
+
+│   ├── DATABASE_CONVENTIONS.md      # optional appendix
+
+│   ├── AI_ENGINEERING_RULES.md      # optional appendix
+
+│   └── SOURCE_STRUCTURE.md          # repo layout + ownership only
+
+│
+
+├── system/
+
+│   └── mes-business-logic-v1.md     # authoritative business logic
+
+│
+
+├── architecture/
+
+│   ├── SYSTEM_OVERVIEW.md
+
+│   ├── EXECUTION_MODEL.md
+
+│   ├── READ_WRITE_SEPARATION.md
+
+│   └── AI_GUARDRAILS.md
+
+│
+
+└── phases/
+
+    └── PHASE_*.md
+
+Và ở repo root/.github:
+
+.github/
+
+└── copilot-instructions.md          # short pointer file only
+
+
+⸻
+
+
+File nào nên chứa gì
+
+docs/governance/CODING_RULES.md
+
+Nên chứa toàn bộ phần normative:
+
+	•	PR types
+
+	•	verification
+
+	•	layer rules
+
+	•	tenant/scope policy
+
+	•	API rules
+
+	•	DB/migration rules
+
+	•	auth/session/user lifecycle rules
+
+	•	approval/impersonation rules
+
+	•	frontend state/fetching rules
+
+	•	AI engineering rules
+
+	•	documentation rules
+
+	•	DoD
+
+docs/governance/ENGINEERING_DECISIONS.md
+
+Đây là file rất đáng thêm. Nó chỉ có 1–2 trang, ghi rõ:
+
+	•	Backend is source of truth
+
+	•	Event log is execution truth
+
+	•	Persona is UX only
+
+	•	JWT proves identity only
+
+	•	Tenant isolation policy là gì
+
+	•	Current runtime architecture = modular monolith
+
+	•	Phase-locked constraints là gì
+
+	•	Official MOM business roles là gì
+
+	•	Non-MOM technical roles là gì
+
+File này giúp reconcile mâu thuẫn giữa nhiều file.
+
+docs/governance/SOURCE_STRUCTURE.md
+
+Chỉ giữ:
+
+	•	folder ownership
+
+	•	entrypoints
+
+	•	module map
+
+	•	orchestration
+
+	•	baselines
+
+.github/copilot-instructions.md
+
+Chỉ giữ:
+
+	•	“read these docs first”
+
+	•	5–10 hard instructions cực ngắn
+
+	•	không lặp toàn bộ governance
+
+
+⸻
+
+
+Những thay đổi nội dung mình khuyên làm ngay
+
+A. Chốt lại tenant isolation thành 1 rule duy nhất
+
+Hiện hai file đang mâu thuẫn nhau. Mình khuyên wording chuẩn là:
+
+Tenant and scope isolation are mandatory.
+
+Every public repository method that accesses tenant-owned data must receive validated tenant/scope context explicitly. No repository method may execute tenant-blind access to tenant-owned entities.
+
+Cách này dung hòa được:
+
+	•	không bắt copy-paste filter mù ở mọi nơi
+
+	•	nhưng vẫn cấm tenant-blind access
+
+Mâu thuẫn hiện tại cần dọn ngay.
+
+B. Chốt lại vai trò của 
+
+copilot-instructions.md
+
+Hiện file này đang đóng vai vừa “project instructions”, vừa “architecture rules”, vừa “governance lock”, vừa “role policy”. Nên rút nó về đúng vai trò pointer file.  
+
+C. Đồng bộ path tham chiếu
+
+Hiện copilot-instructions.md nói đọc .github/agent/..., trong khi SOURCE_STRUCTURE.md lại ghi .github/copilot-instructions.md. Nên chọn một cấu trúc duy nhất.
+
+D. Tách “mechanical PR” và “architecture PR”
+
+Phần gate SHA hiện tại rất tốt, nhưng chỉ nên áp tuyệt đối cho mechanical PR. Với intentional architecture/contract PR thì cần baseline update + doc update, không nên bị block như refactor thường.  
+
+E. Bổ sung AI engineering rules vào file chính
+
+Hiện project đã khóa “No AI control of execution”, nhưng rule coding-level cho AI còn thiếu. Nên thêm:
+
+	•	AI is advisory by default
+
+	•	AI must respect tenant/role/scope/approval
+
+	•	AI output must be traceable
+
+	•	AI cannot mutate execution implicitly
+
+Điều này rất hợp với định hướng AI-driven MES/MOM của bạn.  
+
+
+⸻
+
+
+Thứ tự triển khai mình khuyên
+
+Bước 1
+
+Tạo mới:
+
+	•	docs/governance/CODING_RULES.md
+
+	•	docs/governance/ENGINEERING_DECISIONS.md
+
+Bước 2
+
+Rút gọn:
+
+	•	.github/copilot-instructions.md
+
+Bước 3
+
+Di chuyển hoặc alias:
+
+	•	SOURCE_STRUCTURE.md → docs/governance/SOURCE_STRUCTURE.md
+
+Bước 4
+
+Sửa link chéo trong:
+
+	•	source structure
+
+	•	copilot instructions
+
+	•	readmes / docs index
+
+Bước 5
+
+Tạo PR loại:
+
+	•	Architecture / Contract PR
+
+vì đây là thay đổi “meta-governance”, không phải edit wording nhỏ
+
+
+⸻
+
+
+Bản chốt ngắn
+
+Mình khuyên cấu trúc cuối cùng như sau:
+
+	•	docs/governance/CODING_RULES.md = file chuẩn duy nhất cho engineering rules
+
+	•	docs/governance/ENGINEERING_DECISIONS.md = file hòa giải các quyết định lớn, đọc nhanh
+
+	•	docs/governance/SOURCE_STRUCTURE.md = chỉ layout + ownership
+
+	•	.github/copilot-instructions.md = file ngắn, chỉ trỏ sang docs chuẩn
+
+	•	docs/system/mes-business-logic-v1.md = business truth, không trộn với engineering convention
+
+Cách này sẽ làm bộ docs của bạn:
+
+	•	ít mâu thuẫn hơn
+
+	•	dễ onboarding hơn
+
+	•	dễ maintain hơn
+
+	•	đúng kiểu production-grade hơn
+
+ 
