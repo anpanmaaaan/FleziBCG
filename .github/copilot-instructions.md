@@ -1,228 +1,72 @@
-# MOM Lite — Project Instructions
-Before coding, read .github/agent/AGENT.md and .github/agent/CODING_RULES.md and .github/agent/SOURCE_STRUCTURE.md.
-
+## MOM Lite — Coding Entry Instructions
+Before coding, always read these documents in order:
+1. `docs/system/mes-business-logic-v1.md`
+2. `docs/governance/CODING_RULES.md`
+3. `docs/governance/ENGINEERING_DECISIONS.md`
+4. `docs/governance/SOURCE_STRUCTURE.md`
+## Purpose of this file
+This file is a short entry instruction only.
+It is **not** the authoritative source for:
+- business logic
+- coding conventions
+- API contract rules
+- database rules
+- IAM/session rules
+- AI engineering rules
+Those rules live in the governance and system documents above.
+---
 ## Project Overview
-
-Lightweight Manufacturing Operations Management (MOM) system, ISA‑95 aligned. Modular monolith — do NOT split into microservices.
-
-| Area | Path | Stack |
-|------|------|-------|
-| Backend | `backend/` | Python 3.12, FastAPI, SQLAlchemy 2.x, PostgreSQL, JWT (python-jose), Argon2, Pydantic 2 |
-| Frontend | `frontend/` | React 18, TypeScript, Vite, React Router 7, Radix UI, Tailwind CSS 4, Recharts |
-| Docs | `docs/` | Architecture decisions, phase gates, business logic contract |
-
-## Build & Run
-
-```bash
-# Backend
-cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8010     # Dev: http://localhost:8010
-
-# Frontend
-cd frontend
-npm install
-npm run dev                                  # Dev: http://localhost:5173 (Vite default)
-npm run build                                # Production build (must pass with zero TS errors)
-
-# Docker (all services)
-docker-compose up                            # Backend:8010, Frontend:80, DB:5432, CloudBeaver:8978
-
-# Seed & verify (after DB is running)
-cd backend
-python -m scripts.seed.seed_all              # Deterministic seed scenarios S1–S4
-python scripts/verify_users_auth.py          # Auth verification
-python scripts/verify_approval.py            # Approval workflow verification
-python scripts/verify_impersonation.py       # Impersonation verification
-```
-
-## Architecture Rules
-
-- **Backend is source of truth** — frontend is a dumb view, never derives execution state
-- **Event-driven execution** — `ExecutionEvent` is append-only; status is derived from events. A cached `status` column exists on `Operation` as a materialized projection, updated in the same transaction as the event write.
-- **Tenant isolation mandatory** — tenant isolation is enforced at the route/service boundary. Repository functions MAY assume tenant context is already validated by the caller. Not every repository function filters by `tenant_id` directly.
-- **Service layer owns business rules** — repositories are data access only, routes are thin
-- **Pydantic schemas** for all request/response contracts
-- **Backend returns enums/codes only** — no translated text (i18n-ready)
-
-## Execution Flow (LOCKED)
-
-Entry: Work Order → Operations. Execution state mutations occur in the **operations API / service layer**. Station APIs handle station **claim/release** only.
-
-### Two-Dimension Status Model
-
-The system uses two orthogonal status dimensions (see `docs/system/mes-business-logic-v1.md` §3 and `docs/adr/ADR-0001-two-dimension-status-model.md`):
-
-**Dimension 1 — ExecutionLifecycleStatus (event-derived, authoritative):**
-
-```
-PLANNED ──[start]──→ IN_PROGRESS ──[report_qty]──→ IN_PROGRESS
-                          │
-                     [complete] or [abort]
-                          ↓
-                    COMPLETED or ABORTED
-```
-
-Valid execution lifecycle states: `PLANNED`, `IN_PROGRESS`, `COMPLETED`, `ABORTED`. No other lifecycle states exist.
-- `PENDING` is **NOT** an execution lifecycle state. It may exist only as a readiness/dispatch indicator (queue eligibility). The initial execution lifecycle state is `PLANNED`.
-- `BLOCKED` is **NOT** an execution lifecycle state. It belongs to the readiness dimension (dispatch constraint). BLOCK/UNBLOCK events are not yet implemented in code.
-- `COMPLETED_LATE` and `LATE` are WO-level derived display states, not operation lifecycle values.
-
-**Dimension 2 — ReadinessStatus (dispatch/constraint, orthogonal to lifecycle):**
-- `PENDING` — released and queued; eligible for claim/execution
-- `BLOCKED` — constraint prevents execution eligibility (not yet implemented)
-- These are NOT execution lifecycle states. They do not affect `_derive_status()`.
-
-**Key rules:**
-- Status is **derived** from the append-only `ExecutionEvent` log via `_derive_status()`. A cached `status` column on `Operation` is a materialized projection, not the source of truth.
-- Execution entry starts at Work Order, NOT Production Order
-- Operation is the smallest execution unit
-- **Station Execution** is a UI/UX concept (the operator's write surface). Under the hood, execution mutations flow through `app/api/v1/operations.py` → `app/services/operation_service.py`. Station APIs (`app/api/v1/station.py`) handle station **claim/release** only — they do NOT mutate execution state.
-- Do NOT introduce screens mixing PO, WO, and Operation execution semantics
-
-## Backend Module Map
-
-| Layer | Path | Purpose |
-|-------|------|---------|
-| Routes | `app/api/v1/` | Thin handlers (auth, operations, dashboard, approval, impersonation, iam, station, execution_timeline, production_orders) |
-| Services | `app/services/` | Business logic (operation_service, approval_service, impersonation_service, iam_service, dashboard_service, global_operation_service, work_order_execution_service, station_claim_service, session_service, user_service, execution_timeline_service) |
-| Repositories | `app/repositories/` | Data access with tenant filtering |
-| Models | `app/models/` | SQLAlchemy ORM (master, execution, rbac, approval, impersonation, station_claim, user, session) |
-| Schemas | `app/schemas/` | Pydantic request/response |
-| Security | `app/security/` | JWT auth, RBAC permission checks, route dependencies |
-| DB | `app/db/` | Session factory, base, init (migrations + seed) |
-
-## Frontend Module Map
-
-| Module | Path | Purpose |
-|--------|------|---------|
-| Pages | `src/app/pages/` | LoginPage, Dashboard, StationExecution, GlobalOperationList |
-| API | `src/app/api/` | API clients; `httpClient.ts` auto-injects Bearer token + X-Tenant-ID |
-| Auth | `src/app/auth/` | AuthContext, RequireAuth guard |
-| Persona | `src/app/persona/` | Role→landing page redirect + route visibility gating (UX only, NOT authorization) |
-| i18n | `src/app/i18n/` | i18n key infrastructure; `useI18n` hook is wired and used at runtime |
-| Components | `src/app/components/` | Layout, GanttChart, StatusBadge, ActiveImpersonationBanner, TopBar, PageHeader |
-| Routes | `src/app/routes.tsx` | React Router tree |
-
-## Coding Conventions
-
-- Keep modules small and explicit
-- Prefer service layer over putting logic in route handlers
-- Repository layer must not contain business rules
-- Use Pydantic schemas for request/response
-- Write clear names, avoid magic values
-- Do not over-engineer
-- Do not introduce Kafka, microservices, or cloud-only dependencies
-- All new UI text MUST use semantic i18n keys (Phase 5A onward)
-
-### Naming
-
-| Context | Convention | Example |
-|---------|-----------|---------|
-| Backend services | snake_case verbs | `start_operation()`, `create_approval_request()` |
-| Frontend APIs | camelCase objects | `operationApi.start()`, `approvalApi.create()` |
-| Routes | kebab-case | `/api/v1/operations/{id}/start` |
-| Models | PascalCase | `ProductionOrder`, `ExecutionEvent` |
-| DB tables | snake_case | `production_orders`, `execution_events` |
-
-## Governance (Phase 6 — LOCKED)
-
-Full governance specification: `docs/system/mes-business-logic-v1.md`
-
-### Critical Rules (Always Enforced)
-
-**RBAC — 5 permission families (VIEW, EXECUTE, APPROVE, CONFIGURE, ADMIN):**
-- Frozen role→family mappings. Do NOT modify without Phase 7+ design gate.
-- OPR→EXECUTE, SUP→VIEW+EXECUTE, IEP→VIEW+CONFIGURE, QAL→VIEW+APPROVE, PMG→VIEW+APPROVE, PLN→VIEW, INV→VIEW, ADM→VIEW+ADMIN
-
-**MOM Business Roles (official role set for all new features):**
-
-| Code | MOM Role | Domain | Permissions | Forbidden |
-|------|----------|--------|-------------|-----------|
-| OPR | Operator | Shop-floor execution | EXECUTE | Cannot approve, configure, or admin |
-| SUP | Supervisor | Shift oversight | VIEW, EXECUTE | Cannot approve or admin |
-| IEP | IE / Process Engineer | Routing, standards | VIEW, CONFIGURE | Cannot execute or approve |
-| QAL | QC Lead / Approver | Quality approval | VIEW, APPROVE | Cannot execute or admin |
-| PMG | Production Manager | Planning approval | VIEW, APPROVE | Cannot execute or admin |
-| PLN | Planner | Production planning | VIEW | Cannot execute, approve, configure, or admin |
-| INV | Inventory | Inventory visibility | VIEW | Cannot execute, approve, configure, or admin |
-| ADM | Administrator | System admin | VIEW, ADMIN | Cannot execute (must impersonate OPR) |
-
-**Non-MOM / Technical Roles (exist in code, NOT part of MOM business role set):**
-
-| Code | Purpose | Permissions | Notes |
-|------|---------|-------------|-------|
-| OTS | On-The-Spot support | VIEW, ADMIN | Can impersonate; same restrictions as ADM. System/support role only. |
-| QCI | QC Inspector | VIEW | Read-only variant for QC viewing. |
-| EXE | Execution viewer | VIEW | Read-only technical viewer. |
-
-Non-MOM roles MUST NOT be used as targets for new MOM features. New features MUST map to the official MOM role set above.
-
-**Separation of duties:**
-- `requester_id ≠ decider_user_id` — even under impersonation
-- Both RBAC check AND approval_rules check must pass
-- Audit logs (approval + impersonation) are append-only, never deleted
-
-**Impersonation:**
-- Only ADM/OTS can impersonate; cannot impersonate other admins
-- Time-bound: default 60 min, max 480 min
-- Does NOT bypass separation of duties or escalate permissions
-
-**Persona:**
-- UX-only (landing page + menu visibility), NOT authorization
-- Frontend NEVER checks permissions — backend decides via 403
-
-**Authentication vs Authorization are completely separate:**
-- JWT proves identity only; do NOT encode permissions in JWT
-- `role_code` is carried in the JWT as a **display hint**, not a security gate — authorization is checked per-request on the backend via `has_permission()` against the static role→family map
-
-### Forbidden Without Phase 7+ Gate
-
-- Adding/renaming permission families or changing role mappings
-- Bypassing approval for QC/scrap/rework actions
-- Encoding permission logic in frontend
-- Removing tenant isolation from any repository
-- Adding new impersonator roles
-- Modifying execution state machine without updating business logic docs
-- Introducing APS/scheduling logic into execution layer
-- Granting EXECUTE to ADM/OTS
-- Treating PENDING or BLOCKED as execution lifecycle states (they are readiness dimension — see §3 of mes-business-logic-v1.md)
-- Adding BLOCK/UNBLOCK as execution lifecycle transitions (they are readiness constraint changes)
-
-### Verification Discipline
-
-After changes to execution, governance, or approval logic:
-
-```bash
-# All checks must PASS
-cd backend
-python scripts/verify_users_auth.py
-python scripts/verify_approval.py
-python scripts/verify_impersonation.py
-```
-
-After frontend changes: `cd frontend && npm run build` (zero TS errors required).
-
-Business logic changes must be reflected in `docs/system/mes-business-logic-v1.md`.
-
-## Key Documentation
-
-| Topic | Path |
-|-------|------|
-| Business logic contract (authoritative) | `docs/system/mes-business-logic-v1.md` |
-| Architecture overview | `docs/architecture/SYSTEM_OVERVIEW.md` |
-| Execution model | `docs/architecture/EXECUTION_MODEL.md` |
-| Read/write separation | `docs/architecture/READ_WRITE_SEPARATION.md` |
-| i18n strategy | `docs/architecture/I18N_STRATEGY.md` |
-| AI guardrails | `docs/architecture/AI_GUARDRAILS.md` |
-| Phase gates | `docs/phases/PHASE_*.md` |
-| Persona map | `docs/personas/PERSONA_MAP.md` |
-| Demo accounts | `DEMO_ACCOUNTS.md` |
-
-## Non-Goals
-
-- No AI control of execution (advisory only, read-only access to events)
-- No advanced scheduling / APS
-- No external workflow engine
-- No streaming platform (Kafka, etc.)
-- No premature microservice extraction
+MOM Lite is a lightweight ISA-95-aligned MES/MOM system.
+### Current runtime architecture
+- modular monolith
+- backend: Python 3.12, FastAPI, SQLAlchemy 2.x, PostgreSQL
+- frontend: React 18, TypeScript, Vite, Tailwind CSS
+- authentication: JWT + Argon2
+- deployment target: local / Docker / on-prem friendly
+### Product direction
+The long-term direction is AI-driven MES/MOM, but:
+- execution truth remains deterministic
+- backend remains source of truth
+- AI is advisory by default
+---
+## Hard Constraints
+### 1. Backend is source of truth
+- frontend never derives execution state
+- frontend never decides authorization
+- persona is UX-only
+### 2. Execution is event-driven
+- execution events are append-only
+- status is derived from events
+- projections are not the source of truth
+### 3. Tenant and scope isolation are mandatory
+- no tenant-blind access to tenant-owned data
+- validated tenant/scope context must be explicit
+### 4. Service layer owns business logic
+- routes stay thin
+- repositories are data access only
+### 5. JWT proves identity, not authorization
+- permissions are checked server-side per request
+- frontend must not encode permission truth
+### 6. Admin/support are not default production actors
+- privileged operational access must go through approved support / impersonation flow
+- all such actions must be auditable
+### 7. AI may explain, predict, and recommend
+AI must not:
+- silently mutate execution
+- bypass auth, approval, or SoD
+- present uncertain output as system fact
+---
+## PR Reminder
+Before opening a PR, determine which type it is:
+- Mechanical PR
+- Intentional Behavior PR
+- Architecture / Contract PR
+Follow the rules in `docs/governance/CODING_RULES.md`.
+---
+## Final Reminder
+When documents disagree:
+1. business logic contract wins
+2. coding rules win next
+3. engineering decisions clarify implementation intent
+4. source structure explains ownership only
+Do not invent a third interpretation in code.
