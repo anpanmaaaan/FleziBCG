@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate, Link } from "react-router";
+import { useI18n } from "@/app/i18n/useI18n";
 
 interface ProductionOrder {
   id: string;
@@ -274,6 +275,7 @@ const initialDefectAlerts: DefectAlert[] = [
 
 export function Home() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [queueOrders, setQueueOrders] = useState<ProductionOrder[]>(initialQueueOrders);
   const [productionLines, setProductionLines] = useState<ProductionLine[]>(initialProductionLines);
   const [defectAlerts, setDefectAlerts] = useState<DefectAlert[]>(initialDefectAlerts);
@@ -337,15 +339,15 @@ export function Home() {
       if (action === 'start') {
         newStatus = 'Running';
         newStationStatus = 'Running';
-        toast.success(`${line.name} started`);
+        toast.success(t("home.toast.lineStarted", { name: line.name }));
       } else if (action === 'pause') {
         newStatus = 'Idle';
         newStationStatus = 'Idle';
-        toast.warning(`${line.name} paused`);
+        toast.warning(t("home.toast.linePaused", { name: line.name }));
       } else if (action === 'stop') {
         newStatus = 'Stopped';
         newStationStatus = 'Stopped';
-        toast.error(`${line.name} stopped`);
+        toast.error(t("home.toast.lineStopped", { name: line.name }));
       }
 
       return {
@@ -387,7 +389,7 @@ export function Home() {
               <Activity className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <div className="text-sm text-gray-600">Active Lines</div>
+              <div className="text-sm text-gray-600">{t("home.stats.activeLines")}</div>
               <div className="text-2xl font-bold">
                 {productionLines.filter(l => l.status === 'Running').length}/{productionLines.length}
               </div>
@@ -399,7 +401,7 @@ export function Home() {
               <TrendingUp className="w-6 h-6 text-green-600" />
             </div>
             <div>
-              <div className="text-sm text-gray-600">Total Units</div>
+              <div className="text-sm text-gray-600">{t("home.stats.totalUnits")}</div>
               <div className="text-2xl font-bold">
                 {productionLines.reduce((sum, l) => sum + l.totalUnits, 0)}
               </div>
@@ -411,7 +413,7 @@ export function Home() {
               <Zap className="w-6 h-6 text-purple-600" />
             </div>
             <div>
-              <div className="text-sm text-gray-600">Avg Efficiency</div>
+              <div className="text-sm text-gray-600">{t("home.stats.avgEfficiency")}</div>
               <div className="text-2xl font-bold">
                 {Math.round(productionLines.reduce((sum, l) => sum + l.efficiency, 0) / productionLines.length)}%
               </div>
@@ -423,7 +425,7 @@ export function Home() {
               <AlertCircle className="w-6 h-6 text-red-600" />
             </div>
             <div>
-              <div className="text-sm text-gray-600">Total Defects</div>
+              <div className="text-sm text-gray-600">{t("home.stats.totalDefects")}</div>
               <div className="text-2xl font-bold text-red-600">
                 {productionLines.reduce((sum, l) => sum + l.totalDefects, 0)}
               </div>
@@ -435,7 +437,7 @@ export function Home() {
               <Clock className="w-6 h-6 text-gray-600" />
             </div>
             <div>
-              <div className="text-sm text-gray-600">Last Update</div>
+              <div className="text-sm text-gray-600">{t("home.lastUpdate")}</div>
               <div className="text-sm font-medium">
                 {lastUpdate.toLocaleTimeString()}
               </div>
@@ -451,7 +453,7 @@ export function Home() {
             }`}
           >
             <RefreshCw className={`w-4 h-4 ${autoRefresh ? 'animate-spin' : ''}`} />
-            {autoRefresh ? 'Auto-Refresh ON' : 'Auto-Refresh OFF'}
+            {autoRefresh ? t("home.autoRefresh.on") : t("home.autoRefresh.off")}
           </button>
         </div>
       </div>
@@ -465,9 +467,9 @@ export function Home() {
               <>
                 <div className="p-4 border-b flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-bold">Queue</h2>
+                    <h2 className="text-lg font-bold">{t("home.queue.title")}</h2>
                     <p className="text-sm text-gray-500">
-                      {queueOrders.filter(o => o.status !== 'Completed').length} Orders
+                      {queueOrders.filter(o => o.status !== 'Completed').length} {t("home.orders.title")}
                     </p>
                   </div>
                   <button onClick={() => setQueueExpanded(false)} className="p-1 hover:bg-gray-100 rounded">
@@ -537,7 +539,7 @@ export function Home() {
                     to="/production-orders"
                     className="flex items-center justify-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
                   >
-                    <span>View All Orders</span>
+                    <span>{t("home.orders.viewAll")}</span>
                     <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>
@@ -585,7 +587,7 @@ export function Home() {
                   {/* Progress Bar */}
                   <div className="mb-4">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs font-semibold text-gray-700">Progress</span>
+                      <span className="text-xs font-semibold text-gray-700">{t("home.progress")}</span>
                       <span className="text-lg font-bold">{progress}%</span>
                     </div>
                     <div className="h-3 bg-gray-200 rounded-full overflow-hidden shadow-inner">
@@ -602,7 +604,7 @@ export function Home() {
 
                   {/* Efficiency (Number Only) */}
                   <div className="text-center">
-                    <div className="text-xs text-gray-600 mb-1">Efficiency</div>
+                    <div className="text-xs text-gray-600 mb-1">{t("home.efficiency")}</div>
                     <div className={`text-3xl font-bold ${
                       line.efficiency >= 90 ? 'text-green-600' :
                       line.efficiency >= 70 ? 'text-blue-600' :
@@ -627,8 +629,8 @@ export function Home() {
                   <div className="flex items-center gap-2">
                     <AlertCircle className="w-5 h-5 text-red-600" />
                     <div>
-                      <h2 className="text-lg font-bold">Live Alerts</h2>
-                      <p className="text-sm text-gray-500">{defectAlerts.length} active</p>
+                      <h2 className="text-lg font-bold">{t("home.alerts.title")}</h2>
+                      <p className="text-sm text-gray-500">{defectAlerts.length} {t("home.alerts.active")}</p>
                     </div>
                   </div>
                   <button onClick={() => setAlertsExpanded(false)} className="p-1 hover:bg-gray-100 rounded">
@@ -640,7 +642,7 @@ export function Home() {
                   {defectAlerts.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
                       <CheckCircle2 className="w-12 h-12 mx-auto mb-2 text-green-500" />
-                      <p className="text-sm">No alerts</p>
+                      <p className="text-sm">{t("home.alerts.empty")}</p>
                     </div>
                   ) : (
                     defectAlerts.map((alert) => (
@@ -683,7 +685,7 @@ export function Home() {
                     to="/defects"
                     className="flex items-center justify-center gap-2 text-red-600 hover:text-red-700 text-sm font-medium"
                   >
-                    <span>View All Defects</span>
+                    <span>{t("home.defects.viewAll")}</span>
                     <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>
@@ -717,24 +719,24 @@ export function Home() {
             <div className="p-6">
               <div className="grid grid-cols-4 gap-4 mb-6">
                 <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4">
-                  <div className="text-sm text-blue-600 mb-1">Status</div>
+                  <div className="text-sm text-blue-600 mb-1">{t("common.status")}</div>
                   <div className="text-2xl font-bold text-blue-700">{selectedLineData.status}</div>
                 </div>
                 <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4">
-                  <div className="text-sm text-green-600 mb-1">Efficiency</div>
+                  <div className="text-sm text-green-600 mb-1">{t("home.efficiency")}</div>
                   <div className="text-2xl font-bold text-green-700">{selectedLineData.efficiency}%</div>
                 </div>
                 <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4">
-                  <div className="text-sm text-purple-600 mb-1">Total Units</div>
+                  <div className="text-sm text-purple-600 mb-1">{t("home.stats.totalUnits")}</div>
                   <div className="text-2xl font-bold text-purple-700">{selectedLineData.totalUnits}</div>
                 </div>
                 <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-4">
-                  <div className="text-sm text-red-600 mb-1">Defects</div>
+                  <div className="text-sm text-red-600 mb-1">{t("home.stats.totalDefects")}</div>
                   <div className="text-2xl font-bold text-red-700">{selectedLineData.totalDefects}</div>
                 </div>
               </div>
 
-              <h3 className="text-lg font-bold mb-4">Station Details</h3>
+              <h3 className="text-lg font-bold mb-4">{t("home.modal.stationDetails")}</h3>
               <div className="grid grid-cols-2 gap-4">
                 {selectedLineData.stations.map((station) => (
                   <div key={station.id} className="border rounded-lg p-4 bg-gray-50">
@@ -751,21 +753,21 @@ export function Home() {
                           <UserCheck className="w-4 h-4 text-blue-600" />
                           <span className="font-medium">{station.operator.name}</span>
                         </div>
-                        <div className="text-xs text-gray-600 mt-1">Badge: {station.operator.badge}</div>
+                        <div className="text-xs text-gray-600 mt-1">{t("home.modal.badge")} {station.operator.badge}</div>
                       </div>
                     )}
 
                     <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <div className="text-xs text-gray-600">Cycle Time</div>
+                        <div className="text-xs text-gray-600">{t("home.modal.cycleTime")}</div>
                         <div className="text-lg font-bold">{station.cycleTime}s</div>
                       </div>
                       <div>
-                        <div className="text-xs text-gray-600">Units</div>
+                        <div className="text-xs text-gray-600">{t("home.modal.units")}</div>
                         <div className="text-lg font-bold">{station.unitsProduced}</div>
                       </div>
                       <div>
-                        <div className="text-xs text-gray-600">Defects</div>
+                        <div className="text-xs text-gray-600">{t("home.modal.defects")}</div>
                         <div className={`text-lg font-bold ${station.defects > 0 ? 'text-red-600' : 'text-green-600'}`}>
                           {station.defects}
                         </div>
@@ -774,7 +776,7 @@ export function Home() {
 
                     {station.currentWO && (
                       <div className="mt-3 pt-3 border-t">
-                        <div className="text-xs text-gray-600">Current Work Order</div>
+                        <div className="text-xs text-gray-600">{t("home.modal.currentWO")}</div>
                         <div className="font-mono font-bold text-blue-600">{station.currentWO}</div>
                       </div>
                     )}

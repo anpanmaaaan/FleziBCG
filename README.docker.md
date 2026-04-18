@@ -102,3 +102,10 @@ docker compose up -d
 ```
 
 This does not touch the database container data volume.
+
+## Tips
+Sau mỗi đợt rebuild nhiều lần, chạy 
+```bash
+docker builder prune -f
+```
+ để dọn cache layers không dùng.

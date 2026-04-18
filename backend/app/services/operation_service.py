@@ -27,7 +27,7 @@ from app.schemas.operation import (
 from app.services.work_order_execution_service import recompute_work_order
 
 
-# WHY: Execution state machine: PENDING→IN_PROGRESS→COMPLETED|ABORTED.
+# WHY: Execution state machine: PLANNED→IN_PROGRESS→COMPLETED|ABORTED.
 # State is *derived* from the append-only ExecutionEvent log, NOT stored
 # directly. The snapshot fields on Operation (status, actual_start, etc.)
 # are materialized caches updated in the same transaction for query performance.
@@ -125,8 +125,8 @@ def start_operation(
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
-    if operation.status != StatusEnum.pending.value:
-        raise StartOperationConflictError("Operation must be PENDING to start.")
+    if operation.status != StatusEnum.planned.value:
+        raise StartOperationConflictError("Operation must be PLANNED to start.")
 
     # EDGE: An operator can only run one operation at a time per station.
     # We scan all IN_PROGRESS operations at the same station and check

@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { ArrowUpDown, Search, Play, Pause, X } from "lucide-react";
 import { toast } from "sonner";
+import { useI18n } from "@/app/i18n/useI18n";
 
 interface DispatchItem {
   id: string;
@@ -77,6 +78,7 @@ export function DispatchQueue() {
   const [queue, setQueue] = useState(mockDispatchQueue);
   const [selectedStation, setSelectedStation] = useState<string>('all');
   const [searchValue, setSearchValue] = useState('');
+  const { t } = useI18n();
 
   const stations = useMemo(() => {
     const uniqueStations = new Set(queue.map(item => item.station_id));
@@ -120,15 +122,15 @@ export function DispatchQueue() {
   };
 
   const handleStart = (item: DispatchItem) => {
-    toast.success(`Started WO: ${item.wo_id} at ${item.station_name}`);
+    toast.success(t("dispatch.toast.started", { id: item.wo_id, station: item.station_name }));
   };
 
   const handlePause = (item: DispatchItem) => {
-    toast.warning(`Paused WO: ${item.wo_id}`);
+    toast.warning(t("dispatch.toast.paused", { id: item.wo_id }));
   };
 
   const handleRemove = (item: DispatchItem) => {
-    toast.error(`Removed WO: ${item.wo_id} from queue`);
+    toast.error(t("dispatch.toast.removed", { id: item.wo_id }));
   };
 
   return (
@@ -141,7 +143,7 @@ export function DispatchQueue() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Search WO or Product..."
+                placeholder={t("dispatch.search.placeholder")}
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
                 className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring w-80"
@@ -153,23 +155,23 @@ export function DispatchQueue() {
               onChange={(e) => setSelectedStation(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
             >
-              <option value="all">All Stations</option>
+              <option value="all">{t("dispatch.filter.allStations")}</option>
               {stations.map(station => (
                 <option key={station} value={station}>{station}</option>
               ))}
             </select>
 
             <div className="text-sm text-gray-600">
-              Queue: <strong>{filteredQueue.length}</strong> items
+              Queue: <strong>{filteredQueue.length}</strong> {t("dispatch.queue.count", { n: filteredQueue.length })}
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <button
-              onClick={() => toast.info('Re-sequence feature coming soon')}
+              onClick={() => toast.info(t("dispatch.toast.comingSoon"))}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
-              Re-sequence
+              {t("dispatch.action.resequence")}
             </button>
           </div>
         </div>
@@ -183,28 +185,28 @@ export function DispatchQueue() {
                   Seq
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Work Order
+                  {t("dispatch.col.workOrder")}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Product
+                  {t("dispatch.col.product")}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Station
+                  {t("dispatch.col.station")}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Priority
+                  {t("dispatch.col.priority")}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  {t("dispatch.col.status")}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Planned Start
+                  {t("dispatch.col.plannedStart")}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Duration
+                  {t("dispatch.col.duration")}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                  {t("dispatch.col.actions")}
                 </th>
               </tr>
             </thead>
@@ -247,7 +249,7 @@ export function DispatchQueue() {
                         <button
                           onClick={() => handleStart(item)}
                           className="p-2 text-green-600 hover:bg-green-50 rounded"
-                          title="Start"
+                          title={t("common.action.start")}
                         >
                           <Play className="w-4 h-4" />
                         </button>
@@ -256,7 +258,7 @@ export function DispatchQueue() {
                         <button
                           onClick={() => handlePause(item)}
                           className="p-2 text-yellow-600 hover:bg-yellow-50 rounded"
-                          title="Pause"
+                          title={t("common.action.pause")}
                         >
                           <Pause className="w-4 h-4" />
                         </button>
@@ -264,7 +266,7 @@ export function DispatchQueue() {
                       <button
                         onClick={() => handleRemove(item)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded"
-                        title="Remove"
+                        title={t("common.action.remove")}
                       >
                         <X className="w-4 h-4" />
                       </button>

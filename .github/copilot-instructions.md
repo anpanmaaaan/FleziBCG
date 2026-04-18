@@ -1,5 +1,5 @@
 # MOM Lite — Project Instructions
-Before coding, read .github/agent/CODING_RULES.md and .github/agent/SOURCE_STRUCTURE.md.
+Before coding, read .github/agent/AGENT.md and .github/agent/CODING_RULES.md and .github/agent/SOURCE_STRUCTURE.md.
 
 ## Project Overview
 

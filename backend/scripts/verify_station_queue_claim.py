@@ -13,12 +13,13 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.main import app
 from app.models.rbac import Role, RoleScope, Scope, UserRole, UserRoleAssignment
+from app.models.station_claim import OperationClaim
 from app.models.user import User
 from app.security.auth import pwd_context
 from scripts.seed.seed_station_execution_opr import seed_station_execution_for_opr
@@ -207,6 +208,28 @@ def _print_results(results: list[Check]) -> None:
 def main() -> None:
     init_db()
     _ensure_operator_b_with_same_station_scope_as_a()
+
+    # Release orphaned claims from prior test runs to ensure idempotency
+    with SessionLocal() as db:
+        _now = datetime.now(timezone.utc)
+        db.execute(
+            update(OperationClaim)
+            .where(
+                OperationClaim.claimed_by_user_id.in_([OPERATOR_A_USER_ID, OPERATOR_B_USER_ID]),
+                OperationClaim.released_at.is_(None),
+            )
+            .values(released_at=_now, release_reason="verify_cleanup")
+        )
+        # Also release claims left by verify_station_claim.py test users
+        db.execute(
+            update(OperationClaim)
+            .where(
+                OperationClaim.claimed_by_user_id.like("verify-opr-%"),
+                OperationClaim.released_at.is_(None),
+            )
+            .values(released_at=_now, release_reason="verify_cleanup")
+        )
+        db.commit()
 
     client = TestClient(app)
     checks: list[Check] = []

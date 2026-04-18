@@ -167,7 +167,7 @@ def _validate_operation_for_station(
     if operation.station_scope_value != station_scope.scope_value:
         raise PermissionError("Operation is outside your station scope")
 
-    if operation.status not in (StatusEnum.pending.value, StatusEnum.in_progress.value):
+    if operation.status not in (StatusEnum.planned.value, StatusEnum.in_progress.value):
         raise ValueError("Operation is not claimable in current status")
 
     return operation
@@ -218,7 +218,7 @@ def get_station_queue(db: Session, identity: RequestIdentity) -> tuple[str, list
             Operation.tenant_id == identity.tenant_id,
             Operation.station_scope_value == station_scope.scope_value,
             Operation.status.in_(
-                [StatusEnum.pending.value, StatusEnum.in_progress.value]
+                [StatusEnum.planned.value, StatusEnum.in_progress.value]
             ),
         )
         .order_by(

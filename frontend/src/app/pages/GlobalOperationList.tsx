@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { operationMonitorApi } from "@/app/api";
 import { mapExecutionStatusBadgeVariant, mapExecutionStatusText } from "@/app/api";
+import type { OperationExecutionStatus } from "@/app/api/operationApi";
 import { useAuth } from "@/app/auth";
 import { PageHeader } from "@/app/components";
 import { StatsCard } from "@/app/components";
@@ -26,7 +27,7 @@ interface MonitorOperation {
   operationNumber: string;
   operationName: string;
   sequence: number;
-  status: string;
+  status: OperationExecutionStatus;
   supervisorBucket: SupervisorBucket;
   plannedStart: string | null;
   plannedEnd: string | null;
@@ -185,7 +186,7 @@ export function GlobalOperationList() {
                 operationNumber: operation.operationNumber ?? operation.operation_number ?? String(operation.id),
                 operationName: operation.name,
                 sequence: operation.sequence,
-                status: operation.status,
+                status: operation.status as OperationExecutionStatus,
                 supervisorBucket: operation.supervisorBucket
                   ?? operation.supervisor_bucket
                   ?? getSupervisorBucket(operation.status, operation.delayMinutes ?? operation.delay_minutes ?? null),
@@ -511,8 +512,7 @@ export function GlobalOperationList() {
                     {(selectedLens === "SUPERVISOR" || selectedLens === "QC") && (
                       <option value="DELAYED">{t("operations.supervisor.status.delayed", "Delayed")}</option>
                     )}
-                    <option value="PENDING">Pending</option>
-                    <option value="PLANNED">{t("operations.status.planned", "Ready")}</option>
+                    <option value="PLANNED">{t("operations.status.planned", "Planned")}</option>
                     <option value="IN_PROGRESS">{t("operations.status.in_progress", "In Progress")}</option>
                     <option value="COMPLETED">{t("operations.status.completed", "Completed")}</option>
                     <option value="COMPLETED_LATE">{t("operations.status.completed_late", "Completed Late")}</option>

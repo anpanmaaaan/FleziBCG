@@ -21,6 +21,7 @@ import {
   mapExecutionStatusText,
   getProgressPercentage as calcProgressPercent,
 } from "@/app/api";
+import { useI18n } from "@/app/i18n";
 
 type OverviewOperation = OperationExecutionGantt & {
   operationId: number;
@@ -62,15 +63,18 @@ const workOrderApi = {
 const mapTimelineStatusToGanttStatus = (
   status: OperationExecutionStatus,
 ): OperationExecutionGantt["status"] => {
-  const statusText = mapExecutionStatusText(status);
+  const normalized = String(status).toUpperCase();
 
-  if (statusText === "Completed") {
-    return "Completed";
+  switch (normalized) {
+    case "COMPLETED":
+      return "COMPLETED";
+    case "IN_PROGRESS":
+      return "IN_PROGRESS";
+    case "ABORTED":
+      return "ABORTED";
+    default:
+      return "PLANNED";
   }
-  if (statusText === "In Progress") {
-    return "Running";
-  }
-  return "Not Started";
 };
 
 const toOverviewOperation = (operation: ExecutionTimelineOperation): OverviewOperation => {
@@ -100,6 +104,7 @@ export function OperationExecutionOverview() {
   const { woId } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { t } = useI18n();
 
   // Restore Gantt context from back-navigation params.
   const restoredMode = searchParams.get('mode') as 'shift' | 'day' | 'week' | 'fit_all' | 'fit_selection' | null;
@@ -125,7 +130,7 @@ export function OperationExecutionOverview() {
 
     const loadTimeline = async () => {
       if (!woId) {
-        setError("Work order ID is missing in URL.");
+        setError(t("opOverview.error.missingWoId"));
         setOperations([]);
         setProductionOrderId(null);
         setProductionOrderNumber(null);
@@ -152,7 +157,7 @@ export function OperationExecutionOverview() {
         setDerivedAt(timeline.derivedAt || null);
       } catch (err) {
         if (!cancelled) {
-          const message = err instanceof Error ? err.message : "Failed to load execution timeline.";
+          const message = err instanceof Error ? err.message : t("opOverview.error.loadFailed");
           setError(message);
           setOperations([]);
           setProductionOrderId(null);
@@ -176,8 +181,8 @@ export function OperationExecutionOverview() {
 
   // Read-only visual summary from backend-derived timeline statuses.
   const stats = useMemo(() => {
-    const completedOperations = operations.filter((op) => op.status === "Completed").length;
-    const inProgressOperations = operations.filter((op) => op.status === "Running").length;
+    const completedOperations = operations.filter((op) => op.status === "COMPLETED").length;
+    const inProgressOperations = operations.filter((op) => op.status === "IN_PROGRESS").length;
     const totalOperations = operations.length;
 
     return {
@@ -229,11 +234,11 @@ export function OperationExecutionOverview() {
               className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back
+              {t("common.action.back")}
             </button>
             <div>
-              <div className="text-sm text-gray-500">Work Order: {workOrderNumber || woId || "-"}</div>
-              <div className="text-2xl font-bold">Operation Execution Overview</div>
+              <div className="text-sm text-gray-500">{t("opOverview.woInfo.workOrderId")} {workOrderNumber || woId || "-"}</div>
+              <div className="text-2xl font-bold">{t("opOverview.title")}</div>
             </div>
           </div>
         }
@@ -245,7 +250,7 @@ export function OperationExecutionOverview() {
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
             >
               <ExternalLink className="w-4 h-4" />
-              Open in Station Execution
+              {t("opOverview.action.openStation")}
             </Link>
           </>
         }
@@ -257,37 +262,37 @@ export function OperationExecutionOverview() {
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div>
-              <div className="font-medium text-amber-800">Timeline unavailable</div>
+              <div className="font-medium text-amber-800">{t("opOverview.timeline.unavailable")}</div>
               <div className="text-sm text-amber-700 mt-1">{error}</div>
             </div>
           </div>
         )}
 
         {derivedAt && (
-          <div className="text-xs text-gray-500 mb-4">Timeline derived at {derivedAt}</div>
+          <div className="text-xs text-gray-500 mb-4">{t("opOverview.timeline.derivedAt", { date: derivedAt })}</div>
         )}
 
         {/* WO-level Stats */}
         <div className="grid grid-cols-4 gap-4 mb-6">
           <StatsCard
-            title="Total Operations"
+            title={t("opOverview.stats.totalOperations")}
             value={stats.totalOperations}
             color="blue"
             icon={Activity}
           />
           <StatsCard
-            title="Completed"
+            title={t("opOverview.stats.completed")}
             value={stats.completedOperations}
             color="green"
             icon={CheckCircle}
           />
           <StatsCard
-            title="In Progress"
+            title={t("opOverview.stats.inProgress")}
             value={stats.inProgressOperations}
             color="purple"
           />
           <StatsCard
-            title="Overall Progress"
+            title={t("opOverview.stats.overallProgress")}
             value={`${stats.overallProgress}%`}
             color="orange"
             icon={TrendingUp}
@@ -298,10 +303,10 @@ export function OperationExecutionOverview() {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-start gap-3">
           <Clock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
           <div>
-            <div className="font-medium text-blue-800">Time-Based Gantt Chart</div>
+            <div className="font-medium text-blue-800">{t("opOverview.gantt.title")}</div>
             <div className="text-sm text-blue-600 mt-1">
-              Click any operation bar to view detailed information. Gaps and delays are visible through bar positioning.
-              {loading ? " Loading backend timeline..." : ""}
+              {t("opOverview.gantt.instruction")}
+              {loading ? " " + t("opOverview.gantt.loading") : ""}
             </div>
           </div>
         </div>
@@ -320,7 +325,7 @@ export function OperationExecutionOverview() {
           <div className="bg-white rounded-lg border p-4">
             <h3 className="font-bold mb-3 flex items-center gap-2">
               <Activity className="w-5 h-5 text-blue-600" />
-              Operations Breakdown
+              {t("opOverview.breakdown.title")}
             </h3>
             <div className="space-y-2 text-sm">
               {breakdownItems.map((op) => (
@@ -335,11 +340,11 @@ export function OperationExecutionOverview() {
                     <span>{op.name}</span>
                   </div>
                   <div className={`text-xs px-2 py-1 rounded ${
-                    op.status === 'Completed' ? 'bg-green-100 text-green-700' :
-                    op.status === 'Running' ? 'bg-blue-100 text-blue-700' :
+                    op.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                    op.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
                     'bg-gray-100 text-gray-600'
                   }`}>
-                    {mapExecutionStatusText(op.backendStatus || "PENDING")}
+                    {mapExecutionStatusText(op.backendStatus || "PLANNED")}
                   </div>
                 </div>
               ))}
@@ -349,7 +354,7 @@ export function OperationExecutionOverview() {
                     onClick={() => setBreakdownVisibleCount((prev) => prev + 120)}
                     className="w-full py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
                   >
-                    Load more operations ({hiddenBreakdownItemCount} remaining)
+                    {t("opOverview.breakdown.loadMore", { n: hiddenBreakdownItemCount })}
                   </button>
                 </div>
               )}
@@ -357,30 +362,30 @@ export function OperationExecutionOverview() {
           </div>
 
           <div className="bg-white rounded-lg border p-4">
-            <h3 className="font-bold mb-3">Work Order Information</h3>
+            <h3 className="font-bold mb-3">{t("opOverview.woInfo.title")}</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Work Order ID:</span>
+                <span className="text-gray-600">{t("opOverview.woInfo.workOrderId")}</span>
                 <span className="font-medium font-mono">{workOrderNumber || woId || "-"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Production Order:</span>
+                <span className="text-gray-600">{t("opOverview.woInfo.productionOrder")}</span>
                 <span className="font-medium font-mono">{productionOrderNumber || "-"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Product:</span>
+                <span className="text-gray-600">{t("opOverview.woInfo.product")}</span>
                 <span className="font-medium">Engine Block Type A</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Production Line:</span>
+                <span className="text-gray-600">{t("opOverview.woInfo.productionLine")}</span>
                 <span className="font-medium">Line A</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Quantity:</span>
+                <span className="text-gray-600">{t("opOverview.woInfo.quantity")}</span>
                 <span className="font-medium">50 pcs</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Route:</span>
+                <span className="text-gray-600">{t("opOverview.woInfo.route")}</span>
                 <span className="font-medium">DMES-R8</span>
               </div>
             </div>

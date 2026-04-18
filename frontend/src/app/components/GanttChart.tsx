@@ -5,6 +5,7 @@
 import { memo, useEffect, useMemo, useState } from 'react';
 import { FixedSizeList, type ListChildComponentProps } from 'react-window';
 import { Clock, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
+import { useI18n, type I18nHook } from '@/app/i18n/useI18n';
 
 // ============ TYPES ============
 export interface OperationExecutionGantt {
@@ -14,7 +15,7 @@ export interface OperationExecutionGantt {
   workstation: string;
   area?: string;
   operatorName?: string;
-  status: 'Not Started' | 'Running' | 'Completed' | 'Delayed' | 'Blocked';
+  status: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'ABORTED';
   
   // Time values (ISO string or timestamp)
   plannedStart: string;
@@ -88,8 +89,8 @@ type GanttRowGroup = {
 
 type GanttGroupSummary = {
   total: number;
-  running: number;
-  blocked: number;
+  inProgress: number;
+  completed: number;
   delayed: number;
 };
 
@@ -113,6 +114,7 @@ type GanttRowData = {
   nowMs: number;
   onOperationClick?: (operation: OperationExecutionGantt) => void;
   onGroupToggle: (groupKey: string) => void;
+  t: I18nHook['t'];
 };
 
 const ROW_HEIGHT_PX = 64;
@@ -337,10 +339,10 @@ const getBarGeometry = (
   let startTimeMs: number;
   let endTimeMs: number;
 
-  if (op.status === 'Not Started') {
+  if (op.status === 'PLANNED') {
     startTimeMs = op.plannedStartMs;
     endTimeMs = op.plannedEndMs;
-  } else if (op.status === 'Running') {
+  } else if (op.status === 'IN_PROGRESS') {
     startTimeMs = op.actualStartMs ?? op.plannedStartMs;
     endTimeMs = op.currentTimeMs ?? nowMs;
   } else {
@@ -363,16 +365,18 @@ const getPlannedWindow = (op: NormalizedOperationExecutionGantt, viewport: Gantt
 };
 
 const getBarStyle = (op: NormalizedOperationExecutionGantt) => {
+  const isDelayed = op.delayMinutes != null && op.delayMinutes > 0;
+  if (isDelayed && op.status !== 'PLANNED') {
+    return 'bg-red-500';
+  }
   switch (op.status) {
-    case 'Not Started':
+    case 'PLANNED':
       return 'bg-gray-300 border-2 border-dashed border-gray-400';
-    case 'Running':
+    case 'IN_PROGRESS':
       return 'bg-blue-500';
-    case 'Completed':
+    case 'COMPLETED':
       return 'bg-green-500';
-    case 'Delayed':
-      return 'bg-red-500';
-    case 'Blocked':
+    case 'ABORTED':
       return 'bg-red-600';
     default:
       return 'bg-gray-400';
@@ -381,8 +385,8 @@ const getBarStyle = (op: NormalizedOperationExecutionGantt) => {
 
 const createEmptyGroupSummary = (): GanttGroupSummary => ({
   total: 0,
-  running: 0,
-  blocked: 0,
+  inProgress: 0,
+  completed: 0,
   delayed: 0,
 });
 
@@ -400,32 +404,42 @@ const resolveEffectiveGroupBy = (
 const getGroupLabel = (
   operation: NormalizedOperationExecutionGantt,
   groupMode: Exclude<NonNullable<GanttChartProps['groupBy']>, 'none'>,
+  t: I18nHook['t'],
 ): string => {
   if (groupMode === 'area') {
-    return operation.area?.trim() || 'Unassigned Area';
+    return operation.area?.trim() || t('gantt.group.unassignedArea');
   }
 
-  return operation.workstation.trim() || 'Unassigned Workstation';
+  return operation.workstation.trim() || t('gantt.group.unassignedWorkstation');
 };
 
-const formatGroupModeLabel = (groupMode: NonNullable<GanttChartProps['groupBy']>): string => {
+const formatGroupModeLabel = (groupMode: NonNullable<GanttChartProps['groupBy']>, t: I18nHook['t']): string => {
   if (groupMode === 'workstation') {
-    return 'Workstation';
+    return t('gantt.groupBy.workstation');
   }
   if (groupMode === 'area') {
-    return 'Area';
+    return t('gantt.groupBy.area');
   }
-  return 'Flat';
+  return t('gantt.groupBy.flat');
 };
 
-const formatTimelineModeLabel = (mode: GanttTimelineMode): string => {
+const formatTimelineModeLabel = (mode: GanttTimelineMode, t: I18nHook['t']): string => {
   if (mode === 'fit_selection') {
-    return 'Fit Selection';
+    return t('gantt.mode.fitSelection');
   }
   if (mode === 'fit_all') {
-    return 'Fit All';
+    return t('gantt.mode.fitAll');
   }
-  return mode.charAt(0).toUpperCase() + mode.slice(1);
+  if (mode === 'shift') {
+    return t('gantt.mode.shift');
+  }
+  if (mode === 'day') {
+    return t('gantt.mode.day');
+  }
+  if (mode === 'week') {
+    return t('gantt.mode.week');
+  }
+  return t('gantt.mode.shift');
 };
 
 const renderSummaryPill = (label: string, value: number, className: string) => (
@@ -457,8 +471,8 @@ const areRowPropsEqual = (
       prevRow.groupLabel !== nextRow.groupLabel ||
       prevRow.collapsed !== nextRow.collapsed ||
       prevRow.summary.total !== nextRow.summary.total ||
-      prevRow.summary.running !== nextRow.summary.running ||
-      prevRow.summary.blocked !== nextRow.summary.blocked ||
+      prevRow.summary.inProgress !== nextRow.summary.inProgress ||
+      prevRow.summary.completed !== nextRow.summary.completed ||
       prevRow.summary.delayed !== nextRow.summary.delayed
     ) {
       return false;
@@ -477,7 +491,7 @@ const areRowPropsEqual = (
 
     if (
       prevData.nowMs !== nextData.nowMs &&
-      (prevOp.status === 'Running' || nextOp.status === 'Running')
+      (prevOp.status === 'IN_PROGRESS' || nextOp.status === 'IN_PROGRESS')
     ) {
       return false;
     }
@@ -532,20 +546,20 @@ const GanttRow = memo(function GanttRow({ index, style, data }: ListChildCompone
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-semibold text-slate-900">{row.groupLabel}</div>
-              <div className="text-xs text-slate-500">{row.summary.total} operations</div>
+              <div className="text-xs text-slate-500">{data.t("gantt.group.operations", { n: row.summary.total })}</div>
             </div>
           </div>
         </div>
 
         <div className="flex min-w-0 flex-1 items-center justify-between gap-3 pr-4">
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-            {renderSummaryPill('Total', row.summary.total, 'bg-slate-200 text-slate-700')}
-            {renderSummaryPill('Running', row.summary.running, 'bg-blue-100 text-blue-700')}
-            {renderSummaryPill('Blocked', row.summary.blocked, 'bg-red-100 text-red-700')}
-            {renderSummaryPill('Delayed', row.summary.delayed, 'bg-amber-100 text-amber-800')}
+            {renderSummaryPill(data.t('gantt.group.total'), row.summary.total, 'bg-slate-200 text-slate-700')}
+            {renderSummaryPill(data.t('gantt.group.running'), row.summary.inProgress, 'bg-blue-100 text-blue-700')}
+            {renderSummaryPill(data.t('gantt.group.completed'), row.summary.completed, 'bg-green-100 text-green-700')}
+            {renderSummaryPill(data.t('gantt.group.delayed'), row.summary.delayed, 'bg-amber-100 text-amber-800')}
           </div>
           <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
-            {row.collapsed ? 'Collapsed' : 'Expanded'}
+            {row.collapsed ? data.t('gantt.group.collapsed') : data.t('gantt.group.expanded')}
           </div>
         </div>
       </div>
@@ -557,9 +571,9 @@ const GanttRow = memo(function GanttRow({ index, style, data }: ListChildCompone
   const barGeo = getBarGeometry(op, data.viewport, data.nowMs);
   const plannedGeo = getPlannedWindow(op, data.viewport);
   const hoverEndMs =
-    op.status === 'Not Started'
+    op.status === 'PLANNED'
       ? op.plannedEndMs
-      : op.status === 'Running'
+      : op.status === 'IN_PROGRESS'
         ? (op.currentTimeMs ?? data.nowMs)
         : (op.actualEndMs ?? op.plannedEndMs);
 
@@ -587,9 +601,9 @@ const GanttRow = memo(function GanttRow({ index, style, data }: ListChildCompone
       <div className="flex h-full items-center" style={{ width: LABEL_WIDTH_PX, paddingRight: LABEL_GAP_PX }}>
         <div className="flex items-center gap-3 w-full">
           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${
-            op.status === 'Completed' ? 'bg-green-100 text-green-700' :
-            op.status === 'Running' ? 'bg-blue-100 text-blue-700' :
-            op.status === 'Delayed' ? 'bg-red-100 text-red-700' :
+            op.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+            op.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
+            (op.delayMinutes != null && op.delayMinutes > 0) ? 'bg-red-100 text-red-700' :
             'bg-gray-100 text-gray-600'
           }`}>
             {op.sequence}
@@ -603,7 +617,7 @@ const GanttRow = memo(function GanttRow({ index, style, data }: ListChildCompone
       </div>
 
       <div className="relative flex-1 min-w-0 h-full">
-        {op.status !== 'Not Started' && (
+        {op.status !== 'PLANNED' && (
           <div
             className="absolute top-2 bottom-2 bg-gray-100 rounded opacity-50"
             style={{
@@ -628,7 +642,7 @@ const GanttRow = memo(function GanttRow({ index, style, data }: ListChildCompone
         >
           <div className="h-full flex items-center justify-between px-3 text-white text-xs font-medium">
             <span className="truncate">
-              {op.status === 'Running' && '▶ '}
+              {op.status === 'IN_PROGRESS' && '▶ '}
               {op.operatorName || op.name}
             </span>
 
@@ -640,7 +654,7 @@ const GanttRow = memo(function GanttRow({ index, style, data }: ListChildCompone
             )}
           </div>
 
-          {op.status === 'Running' && (
+          {op.status === 'IN_PROGRESS' && (
             <div className="absolute inset-0 border-2 border-white border-opacity-40 rounded animate-pulse" />
           )}
         </div>
@@ -675,6 +689,7 @@ export function GanttChart({
   const [timelineMode, setTimelineMode] = useState<GanttTimelineMode>(initialTimelineMode);
   const [hasUserSelectedTimelineMode, setHasUserSelectedTimelineMode] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!hasUserSelectedTimelineMode) {
@@ -706,31 +721,32 @@ export function GanttChart({
 
     const groupMap = new Map<string, GanttRowGroup>();
     for (const op of normalizedOperations) {
-      const label = getGroupLabel(op, effectiveGroupBy);
+      const label = getGroupLabel(op, effectiveGroupBy, t);
       const key = `${effectiveGroupBy}:${label}`;
+      const isDelayed = op.delayMinutes != null && op.delayMinutes > 0;
       const existing = groupMap.get(key);
       if (existing) {
         existing.operations.push(op);
         existing.summary.total += 1;
-        if (op.status === 'Running') {
-          existing.summary.running += 1;
+        if (op.status === 'IN_PROGRESS') {
+          existing.summary.inProgress += 1;
         }
-        if (op.status === 'Blocked') {
-          existing.summary.blocked += 1;
+        if (op.status === 'COMPLETED') {
+          existing.summary.completed += 1;
         }
-        if (op.status === 'Delayed') {
+        if (isDelayed) {
           existing.summary.delayed += 1;
         }
       } else {
         const summary = createEmptyGroupSummary();
         summary.total = 1;
-        if (op.status === 'Running') {
-          summary.running = 1;
+        if (op.status === 'IN_PROGRESS') {
+          summary.inProgress = 1;
         }
-        if (op.status === 'Blocked') {
-          summary.blocked = 1;
+        if (op.status === 'COMPLETED') {
+          summary.completed = 1;
         }
-        if (op.status === 'Delayed') {
+        if (isDelayed) {
           summary.delayed = 1;
         }
 
@@ -744,7 +760,7 @@ export function GanttChart({
     }
 
     return Array.from(groupMap.values());
-  }, [normalizedOperations, effectiveGroupBy]);
+  }, [normalizedOperations, effectiveGroupBy, t]);
 
   const isGroupedRendering = effectiveGroupBy !== 'none' && groupedRows.length > 0;
 
@@ -811,36 +827,36 @@ export function GanttChart({
     () => [
       {
         mode: 'shift' as const,
-        label: 'Shift',
-        title: 'Focus on the active shift horizon.',
+        label: t('gantt.mode.shift'),
+        title: t('gantt.mode.shift.tooltip'),
       },
       {
         mode: 'day' as const,
-        label: 'Day',
-        title: 'Expand the viewport to the current day.',
+        label: t('gantt.mode.day'),
+        title: t('gantt.mode.day', 'Expand the viewport to the current day.'),
       },
       {
         mode: 'week' as const,
-        label: 'Week',
-        title: 'Expand the viewport to the full week.',
+        label: t('gantt.mode.week'),
+        title: t('gantt.mode.week', 'Expand the viewport to the full week.'),
       },
       {
         mode: 'fit_selection' as const,
-        label: 'Fit Selection',
+        label: t('gantt.mode.fitSelection'),
         title: selectedOperationId
-          ? 'Analyze the selected operation in a focused window.'
-          : 'Select an operation to enable focused analysis.',
+          ? t('gantt.mode.fitSelection', 'Analyze the selected operation in a focused window.')
+          : t('gantt.mode.fitSelection.disabledTooltip'),
         disabled: !selectedOperationId,
       },
       {
         mode: 'fit_all' as const,
-        label: 'Fit All',
-        title: 'Analyze the full work order horizon without changing the default mode.',
-        badge: 'Analyze',
+        label: t('gantt.mode.fitAll'),
+        title: t('gantt.mode.fitAll.tooltip'),
+        badge: t('gantt.badge.analyze'),
         secondary: true,
       },
     ],
-    [selectedOperationId],
+    [selectedOperationId, t],
   );
 
   const handleTimelineModeSelect = (mode: GanttTimelineMode) => {
@@ -899,7 +915,7 @@ export function GanttChart({
   const nowMs = useMemo(() => {
     let maxCurrentTimeMs = Number.NEGATIVE_INFINITY;
     for (const op of flattenedOperations) {
-      if (op.status !== 'Running') {
+      if (op.status !== 'IN_PROGRESS') {
         continue;
       }
       if (typeof op.currentTimeMs === 'number' && op.currentTimeMs > maxCurrentTimeMs) {
@@ -958,8 +974,9 @@ export function GanttChart({
       nowMs,
       onOperationClick: wrappedOnOperationClick,
       onGroupToggle: handleGroupToggle,
+      t,
     };
-  }, [renderRows, selectedOperationId, viewport, nowMs, wrappedOnOperationClick]);
+  }, [renderRows, selectedOperationId, viewport, nowMs, wrappedOnOperationClick, t]);
 
   const listHeight = Math.min(
     ROWS_VIEWPORT_HEIGHT_PX,
@@ -970,7 +987,7 @@ export function GanttChart({
     return (
       <div className="text-center py-12 text-gray-500">
         <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-        <div className="text-lg font-medium">No operations to display</div>
+        <div className="text-lg font-medium">{t('gantt.empty')}</div>
       </div>
     );
   }
@@ -982,12 +999,12 @@ export function GanttChart({
       <div className="border-b p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-bold">Operation Execution Timeline</h3>
+            <h3 className="text-lg font-bold">{t('gantt.title')}</h3>
             <div className="text-sm text-gray-500 mt-1">
-              Time-based Gantt • {formatTime(new Date(viewport.visibleStartMs))} → {formatTime(new Date(viewport.visibleEndMs))}
+              {t('gantt.subtitle.prefix')} • {formatTime(new Date(viewport.visibleStartMs))} → {formatTime(new Date(viewport.visibleEndMs))}
               {' '}• {flattenedOperations.length} ops
-              {' '}• {isGroupedRendering ? `Grouped by ${formatGroupModeLabel(effectiveGroupBy)}` : 'Flat view'}
-              {' '}• Mode: {formatTimelineModeLabel(timelineMode)}
+              {' '}• {isGroupedRendering ? t('gantt.subtitle.grouped', { mode: formatGroupModeLabel(effectiveGroupBy, t) }) : t('gantt.subtitle.flat')}
+              {' '}• {t('gantt.subtitle.mode', { mode: formatTimelineModeLabel(timelineMode, t) })}
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {timelineControls.map((control) => {
@@ -1031,19 +1048,19 @@ export function GanttChart({
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-1">
               <div className="w-8 h-3 bg-gray-300 border-2 border-dashed border-gray-400 rounded" />
-              <span>Not Started</span>
+              <span>{t('gantt.legend.notStarted')}</span>
             </div>
             <div className="flex items-center gap-1">
               <div className="w-8 h-3 bg-blue-500 rounded" />
-              <span>Running</span>
+              <span>{t('gantt.legend.running')}</span>
             </div>
             <div className="flex items-center gap-1">
               <div className="w-8 h-3 bg-green-500 rounded" />
-              <span>Completed</span>
+              <span>{t('gantt.legend.completed')}</span>
             </div>
             <div className="flex items-center gap-1">
               <div className="w-8 h-3 bg-red-500 rounded" />
-              <span>Delayed</span>
+              <span>{t('gantt.legend.delayed')}</span>
             </div>
           </div>
         </div>
@@ -1118,15 +1135,15 @@ export function GanttChart({
       {/* Footer info */}
       <div className="border-t p-3 bg-gray-50 text-xs text-gray-600">
         <div className="flex items-center gap-6">
-          <span>📊 Time-based positioning (not percentage)</span>
+          <span>{t('gantt.footer.positioning')}</span>
           <span>•</span>
-          <span>Gaps and overlaps are visible</span>
+          <span>{t('gantt.footer.gaps')}</span>
           <span>•</span>
-          <span>Planned window shown as background reference</span>
+          <span>{t('gantt.footer.plannedWindow')}</span>
           {isGroupedRendering && (
             <>
               <span>•</span>
-              <span>{renderRows.length - visibleOperationCount} group headers in virtual list</span>
+              <span>{t('gantt.footer.groupHeaders', { n: renderRows.length - visibleOperationCount })}</span>
             </>
           )}
         </div>
@@ -1144,7 +1161,7 @@ const sampleOperations: OperationExecutionGantt[] = [
     name: 'Material Preparation',
     workstation: 'WS-00',
     operatorName: 'Tom Brown',
-    status: 'Completed',
+    status: 'COMPLETED',
     plannedStart: '2024-04-15T07:00:00',
     plannedEnd: '2024-04-15T08:30:00',
     actualStart: '2024-04-15T07:00:00',
@@ -1156,7 +1173,7 @@ const sampleOperations: OperationExecutionGantt[] = [
     name: 'Machining - Bore Drilling',
     workstation: 'WS-01',
     operatorName: 'John Smith',
-    status: 'Running',
+    status: 'IN_PROGRESS',
     plannedStart: '2024-04-15T08:30:00',
     plannedEnd: '2024-04-15T13:00:00',
     actualStart: '2024-04-15T08:35:00', // Started 5min late
@@ -1167,7 +1184,7 @@ const sampleOperations: OperationExecutionGantt[] = [
     sequence: 30,
     name: 'Surface Treatment',
     workstation: 'WS-02',
-    status: 'Not Started',
+    status: 'PLANNED',
     plannedStart: '2024-04-15T13:00:00',
     plannedEnd: '2024-04-15T18:00:00',
   },

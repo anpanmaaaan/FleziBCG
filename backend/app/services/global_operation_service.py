@@ -84,6 +84,9 @@ def _derive_stddev(values: list[int]) -> float:
 
 
 def _derive_supervisor_bucket(status: str, delay_minutes: int | None) -> str:
+    # BLOCKED is a readiness/constraint indicator (not an execution lifecycle state).
+    # It can appear on the status column from seed-only scenarios (S3).
+    # The supervisor lens surfaces it as a concern bucket for investigation.
     if status == StatusEnum.blocked.value:
         return "BLOCKED"
     if status == StatusEnum.late.value:

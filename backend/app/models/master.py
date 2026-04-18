@@ -9,9 +9,10 @@ from sqlalchemy.sql import func
 from app.db.base import Base
 
 
-# EDGE: Enum includes display-only values (PENDING, BLOCKED, LATE, COMPLETED_LATE)
-# that are NOT part of the execution state machine (PLANNED→IN_PROGRESS→COMPLETED|ABORTED).
-# They exist for PO/WO-level status columns and legacy seed data.
+# EDGE: Enum includes display-only values (LATE, COMPLETED_LATE) that are NOT
+# part of the execution state machine (PLANNED→IN_PROGRESS→COMPLETED|ABORTED).
+# PENDING and BLOCKED are readiness/dispatch states, not execution lifecycle.
+# They exist for PO/WO-level status columns and readiness tracking.
 class StatusEnum(str, Enum):
     planned = "PLANNED"
     pending = "PENDING"
@@ -32,7 +33,7 @@ class ProductionOrder(Base):
     product_name: Mapped[str] = mapped_column(String(128), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     status: Mapped[str] = mapped_column(
-        String(32), nullable=False, default=StatusEnum.pending.value
+        String(32), nullable=False, default=StatusEnum.planned.value
     )
     planned_start: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     planned_end: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -59,7 +60,7 @@ class WorkOrder(Base):
         String(64), unique=True, nullable=False
     )
     status: Mapped[str] = mapped_column(
-        String(32), nullable=False, default=StatusEnum.pending.value
+        String(32), nullable=False, default=StatusEnum.planned.value
     )
     planned_start: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     planned_end: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -99,7 +100,7 @@ class Operation(Base):
         String(128), nullable=False, default="STATION_01", index=True
     )
     status: Mapped[str] = mapped_column(
-        String(32), nullable=False, default=StatusEnum.pending.value
+        String(32), nullable=False, default=StatusEnum.planned.value
     )
     planned_start: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     planned_end: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

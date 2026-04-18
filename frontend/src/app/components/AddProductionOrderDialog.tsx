@@ -301,6 +301,7 @@ export function AddProductionOrderDialog({ open, onOpenChange, onSubmit }: AddPr
         materialCode: "MAT-PIS-G2024",
         routeId: "DMES-R11",
         priority: "High",
+        machineNumber: "",
         quantity: "7000",
         plannedStartDate: new Date(),
         plannedCompletionDate: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000),

@@ -1,6 +1,6 @@
 import { request } from "./httpClient";
 
-export type OperationExecutionStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED" | string;
+export type OperationExecutionStatus = "PLANNED" | "IN_PROGRESS" | "COMPLETED" | "ABORTED";
 
 export interface OperationDetail {
   id: number;

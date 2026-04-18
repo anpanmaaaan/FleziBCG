@@ -27,6 +27,7 @@ import {
   getProgressPercentage as calcProgressPercent,
   getYieldRate as calcYieldRate,
 } from "@/app/api";
+import { useI18n } from "@/app/i18n";
 
 interface QCCheckpoint {
   id: string;
@@ -165,6 +166,7 @@ export function OperationExecutionDetail() {
   const { operationId } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [operation, setOperation] = useState<OperationDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -194,7 +196,7 @@ export function OperationExecutionDetail() {
   useEffect(() => {
     const loadOperation = async () => {
       if (!operationId) {
-        setError("Operation ID is missing in URL.");
+        setError(t("opDetail.error.missingId"));
         setOperation(null);
         setLoading(false);
         return;
@@ -202,7 +204,7 @@ export function OperationExecutionDetail() {
 
       const canonicalOperationId = operationId.trim();
       if (!/^\d+$/.test(canonicalOperationId)) {
-        setError("Operation ID must be a numeric operation_id.");
+        setError(t("opDetail.error.invalidId"));
         setOperation(null);
         setLoading(false);
         return;
@@ -215,7 +217,7 @@ export function OperationExecutionDetail() {
         const data = await operationApi.get(canonicalOperationId);
         setOperation(data);
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to load operation.";
+        const message = err instanceof Error ? err.message : t("opDetail.error.loadFailed");
         setError(message);
       } finally {
         setLoading(false);
@@ -226,17 +228,17 @@ export function OperationExecutionDetail() {
   }, [operationId]);
 
   const tabs = [
-    { id: "overview", label: "Overview", icon: Activity },
-    { id: "quality", label: "Quality", icon: Shield },
-    { id: "materials", label: "Materials", icon: Package },
-    { id: "timeline", label: "Timeline", icon: History },
-    { id: "documents", label: "Documents", icon: FileText },
+    { id: "overview", label: t("opDetail.tab.overview"), icon: Activity },
+    { id: "quality", label: t("opDetail.tab.quality"), icon: Shield },
+    { id: "materials", label: t("opDetail.tab.materials"), icon: Package },
+    { id: "timeline", label: t("opDetail.tab.timeline"), icon: History },
+    { id: "documents", label: t("opDetail.tab.documents"), icon: FileText },
   ] as const;
 
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center bg-gray-50">
-        <div className="text-gray-600">Loading operation detail...</div>
+        <div className="text-gray-600">{t("opDetail.loading")}</div>
       </div>
     );
   }
@@ -247,9 +249,9 @@ export function OperationExecutionDetail() {
         <div className="max-w-xl w-full bg-white border border-red-200 rounded-lg p-6">
           <div className="flex items-center gap-2 text-red-700 font-semibold mb-2">
             <AlertTriangle className="w-5 h-5" />
-            Failed to load operation detail
+            {t("opDetail.error.loadFailed")}
           </div>
-          <div className="text-sm text-red-600">{error || "Operation not found."}</div>
+          <div className="text-sm text-red-600">{error || t("opDetail.error.notFound")}</div>
         </div>
       </div>
     );
@@ -276,11 +278,11 @@ export function OperationExecutionDetail() {
               className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
             >
               <ArrowLeft className="w-4 h-4" />
-              {fromGantt ? 'Back to Gantt' : 'Back to Overview'}
+              {fromGantt ? t("opDetail.nav.backGantt") : t("opDetail.nav.backOverview")}
             </button>
             <div>
               <div className="text-sm text-gray-500">
-                Operation {operation.sequence}: {operation.operation_number}
+                {t("opDetail.header.operationSeq", { seq: operation.sequence, number: operation.operation_number })}
               </div>
               <div className="text-2xl font-bold">{operation.name}</div>
             </div>
@@ -293,14 +295,14 @@ export function OperationExecutionDetail() {
               {statusText}
             </StatusBadge>
             <StatusBadge variant="info" size="lg">
-              Read-Only
+              {t("opDetail.badge.readOnly")}
             </StatusBadge>
             <Link
               to={`/station-execution?operationId=${encodeURIComponent(String(operation.id))}`}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
             >
               <ExternalLink className="w-4 h-4" />
-              Open in Station Execution
+              {t("opDetail.action.openStation")}
             </Link>
           </>
         }
@@ -308,31 +310,31 @@ export function OperationExecutionDetail() {
 
       <div className="flex-1 flex overflow-hidden">
         <div className="w-80 bg-white border-r border-gray-200 p-6 overflow-auto">
-          <h3 className="text-lg font-bold mb-4">Operation Summary</h3>
+          <h3 className="text-lg font-bold mb-4">{t("opDetail.sidebar.title")}</h3>
 
           <div className="space-y-4">
             <div>
-              <div className="text-sm text-gray-500">Operation ID</div>
+              <div className="text-sm text-gray-500">{t("opDetail.sidebar.operationId")}</div>
               <div className="font-mono font-bold text-lg text-blue-600">{operation.operation_number}</div>
             </div>
 
             <div>
-              <div className="text-sm text-gray-500">Sequence</div>
+              <div className="text-sm text-gray-500">{t("opDetail.sidebar.sequence")}</div>
               <div className="font-bold text-2xl">{operation.sequence}</div>
             </div>
 
             <div>
-              <div className="text-sm text-gray-500">Station / Workcenter</div>
+              <div className="text-sm text-gray-500">{t("opDetail.sidebar.station")}</div>
               <div className="font-medium">- / -</div>
             </div>
 
             <div>
-              <div className="text-sm text-gray-500">Status</div>
+              <div className="text-sm text-gray-500">{t("opDetail.sidebar.status")}</div>
               <StatusBadge variant={mapExecutionStatusBadgeVariant(operation.status)}>{statusText}</StatusBadge>
             </div>
 
             <div>
-              <div className="text-sm text-gray-500">Progress</div>
+              <div className="text-sm text-gray-500">{t("opDetail.sidebar.progress")}</div>
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
                   <div
@@ -345,22 +347,22 @@ export function OperationExecutionDetail() {
             </div>
 
             <div className="border-t pt-4">
-              <div className="text-sm text-gray-500 mb-2">Planned vs Actual</div>
+              <div className="text-sm text-gray-500 mb-2">{t("opDetail.sidebar.plannedVsActual")}</div>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Planned Start:</span>
+                  <span className="text-gray-600">{t("opDetail.time.plannedStart")}</span>
                   <span className="font-medium">{operation.planned_start || "-"}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Actual Start:</span>
+                  <span className="text-gray-600">{t("opDetail.time.actualStart")}</span>
                   <span className="font-medium">{operation.actual_start || "-"}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Planned End:</span>
+                  <span className="text-gray-600">{t("opDetail.time.plannedEnd")}</span>
                   <span className="font-medium">{operation.planned_end || "-"}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Actual End:</span>
+                  <span className="text-gray-600">{t("opDetail.time.actualEnd")}</span>
                   <span className="font-medium">{operation.actual_end || "-"}</span>
                 </div>
               </div>
@@ -395,75 +397,75 @@ export function OperationExecutionDetail() {
               <div className="space-y-6">
                 <div className="grid grid-cols-5 gap-4">
                   <StatsCard
-                    title="Completed Qty"
+                    title={t("opDetail.kpi.completedQty")}
                     value={operation.completed_qty + "/" + operation.quantity}
                     color="blue"
                     icon={Package}
                   />
                   <StatsCard
-                    title="Good Quantity"
+                    title={t("opDetail.kpi.goodQty")}
                     value={operation.good_qty}
                     color="green"
                     icon={CheckCircle}
                   />
                   <StatsCard
-                    title="Scrap Quantity"
+                    title={t("opDetail.kpi.scrapQty")}
                     value={operation.scrap_qty}
                     color="red"
                     icon={XCircle}
                   />
-                  <StatsCard title="Progress" value={progressPercent + "%"} color="purple" icon={TrendingUp} />
-                  <StatsCard title="Yield Rate" value={yieldRate.toFixed(1) + "%"} color="cyan" />
+                  <StatsCard title={t("common.progress")} value={progressPercent + "%"} color="purple" icon={TrendingUp} />
+                  <StatsCard title={t("opDetail.kpi.yieldRate")} value={yieldRate.toFixed(1) + "%"} color="cyan" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-white rounded-lg border p-6">
-                    <h3 className="text-lg font-bold mb-4">Location and Equipment</h3>
+                    <h3 className="text-lg font-bold mb-4">{t("opDetail.section.location")}</h3>
                     <div className="space-y-3">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Production Line</span>
+                        <span className="text-gray-600">{t("opDetail.location.productionLine")}</span>
                         <span className="font-medium">-</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Work Center</span>
+                        <span className="text-gray-600">{t("opDetail.location.workCenter")}</span>
                         <span className="font-medium">-</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Workstation</span>
+                        <span className="text-gray-600">{t("opDetail.location.workstation")}</span>
                         <span className="font-medium">-</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Machine</span>
+                        <span className="text-gray-600">{t("opDetail.location.machine")}</span>
                         <span className="font-medium">-</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Machine ID</span>
+                        <span className="text-gray-600">{t("opDetail.location.machineId")}</span>
                         <span className="font-medium text-blue-600">-</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="bg-white rounded-lg border p-6">
-                    <h3 className="text-lg font-bold mb-4">Time and Quantity</h3>
+                    <h3 className="text-lg font-bold mb-4">{t("opDetail.section.timeQty")}</h3>
                     <div className="space-y-3">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Setup Time</span>
+                        <span className="text-gray-600">{t("opDetail.timeQty.setupTime")}</span>
                         <span className="font-medium">-</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Run Time / Unit</span>
+                        <span className="text-gray-600">{t("opDetail.timeQty.runTimePerUnit")}</span>
                         <span className="font-medium">-</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Planned Quantity</span>
+                        <span className="text-gray-600">{t("opDetail.timeQty.plannedQty")}</span>
                         <span className="font-medium">{operation.quantity} pcs</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Completed Quantity</span>
+                        <span className="text-gray-600">{t("opDetail.timeQty.completedQty")}</span>
                         <span className="font-medium text-blue-600">{operation.completed_qty} pcs</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Remaining</span>
+                        <span className="text-gray-600">{t("opDetail.timeQty.remaining")}</span>
                         <span className="font-medium text-orange-600">{remainingQty} pcs</span>
                       </div>
                     </div>
@@ -471,9 +473,9 @@ export function OperationExecutionDetail() {
                 </div>
 
                 <div className="bg-white rounded-lg border p-6">
-                  <h3 className="text-lg font-bold mb-4">Operation Description</h3>
+                  <h3 className="text-lg font-bold mb-4">{t("opDetail.section.description")}</h3>
                   <p className="text-gray-700 leading-relaxed">
-                    Execution detail is loaded from backend source-of-truth events. This page is read-only.
+                    {t("opDetail.description.readOnly")}
                   </p>
                 </div>
               </div>
@@ -484,32 +486,32 @@ export function OperationExecutionDetail() {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
                   <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <div className="font-medium text-blue-800">Read-only placeholder data</div>
+                    <div className="font-medium text-blue-800">{t("opDetail.quality.readOnlyNotice")}</div>
                     <div className="text-sm text-blue-600 mt-1">
-                      QC endpoint integration is pending. Data below is a temporary read-only placeholder.
+                      {t("opDetail.quality.readOnlyDesc")}
                     </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-4 gap-4">
-                  <StatsCard title="QC Checkpoints" value={readOnlyQCCheckpoints.length} color="blue" icon={Shield} />
+                  <StatsCard title={t("opDetail.quality.title")} value={readOnlyQCCheckpoints.length} color="blue" icon={Shield} />
                   <StatsCard
-                    title="Passed"
+                    title={t("opDetail.quality.passed")}
                     value={readOnlyQCCheckpoints.filter((c) => c.status === "Passed").length}
                     color="green"
                     icon={CheckCircle}
                   />
                   <StatsCard
-                    title="Pending"
+                    title={t("opDetail.quality.pending")}
                     value={readOnlyQCCheckpoints.filter((c) => c.status === "Pending").length}
                     color="orange"
                     icon={Clock}
                   />
-                  <StatsCard title="First Pass Yield" value="93.8%" color="cyan" icon={TrendingUp} />
+                  <StatsCard title={t("opDetail.quality.fpYield")} value="93.8%" color="cyan" icon={TrendingUp} />
                 </div>
 
                 <div className="bg-white rounded-lg border p-6">
-                  <h3 className="text-lg font-bold mb-4">Quality Checkpoints (Read-Only)</h3>
+                  <h3 className="text-lg font-bold mb-4">{t("opDetail.quality.listTitle")}</h3>
                   <div className="space-y-3">
                     {readOnlyQCCheckpoints.map((checkpoint) => (
                       <div key={checkpoint.id} className="border rounded-lg p-4">
@@ -539,24 +541,24 @@ export function OperationExecutionDetail() {
 
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
-                            <span className="text-gray-500">Specification: </span>
+                            <span className="text-gray-500">{t("opDetail.quality.spec")} </span>
                             <span className="font-medium">{checkpoint.specification}</span>
                           </div>
                           {checkpoint.actualValue && (
                             <div>
-                              <span className="text-gray-500">Actual Value: </span>
+                              <span className="text-gray-500">{t("opDetail.quality.actual")} </span>
                               <span className="font-medium text-green-600">{checkpoint.actualValue}</span>
                             </div>
                           )}
                           {checkpoint.inspector && (
                             <div>
-                              <span className="text-gray-500">Inspector: </span>
+                              <span className="text-gray-500">{t("opDetail.quality.inspector")} </span>
                               <span className="font-medium">{checkpoint.inspector}</span>
                             </div>
                           )}
                           {checkpoint.timestamp && (
                             <div>
-                              <span className="text-gray-500">Timestamp: </span>
+                              <span className="text-gray-500">{t("opDetail.quality.timestamp")} </span>
                               <span className="font-medium">{checkpoint.timestamp}</span>
                             </div>
                           )}
@@ -573,40 +575,40 @@ export function OperationExecutionDetail() {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
                   <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <div className="font-medium text-blue-800">Read-Only View (Phase 1)</div>
+                    <div className="font-medium text-blue-800">{t("opDetail.materials.readOnlyNotice")}</div>
                     <div className="text-sm text-blue-600 mt-1">
-                      This view is for analysis only. Material endpoint integration is pending; data below is placeholder.
+                      {t("opDetail.materials.readOnlyDesc")}
                     </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-4 gap-4">
-                  <StatsCard title="Total Materials" value={readOnlyMaterials.length} color="blue" icon={Package} />
+                  <StatsCard title={t("opDetail.materials.totalMaterials")} value={readOnlyMaterials.length} color="blue" icon={Package} />
                   <StatsCard
-                    title="In Use"
+                    title={t("opDetail.materials.inUse")}
                     value={readOnlyMaterials.filter((m) => m.status === "In Use").length}
                     color="green"
                   />
-                  <StatsCard title="Consumption Rate" value="64%" color="purple" />
+                  <StatsCard title={t("opDetail.materials.consumptionRate")} value="64%" color="purple" />
                   <StatsCard
-                    title="Status"
+                    title={t("common.status")}
                     value={readOnlyMaterials.some((m) => m.status === "Overused") ? "Alert" : "OK"}
                     color={readOnlyMaterials.some((m) => m.status === "Overused") ? "red" : "green"}
                   />
                 </div>
 
                 <div className="bg-white rounded-lg border p-6">
-                  <h3 className="text-lg font-bold mb-4">Bill of Materials (BOM)</h3>
+                  <h3 className="text-lg font-bold mb-4">{t("opDetail.materials.bomTitle")}</h3>
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="text-left px-4 py-2 text-sm font-medium text-gray-600">Material Code</th>
-                        <th className="text-left px-4 py-2 text-sm font-medium text-gray-600">Material Name</th>
-                        <th className="text-left px-4 py-2 text-sm font-medium text-gray-600">Required</th>
-                        <th className="text-left px-4 py-2 text-sm font-medium text-gray-600">Consumed</th>
-                        <th className="text-left px-4 py-2 text-sm font-medium text-gray-600">Remaining</th>
-                        <th className="text-left px-4 py-2 text-sm font-medium text-gray-600">Lot Number</th>
-                        <th className="text-left px-4 py-2 text-sm font-medium text-gray-600">Status</th>
+                        <th className="text-left px-4 py-2 text-sm font-medium text-gray-600">{t("opDetail.materials.col.materialCode")}</th>
+                        <th className="text-left px-4 py-2 text-sm font-medium text-gray-600">{t("opDetail.materials.col.materialName")}</th>
+                        <th className="text-left px-4 py-2 text-sm font-medium text-gray-600">{t("opDetail.materials.col.required")}</th>
+                        <th className="text-left px-4 py-2 text-sm font-medium text-gray-600">{t("opDetail.materials.col.consumed")}</th>
+                        <th className="text-left px-4 py-2 text-sm font-medium text-gray-600">{t("opDetail.materials.col.remaining")}</th>
+                        <th className="text-left px-4 py-2 text-sm font-medium text-gray-600">{t("opDetail.materials.col.lotNumber")}</th>
+                        <th className="text-left px-4 py-2 text-sm font-medium text-gray-600">{t("opDetail.materials.col.status")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -651,7 +653,7 @@ export function OperationExecutionDetail() {
                 </div>
 
                 <div className="bg-white rounded-lg border p-6">
-                  <h3 className="text-lg font-bold mb-4">Traceability Information</h3>
+                  <h3 className="text-lg font-bold mb-4">{t("opDetail.materials.traceabilityTitle")}</h3>
                   <div className="space-y-4">
                     <div className="border rounded-lg p-4">
                       <div className="font-medium mb-2">Material: Alloy Steel 4140</div>
@@ -680,15 +682,15 @@ export function OperationExecutionDetail() {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
                   <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <div className="font-medium text-blue-800">Read-only placeholder data</div>
+                    <div className="font-medium text-blue-800">{t("opDetail.quality.readOnlyNotice")}</div>
                     <div className="text-sm text-blue-600 mt-1">
-                      Timeline endpoint integration is pending. Data below is a temporary read-only placeholder.
+                      {t("opDetail.timeline.readOnlyDesc")}
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-white rounded-lg border p-6">
-                  <h3 className="text-lg font-bold mb-4">Operation Timeline</h3>
+                  <h3 className="text-lg font-bold mb-4">{t("opDetail.timeline.title")}</h3>
                   <div className="space-y-4">
                     {readOnlyTimeline.map((event, index) => (
                       <div key={event.id} className="flex gap-4">
@@ -729,15 +731,15 @@ export function OperationExecutionDetail() {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
                   <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <div className="font-medium text-blue-800">Read-only placeholder data</div>
+                    <div className="font-medium text-blue-800">{t("opDetail.quality.readOnlyNotice")}</div>
                     <div className="text-sm text-blue-600 mt-1">
-                      Documents endpoint integration is pending. List below is a temporary read-only placeholder.
+                      {t("opDetail.documents.readOnlyDesc")}
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-white rounded-lg border p-6">
-                  <h3 className="text-lg font-bold mb-4">Work Instructions and Documents</h3>
+                  <h3 className="text-lg font-bold mb-4">{t("opDetail.documents.title")}</h3>
                   <div className="space-y-3">
                     <div className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
                       <div className="flex items-center gap-3">

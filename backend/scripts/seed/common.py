@@ -117,36 +117,36 @@ def create_operation(
     return operation
 
 
-def run_start(db: Session, operation_id: int, started_at: datetime | None = None) -> Operation:
+def run_start(db: Session, operation_id: int, started_at: datetime | None = None, *, operator_id: str = "seed-user") -> Operation:
     operation = get_operation_by_id(db, operation_id)
     if operation is None:
         raise ValueError(f"Operation {operation_id} not found")
-    start_operation(db, operation, OperationStartRequest(operator_id="seed-user", started_at=started_at), tenant_id=TENANT_ID)
+    start_operation(db, operation, OperationStartRequest(operator_id=operator_id, started_at=started_at), tenant_id=TENANT_ID)
     refreshed = get_operation_by_id(db, operation_id)
     if refreshed is None:
         raise ValueError(f"Operation {operation_id} missing after start")
     return refreshed
 
 
-def run_complete(db: Session, operation_id: int, completed_at: datetime | None = None) -> Operation:
+def run_complete(db: Session, operation_id: int, completed_at: datetime | None = None, *, operator_id: str = "seed-user") -> Operation:
     operation = get_operation_by_id(db, operation_id)
     if operation is None:
         raise ValueError(f"Operation {operation_id} not found")
-    complete_operation(db, operation, OperationCompleteRequest(operator_id="seed-user", completed_at=completed_at), tenant_id=TENANT_ID)
+    complete_operation(db, operation, OperationCompleteRequest(operator_id=operator_id, completed_at=completed_at), tenant_id=TENANT_ID)
     refreshed = get_operation_by_id(db, operation_id)
     if refreshed is None:
         raise ValueError(f"Operation {operation_id} missing after completion")
     return refreshed
 
 
-def run_abort(db: Session, operation_id: int, *, reason_code: str) -> Operation:
+def run_abort(db: Session, operation_id: int, *, reason_code: str, operator_id: str = "seed-user") -> Operation:
     operation = get_operation_by_id(db, operation_id)
     if operation is None:
         raise ValueError(f"Operation {operation_id} not found")
     abort_operation(
         db,
         operation,
-        OperationAbortRequest(operator_id="seed-user", reason_code=reason_code),
+        OperationAbortRequest(operator_id=operator_id, reason_code=reason_code),
         tenant_id=TENANT_ID,
     )
     refreshed = get_operation_by_id(db, operation_id)

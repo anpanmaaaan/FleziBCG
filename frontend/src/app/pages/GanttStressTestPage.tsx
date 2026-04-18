@@ -22,10 +22,10 @@ const buildSyntheticOperations = (count: number): OperationExecutionGantt[] => {
     const currentTime = isRunning ? start + 15 * 60 * 1000 : undefined;
 
     const status: OperationExecutionGantt['status'] =
-      statusBucket === 0 ? 'Not Started' :
-      isRunning ? 'Running' :
-      isCompleted ? 'Completed' :
-      'Delayed';
+      statusBucket === 0 ? 'PLANNED' :
+      isRunning ? 'IN_PROGRESS' :
+      isCompleted ? 'COMPLETED' :
+      'ABORTED';
 
     return {
       id: `stress-op-${sequence}`,

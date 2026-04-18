@@ -1,5 +1,5 @@
 import { request } from "./httpClient";
-import type { OperationDetail } from "./operationApi";
+import type { OperationDetail, OperationExecutionStatus } from "./operationApi";
 
 export type QueueClaimState = "none" | "mine" | "other";
 
@@ -15,7 +15,7 @@ export interface StationQueueItem {
   name: string;
   work_order_number: string;
   production_order_number: string;
-  status: string;
+  status: OperationExecutionStatus;
   planned_start: string | null;
   planned_end: string | null;
   claim: ClaimSummary;

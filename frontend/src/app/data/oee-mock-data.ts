@@ -86,7 +86,7 @@ export function generateOEETrendData(days: number = 30): OEETrendData[] {
  * Sorted by impact (descending)
  */
 export function getSixBigLossesData(): SixBigLoss[] {
-  return [
+  const losses: SixBigLoss[] = [
     { 
       id: 'loss-1',
       name: 'Equipment Failures', 
@@ -135,7 +135,9 @@ export function getSixBigLossesData(): SixBigLoss[] {
       category: 'quality', 
       trend: -2 
     }
-  ].sort((a, b) => b.impact - a.impact);
+  ];
+
+  return losses.sort((a, b) => b.impact - a.impact);
 }
 
 /**

@@ -7,22 +7,13 @@ export const mapExecutionStatusText = (status: OperationExecutionStatus): string
 
   switch (normalizedStatus) {
     case "PLANNED":
-      // Current semantics: PLANNED is execution-pending for UI purposes.
-      return "Pending";
-    case "PENDING":
-      return "Pending";
+      return "Planned";
     case "IN_PROGRESS":
       return "In Progress";
     case "COMPLETED":
       return "Completed";
-    case "COMPLETED_LATE":
-      return "Completed Late";
     case "ABORTED":
       return "Aborted";
-    case "BLOCKED":
-      return "Blocked";
-    case "LATE":
-      return "Delayed";
     default:
       return String(status);
   }
@@ -36,18 +27,12 @@ export const mapExecutionStatusBadgeVariant = (
   switch (normalizedStatus) {
     case "COMPLETED":
       return "success";
-    case "COMPLETED_LATE":
-      return "warning";
     case "IN_PROGRESS":
       return "info";
     case "PLANNED":
-    case "PENDING":
       return "neutral";
-    case "BLOCKED":
     case "ABORTED":
       return "error";
-    case "LATE":
-      return "warning";
     default:
       return "warning";
   }

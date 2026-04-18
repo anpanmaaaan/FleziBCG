@@ -78,7 +78,7 @@ def _derive_status(operation, events: list[ExecutionEvent]) -> str:
         return "COMPLETED"
     if any(event.event_type == ExecutionEventType.OP_STARTED.value for event in events):
         return "IN_PROGRESS"
-    return operation.status or "PENDING"
+    return operation.status or "PLANNED"
 
 
 def _derive_delay_minutes(
@@ -93,7 +93,7 @@ def _derive_delay_minutes(
     elif status == "IN_PROGRESS":
         reference_time = datetime.now(timezone.utc)
     else:
-        # PENDING/BLOCKED/etc. are intentionally delay-free in this visualization projection.
+        # PLANNED and other non-active states are intentionally delay-free in this visualization projection.
         return None
 
     reference_time = _align_for_diff(reference_time, planned_end)

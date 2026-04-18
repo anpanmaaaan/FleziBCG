@@ -11,7 +11,7 @@ from app.schemas.operation import (
     OperationStartRequest,
 )
 from app.security.dependencies import RequestIdentity, require_action, require_permission
-from app.services.operation_service import abort_operation, derive_operation_detail, start_operation, report_quantity, complete_operation
+from app.services.operation_service import StartOperationConflictError, CompleteOperationConflictError, abort_operation, derive_operation_detail, start_operation, report_quantity, complete_operation
 from app.services.station_claim_service import ensure_operation_claim_owned_by_identity
 
 router = APIRouter()
@@ -55,6 +55,8 @@ def start_operation_endpoint(
 
     try:
         return start_operation(db, operation, request, tenant_id=identity.tenant_id)
+    except StartOperationConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -99,6 +101,8 @@ def complete_operation_endpoint(
 
     try:
         return complete_operation(db, operation, request, tenant_id=identity.tenant_id)
+    except CompleteOperationConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

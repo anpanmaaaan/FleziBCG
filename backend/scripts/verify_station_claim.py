@@ -15,10 +15,13 @@ from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 from sqlalchemy import delete, select
 
+from sqlalchemy import update
+
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.main import app
 from app.models.rbac import Role, RoleScope, Scope, UserRole, UserRoleAssignment
+from app.models.station_claim import OperationClaim
 from app.models.user import User
 from app.security.auth import pwd_context
 
@@ -149,6 +152,16 @@ def _create_opr_fixture_user(db, *, user_id: str, username: str, with_station_sc
 def _cleanup(db) -> None:
     ids = [OPR_A_USER_ID, OPR_B_USER_ID, OPR_NO_SCOPE_USER_ID]
 
+    # Release orphaned operation claims from current and prior test runs
+    db.execute(
+        update(OperationClaim)
+        .where(
+            OperationClaim.claimed_by_user_id.like("verify-opr-%"),
+            OperationClaim.released_at.is_(None),
+        )
+        .values(released_at=datetime.now(timezone.utc), release_reason="verify_cleanup")
+    )
+
     db.execute(delete(UserRoleAssignment).where(UserRoleAssignment.user_id.in_(ids)))
 
     user_roles = list(db.scalars(select(UserRole).where(UserRole.user_id.in_(ids))))
@@ -158,6 +171,14 @@ def _cleanup(db) -> None:
 
     db.execute(delete(UserRole).where(UserRole.user_id.in_(ids)))
     db.execute(delete(User).where(User.user_id.in_(ids)))
+
+    # Also clean up user records from prior runs (different timestamp suffixes)
+    db.execute(
+        delete(User).where(
+            User.user_id.like("verify-opr-%"),
+            User.tenant_id == TENANT_ID,
+        )
+    )
     db.commit()
 
 
@@ -235,7 +256,16 @@ def main() -> None:
         _print_results(checks)
         raise SystemExit(1)
 
-    target_operation_id = int(queue_items[0]["operation_id"])
+    # Pick an unclaimed operation to avoid conflicts with non-test claims
+    target_operation_id = None
+    for item in queue_items:
+        claim_state = (item.get("claim") or {}).get("state", "none")
+        if claim_state == "none":
+            target_operation_id = int(item["operation_id"])
+            break
+
+    if target_operation_id is None:
+        target_operation_id = int(queue_items[0]["operation_id"])
 
     start_without_claim = client.post(
         f"/api/v1/operations/{target_operation_id}/start",

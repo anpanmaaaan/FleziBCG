@@ -6,7 +6,8 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "lint:i18n": "bash scripts/check_no_hardcoded_i18n.sh"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

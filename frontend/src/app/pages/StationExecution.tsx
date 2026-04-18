@@ -12,6 +12,7 @@ import {
   mapExecutionStatusBadgeVariant,
   mapExecutionStatusText,
 } from "@/app/api";
+import { useI18n } from "@/app/i18n";
 
 // ── Numeric Keypad Overlay ────────────────────────────────────────────────────
 
@@ -99,6 +100,7 @@ interface StepperProps {
 }
 
 function Stepper({ label, value, onChange }: StepperProps) {
+  const { t } = useI18n();
   const [keypadOpen, setKeypadOpen] = useState(false);
 
   return (
@@ -108,7 +110,7 @@ function Stepper({ label, value, onChange }: StepperProps) {
         <button
           type="button"
           onClick={() => onChange(Math.max(0, value - 1))}
-          aria-label={`Decrease ${label}`}
+          aria-label={t("station.aria.decrease", { label })}
           className="w-14 h-14 rounded-xl bg-gray-100 text-2xl font-bold text-gray-700 hover:bg-gray-200 active:scale-95 transition select-none"
         >
           −
@@ -123,7 +125,7 @@ function Stepper({ label, value, onChange }: StepperProps) {
         <button
           type="button"
           onClick={() => onChange(value + 1)}
-          aria-label={`Increase ${label}`}
+          aria-label={t("station.aria.increase", { label })}
           className="w-14 h-14 rounded-xl bg-gray-100 text-2xl font-bold text-gray-700 hover:bg-gray-200 active:scale-95 transition select-none"
         >
           +
@@ -154,13 +156,14 @@ interface QueueListProps {
 }
 
 function QueueList({ items, loading, activeOperationId, onSelect }: QueueListProps) {
+  const { t } = useI18n();
   if (loading) {
-    return <p className="text-sm text-gray-500 py-8 text-center">Loading...</p>;
+    return <p className="text-sm text-gray-500 py-8 text-center">{t("station.loading")}</p>;
   }
   if (items.length === 0) {
     return (
       <p className="text-sm text-gray-500 py-8 text-center">
-        No operations in queue.
+        {t("station.queue.empty")}
       </p>
     );
   }
@@ -205,6 +208,7 @@ function QueueList({ items, loading, activeOperationId, onSelect }: QueueListPro
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export function StationExecution() {
+  const { t } = useI18n();
   const { currentUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryOperationId = searchParams.get("operationId") || "";
@@ -240,7 +244,7 @@ export function StationExecution() {
   const claimState = selectedQueueItem?.claim.state ?? "none";
   const canExecuteByClaim = claimState === "mine";
   const canClockOnByStatus =
-    operation?.status === "PENDING" || operation?.status === "PLANNED";
+    operation?.status === "PLANNED";
 
   // Mode B = operator has claimed this operation
   const isExecutionMode = claimState === "mine";
@@ -270,7 +274,7 @@ export function StationExecution() {
       setSearchParams({ operationId: String(next.operation_id) });
       await fetchOperation(String(next.operation_id));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to load station queue.");
+      toast.error(err instanceof Error ? err.message : t("station.toast.loadQueueFailed"));
     } finally {
       setQueueLoading(false);
     }
@@ -280,7 +284,7 @@ export function StationExecution() {
     const trimmedId = id.trim();
     if (!trimmedId) return;
     if (!isCanonicalOperationId(trimmedId)) {
-      toast.error("Operation ID must be numeric.");
+      toast.error(t("station.toast.idMustBeNumeric"));
       return;
     }
     setLoading(true);
@@ -292,7 +296,7 @@ export function StationExecution() {
       setScrapQty(data.scrap_qty || 0);
       setSearchParams({ operationId: trimmedId });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to load operation.");
+      toast.error(err instanceof Error ? err.message : t("station.toast.loadOperationFailed"));
     } finally {
       setLoading(false);
     }
@@ -310,10 +314,10 @@ export function StationExecution() {
     setClaimLoading(true);
     try {
       await stationApi.claim(operation.id, {});
-      toast.success("Operation claimed.");
+      toast.success(t("station.toast.claimed"));
       await refreshQueue();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to claim operation.");
+      toast.error(err instanceof Error ? err.message : t("station.toast.claimFailed"));
     } finally {
       setClaimLoading(false);
     }
@@ -324,11 +328,11 @@ export function StationExecution() {
     setClaimLoading(true);
     try {
       await stationApi.release(operation.id, { reason: "operator_release" });
-      toast.success("Claim released.");
+      toast.success(t("station.toast.released"));
       setQueueOverlayOpen(false);
       await refreshQueue();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to release claim.");
+      toast.error(err instanceof Error ? err.message : t("station.toast.releaseFailed"));
     } finally {
       setClaimLoading(false);
     }
@@ -341,14 +345,14 @@ export function StationExecution() {
       const data = await operationApi.start(operation.id, {
         operator_id: currentUser?.user_id ?? null,
       });
-      toast.success("Clocked on — " + mapExecutionStatusText(data.status));
+      toast.success(t("station.toast.clockedOn") + mapExecutionStatusText(data.status));
     } catch (err) {
       if (err instanceof HttpError && err.status === 403) {
-        toast.error("Claim required");
+        toast.error(t("station.claim.required"));
       } else if (err instanceof HttpError && err.status === 409) {
-        toast.error("Already started");
+        toast.error(t("station.toast.alreadyStarted"));
       } else {
-        toast.error(err instanceof Error ? err.message : "Action failed.");
+        toast.error(err instanceof Error ? err.message : t("station.toast.actionFailed"));
       }
     } finally {
       setActionLoading(false);
@@ -366,9 +370,9 @@ export function StationExecution() {
         scrap_qty: scrapQty,
         operator_id: null,
       });
-      toast.success("Quantity reported — " + mapExecutionStatusText(data.status));
+      toast.success(t("station.toast.quantityReported") + mapExecutionStatusText(data.status));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Action failed.");
+      toast.error(err instanceof Error ? err.message : t("station.toast.actionFailed"));
     } finally {
       setActionLoading(false);
       await fetchOperation(String(operation.id));
@@ -378,7 +382,7 @@ export function StationExecution() {
 
   const completeOperation = async () => {
     if (!operation) return;
-    const confirmed = window.confirm("Confirm clock off / complete operation?");
+    const confirmed = window.confirm(t("station.confirm.clockOff"));
     if (!confirmed) return;
     setActionLoading(true);
     try {
@@ -386,14 +390,14 @@ export function StationExecution() {
         operator_id: currentUser?.user_id ?? null,
         completed_at: new Date().toISOString(),
       });
-      toast.success("Clocked off — " + mapExecutionStatusText(data.status));
+      toast.success(t("station.toast.clockedOff") + mapExecutionStatusText(data.status));
     } catch (err) {
       if (err instanceof HttpError && err.status === 403) {
-        toast.error("Claim required");
+        toast.error(t("station.claim.required"));
       } else if (err instanceof HttpError && err.status === 409) {
-        toast.error("Operation already completed");
+        toast.error(t("station.toast.alreadyCompleted"));
       } else {
-        toast.error(err instanceof Error ? err.message : "Action failed.");
+        toast.error(err instanceof Error ? err.message : t("station.toast.actionFailed"));
       }
     } finally {
       setActionLoading(false);
@@ -407,12 +411,12 @@ export function StationExecution() {
     return (
       <div className="h-full flex flex-col bg-white">
         <PageHeader
-          title="Station Execution"
+          title={t("station.title")}
           showBackButton={false}
           actions={
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-700 font-medium">
-                Workstation: {stationScope}
+                {t("station.workstation.label")} {stationScope}
               </span>
               <button
                 onClick={() => void refreshQueue()}
@@ -420,7 +424,7 @@ export function StationExecution() {
                 className="h-10 px-4 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
                 <RefreshCw className="inline w-4 h-4 mr-1" />
-                Refresh
+                {t("station.action.refresh")}
               </button>
             </div>
           }
@@ -446,7 +450,7 @@ export function StationExecution() {
                 disabled={claimLoading}
                 className="shrink-0 h-12 px-6 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50"
               >
-                {claimLoading ? "Claiming..." : "Claim"}
+                {claimLoading ? t("station.action.claiming") : t("station.action.claim")}
               </button>
             </div>
           )}
@@ -456,13 +460,13 @@ export function StationExecution() {
             <div className="mb-4 bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center gap-2 text-orange-800">
               <Lock className="w-4 h-4 shrink-0" />
               <p className="text-sm font-medium">
-                Claimed by another operator. Select a different operation.
+                {t("station.claim.takenWarning")}
               </p>
             </div>
           )}
 
           {loading ? (
-            <p className="text-center py-12 text-gray-500">Loading...</p>
+            <p className="text-center py-12 text-gray-500">{t("station.loading")}</p>
           ) : (
             <>
               <QueueList
@@ -473,7 +477,7 @@ export function StationExecution() {
               />
               <details className="mt-4 border-t pt-3">
                 <summary className="text-sm text-gray-500 cursor-pointer select-none">
-                  Enter operation ID manually
+                  {t("station.manualEntry.label")}
                 </summary>
                 <div className="mt-3 flex items-center gap-2">
                   <input
@@ -482,7 +486,7 @@ export function StationExecution() {
                     pattern="[0-9]*"
                     value={operationId}
                     onChange={(e) => setOperationId(e.target.value)}
-                    placeholder="Numeric operation ID"
+                    placeholder={t("station.manualEntry.placeholder")}
                     className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-full"
                   />
                   <button
@@ -490,7 +494,7 @@ export function StationExecution() {
                     disabled={loading}
                     className="h-10 px-4 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
                   >
-                    Load
+                    {t("station.action.load")}
                   </button>
                 </div>
               </details>
@@ -511,7 +515,7 @@ export function StationExecution() {
       <div className="flex items-center justify-between px-4 py-3 bg-white border-b shadow-sm shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <span className="text-sm text-gray-500 shrink-0 whitespace-nowrap">
-            Workstation: {stationScope}
+            {t("station.workstation.label")} {stationScope}
           </span>
           <span className="text-gray-300 shrink-0">|</span>
           <span className="font-semibold text-gray-900 truncate">{operation.name}</span>
@@ -529,13 +533,13 @@ export function StationExecution() {
             className="h-9 px-3 border border-gray-300 rounded-lg text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-50"
           >
             <RefreshCw className="inline w-3 h-3 mr-1" />
-            Refresh
+            {t("station.action.refresh")}
           </button>
           <button
             onClick={() => setQueueOverlayOpen((prev) => !prev)}
             className="h-9 px-3 border border-gray-300 rounded-lg text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-1"
           >
-            Queue
+            {t("station.tab.queue")}
             <ChevronDown className="w-3 h-3" />
           </button>
           <button
@@ -543,7 +547,7 @@ export function StationExecution() {
             disabled={claimLoading}
             className="h-9 px-3 border border-red-200 rounded-lg text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
           >
-            Release
+            {t("station.action.release")}
           </button>
         </div>
       </div>
@@ -559,7 +563,7 @@ export function StationExecution() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-gray-900">Station Queue</h3>
+              <h3 className="font-semibold text-gray-900">{t("station.queue.title")}</h3>
               <button
                 type="button"
                 onClick={() => setQueueOverlayOpen(false)}
@@ -582,21 +586,21 @@ export function StationExecution() {
       <div className="flex-1 flex flex-col p-4 gap-3 overflow-hidden">
         {/* Claim indicator */}
         <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-2 shrink-0">
-          <p className="text-sm font-medium text-green-800">Operation claimed by you</p>
+          <p className="text-sm font-medium text-green-800">{t("station.claim.ownedBadge")}</p>
         </div>
 
         {/* Quantity summary */}
         <div className="grid grid-cols-3 gap-3 shrink-0">
           <div className="bg-white rounded-xl border p-3 text-center">
-            <p className="text-xs text-gray-500 mb-1">Completed</p>
+            <p className="text-xs text-gray-500 mb-1">{t("station.status.completed")}</p>
             <p className="text-2xl font-bold text-gray-900">{operation.completed_qty}</p>
           </div>
           <div className="bg-white rounded-xl border p-3 text-center">
-            <p className="text-xs text-gray-500 mb-1">Good</p>
+            <p className="text-xs text-gray-500 mb-1">{t("station.qty.good")}</p>
             <p className="text-2xl font-bold text-green-700">{operation.good_qty}</p>
           </div>
           <div className="bg-white rounded-xl border p-3 text-center">
-            <p className="text-xs text-gray-500 mb-1">Scrap</p>
+            <p className="text-xs text-gray-500 mb-1">{t("station.qty.scrap")}</p>
             <p className="text-2xl font-bold text-red-600">{operation.scrap_qty}</p>
           </div>
         </div>
@@ -605,8 +609,8 @@ export function StationExecution() {
         {operation.status === "COMPLETED" && (
           <div className="flex-1 flex items-center justify-center">
             <div className="bg-green-50 border border-green-200 rounded-2xl p-8 text-center">
-              <p className="text-xl font-bold text-green-700">Operation Completed</p>
-              <p className="text-sm text-green-600 mt-1">All write controls are disabled.</p>
+              <p className="text-xl font-bold text-green-700">{t("station.status.completedHeading")}</p>
+              <p className="text-sm text-green-600 mt-1">{t("station.completed.disabledNote")}</p>
             </div>
           </div>
         )}
@@ -615,17 +619,17 @@ export function StationExecution() {
         {operation.status === "ABORTED" && (
           <div className="flex-1 flex items-center justify-center">
             <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
-              <p className="text-xl font-bold text-red-700">Operation Aborted</p>
+              <p className="text-xl font-bold text-red-700">{t("station.status.abortedHeading")}</p>
             </div>
           </div>
         )}
 
-        {/* PENDING / PLANNED → Clock On */}
+        {/* PLANNED → Clock On */}
         {canClockOnByStatus && (
           <div className="flex-1 flex flex-col justify-end gap-3 pb-2">
             {!canExecuteByClaim && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 text-center">
-                Claim required
+                {t("station.claim.required")}
               </div>
             )}
             <button
@@ -633,7 +637,7 @@ export function StationExecution() {
               disabled={actionLoading || !canExecuteByClaim}
               className="w-full h-16 bg-green-600 text-white text-xl font-bold rounded-2xl hover:bg-green-700 disabled:opacity-50 active:scale-[0.98] transition"
             >
-              Clock On
+              {t("station.action.clockOn")}
             </button>
           </div>
         )}
@@ -643,15 +647,15 @@ export function StationExecution() {
           <div className="flex-1 flex flex-col gap-3 min-h-0">
             {/* Stepper inputs */}
             <div className="bg-white rounded-xl border p-4 grid grid-cols-2 gap-6 shrink-0">
-              <Stepper label="Good quantity" value={goodQty} onChange={setGoodQty} />
-              <Stepper label="Scrap quantity" value={scrapQty} onChange={setScrapQty} />
+              <Stepper label={t("station.input.goodQty")} value={goodQty} onChange={setGoodQty} />
+              <Stepper label={t("station.input.scrapQty")} value={scrapQty} onChange={setScrapQty} />
             </div>
 
             {/* Action buttons */}
             <div className="flex flex-col gap-3 shrink-0">
               {!canExecuteByClaim && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 text-center">
-                  Claim required
+                  {t("station.claim.required")}
                 </div>
               )}
               <button
@@ -659,15 +663,15 @@ export function StationExecution() {
                 disabled={actionLoading || !canExecuteByClaim}
                 className="w-full h-14 bg-blue-600 text-white text-lg font-semibold rounded-2xl hover:bg-blue-700 disabled:opacity-50 active:scale-[0.98] transition"
               >
-                Report Quantity
+                {t("station.action.reportQty")}
               </button>
               <button
                 onClick={() => void completeOperation()}
                 disabled={actionLoading || !canExecuteByClaim}
-                title={!canExecuteByClaim ? "Claim required" : undefined}
+                title={!canExecuteByClaim ? t("station.claim.required") : undefined}
                 className="w-full h-16 bg-orange-600 text-white text-xl font-bold rounded-2xl hover:bg-orange-700 disabled:opacity-50 active:scale-[0.98] transition"
               >
-                Clock Off
+                {t("station.action.clockOff")}
               </button>
             </div>
           </div>

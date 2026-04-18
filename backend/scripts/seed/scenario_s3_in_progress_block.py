@@ -37,11 +37,11 @@ def seed(db: Session) -> ScenarioContext:
     second_op = context.operations[1]
 
     # First operation: Start then block due to material shortage
-    run_start(db, first_op.id, started_at=first_op.planned_start)
+    run_start(db, first_op.id, started_at=first_op.planned_start, operator_id="seed-s3-op1")
     mark_blocked_for_incident_seed(db, first_op.id, reason_code="MATERIAL_SHORTAGE")
 
     # Second operation: Leave in-progress (started but not completed)
-    run_start(db, second_op.id, started_at=second_op.planned_start)
+    run_start(db, second_op.id, started_at=second_op.planned_start, operator_id="seed-s3-op2")
     
     # Third operation: Leave pending (not started)
     # This demonstrates a mixed WO state where some ops are blocked, some in-progress, some pending
