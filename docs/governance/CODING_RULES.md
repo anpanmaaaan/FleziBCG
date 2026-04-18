@@ -77,8 +77,23 @@ Stop and reconcile first.
 - support/admin operations must be reviewable
 
 ### 2.5 AI is advisory by default
+
 AI may summarize, explain, predict, or recommend.  
 AI may not silently mutate operational truth or bypass governance.
+
+---
+
+## 2.6 i18n Hardcode Enforcement
+
+All user-facing UI strings in the frontend must be resolved via `useI18n().t(key)`.
+
+To prevent regressions, a lint-like enforcement script is provided:
+
+  npm run lint:i18n
+
+This script scans for common hardcoded string patterns in TSX files (e.g., JSX text nodes, toast/confirm/title literals) and fails if violations are found. All contributors must pass this check before PR approval.
+
+See `frontend/scripts/check_i18n_hardcode.sh` for details.
 
 ---
 

@@ -26,10 +26,11 @@ interface KeypadProps {
 function NumericKeypad({ label, value, onConfirm, onClose }: KeypadProps) {
   const [draft, setDraft] = useState(String(value));
 
+  const { t } = useI18n();
   const press = (key: string) => {
-    if (key === "CLR") {
+    if (key === t("station.keypad.clr")) {
       setDraft("0");
-    } else if (key === "OK") {
+    } else if (key === t("station.keypad.ok")) {
       onConfirm(Math.max(0, parseInt(draft, 10) || 0));
     } else {
       setDraft((prev) => {
@@ -43,7 +44,7 @@ function NumericKeypad({ label, value, onConfirm, onClose }: KeypadProps) {
     ["7", "8", "9"],
     ["4", "5", "6"],
     ["1", "2", "3"],
-    ["CLR", "0", "OK"],
+    [t("station.keypad.clr"), "0", t("station.keypad.ok")],
   ];
 
   return (

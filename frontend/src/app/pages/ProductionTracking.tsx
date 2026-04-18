@@ -22,10 +22,10 @@ export function ProductionTracking() {
   const lineData = productionLines.find(line => line.id === selectedLine);
 
   const workers: Worker[] = [
-    { id: 'W001', name: 'Nguyễn Văn A', status: 'Active', station: 'Station 1', efficiency: 95 },
-    { id: 'W002', name: 'Trần Thị B', status: 'Active', station: 'Station 2', efficiency: 88 },
-    { id: 'W003', name: 'Lê Văn C', status: 'Break', station: 'Station 3', efficiency: 92 },
-    { id: 'W004', name: 'Phạm Thị D', status: 'Active', station: 'Station 4', efficiency: 97 },
+    { id: 'W001', name: t('prodTracking.worker.name1'), status: 'Active', station: t('prodTracking.station.1'), efficiency: 95 },
+    { id: 'W002', name: t('prodTracking.worker.name2'), status: 'Active', station: t('prodTracking.station.2'), efficiency: 88 },
+    { id: 'W003', name: t('prodTracking.worker.name3'), status: 'Break', station: t('prodTracking.station.3'), efficiency: 92 },
+    { id: 'W004', name: t('prodTracking.worker.name4'), status: 'Active', station: t('prodTracking.station.4'), efficiency: 97 },
   ];
 
   const metrics = {

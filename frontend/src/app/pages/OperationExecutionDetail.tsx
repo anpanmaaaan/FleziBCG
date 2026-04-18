@@ -61,107 +61,6 @@ interface TimelineEvent {
   details?: string;
 }
 
-// Read-only placeholder data for tabs not yet backed by API endpoints.
-const readOnlyQCCheckpoints: QCCheckpoint[] = [
-  {
-    id: "QC-001",
-    name: "Bore Diameter Check",
-    type: "Dimensional",
-    status: "Passed",
-    result: "Within tolerance",
-    inspector: "Mary Johnson",
-    timestamp: "2024-04-15 10:30",
-    specification: "50.00mm +/- 0.01mm",
-    actualValue: "50.005mm",
-  },
-  {
-    id: "QC-002",
-    name: "Surface Finish Inspection",
-    type: "Visual",
-    status: "Passed",
-    result: "No defects",
-    inspector: "Mary Johnson",
-    timestamp: "2024-04-15 10:35",
-    specification: "Ra 1.6um max",
-    actualValue: "Ra 1.2um",
-  },
-  {
-    id: "QC-003",
-    name: "Perpendicularity Check",
-    type: "Dimensional",
-    status: "Pending",
-    specification: "0.05mm per 100mm",
-  },
-];
-
-const readOnlyMaterials: MaterialItem[] = [
-  {
-    id: "MAT-001",
-    materialCode: "STL-4140",
-    materialName: "Alloy Steel 4140",
-    requiredQty: 50,
-    consumedQty: 32,
-    unit: "pcs",
-    lotNumber: "LOT-2024-0415-001",
-    status: "In Use",
-  },
-  {
-    id: "MAT-002",
-    materialCode: "TOOL-CB-10",
-    materialName: "Carbide Drill Bit 10mm",
-    requiredQty: 1,
-    consumedQty: 1,
-    unit: "pcs",
-    lotNumber: "TOOL-2024-0401",
-    status: "In Use",
-  },
-  {
-    id: "MAT-003",
-    materialCode: "COOL-SYN-5L",
-    materialName: "Synthetic Coolant",
-    requiredQty: 10,
-    consumedQty: 6.5,
-    unit: "L",
-    status: "In Use",
-  },
-];
-
-const readOnlyTimeline: TimelineEvent[] = [
-  {
-    id: "EVT-001",
-    timestamp: "2024-04-15 08:35",
-    type: "Status Change",
-    description: "Operation started",
-    user: "John Smith",
-    details: "Status changed from Pending to In Progress",
-  },
-  {
-    id: "EVT-002",
-    timestamp: "2024-04-15 08:50",
-    type: "Operator Action",
-    description: "Setup completed",
-    user: "John Smith",
-    details: "Machine setup and calibration completed",
-  },
-  {
-    id: "EVT-003",
-    timestamp: "2024-04-15 09:00",
-    type: "Material Event",
-    description: "Material LOT-2024-0415-001 scanned",
-    user: "John Smith",
-  },
-  {
-    id: "EVT-004",
-    timestamp: "2024-04-15 10:30",
-    type: "Quality Event",
-    description: "QC checkpoint passed",
-    user: "Mary Johnson",
-    details: "Bore Diameter Check - Passed",
-  },
-];
-
-type TabType = "overview" | "quality" | "materials" | "timeline" | "documents";
-
 export function OperationExecutionDetail() {
   const { operationId } = useParams();
   const navigate = useNavigate();
@@ -171,6 +70,107 @@ export function OperationExecutionDetail() {
   const [operation, setOperation] = useState<OperationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Read-only placeholder data for tabs not yet backed by API endpoints.
+  const readOnlyQCCheckpoints: QCCheckpoint[] = [
+    {
+      id: "QC-001",
+      name: t("opDetail.qc.boreDiameterCheck"),
+      type: "Dimensional",
+      status: "Passed",
+      result: t("opDetail.qc.withinTolerance"),
+      inspector: "Mary Johnson",
+      timestamp: "2024-04-15 10:30",
+      specification: "50.00mm +/- 0.01mm",
+      actualValue: "50.005mm",
+    },
+    {
+      id: "QC-002",
+      name: t("opDetail.qc.surfaceFinishInspection"),
+      type: "Visual",
+      status: "Passed",
+      result: t("opDetail.qc.noDefects"),
+      inspector: "Mary Johnson",
+      timestamp: "2024-04-15 10:35",
+      specification: "Ra 1.6um max",
+      actualValue: "Ra 1.2um",
+    },
+    {
+      id: "QC-003",
+      name: t("opDetail.qc.perpendicularityCheck"),
+      type: "Dimensional",
+      status: "Pending",
+      specification: "0.05mm per 100mm",
+    },
+  ];
+
+  const readOnlyMaterials: MaterialItem[] = [
+    {
+      id: "MAT-001",
+      materialCode: "STL-4140",
+      materialName: t("opDetail.material.alloySteel4140"),
+      requiredQty: 50,
+      consumedQty: 32,
+      unit: "pcs",
+      lotNumber: "LOT-2024-0415-001",
+      status: "In Use",
+    },
+    {
+      id: "MAT-002",
+      materialCode: "TOOL-CB-10",
+      materialName: t("opDetail.material.carbideDrillBit10mm"),
+      requiredQty: 1,
+      consumedQty: 1,
+      unit: "pcs",
+      lotNumber: "TOOL-2024-0401",
+      status: "In Use",
+    },
+    {
+      id: "MAT-003",
+      materialCode: "COOL-SYN-5L",
+      materialName: t("opDetail.material.syntheticCoolant"),
+      requiredQty: 10,
+      consumedQty: 6.5,
+      unit: "L",
+      status: "In Use",
+    },
+  ];
+
+  const readOnlyTimeline: TimelineEvent[] = [
+    {
+      id: "EVT-001",
+      timestamp: "2024-04-15 08:35",
+      type: "Status Change",
+      description: t("opDetail.timeline.operationStarted"),
+      user: "John Smith",
+      details: t("opDetail.timeline.statusChanged", { from: t("common.status.pending"), to: t("common.status.inProgress") }),
+    },
+    {
+      id: "EVT-002",
+      timestamp: "2024-04-15 08:50",
+      type: "Operator Action",
+      description: t("opDetail.timeline.setupCompleted"),
+      user: "John Smith",
+      details: t("opDetail.timeline.machineSetup"),
+    },
+    {
+      id: "EVT-003",
+      timestamp: "2024-04-15 09:00",
+      type: "Material Event",
+      description: t("opDetail.timeline.materialScanned", { lot: "LOT-2024-0415-001" }),
+      user: "John Smith",
+    },
+    {
+      id: "EVT-004",
+      timestamp: "2024-04-15 10:30",
+      type: "Quality Event",
+      description: t("opDetail.timeline.qcCheckpointPassed"),
+      user: "Mary Johnson",
+      details: t("opDetail.timeline.boreDiameterCheckPassed"),
+    },
+  ];
+
+type TabType = "overview" | "quality" | "materials" | "timeline" | "documents";
 
   // Gantt back-navigation context restored from URL params.
   const fromGantt = searchParams.get('from') === 'gantt';
