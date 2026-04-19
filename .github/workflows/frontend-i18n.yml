@@ -1,0 +1,41 @@
+name: Frontend i18n
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/frontend-i18n.yml"
+      - "frontend/package.json"
+      - "frontend/scripts/check_i18n_hardcode.sh"
+      - "frontend/scripts/check_i18n_registry_parity.mjs"
+      - "frontend/src/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/frontend-i18n.yml"
+      - "frontend/package.json"
+      - "frontend/scripts/check_i18n_hardcode.sh"
+      - "frontend/scripts/check_i18n_registry_parity.mjs"
+      - "frontend/src/**"
+
+jobs:
+  lint-i18n:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install frontend dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run i18n lint
+        run: npm run lint:i18n
