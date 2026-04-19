@@ -72,6 +72,7 @@ import {
   mapExecutionStatusText,
 } from "@/app/api";
 import { useI18n } from "@/app/i18n";
+import type { I18nSemanticKey } from "@/app/i18n/keys";
 
 // ── Numeric Keypad Overlay ────────────────────────────────────────────────────
 
@@ -254,7 +255,7 @@ function QueueList({ items, loading, activeOperationId, onSelect }: QueueListPro
                 </p>
               </div>
               <StatusBadge variant={mapExecutionStatusBadgeVariant(item.status)}>
-                {mapExecutionStatusText(item.status)}
+                {t(mapExecutionStatusText(item.status) as I18nSemanticKey)}
               </StatusBadge>
             </div>
             <p className="text-xs text-gray-500 mt-1">{item.operation_number}</p>
@@ -312,6 +313,10 @@ export function StationExecution() {
   const [stationScope, setStationScope] = useState<string>("-");
   const [queueItems, setQueueItems] = useState<StationQueueItem[]>([]);
   const [queueOverlayOpen, setQueueOverlayOpen] = useState(false);
+
+  const getStatusLabel = (status: OperationDetail["status"]): string => {
+    return t(mapExecutionStatusText(status) as I18nSemanticKey);
+  };
 
   // canStartDowntime must be declared after operation is defined
   const canStartDowntime = operation && ["IN_PROGRESS", "PAUSED"].includes(operation.status);
@@ -436,7 +441,7 @@ export function StationExecution() {
       const data = await operationApi.start(operation.id, {
         operator_id: currentUser?.user_id ?? null,
       });
-      toast.success(t("station.toast.clockedOn") + mapExecutionStatusText(data.status));
+      toast.success(t("station.toast.clockedOn") + getStatusLabel(data.status));
     } catch (err) {
       if (err instanceof HttpError && err.status === 403) {
         toast.error(t("station.claim.required"));
@@ -461,7 +466,7 @@ export function StationExecution() {
         scrap_qty: scrapQty,
         operator_id: null,
       });
-      toast.success(t("station.toast.quantityReported") + mapExecutionStatusText(data.status));
+      toast.success(t("station.toast.quantityReported") + getStatusLabel(data.status));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("station.toast.actionFailed"));
     } finally {
@@ -483,7 +488,7 @@ export function StationExecution() {
     setActionLoading(true);
     try {
       const data = await operationApi.pause(operation.id, {});
-      toast.success(t("station.toast.paused") + mapExecutionStatusText(data.status));
+      toast.success(t("station.toast.paused") + getStatusLabel(data.status));
     } catch (err) {
       if (err instanceof HttpError && err.status === 403) {
         toast.error(t("station.claim.required"));
@@ -505,7 +510,7 @@ export function StationExecution() {
     setActionLoading(true);
     try {
       const data = await operationApi.resume(operation.id, {});
-      toast.success(t("station.toast.resumed") + mapExecutionStatusText(data.status));
+      toast.success(t("station.toast.resumed") + getStatusLabel(data.status));
     } catch (err) {
       if (err instanceof HttpError && err.status === 403) {
         toast.error(t("station.claim.required"));
@@ -532,7 +537,7 @@ export function StationExecution() {
         operator_id: currentUser?.user_id ?? null,
         completed_at: new Date().toISOString(),
       });
-      toast.success(t("station.toast.clockedOff") + mapExecutionStatusText(data.status));
+      toast.success(t("station.toast.clockedOff") + getStatusLabel(data.status));
     } catch (err) {
       if (err instanceof HttpError && err.status === 403) {
         toast.error(t("station.claim.required"));
@@ -583,7 +588,7 @@ export function StationExecution() {
                     variant={mapExecutionStatusBadgeVariant(operation.status)}
                     size="sm"
                   >
-                    {t(mapExecutionStatusText(operation.status) as import("@/app/i18n/keys").I18nSemanticKey)}
+                    {getStatusLabel(operation.status)}
                   </StatusBadge>
                 </div>
               </div>
@@ -665,7 +670,7 @@ export function StationExecution() {
             variant={mapExecutionStatusBadgeVariant(operation.status)}
             size="sm"
           >
-            {t(mapExecutionStatusText(operation.status) as import("@/app/i18n/keys").I18nSemanticKey)}
+            {getStatusLabel(operation.status)}
           </StatusBadge>
         </div>
         <div className="flex items-center gap-2 shrink-0">
