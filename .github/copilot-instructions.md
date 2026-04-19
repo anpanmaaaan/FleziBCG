@@ -1,5 +1,5 @@
 ## MOM Lite — Coding Entry Instructions
-Before coding, always read these documents in order:
+Before coding, always read these documents as instruction in order:
 1. `/workspaces/FleziBCG/.github/agent/AGENT.md`
 2. `docs/system/mes-business-logic-v1.md`
 3. `docs/governance/CODING_RULES.md`

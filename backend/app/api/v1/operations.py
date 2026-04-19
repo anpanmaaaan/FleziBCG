@@ -7,11 +7,27 @@ from app.schemas.operation import (
     OperationAbortRequest,
     OperationCompleteRequest,
     OperationDetail,
+    OperationPauseRequest,
     OperationReportQuantityRequest,
+    OperationResumeRequest,
     OperationStartRequest,
+    OperationStartDowntimeRequest,
 )
 from app.security.dependencies import RequestIdentity, require_action, require_permission
-from app.services.operation_service import StartOperationConflictError, CompleteOperationConflictError, abort_operation, derive_operation_detail, start_operation, report_quantity, complete_operation
+from app.services.operation_service import (
+    CompleteOperationConflictError,
+    PauseExecutionConflictError,
+    ResumeExecutionConflictError,
+    StartOperationConflictError,
+    abort_operation,
+    complete_operation,
+    derive_operation_detail,
+    pause_operation,
+    report_quantity,
+    resume_operation,
+    start_operation,
+    start_downtime,
+)
 from app.services.station_claim_service import ensure_operation_claim_owned_by_identity
 
 router = APIRouter()
@@ -83,6 +99,66 @@ def report_quantity_endpoint(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
+@router.post("/operations/{operation_id}/pause", response_model=OperationDetail)
+def pause_operation_endpoint(
+    operation_id: int,
+    request: OperationPauseRequest,
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(require_action("execution.pause")),
+):
+    operation = get_operation_by_id(db, operation_id)
+    if not operation or operation.tenant_id != identity.tenant_id:
+        raise HTTPException(status_code=404, detail="Operation not found")
+
+    try:
+        ensure_operation_claim_owned_by_identity(db, identity, operation_id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+
+    try:
+        return pause_operation(
+            db,
+            operation,
+            request,
+            actor_user_id=identity.user_id,
+            tenant_id=identity.tenant_id,
+        )
+    except PauseExecutionConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/operations/{operation_id}/resume", response_model=OperationDetail)
+def resume_operation_endpoint(
+    operation_id: int,
+    request: OperationResumeRequest,
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(require_action("execution.resume")),
+):
+    operation = get_operation_by_id(db, operation_id)
+    if not operation or operation.tenant_id != identity.tenant_id:
+        raise HTTPException(status_code=404, detail="Operation not found")
+
+    try:
+        ensure_operation_claim_owned_by_identity(db, identity, operation_id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+
+    try:
+        return resume_operation(
+            db,
+            operation,
+            request,
+            actor_user_id=identity.user_id,
+            tenant_id=identity.tenant_id,
+        )
+    except ResumeExecutionConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
 @router.post("/operations/{operation_id}/complete", response_model=OperationDetail)
 def complete_operation_endpoint(
     operation_id: int,
@@ -120,6 +196,38 @@ def abort_operation_endpoint(
 
     try:
         return abort_operation(db, operation, request, tenant_id=identity.tenant_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/operations/{operation_id}/start-downtime", response_model=OperationDetail)
+def start_downtime_endpoint(
+    operation_id: int,
+    request: OperationStartDowntimeRequest,
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(require_action("execution.start_downtime")),
+):
+    operation = get_operation_by_id(db, operation_id)
+    if not operation or operation.tenant_id != identity.tenant_id:
+        raise HTTPException(status_code=404, detail="Operation not found")
+
+    try:
+        ensure_operation_claim_owned_by_identity(db, identity, operation_id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+
+    from app.services.operation_service import start_downtime, StartDowntimeConflictError
+
+    try:
+        return start_downtime(
+            db,
+            operation,
+            request,
+            actor_user_id=identity.user_id,
+            tenant_id=identity.tenant_id,
+        )
+    except StartDowntimeConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

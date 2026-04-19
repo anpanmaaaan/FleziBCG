@@ -119,6 +119,24 @@ def mark_operation_reported(
     return operation
 
 
+def mark_operation_paused(db: Session, operation: Operation) -> Operation:
+    operation.status = StatusEnum.paused.value
+
+    db.add(operation)
+    db.commit()
+    db.refresh(operation)
+    return operation
+
+
+def mark_operation_resumed(db: Session, operation: Operation) -> Operation:
+    operation.status = StatusEnum.in_progress.value
+
+    db.add(operation)
+    db.commit()
+    db.refresh(operation)
+    return operation
+
+
 def mark_operation_completed(
     db: Session, operation: Operation, completed_at: datetime
 ) -> Operation:

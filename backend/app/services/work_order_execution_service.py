@@ -13,6 +13,7 @@ def _is_completed_operation(status: str) -> bool:
 def _is_started_operation(status: str) -> bool:
     return status in {
         StatusEnum.in_progress.value,
+        StatusEnum.paused.value,
         StatusEnum.completed.value,
         StatusEnum.completed_late.value,
         StatusEnum.aborted.value,

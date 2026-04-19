@@ -4,16 +4,17 @@ type StatusBadgeVariant = "success" | "warning" | "error" | "info" | "neutral";
 
 export const mapExecutionStatusText = (status: OperationExecutionStatus): string => {
   const normalizedStatus = String(status).toUpperCase();
-
   switch (normalizedStatus) {
     case "PLANNED":
-      return "Planned";
+      return "station.status.planned";
     case "IN_PROGRESS":
-      return "In Progress";
+      return "station.status.inProgress";
+    case "PAUSED":
+      return "station.status.paused";
     case "COMPLETED":
-      return "Completed";
+      return "station.status.completed";
     case "ABORTED":
-      return "Aborted";
+      return "station.status.aborted";
     default:
       return String(status);
   }
@@ -29,6 +30,8 @@ export const mapExecutionStatusBadgeVariant = (
       return "success";
     case "IN_PROGRESS":
       return "info";
+    case "PAUSED":
+      return "warning";
     case "PLANNED":
       return "neutral";
     case "ABORTED":

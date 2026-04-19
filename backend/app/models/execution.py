@@ -23,6 +23,22 @@ class ExecutionEventType(str, Enum):
     QC_MEASURE_RECORDED = "QC_MEASURE_RECORDED"
     OP_COMPLETED = "OP_COMPLETED"
     OP_ABORTED = "OP_ABORTED"
+    # Canonical v1 event names per station-execution-command-event-contracts.md §7.5/§7.6.
+    # New events introduced after the canonical-naming directive use lower_snake
+    # strings; legacy UPPER_SNAKE entries above remain until the envelope migration.
+    EXECUTION_PAUSED = "execution_paused"
+    EXECUTION_RESUMED = "execution_resumed"
+    DOWNTIME_STARTED = "downtime_started"
+
+
+# Interim downtime reason catalog (minimal, replace with canonical infra when available)
+class DowntimeReasonClass(str, Enum):
+    UNSPECIFIED = "UNSPECIFIED"
+    PLANNED_MAINTENANCE = "PLANNED_MAINTENANCE"
+    UNPLANNED_BREAKDOWN = "UNPLANNED_BREAKDOWN"
+    MATERIAL_SHORTAGE = "MATERIAL_SHORTAGE"
+    QUALITY_HOLD = "QUALITY_HOLD"
+    OTHER = "OTHER"
 
 
 class ExecutionEvent(Base):

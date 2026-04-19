@@ -17,6 +17,7 @@ class StatusEnum(str, Enum):
     planned = "PLANNED"
     pending = "PENDING"
     in_progress = "IN_PROGRESS"
+    paused = "PAUSED"
     completed = "COMPLETED"
     completed_late = "COMPLETED_LATE"
     aborted = "ABORTED"

@@ -1,3 +1,62 @@
+import { type DowntimeReasonClass } from "@/app/api/operationApi";
+const DOWNTIME_REASONS: { value: DowntimeReasonClass; label: string }[] = [
+  { value: "PLANNED_MAINTENANCE", label: "station.downtime.reason.plannedMaintenance" },
+  { value: "UNPLANNED_BREAKDOWN", label: "station.downtime.reason.unplannedBreakdown" },
+  { value: "MATERIAL_SHORTAGE", label: "station.downtime.reason.materialShortage" },
+  { value: "QUALITY_HOLD", label: "station.downtime.reason.qualityHold" },
+  { value: "OTHER", label: "station.downtime.reason.other" },
+];
+function StartDowntimeModal({ open, onClose, onSubmit, loading }: {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (reason: DowntimeReasonClass, note: string) => void;
+  loading: boolean;
+}) {
+  const { t } = useI18n();
+  const [reason, setReason] = useState<DowntimeReasonClass>("PLANNED_MAINTENANCE");
+  const [note, setNote] = useState("");
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-96" onClick={e => e.stopPropagation()}>
+        <h2 className="text-lg font-bold mb-4">{t("station.action.startDowntime")}</h2>
+        <label className="block mb-2 text-sm font-medium text-gray-700">
+          {t("station.downtime.reason.label")}
+          <select
+            className="mt-1 block w-full border border-gray-300 rounded-lg p-2"
+            value={reason}
+            onChange={e => setReason(e.target.value as DowntimeReasonClass)}
+            disabled={loading}
+          >
+            {DOWNTIME_REASONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{t(opt.label as any)}</option>
+            ))}
+          </select>
+        </label>
+        <label className="block mb-2 text-sm font-medium text-gray-700">
+          {t("station.downtime.note.label")}
+          <input
+            className="mt-1 block w-full border border-gray-300 rounded-lg p-2"
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder={t("station.downtime.note.placeholder")}
+            disabled={loading}
+          />
+        </label>
+        <div className="flex gap-2 mt-4 justify-end">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700" disabled={loading}>{t("common.action.cancel")}</button>
+          <button
+            onClick={() => onSubmit(reason, note)}
+            className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-50"
+            disabled={loading}
+          >
+            {t("station.action.startDowntime")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router";
 import { PageHeader } from "@/app/components";
@@ -209,6 +268,34 @@ function QueueList({ items, loading, activeOperationId, onSelect }: QueueListPro
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export function StationExecution() {
+    const [downtimeModalOpen, setDowntimeModalOpen] = useState(false);
+    const [downtimeLoading, setDowntimeLoading] = useState(false);
+
+      // ...existing code...
+      // ...existing code...
+      // ...existing code...
+    // ...existing code...
+    const startDowntime = async (reason: DowntimeReasonClass, note: string) => {
+      if (!operation) return;
+      setDowntimeLoading(true);
+      try {
+        await operationApi.startDowntime(operation.id, { reason_class: reason, note });
+        toast.success(t("station.toast.downtimeStarted"));
+        setDowntimeModalOpen(false);
+        await fetchOperation(String(operation.id));
+        await refreshQueue();
+      } catch (err) {
+        let msg = t("station.toast.downtimeFailed");
+        if (err instanceof HttpError && err.status === 409 && typeof err.detail === "string") {
+          if (err.detail.startsWith("STATE_")) msg = t(`station.reject.${err.detail}` as never);
+          else if (err.detail.startsWith("DOWNTIME_")) msg = t(`station.reject.${err.detail}` as never);
+          else if (err.detail.startsWith("INVALID_")) msg = t(`station.reject.${err.detail}` as never);
+        }
+        toast.error(msg);
+      } finally {
+        setDowntimeLoading(false);
+      }
+    };
   const { t } = useI18n();
   const { currentUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -225,6 +312,9 @@ export function StationExecution() {
   const [stationScope, setStationScope] = useState<string>("-");
   const [queueItems, setQueueItems] = useState<StationQueueItem[]>([]);
   const [queueOverlayOpen, setQueueOverlayOpen] = useState(false);
+
+  // canStartDowntime must be declared after operation is defined
+  const canStartDowntime = operation && ["IN_PROGRESS", "PAUSED"].includes(operation.status);
 
   // Initial queue load on mount
   useEffect(() => { void refreshQueue(); }, []);
@@ -381,6 +471,57 @@ export function StationExecution() {
     }
   };
 
+  const rejectReasonKey = (detail: unknown): string | null => {
+    if (typeof detail !== "string") return null;
+    const code = detail.trim();
+    if (!code.startsWith("STATE_")) return null;
+    return `station.reject.${code}`;
+  };
+
+  const pauseOperation = async () => {
+    if (!operation) return;
+    setActionLoading(true);
+    try {
+      const data = await operationApi.pause(operation.id, {});
+      toast.success(t("station.toast.paused") + mapExecutionStatusText(data.status));
+    } catch (err) {
+      if (err instanceof HttpError && err.status === 403) {
+        toast.error(t("station.claim.required"));
+      } else if (err instanceof HttpError && err.status === 409) {
+        const key = rejectReasonKey(err.detail);
+        toast.error(key ? t(key as never) : t("station.toast.pauseFailed"));
+      } else {
+        toast.error(err instanceof Error ? err.message : t("station.toast.pauseFailed"));
+      }
+    } finally {
+      setActionLoading(false);
+      await fetchOperation(String(operation.id));
+      await refreshQueue();
+    }
+  };
+
+  const resumeOperation = async () => {
+    if (!operation) return;
+    setActionLoading(true);
+    try {
+      const data = await operationApi.resume(operation.id, {});
+      toast.success(t("station.toast.resumed") + mapExecutionStatusText(data.status));
+    } catch (err) {
+      if (err instanceof HttpError && err.status === 403) {
+        toast.error(t("station.claim.required"));
+      } else if (err instanceof HttpError && err.status === 409) {
+        const key = rejectReasonKey(err.detail);
+        toast.error(key ? t(key as never) : t("station.toast.resumeFailed"));
+      } else {
+        toast.error(err instanceof Error ? err.message : t("station.toast.resumeFailed"));
+      }
+    } finally {
+      setActionLoading(false);
+      await fetchOperation(String(operation.id));
+      await refreshQueue();
+    }
+  };
+
   const completeOperation = async () => {
     if (!operation) return;
     const confirmed = window.confirm(t("station.confirm.clockOff"));
@@ -442,7 +583,7 @@ export function StationExecution() {
                     variant={mapExecutionStatusBadgeVariant(operation.status)}
                     size="sm"
                   >
-                    {mapExecutionStatusText(operation.status)}
+                    {t(mapExecutionStatusText(operation.status) as import("@/app/i18n/keys").I18nSemanticKey)}
                   </StatusBadge>
                 </div>
               </div>
@@ -524,7 +665,7 @@ export function StationExecution() {
             variant={mapExecutionStatusBadgeVariant(operation.status)}
             size="sm"
           >
-            {mapExecutionStatusText(operation.status)}
+            {t(mapExecutionStatusText(operation.status) as import("@/app/i18n/keys").I18nSemanticKey)}
           </StatusBadge>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -666,15 +807,63 @@ export function StationExecution() {
               >
                 {t("station.action.reportQty")}
               </button>
-              <button
-                onClick={() => void completeOperation()}
-                disabled={actionLoading || !canExecuteByClaim}
-                title={!canExecuteByClaim ? t("station.claim.required") : undefined}
-                className="w-full h-16 bg-orange-600 text-white text-xl font-bold rounded-2xl hover:bg-orange-700 disabled:opacity-50 active:scale-[0.98] transition"
-              >
-                {t("station.action.clockOff")}
-              </button>
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  onClick={() => void pauseOperation()}
+                  disabled={actionLoading || !canExecuteByClaim}
+                  title={!canExecuteByClaim ? t("station.claim.required") : undefined}
+                  className="h-16 bg-amber-500 text-white text-lg font-semibold rounded-2xl hover:bg-amber-600 disabled:opacity-50 active:scale-[0.98] transition"
+                >
+                  {t("station.action.pause")}
+                </button>
+                <button
+                  onClick={() => setDowntimeModalOpen(true)}
+                  disabled={downtimeLoading || !canExecuteByClaim || !canStartDowntime}
+                  title={!canExecuteByClaim ? t("station.claim.required") : undefined}
+                  className="h-16 bg-blue-500 text-white text-lg font-semibold rounded-2xl hover:bg-blue-600 disabled:opacity-50 active:scale-[0.98] transition"
+                >
+                  {t("station.action.startDowntime")}
+                </button>
+                <button
+                  onClick={() => void completeOperation()}
+                  disabled={actionLoading || !canExecuteByClaim}
+                  title={!canExecuteByClaim ? t("station.claim.required") : undefined}
+                  className="h-16 bg-orange-600 text-white text-xl font-bold rounded-2xl hover:bg-orange-700 disabled:opacity-50 active:scale-[0.98] transition"
+                >
+                  {t("station.action.clockOff")}
+                </button>
+              </div>
             </div>
+            <StartDowntimeModal
+              open={downtimeModalOpen}
+              onClose={() => setDowntimeModalOpen(false)}
+              onSubmit={startDowntime}
+              loading={downtimeLoading}
+            />
+          </div>
+        )}
+
+        {/* PAUSED → Resume */}
+        {operation.status === "PAUSED" && (
+          <div className="flex-1 flex flex-col justify-end gap-3 pb-2">
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center">
+              <p className="text-xl font-bold text-amber-800">
+                {t("station.status.pausedHeading")}
+              </p>
+              <p className="text-sm text-amber-700 mt-1">{t("station.paused.note")}</p>
+            </div>
+            {!canExecuteByClaim && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 text-center">
+                {t("station.claim.required")}
+              </div>
+            )}
+            <button
+              onClick={() => void resumeOperation()}
+              disabled={actionLoading || !canExecuteByClaim}
+              className="w-full h-16 bg-green-600 text-white text-xl font-bold rounded-2xl hover:bg-green-700 disabled:opacity-50 active:scale-[0.98] transition"
+            >
+              {t("station.action.resume")}
+            </button>
           </div>
         )}
       </div>

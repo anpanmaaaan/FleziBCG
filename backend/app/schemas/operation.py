@@ -67,3 +67,20 @@ class OperationCompleteRequest(BaseModel):
 class OperationAbortRequest(BaseModel):
     operator_id: str | None = None
     reason_code: str | None = None
+
+
+class OperationPauseRequest(BaseModel):
+    reason_code: str | None = None
+    note: str | None = None
+
+
+
+# Request schema for start_downtime
+from app.models.execution import DowntimeReasonClass
+
+class OperationStartDowntimeRequest(BaseModel):
+    reason_class: DowntimeReasonClass
+    note: str | None = None
+
+class OperationResumeRequest(BaseModel):
+    note: str | None = None

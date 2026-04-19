@@ -1,6 +1,29 @@
 import type { I18nRegistry } from "@/app/i18n/keys";
 
 export const jaRegistry: I18nRegistry = {
+  // ── station status ──
+  "station.status.planned": "計画済",
+  "station.status.inProgress": "進行中",
+  "station.status.paused": "一時停止",
+  "station.status.aborted": "中止",
+
+  // ── station downtime ──
+  "station.action.startDowntime": "ダウンタイム開始",
+  "station.downtime.reason.label": "ダウンタイム理由",
+  "station.downtime.reason.plannedMaintenance": "計画保全",
+  "station.downtime.reason.unplannedBreakdown": "突発故障",
+  "station.downtime.reason.materialShortage": "材料不足",
+  "station.downtime.reason.qualityHold": "品質保留",
+  "station.downtime.reason.other": "その他",
+  "station.downtime.note.label": "メモ（任意）",
+  "station.downtime.note.placeholder": "メモを追加（任意）",
+  "station.toast.downtimeStarted": "ダウンタイムを開始しました。",
+  "station.toast.downtimeFailed": "ダウンタイムの開始に失敗しました。",
+  "station.reject.DOWNTIME_ALREADY_OPEN": "この工程には既にダウンタイムが開いています。",
+  "station.reject.STATE_CLOSED": "工程は閉じており、ダウンタイムは許可されていません。",
+  "station.reject.STATE_NOT_RUNNING_OR_PAUSED": "ダウンタイムは実行中または一時停止中のみ開始できます。",
+  "station.reject.INVALID_REASON_CLASS": "有効なダウンタイム理由を選択してください。",
+
   // ── app ──
   "app.name": "MES Lite",
 
@@ -129,6 +152,18 @@ export const jaRegistry: I18nRegistry = {
   "station.toast.quantityReported": "数量報告済 — ステータス: ",
   "station.toast.clockedOff": "作業完了 — ステータス: ",
   "station.toast.alreadyCompleted": "工程は既に完了しています。",
+  "station.action.pause": "一時停止",
+  "station.action.resume": "再開",
+  "station.status.pausedHeading": "実行一時停止中",
+  "station.paused.note": "再開すると数量報告と作業完了を続行できます。",
+  "station.toast.paused": "実行を一時停止しました — ステータス: ",
+  "station.toast.resumed": "実行を再開しました — ステータス: ",
+  "station.toast.pauseFailed": "実行の一時停止に失敗しました。",
+  "station.toast.resumeFailed": "実行の再開に失敗しました。",
+  "station.reject.STATE_ALREADY_PAUSED": "実行は既に一時停止中です。",
+  "station.reject.STATE_NOT_RUNNING": "実行中ではないため、一時停止できません。",
+  "station.reject.STATE_NOT_PAUSED": "一時停止中ではないため、再開できません。",
+  "station.reject.STATE_STATION_BUSY": "このステーションで別の実行が進行中です。",
 
   // ── home ──
   "home.stats.activeLines": "稼働ライン",

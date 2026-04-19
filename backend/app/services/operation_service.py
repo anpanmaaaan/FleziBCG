@@ -1,3 +1,73 @@
+
+
+from sqlalchemy.orm import Session
+from app.schemas.operation import OperationDetail
+
+class StartDowntimeConflictError(ValueError):
+    pass
+
+def start_downtime(
+    db: Session,
+    operation,
+    request,
+    actor_user_id: str,
+    tenant_id: str = "default",
+) -> OperationDetail:
+    """
+    Start downtime for an operation. Allowed only if status is RUNNING or PAUSED, no open downtime, not completed/closed.
+    Requires valid reason_class. Persists downtime_started event. Updates state per policy.
+    """
+    from app.models.execution import DowntimeReasonClass, ExecutionEventType
+    from app.schemas.operation import OperationStartDowntimeRequest
+
+    if operation.tenant_id != tenant_id:
+        raise StartDowntimeConflictError("TENANT_MISMATCH")
+    if operation.status not in (StatusEnum.in_progress.value, StatusEnum.paused.value):
+        if operation.status in (StatusEnum.completed.value, StatusEnum.completed_late.value, StatusEnum.aborted.value):
+            raise StartDowntimeConflictError("STATE_CLOSED")
+        raise StartDowntimeConflictError("STATE_NOT_RUNNING_OR_PAUSED")
+
+    # Check for existing open downtime (event log scan, minimal interim logic)
+    events = get_events_for_operation(db, operation.id)
+    downtime_open = any(e.event_type == ExecutionEventType.DOWNTIME_STARTED.value for e in events)
+    if downtime_open:
+        raise StartDowntimeConflictError("DOWNTIME_ALREADY_OPEN")
+
+    # Validate reason_class
+    if not hasattr(request, "reason_class") or request.reason_class not in DowntimeReasonClass:
+        raise StartDowntimeConflictError("INVALID_REASON_CLASS")
+
+    started_at = datetime.utcnow()
+    payload = {
+        "actor_user_id": actor_user_id,
+        "reason_class": request.reason_class,
+        "note": getattr(request, "note", None),
+        "started_at": started_at.isoformat(),
+    }
+
+    create_execution_event(
+        db=db,
+        event_type=ExecutionEventType.DOWNTIME_STARTED.value,
+        production_order_id=operation.work_order.production_order_id,
+        work_order_id=operation.work_order_id,
+        operation_id=operation.id,
+        payload=payload,
+        tenant_id=operation.tenant_id,
+    )
+
+    # Policy: If PAUSED, stay PAUSED. If RUNNING, become BLOCKED (minimal interim logic).
+    if operation.status == StatusEnum.in_progress.value:
+        operation.status = StatusEnum.blocked.value
+        db.add(operation)
+        db.commit()
+        db.refresh(operation)
+
+    # Re-read operation for state derivation and return detail.
+    operation = get_operation_by_id(db, operation.id)
+    if not operation:
+        raise ValueError("Operation not found after downtime start event.")
+
+    return derive_operation_detail(db, operation)
 from datetime import datetime
 from typing import Optional
 
@@ -14,6 +84,8 @@ from app.repositories.operation_repository import (
     get_in_progress_operations_by_station,
     mark_operation_started,
     mark_operation_reported,
+    mark_operation_paused,
+    mark_operation_resumed,
     mark_operation_completed,
     mark_operation_aborted,
 )
@@ -23,6 +95,8 @@ from app.schemas.operation import (
     OperationReportQuantityRequest,
     OperationCompleteRequest,
     OperationAbortRequest,
+    OperationPauseRequest,
+    OperationResumeRequest,
 )
 from app.services.work_order_execution_service import recompute_work_order
 
@@ -36,6 +110,16 @@ class StartOperationConflictError(ValueError):
 
 
 class CompleteOperationConflictError(ValueError):
+    pass
+
+
+# Machine-readable rejection codes for pause_execution, per
+# station-execution-command-event-contracts.md §10 error families.
+class PauseExecutionConflictError(ValueError):
+    pass
+
+
+class ResumeExecutionConflictError(ValueError):
     pass
 
 
@@ -58,6 +142,18 @@ def _derive_status(events: list) -> str:
     ):
         return StatusEnum.completed.value
     if any(event.event_type == ExecutionEventType.OP_STARTED.value for event in events):
+        # PAUSED/RUNNING is ordered last-wins between execution_paused and
+        # execution_resumed after start. Events are returned chronologically by
+        # the repository (created_at, id) so we can rely on iteration order.
+        last_runtime_event: str | None = None
+        for event in events:
+            if event.event_type in (
+                ExecutionEventType.EXECUTION_PAUSED.value,
+                ExecutionEventType.EXECUTION_RESUMED.value,
+            ):
+                last_runtime_event = event.event_type
+        if last_runtime_event == ExecutionEventType.EXECUTION_PAUSED.value:
+            return StatusEnum.paused.value
         return StatusEnum.in_progress.value
     # Current model intentionally converges PLANNED as execution-pending state.
     # UI mapping is responsible for rendering this as Pending/Ready for operators.
@@ -270,6 +366,120 @@ def complete_operation(
     operation = get_operation_by_id(db, operation.id)
     if not operation:
         raise ValueError("Operation not found after completion event")
+
+    return derive_operation_detail(db, operation)
+
+
+def pause_operation(
+    db: Session,
+    operation,
+    request: OperationPauseRequest,
+    *,
+    actor_user_id: str,
+    tenant_id: str = "default",
+) -> OperationDetail:
+    if operation.tenant_id != tenant_id:
+        raise ValueError("Operation does not belong to the requesting tenant.")
+
+    # State guard per station-execution-state-matrix.md PAUSE-001:
+    # allowed only when execution_status = RUNNING and closure_status = OPEN.
+    # Machine-readable rejection codes follow contracts §10 STATE_* family.
+    if operation.status in (
+        StatusEnum.completed.value,
+        StatusEnum.completed_late.value,
+        StatusEnum.aborted.value,
+    ):
+        raise PauseExecutionConflictError("STATE_CLOSED")
+    if operation.status == StatusEnum.paused.value:
+        raise PauseExecutionConflictError("STATE_ALREADY_PAUSED")
+    if operation.status != StatusEnum.in_progress.value:
+        raise PauseExecutionConflictError("STATE_NOT_RUNNING")
+
+    paused_at = datetime.utcnow()
+    payload = {
+        "actor_user_id": actor_user_id,
+        "reason_code": request.reason_code,
+        "note": request.note,
+        "paused_at": paused_at.isoformat(),
+    }
+
+    create_execution_event(
+        db=db,
+        event_type=ExecutionEventType.EXECUTION_PAUSED.value,
+        production_order_id=operation.work_order.production_order_id,
+        work_order_id=operation.work_order_id,
+        operation_id=operation.id,
+        payload=payload,
+        tenant_id=operation.tenant_id,
+    )
+
+    operation = mark_operation_paused(db, operation)
+
+    operation = get_operation_by_id(db, operation.id)
+    if not operation:
+        raise ValueError("Operation not found after pause event")
+
+    return derive_operation_detail(db, operation)
+
+
+def resume_operation(
+    db: Session,
+    operation,
+    request: OperationResumeRequest,
+    *,
+    actor_user_id: str,
+    tenant_id: str = "default",
+) -> OperationDetail:
+    if operation.tenant_id != tenant_id:
+        raise ValueError("Operation does not belong to the requesting tenant.")
+
+    # State guard per station-execution-state-matrix.md RESUME-001:
+    # allowed only when execution_status = PAUSED and closure_status = OPEN.
+    # Canonical rejections (open downtime, QC hold, review pending) are deferred
+    # until those state dimensions are modeled; see Remaining gaps.
+    if operation.status in (
+        StatusEnum.completed.value,
+        StatusEnum.completed_late.value,
+        StatusEnum.aborted.value,
+    ):
+        raise ResumeExecutionConflictError("STATE_CLOSED")
+    if operation.status != StatusEnum.paused.value:
+        raise ResumeExecutionConflictError("STATE_NOT_PAUSED")
+
+    # Competing running execution at same station (canonical: "no other execution
+    # already running"). An operation with status IN_PROGRESS is actively running;
+    # paused peers are fine.
+    competing = get_in_progress_operations_by_station(
+        db,
+        tenant_id=tenant_id,
+        station_scope_value=operation.station_scope_value,
+        exclude_operation_id=operation.id,
+    )
+    if competing:
+        raise ResumeExecutionConflictError("STATE_STATION_BUSY")
+
+    resumed_at = datetime.utcnow()
+    payload = {
+        "actor_user_id": actor_user_id,
+        "note": request.note,
+        "resumed_at": resumed_at.isoformat(),
+    }
+
+    create_execution_event(
+        db=db,
+        event_type=ExecutionEventType.EXECUTION_RESUMED.value,
+        production_order_id=operation.work_order.production_order_id,
+        work_order_id=operation.work_order_id,
+        operation_id=operation.id,
+        payload=payload,
+        tenant_id=operation.tenant_id,
+    )
+
+    operation = mark_operation_resumed(db, operation)
+
+    operation = get_operation_by_id(db, operation.id)
+    if not operation:
+        raise ValueError("Operation not found after resume event")
 
     return derive_operation_detail(db, operation)
 
