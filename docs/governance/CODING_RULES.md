@@ -87,13 +87,34 @@ AI may not silently mutate operational truth or bypass governance.
 
 All user-facing UI strings in the frontend must be resolved via `useI18n().t(key)`.
 
+### Mandatory rules
+- do not hardcode user-facing labels, button text, empty states, headings, badges, placeholders, helper text, dialog text, confirm text, or toast text in TS/TSX
+- do not render i18n keys directly to the UI; any value that is an i18n key must be translated at the render boundary via `t(...)`
+- values returned from mappers, selectors, status helpers, or API adapters that represent display text must be either:
+  - already localized final text, or
+  - explicit i18n keys that are translated by the consuming UI
+- never mix these two meanings in one helper without naming it clearly
+- locale registry files must remain static literal registries; do not add runtime merging, `require(...)`, computed synchronization, nested exports, or self-healing locale logic inside registry files
+- `en.ts` and `ja.ts` must remain key-synchronized; adding, renaming, or deleting a key in one registry requires the matching change in the other registry in the same PR
+- placeholder English copied from another locale is allowed only as a temporary fallback during implementation, but the matching key must still exist in both registries before merge
+
+### Verification requirements
+- when a PR changes user-facing frontend text, contributors must run `npm run lint:i18n`
+- when a PR changes any i18n registry file, contributors must also verify that `en.ts` and `ja.ts` contain the same key set
+- when a PR changes helpers that return status or label values consumed by UI, contributors must verify that the affected screen renders translated text rather than raw keys
+- `npm run lint:i18n` is the required verification entrypoint and must pass both hardcoded-string checks and locale registry parity checks
+
 To prevent regressions, a lint-like enforcement script is provided:
 
   npm run lint:i18n
 
 This script scans for common hardcoded string patterns in TSX files (e.g., JSX text nodes, toast/confirm/title literals) and fails if violations are found. All contributors must pass this check before PR approval.
 
-See `frontend/scripts/check_i18n_hardcode.sh` for details.
+Locale registry parity is enforced by:
+
+  npm run lint:i18n:registry
+
+See `frontend/scripts/check_i18n_hardcode.sh` and `frontend/scripts/check_i18n_registry_parity.mjs` for details.
 
 ---
 

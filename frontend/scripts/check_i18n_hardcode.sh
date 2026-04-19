@@ -13,7 +13,7 @@ PATTERNS=(
 
 FAIL=0
 for pattern in "${PATTERNS[@]}"; do
-  if grep -Pnr --include='*.tsx' "$pattern" ./src/app/pages | grep -v 't\('; then
+  if grep -Pnr --include='*.tsx' "$pattern" ./src/app/pages | grep -Fv 't('; then
     echo "[i18n-lint] Hardcoded string violation detected for pattern: $pattern"
     FAIL=1
   fi
