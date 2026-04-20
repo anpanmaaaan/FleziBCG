@@ -87,10 +87,12 @@ function NumericKeypad({ label, value, onConfirm, onClose }: KeypadProps) {
   const [draft, setDraft] = useState(String(value));
 
   const { t } = useI18n();
+  const KEY_CLR = "__CLR__";
+  const KEY_OK = "__OK__";
   const press = (key: string) => {
-    if (key === t("station.keypad.clr")) {
+    if (key === KEY_CLR) {
       setDraft("0");
-    } else if (key === t("station.keypad.ok")) {
+    } else if (key === KEY_OK) {
       onConfirm(Math.max(0, parseInt(draft, 10) || 0));
     } else {
       setDraft((prev) => {
@@ -100,11 +102,15 @@ function NumericKeypad({ label, value, onConfirm, onClose }: KeypadProps) {
     }
   };
 
-  const rows = [
-    ["7", "8", "9"],
-    ["4", "5", "6"],
-    ["1", "2", "3"],
-    [t("station.keypad.clr"), "0", t("station.keypad.ok")],
+  const rows: { id: string; label: string }[][] = [
+    [{ id: "7", label: "7" }, { id: "8", label: "8" }, { id: "9", label: "9" }],
+    [{ id: "4", label: "4" }, { id: "5", label: "5" }, { id: "6", label: "6" }],
+    [{ id: "1", label: "1" }, { id: "2", label: "2" }, { id: "3", label: "3" }],
+    [
+      { id: KEY_CLR, label: t("station.keypad.clr") },
+      { id: "0", label: "0" },
+      { id: KEY_OK, label: t("station.keypad.ok") },
+    ],
   ];
 
   return (
@@ -130,20 +136,20 @@ function NumericKeypad({ label, value, onConfirm, onClose }: KeypadProps) {
           {draft}
         </div>
         <div className="grid grid-cols-3 gap-3">
-          {rows.flat().map((key) => (
+          {rows.flat().map((entry) => (
             <button
-              key={key}
+              key={entry.id}
               type="button"
-              onClick={() => press(key)}
+              onClick={() => press(entry.id)}
               className={`h-14 rounded-xl text-lg font-semibold transition active:scale-95 ${
-                key === "OK"
+                entry.id === KEY_OK
                   ? "bg-blue-600 text-white hover:bg-blue-700"
-                  : key === "CLR"
+                  : entry.id === KEY_CLR
                   ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
                   : "bg-gray-100 text-gray-900 hover:bg-gray-200"
               }`}
             >
-              {key}
+              {entry.label}
             </button>
           ))}
         </div>
@@ -388,8 +394,10 @@ export function StationExecution() {
     try {
       const data = await stationApi.getOperationDetail(Number(trimmedId));
       setOperation(data);
-      setGoodQty(data.good_qty || 0);
-      setScrapQty(data.scrap_qty || 0);
+      // Quantity fields are deltas for the *next* report, not cumulative totals —
+      // reset to 0 whenever the selected operation changes.
+      setGoodQty(0);
+      setScrapQty(0);
       setSearchParams({ operationId: trimmedId });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("station.toast.loadOperationFailed"));
@@ -459,6 +467,10 @@ export function StationExecution() {
 
   const reportQuantity = async () => {
     if (!operation) return;
+    if (goodQty <= 0 && scrapQty <= 0) {
+      toast.error(t("station.input.deltaHint"));
+      return;
+    }
     setActionLoading(true);
     try {
       const data = await operationApi.reportQuantity(operation.id, {
@@ -467,12 +479,36 @@ export function StationExecution() {
         operator_id: null,
       });
       toast.success(t("station.toast.quantityReported") + getStatusLabel(data.status));
+      setGoodQty(0);
+      setScrapQty(0);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("station.toast.actionFailed"));
     } finally {
       setActionLoading(false);
       await fetchOperation(String(operation.id));
       await refreshQueue();
+    }
+  };
+
+  const endDowntime = async () => {
+    if (!operation) return;
+    setDowntimeLoading(true);
+    try {
+      await operationApi.endDowntime(operation.id, {});
+      toast.success(t("station.toast.downtimeEnded"));
+      await fetchOperation(String(operation.id));
+      await refreshQueue();
+    } catch (err) {
+      let msg = t("station.toast.downtimeEndFailed");
+      if (err instanceof HttpError && err.status === 409 && typeof err.detail === "string") {
+        const code = err.detail.trim();
+        if (code.startsWith("STATE_")) msg = t(`station.reject.${code}` as never);
+      } else if (err instanceof HttpError && err.status === 403) {
+        msg = t("station.claim.required");
+      }
+      toast.error(msg);
+    } finally {
+      setDowntimeLoading(false);
     }
   };
 
@@ -664,7 +700,7 @@ export function StationExecution() {
           <span className="text-sm text-gray-500 shrink-0 whitespace-nowrap">
             {t("station.workstation.label")} {stationScope}
           </span>
-          <span className="text-gray-300 shrink-0">|</span>
+          <span className="shrink-0 h-5 w-px bg-gray-300" aria-hidden="true" />
           <span className="font-semibold text-gray-900 truncate">{operation.name}</span>
           <StatusBadge
             variant={mapExecutionStatusBadgeVariant(operation.status)}
@@ -672,6 +708,11 @@ export function StationExecution() {
           >
             {getStatusLabel(operation.status)}
           </StatusBadge>
+          {operation.downtime_open && (
+            <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold">
+              ● {t("station.downtime.active.banner")}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
@@ -731,26 +772,66 @@ export function StationExecution() {
 
       {/* Execution body — must not scroll on iPad landscape */}
       <div className="flex-1 flex flex-col p-4 gap-3 overflow-hidden">
-        {/* Claim indicator */}
-        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-2 shrink-0">
-          <p className="text-sm font-medium text-green-800">{t("station.claim.ownedBadge")}</p>
+        {/* Context strip: WO / PO / started-at — only backend-derived fields */}
+        <div className="flex items-center justify-between gap-3 bg-white border rounded-xl px-4 py-2 shrink-0">
+          <div className="flex items-center gap-4 text-xs text-gray-600 min-w-0 flex-wrap">
+            <span className="whitespace-nowrap">
+              <span className="text-gray-400">{t("station.context.workOrder")}:</span>{" "}
+              <span className="font-semibold text-gray-800">{operation.work_order_number}</span>
+            </span>
+            <span className="whitespace-nowrap">
+              <span className="text-gray-400">{t("station.context.productionOrder")}:</span>{" "}
+              <span className="font-semibold text-gray-800">{operation.production_order_number}</span>
+            </span>
+            <span className="whitespace-nowrap">
+              <span className="text-gray-400">{t("station.context.startedAt")}:</span>{" "}
+              <span className="font-semibold text-gray-800">
+                {operation.actual_start
+                  ? new Date(operation.actual_start).toLocaleString()
+                  : t("station.context.notStarted")}
+              </span>
+            </span>
+          </div>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs font-semibold shrink-0">
+            {t("station.claim.ownedBadge")}
+          </span>
         </div>
 
-        {/* Quantity summary */}
-        <div className="grid grid-cols-3 gap-3 shrink-0">
+        {/* Quantity dashboard — explicit target / completed / remaining + totals */}
+        <div className="grid grid-cols-5 gap-2 shrink-0">
           <div className="bg-white rounded-xl border p-3 text-center">
-            <p className="text-xs text-gray-500 mb-1">{t("station.status.completed")}</p>
-            <p className="text-2xl font-bold text-gray-900">{operation.completed_qty}</p>
+            <p className="text-[11px] text-gray-500 mb-1">{t("station.qty.target")}</p>
+            <p className="text-xl font-bold text-gray-700">{operation.quantity}</p>
           </div>
           <div className="bg-white rounded-xl border p-3 text-center">
-            <p className="text-xs text-gray-500 mb-1">{t("station.qty.good")}</p>
-            <p className="text-2xl font-bold text-green-700">{operation.good_qty}</p>
+            <p className="text-[11px] text-gray-500 mb-1">{t("station.qty.completed")}</p>
+            <p className="text-xl font-bold text-gray-900">{operation.completed_qty}</p>
           </div>
           <div className="bg-white rounded-xl border p-3 text-center">
-            <p className="text-xs text-gray-500 mb-1">{t("station.qty.scrap")}</p>
-            <p className="text-2xl font-bold text-red-600">{operation.scrap_qty}</p>
+            <p className="text-[11px] text-gray-500 mb-1">{t("station.qty.remaining")}</p>
+            <p className="text-xl font-bold text-blue-700">
+              {Math.max(0, operation.quantity - operation.completed_qty)}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl border p-3 text-center">
+            <p className="text-[11px] text-gray-500 mb-1">{t("station.qty.totalGood")}</p>
+            <p className="text-xl font-bold text-green-700">{operation.good_qty}</p>
+          </div>
+          <div className="bg-white rounded-xl border p-3 text-center">
+            <p className="text-[11px] text-gray-500 mb-1">{t("station.qty.totalScrap")}</p>
+            <p className="text-xl font-bold text-red-600">{operation.scrap_qty}</p>
           </div>
         </div>
+
+        {/* Downtime banner when active — also reinforced by chip in header */}
+        {operation.downtime_open && operation.status !== "COMPLETED" && operation.status !== "ABORTED" && (
+          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 shrink-0">
+            <p className="text-sm font-semibold text-red-800">
+              ● {t("station.downtime.active.banner")}
+            </p>
+            <p className="text-xs text-red-700 mt-0.5">{t("station.downtime.active.hint")}</p>
+          </div>
+        )}
 
         {/* COMPLETED */}
         {operation.status === "COMPLETED" && (
@@ -774,6 +855,9 @@ export function StationExecution() {
         {/* PLANNED → Clock On */}
         {canClockOnByStatus && (
           <div className="flex-1 flex flex-col justify-end gap-3 pb-2">
+            <p className="text-sm text-gray-600 text-center">
+              {t("station.hint.nextAction.clockOn")}
+            </p>
             {!canExecuteByClaim && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 text-center">
                 {t("station.claim.required")}
@@ -789,22 +873,67 @@ export function StationExecution() {
           </div>
         )}
 
-        {/* IN_PROGRESS → Qty steppers + Report + Clock Off */}
+        {/* BLOCKED → End Downtime primary (downtime is the only current blocker) */}
+        {operation.status === "BLOCKED" && (
+          <div className="flex-1 flex flex-col justify-end gap-3 pb-2">
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
+              <p className="text-xl font-bold text-red-800">
+                {t("station.status.blockedHeading")}
+              </p>
+              <p className="text-sm text-red-700 mt-1">{t("station.blocked.downtimeNote")}</p>
+            </div>
+            <p className="text-sm text-gray-600 text-center">
+              {t("station.hint.nextAction.endDowntime")}
+            </p>
+            {!canExecuteByClaim && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 text-center">
+                {t("station.claim.required")}
+              </div>
+            )}
+            <button
+              onClick={() => void endDowntime()}
+              disabled={downtimeLoading || !canExecuteByClaim || !operation.downtime_open}
+              className="w-full h-16 bg-blue-600 text-white text-xl font-bold rounded-2xl hover:bg-blue-700 disabled:opacity-50 active:scale-[0.98] transition"
+            >
+              {t("station.action.endDowntime")}
+            </button>
+          </div>
+        )}
+
+        {/* IN_PROGRESS → Delta steppers + Report primary, Pause/Start Downtime secondary */}
         {operation.status === "IN_PROGRESS" && (
           <div className="flex-1 flex flex-col gap-3 min-h-0">
-            {/* Stepper inputs */}
-            <div className="bg-white rounded-xl border p-4 grid grid-cols-2 gap-6 shrink-0">
-              <Stepper label={t("station.input.goodQty")} value={goodQty} onChange={setGoodQty} />
-              <Stepper label={t("station.input.scrapQty")} value={scrapQty} onChange={setScrapQty} />
+            {/* Stepper inputs (delta, not cumulative) */}
+            <div className="bg-white rounded-xl border p-4 shrink-0">
+              <p className="text-xs text-gray-500 mb-3">{t("station.input.deltaHint")}</p>
+              <div className="grid grid-cols-2 gap-6">
+                <Stepper
+                  label={t("station.input.goodQtyDelta")}
+                  value={goodQty}
+                  onChange={setGoodQty}
+                />
+                <Stepper
+                  label={t("station.input.scrapQtyDelta")}
+                  value={scrapQty}
+                  onChange={setScrapQty}
+                />
+              </div>
             </div>
 
-            {/* Action buttons */}
+            {/* Execution actions — all execution-level.
+                Tier 1: Report Qty (primary, brand color).
+                Tier 2: Pause / Start Downtime (secondary, filled).
+                Tier 3: Complete Operation (tertiary, outline — de-emphasized
+                but still an execution action, not a session action). */}
             <div className="flex flex-col gap-3 shrink-0">
               {!canExecuteByClaim && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 text-center">
                   {t("station.claim.required")}
                 </div>
               )}
+              <p className="text-sm text-gray-600 text-center">
+                {t("station.hint.nextAction.reportQty")}
+              </p>
               <button
                 onClick={() => void reportQuantity()}
                 disabled={actionLoading || !canExecuteByClaim}
@@ -812,33 +941,34 @@ export function StationExecution() {
               >
                 {t("station.action.reportQty")}
               </button>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => void pauseOperation()}
                   disabled={actionLoading || !canExecuteByClaim}
                   title={!canExecuteByClaim ? t("station.claim.required") : undefined}
-                  className="h-16 bg-amber-500 text-white text-lg font-semibold rounded-2xl hover:bg-amber-600 disabled:opacity-50 active:scale-[0.98] transition"
+                  className="h-14 bg-amber-500 text-white text-base font-semibold rounded-2xl hover:bg-amber-600 disabled:opacity-50 active:scale-[0.98] transition"
                 >
                   {t("station.action.pause")}
                 </button>
                 <button
                   onClick={() => setDowntimeModalOpen(true)}
-                  disabled={downtimeLoading || !canExecuteByClaim || !canStartDowntime}
+                  disabled={downtimeLoading || !canExecuteByClaim || !canStartDowntime || operation.downtime_open}
                   title={!canExecuteByClaim ? t("station.claim.required") : undefined}
-                  className="h-16 bg-blue-500 text-white text-lg font-semibold rounded-2xl hover:bg-blue-600 disabled:opacity-50 active:scale-[0.98] transition"
+                  className="h-14 bg-slate-600 text-white text-base font-semibold rounded-2xl hover:bg-slate-700 disabled:opacity-50 active:scale-[0.98] transition"
                 >
                   {t("station.action.startDowntime")}
                 </button>
-                <button
-                  onClick={() => void completeOperation()}
-                  disabled={actionLoading || !canExecuteByClaim}
-                  title={!canExecuteByClaim ? t("station.claim.required") : undefined}
-                  className="h-16 bg-orange-600 text-white text-xl font-bold rounded-2xl hover:bg-orange-700 disabled:opacity-50 active:scale-[0.98] transition"
-                >
-                  {t("station.action.clockOff")}
-                </button>
               </div>
+              <button
+                onClick={() => void completeOperation()}
+                disabled={actionLoading || !canExecuteByClaim}
+                title={!canExecuteByClaim ? t("station.claim.required") : undefined}
+                className="w-full h-12 bg-white border-2 border-orange-500 text-orange-700 text-base font-semibold rounded-2xl hover:bg-orange-50 disabled:opacity-50 active:scale-[0.99] transition"
+              >
+                {t("station.action.completeOperation")}
+              </button>
             </div>
+
             <StartDowntimeModal
               open={downtimeModalOpen}
               onClose={() => setDowntimeModalOpen(false)}
@@ -848,7 +978,7 @@ export function StationExecution() {
           </div>
         )}
 
-        {/* PAUSED → Resume */}
+        {/* PAUSED → Resume (or End Downtime first if a downtime is still open) */}
         {operation.status === "PAUSED" && (
           <div className="flex-1 flex flex-col justify-end gap-3 pb-2">
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center">
@@ -857,18 +987,33 @@ export function StationExecution() {
               </p>
               <p className="text-sm text-amber-700 mt-1">{t("station.paused.note")}</p>
             </div>
+            <p className="text-sm text-gray-600 text-center">
+              {operation.downtime_open
+                ? t("station.hint.nextAction.endDowntime")
+                : t("station.hint.nextAction.resume")}
+            </p>
             {!canExecuteByClaim && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 text-center">
                 {t("station.claim.required")}
               </div>
             )}
-            <button
-              onClick={() => void resumeOperation()}
-              disabled={actionLoading || !canExecuteByClaim}
-              className="w-full h-16 bg-green-600 text-white text-xl font-bold rounded-2xl hover:bg-green-700 disabled:opacity-50 active:scale-[0.98] transition"
-            >
-              {t("station.action.resume")}
-            </button>
+            {operation.downtime_open ? (
+              <button
+                onClick={() => void endDowntime()}
+                disabled={downtimeLoading || !canExecuteByClaim}
+                className="w-full h-16 bg-blue-600 text-white text-xl font-bold rounded-2xl hover:bg-blue-700 disabled:opacity-50 active:scale-[0.98] transition"
+              >
+                {t("station.action.endDowntime")}
+              </button>
+            ) : (
+              <button
+                onClick={() => void resumeOperation()}
+                disabled={actionLoading || !canExecuteByClaim}
+                className="w-full h-16 bg-green-600 text-white text-xl font-bold rounded-2xl hover:bg-green-700 disabled:opacity-50 active:scale-[0.98] transition"
+              >
+                {t("station.action.resume")}
+              </button>
+            )}
           </div>
         )}
       </div>

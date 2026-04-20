@@ -257,6 +257,52 @@ def _derive_progress(operation_quantity: int, completed_qty: int) -> int:
     return min(int(completed_qty * 100 / operation_quantity), 100)
 
 
+# Mirrors the guards in start_operation / report_quantity / pause_operation /
+# resume_operation / complete_operation / start_downtime / end_downtime.
+# Identity-scoped guards (claim ownership, station-busy competition) are NOT
+# encoded — the command handlers still enforce those at request time.
+# Canonical names per station-execution-command-event-contracts.md §3.
+_CLOSED_STATUSES = frozenset(
+    {
+        StatusEnum.completed.value,
+        StatusEnum.completed_late.value,
+        StatusEnum.aborted.value,
+    }
+)
+
+
+def _derive_allowed_actions(status: str, downtime_open: bool) -> list[str]:
+    if status in _CLOSED_STATUSES:
+        return []
+
+    actions: list[str] = []
+
+    if status == StatusEnum.planned.value:
+        actions.append("start_execution")
+        return actions
+
+    if status == StatusEnum.in_progress.value:
+        # report_quantity / pause_operation / complete_operation each require
+        # status == IN_PROGRESS and nothing else at the snapshot level.
+        actions.append("report_production")
+        actions.append("pause_execution")
+        actions.append("complete_execution")
+
+    if status == StatusEnum.paused.value and not downtime_open:
+        actions.append("resume_execution")
+
+    if (
+        status in (StatusEnum.in_progress.value, StatusEnum.paused.value)
+        and not downtime_open
+    ):
+        actions.append("start_downtime")
+
+    if downtime_open:
+        actions.append("end_downtime")
+
+    return actions
+
+
 def derive_operation_detail(db: Session, operation) -> OperationDetail:
     events = get_events_for_operation(db, operation.id)
     actual_start = None
@@ -294,6 +340,10 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
     # projection-only and does NOT drive status — callers still use the
     # existing state machine for transitions.
     downtime_open = downtime_started_count > downtime_ended_count
+    # Projection uses operation.status (snapshot) rather than the derived
+    # `status` above so that snapshot-driven guards (e.g. BLOCKED) match the
+    # command handlers' expectations byte-for-byte.
+    allowed_actions = _derive_allowed_actions(operation.status, downtime_open)
 
     return OperationDetail(
         id=operation.id,
@@ -316,6 +366,7 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
         scrap_qty=scrap_qty,
         qc_required=operation.qc_required,
         downtime_open=downtime_open,
+        allowed_actions=allowed_actions,
     )
 
 

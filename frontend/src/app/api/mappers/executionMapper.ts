@@ -11,12 +11,16 @@ export const mapExecutionStatusText = (status: OperationExecutionStatus): string
       return "station.status.inProgress";
     case "PAUSED":
       return "station.status.paused";
+    case "BLOCKED":
+      return "station.status.blocked";
     case "COMPLETED":
       return "station.status.completed";
     case "ABORTED":
       return "station.status.aborted";
     default:
-      return String(status);
+      // Fall back to a safe existing i18n key so the badge never renders a raw
+      // status token. Callers that need exact rendering should pre-check.
+      return "station.status.planned";
   }
 };
 
@@ -32,6 +36,8 @@ export const mapExecutionStatusBadgeVariant = (
       return "info";
     case "PAUSED":
       return "warning";
+    case "BLOCKED":
+      return "error";
     case "PLANNED":
       return "neutral";
     case "ABORTED":

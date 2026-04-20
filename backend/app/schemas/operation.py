@@ -38,7 +38,6 @@ class OperationListItem(BaseModel):
 
 class OperationDetail(OperationListItem):
     work_order_id: int
-    work_order_number: str
     production_order_id: int
     production_order_number: str
     actual_start: datetime | None = None
@@ -50,6 +49,12 @@ class OperationDetail(OperationListItem):
     # true iff started_count > ended_count. Projected alongside status so
     # consumers can distinguish "blocked by downtime" without inspecting events.
     downtime_open: bool = False
+    # Per-operation command capabilities derived from current backend guards
+    # (status + downtime_open). Canonical command names per
+    # station-execution-command-event-contracts.md §3. Identity-scoped guards
+    # (claim ownership, station-busy) are NOT encoded here — callers must
+    # still enforce those. Missing action ⇒ backend will reject the command.
+    allowed_actions: list[str] = []
 
 
 class OperationStartRequest(BaseModel):

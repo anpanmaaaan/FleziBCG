@@ -17,8 +17,13 @@ export type OperationExecutionStatus =
   | "PLANNED"
   | "IN_PROGRESS"
   | "PAUSED"
+  | "BLOCKED"
   | "COMPLETED"
   | "ABORTED";
+
+export interface EndDowntimePayload {
+  note?: string | null;
+}
 
 export interface OperationDetail {
   id: number;
@@ -40,6 +45,7 @@ export interface OperationDetail {
   production_order_id: number;
   production_order_number: string;
   qc_required: boolean;
+  downtime_open: boolean;
 }
 
 export interface ReportQuantityPayload {
@@ -112,6 +118,13 @@ export const operationApi = {
 
   startDowntime(operationId: string | number, payload: StartDowntimePayload) {
     return request<OperationDetail>(`${operationPath(operationId)}/start-downtime`, {
+      method: "POST",
+      body: payload,
+    });
+  },
+
+  endDowntime(operationId: string | number, payload: EndDowntimePayload = {}) {
+    return request<OperationDetail>(`${operationPath(operationId)}/end-downtime`, {
       method: "POST",
       body: payload,
     });
