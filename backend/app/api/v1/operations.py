@@ -7,6 +7,7 @@ from app.schemas.operation import (
     OperationAbortRequest,
     OperationCompleteRequest,
     OperationDetail,
+    OperationEndDowntimeRequest,
     OperationPauseRequest,
     OperationReportQuantityRequest,
     OperationResumeRequest,
@@ -16,12 +17,14 @@ from app.schemas.operation import (
 from app.security.dependencies import RequestIdentity, require_action, require_permission
 from app.services.operation_service import (
     CompleteOperationConflictError,
+    EndDowntimeConflictError,
     PauseExecutionConflictError,
     ResumeExecutionConflictError,
     StartOperationConflictError,
     abort_operation,
     complete_operation,
     derive_operation_detail,
+    end_downtime,
     pause_operation,
     report_quantity,
     resume_operation,
@@ -227,6 +230,36 @@ def start_downtime_endpoint(
             tenant_id=identity.tenant_id,
         )
     except StartDowntimeConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/operations/{operation_id}/end-downtime", response_model=OperationDetail)
+def end_downtime_endpoint(
+    operation_id: int,
+    request: OperationEndDowntimeRequest,
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(require_action("execution.end_downtime")),
+):
+    operation = get_operation_by_id(db, operation_id)
+    if not operation or operation.tenant_id != identity.tenant_id:
+        raise HTTPException(status_code=404, detail="Operation not found")
+
+    try:
+        ensure_operation_claim_owned_by_identity(db, identity, operation_id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+
+    try:
+        return end_downtime(
+            db,
+            operation,
+            request,
+            actor_user_id=identity.user_id,
+            tenant_id=identity.tenant_id,
+        )
+    except EndDowntimeConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

@@ -46,6 +46,10 @@ class OperationDetail(OperationListItem):
     good_qty: int = 0
     scrap_qty: int = 0
     qc_required: bool = False
+    # Derived from downtime_started/downtime_ended events on the append-only log:
+    # true iff started_count > ended_count. Projected alongside status so
+    # consumers can distinguish "blocked by downtime" without inspecting events.
+    downtime_open: bool = False
 
 
 class OperationStartRequest(BaseModel):
@@ -81,6 +85,11 @@ from app.models.execution import DowntimeReasonClass
 class OperationStartDowntimeRequest(BaseModel):
     reason_class: DowntimeReasonClass
     note: str | None = None
+
+
+class OperationEndDowntimeRequest(BaseModel):
+    note: str | None = None
+
 
 class OperationResumeRequest(BaseModel):
     note: str | None = None

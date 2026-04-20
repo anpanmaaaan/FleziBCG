@@ -6,6 +6,97 @@ from app.schemas.operation import OperationDetail
 class StartDowntimeConflictError(ValueError):
     pass
 
+
+class EndDowntimeConflictError(ValueError):
+    pass
+
+
+def end_downtime(
+    db: Session,
+    operation,
+    request,
+    actor_user_id: str,
+    tenant_id: str = "default",
+) -> OperationDetail:
+    """
+    End an open downtime. Rejects when no open downtime exists or the record
+    is closed. Persists `downtime_ended` event. Does not auto-resume execution
+    per canonical contract: execution must remain non-running until an
+    explicit `resume_execution` command.
+    """
+    from app.models.execution import ExecutionEventType
+    from app.models.master import StatusEnum
+    from app.repositories.execution_event_repository import (
+        create_execution_event,
+        get_events_for_operation,
+    )
+    from app.repositories.operation_repository import get_operation_by_id
+
+    if operation.tenant_id != tenant_id:
+        raise EndDowntimeConflictError("TENANT_MISMATCH")
+
+    # Contracts §10 STATE_* family: closed records reject before any state work.
+    if operation.status in (
+        StatusEnum.completed.value,
+        StatusEnum.completed_late.value,
+        StatusEnum.aborted.value,
+    ):
+        raise EndDowntimeConflictError("STATE_CLOSED_RECORD")
+
+    # Open-downtime guard: count started vs ended events on the append-only log.
+    events = get_events_for_operation(db, operation.id)
+    started_count = sum(
+        1
+        for e in events
+        if e.event_type == ExecutionEventType.DOWNTIME_STARTED.value
+    )
+    ended_count = sum(
+        1
+        for e in events
+        if e.event_type == ExecutionEventType.DOWNTIME_ENDED.value
+    )
+    if started_count <= ended_count:
+        raise EndDowntimeConflictError("STATE_NO_OPEN_DOWNTIME")
+
+    ended_at = datetime.utcnow()
+    payload = {
+        "actor_user_id": actor_user_id,
+        "note": getattr(request, "note", None),
+        "ended_at": ended_at.isoformat(),
+    }
+
+    create_execution_event(
+        db=db,
+        event_type=ExecutionEventType.DOWNTIME_ENDED.value,
+        production_order_id=operation.work_order.production_order_id,
+        work_order_id=operation.work_order_id,
+        operation_id=operation.id,
+        payload=payload,
+        tenant_id=operation.tenant_id,
+    )
+
+    # INVARIANT: do NOT auto-resume execution. Clearing the downtime blocker
+    # only removes one resume precondition; an explicit resume_execution
+    # command is still required (station-execution-state-matrix.md RESUME-001).
+    #
+    # EDGE: start_downtime moves RUNNING→BLOCKED as its policy. Without this
+    # step the snapshot would stay BLOCKED after the downtime ends, and
+    # resume_execution would reject it with STATE_NOT_PAUSED — the aggregate
+    # becomes dead-ended. When no open downtime remains and the sole blocker
+    # was this downtime, transition BLOCKED→PAUSED so an explicit
+    # resume_execution becomes valid. PAUSED is non-running, so this is
+    # state-clearing, not auto-resume.
+    no_open_downtime_remains = started_count <= (ended_count + 1)
+    if no_open_downtime_remains and operation.status == StatusEnum.blocked.value:
+        operation = mark_operation_paused(db, operation)
+
+    operation = get_operation_by_id(db, operation.id)
+    if not operation:
+        raise ValueError("Operation not found after downtime end event.")
+
+    return derive_operation_detail(db, operation)
+
+
 def start_downtime(
     db: Session,
     operation,
@@ -173,6 +264,8 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
     completed_qty = 0
     good_qty = 0
     scrap_qty = 0
+    downtime_started_count = 0
+    downtime_ended_count = 0
 
     for event in events:
         if event.event_type == ExecutionEventType.OP_STARTED.value:
@@ -188,10 +281,19 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
             scrap_qty += int(event.payload.get("scrap_qty", 0))
         if event.event_type == ExecutionEventType.NG_REPORTED.value:
             scrap_qty += int(event.payload.get("ng_quantity", 0))
+        if event.event_type == ExecutionEventType.DOWNTIME_STARTED.value:
+            downtime_started_count += 1
+        if event.event_type == ExecutionEventType.DOWNTIME_ENDED.value:
+            downtime_ended_count += 1
 
     completed_qty = good_qty + scrap_qty
     status = _derive_status(events)
     progress = _derive_progress(operation.quantity, completed_qty)
+    # Source of truth: append-only event log. A downtime is open iff strictly
+    # more DOWNTIME_STARTED than DOWNTIME_ENDED events exist. This flag is
+    # projection-only and does NOT drive status — callers still use the
+    # existing state machine for transitions.
+    downtime_open = downtime_started_count > downtime_ended_count
 
     return OperationDetail(
         id=operation.id,
@@ -213,6 +315,7 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
         good_qty=good_qty,
         scrap_qty=scrap_qty,
         qc_required=operation.qc_required,
+        downtime_open=downtime_open,
     )
 
 
@@ -434,15 +537,38 @@ def resume_operation(
         raise ValueError("Operation does not belong to the requesting tenant.")
 
     # State guard per station-execution-state-matrix.md RESUME-001:
-    # allowed only when execution_status = PAUSED and closure_status = OPEN.
-    # Canonical rejections (open downtime, QC hold, review pending) are deferred
-    # until those state dimensions are modeled; see Remaining gaps.
+    # allowed only when execution_status = PAUSED, closure_status = OPEN, and
+    # no downtime is currently open. Remaining canonical blockers (QC hold,
+    # review pending) are deferred until those state dimensions are modeled.
     if operation.status in (
         StatusEnum.completed.value,
         StatusEnum.completed_late.value,
         StatusEnum.aborted.value,
     ):
         raise ResumeExecutionConflictError("STATE_CLOSED")
+
+    # Open-downtime guard. Source of truth is the append-only event log
+    # (DOWNTIME_STARTED > DOWNTIME_ENDED ⇒ downtime open). Checked ahead of
+    # STATE_NOT_PAUSED so that a BLOCKED-with-open-downtime record rejects
+    # with the actionable code (end the downtime first) rather than a
+    # confusing STATE_NOT_PAUSED. A PAUSED-with-open-downtime record (downtime
+    # started while already PAUSED) is also caught here, which is the
+    # correctness-critical case end_downtime's BLOCKED→PAUSED transition
+    # cannot cover.
+    events = get_events_for_operation(db, operation.id)
+    downtime_started_count = sum(
+        1
+        for e in events
+        if e.event_type == ExecutionEventType.DOWNTIME_STARTED.value
+    )
+    downtime_ended_count = sum(
+        1
+        for e in events
+        if e.event_type == ExecutionEventType.DOWNTIME_ENDED.value
+    )
+    if downtime_started_count > downtime_ended_count:
+        raise ResumeExecutionConflictError("STATE_DOWNTIME_OPEN")
+
     if operation.status != StatusEnum.paused.value:
         raise ResumeExecutionConflictError("STATE_NOT_PAUSED")
 
