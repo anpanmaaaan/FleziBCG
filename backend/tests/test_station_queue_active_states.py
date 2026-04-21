@@ -1,11 +1,8 @@
 """
-Regression tests for the station queue active-state inclusion contract
-(SE-BE-STATION-QUEUE-INCLUDE-ACTIVE-STATES-001).
+Regression tests for station queue status-source unification.
 
-Locks the queue-read behavior introduced to fix the operator-visible bug where
-an operation disappeared from the station picker after pause/downtime
-transitions. Proves that PAUSED and BLOCKED operations remain visible and that
-downtime_open is projected from the append-only event log.
+Locks the queue-read behavior where runtime status truth is event-derived
+(shared with operation detail), not snapshot-driven.
 """
 
 from __future__ import annotations
@@ -28,6 +25,7 @@ from app.schemas.operation import (
 )
 from app.security.dependencies import RequestIdentity
 from app.services.operation_service import (
+    derive_operation_detail,
     end_downtime,
     pause_operation,
     start_downtime,
@@ -266,7 +264,7 @@ def test_station_queue_returns_all_active_non_terminal_states(station_queue_fixt
     assert ops["blocked"].id in by_id
 
 
-def test_station_queue_projects_snapshot_status_verbatim(station_queue_fixture):
+def test_station_queue_projects_event_derived_status(station_queue_fixture):
     db, ops = station_queue_fixture
     _, items = get_station_queue(db, _identity())
     by_id = _items_by_op_id(items)
@@ -320,13 +318,38 @@ def test_station_queue_downtime_open_clears_after_end_downtime(station_queue_fix
 def test_station_queue_excludes_terminal_states(station_queue_fixture):
     db, ops = station_queue_fixture
 
-    # Force one op into each terminal state directly on the snapshot. The
-    # queue is snapshot-filtered, so this is sufficient to prove exclusion
-    # without exercising the full completion/abort flows (out of scope).
-    ops["planned"].status = StatusEnum.completed.value
-    ops["running"].status = StatusEnum.completed_late.value
-    ops["paused"].status = StatusEnum.aborted.value
-    db.add_all([ops["planned"], ops["running"], ops["paused"]])
+    # Queue exclusion must follow event-derived terminal truth, not snapshot.
+    # Appending OP_COMPLETED / OP_ABORTED events is sufficient to force
+    # terminal derived status in the queue projection.
+    from app.repositories.execution_event_repository import create_execution_event
+
+    create_execution_event(
+        db=db,
+        event_type="OP_COMPLETED",
+        production_order_id=ops["planned"].work_order.production_order_id,
+        work_order_id=ops["planned"].work_order_id,
+        operation_id=ops["planned"].id,
+        payload={"completed_at": "2099-06-01T12:00:00"},
+        tenant_id=_TENANT_ID,
+    )
+    create_execution_event(
+        db=db,
+        event_type="OP_COMPLETED",
+        production_order_id=ops["running"].work_order.production_order_id,
+        work_order_id=ops["running"].work_order_id,
+        operation_id=ops["running"].id,
+        payload={"completed_at": "2099-06-01T12:01:00"},
+        tenant_id=_TENANT_ID,
+    )
+    create_execution_event(
+        db=db,
+        event_type="OP_ABORTED",
+        production_order_id=ops["paused"].work_order.production_order_id,
+        work_order_id=ops["paused"].work_order_id,
+        operation_id=ops["paused"].id,
+        payload={"aborted_at": "2099-06-01T12:02:00"},
+        tenant_id=_TENANT_ID,
+    )
     db.commit()
 
     _, items = get_station_queue(db, _identity())
@@ -336,6 +359,39 @@ def test_station_queue_excludes_terminal_states(station_queue_fixture):
     assert ops["paused"].id not in by_id
     # The BLOCKED op is untouched and must remain visible.
     assert ops["blocked"].id in by_id
+
+
+def test_station_queue_and_detail_status_parity(station_queue_fixture):
+    db, _ops = station_queue_fixture
+
+    _, items = get_station_queue(db, _identity())
+    for item in items:
+        operation = db.scalar(select(Operation).where(Operation.id == item["operation_id"]))
+        assert operation is not None
+        detail = derive_operation_detail(db, operation)
+        assert item["status"] == detail.status
+
+
+def test_station_queue_uses_derived_status_when_snapshot_is_stale(
+    station_queue_fixture,
+):
+    db, ops = station_queue_fixture
+
+    # Introduce an intentional mismatch: event-derived remains IN_PROGRESS
+    # while snapshot is forcibly set to PAUSED.
+    ops["running"].status = StatusEnum.paused.value
+    db.add(ops["running"])
+    db.commit()
+
+    _, items = get_station_queue(db, _identity())
+    by_id = _items_by_op_id(items)
+
+    operation = db.scalar(select(Operation).where(Operation.id == ops["running"].id))
+    assert operation is not None
+    detail = derive_operation_detail(db, operation)
+
+    assert detail.status == StatusEnum.in_progress.value
+    assert by_id[ops["running"].id]["status"] == StatusEnum.in_progress.value
 
 
 def test_station_queue_claim_fields_unchanged(station_queue_fixture):

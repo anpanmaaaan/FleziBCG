@@ -1,10 +1,12 @@
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
+from sqlalchemy import case, func as sa_func, select
 from sqlalchemy.orm import Session
 
-from app.models.execution import DowntimeReasonClass, ExecutionEventType
-from app.models.master import StatusEnum
+from app.models.execution import DowntimeReasonClass, ExecutionEvent, ExecutionEventType
+from app.models.master import Operation, StatusEnum
 from app.repositories.execution_event_repository import (
     create_execution_event,
     get_events_for_operation,
@@ -217,6 +219,12 @@ class ResumeExecutionConflictError(ValueError):
     pass
 
 
+@dataclass(frozen=True)
+class OperationRuntimeProjection:
+    status: str
+    downtime_open: bool
+
+
 def _parse_timestamp(value: Optional[str]) -> Optional[datetime]:
     if not value:
         return None
@@ -226,48 +234,27 @@ def _parse_timestamp(value: Optional[str]) -> Optional[datetime]:
         return None
 
 
-# INTENT: Terminal states (ABORTED, COMPLETED) are checked first because
-# they are irreversible — once reached, no subsequent event changes them.
-def _derive_status(events: list) -> str:
-    if any(event.event_type == ExecutionEventType.OP_ABORTED.value for event in events):
+_RUNTIME_EVENT_TYPES_FOR_LAST_SIGNAL = (
+    ExecutionEventType.EXECUTION_PAUSED.value,
+    ExecutionEventType.EXECUTION_RESUMED.value,
+    ExecutionEventType.DOWNTIME_ENDED.value,
+)
+
+
+def _derive_status_from_runtime_facts(
+    *,
+    has_started: bool,
+    has_completed: bool,
+    has_aborted: bool,
+    downtime_started_count: int,
+    downtime_ended_count: int,
+    last_runtime_event: str | None,
+) -> str:
+    if has_aborted:
         return StatusEnum.aborted.value
-    if any(
-        event.event_type == ExecutionEventType.OP_COMPLETED.value for event in events
-    ):
+    if has_completed:
         return StatusEnum.completed.value
-    if any(event.event_type == ExecutionEventType.OP_STARTED.value for event in events):
-        # An open downtime (DOWNTIME_STARTED > DOWNTIME_ENDED on the append-only
-        # log) is a runtime blocker and wins over PAUSED/RUNNING. end_downtime
-        # does not auto-resume — an explicit resume_execution is still required
-        # to leave the non-running state (station-execution-state-matrix.md).
-        #
-        # Runtime state is last-wins between four signals, tracked in arrival
-        # order (events arrive chronologically from the repository):
-        #   EXECUTION_PAUSED  → non-running (explicit pause)
-        #   EXECUTION_RESUMED → running
-        #   DOWNTIME_STARTED  → counted toward the open-downtime check
-        #   DOWNTIME_ENDED    → non-running (end_downtime transitions
-        #                       BLOCKED→PAUSED on the snapshot and never
-        #                       auto-resumes; a matching PAUSED→PAUSED case
-        #                       also trivially holds). Treating
-        #                       DOWNTIME_ENDED as a "paused" signal when it
-        #                       is the most recent runtime event keeps the
-        #                       derived status aligned with the snapshot
-        #                       without emitting a synthetic pause event.
-        downtime_started_count = 0
-        downtime_ended_count = 0
-        last_runtime_event: str | None = None
-        for event in events:
-            if event.event_type == ExecutionEventType.DOWNTIME_STARTED.value:
-                downtime_started_count += 1
-            elif event.event_type == ExecutionEventType.DOWNTIME_ENDED.value:
-                downtime_ended_count += 1
-                last_runtime_event = event.event_type
-            elif event.event_type in (
-                ExecutionEventType.EXECUTION_PAUSED.value,
-                ExecutionEventType.EXECUTION_RESUMED.value,
-            ):
-                last_runtime_event = event.event_type
+    if has_started:
         if downtime_started_count > downtime_ended_count:
             return StatusEnum.blocked.value
         if last_runtime_event in (
@@ -276,9 +263,260 @@ def _derive_status(events: list) -> str:
         ):
             return StatusEnum.paused.value
         return StatusEnum.in_progress.value
-    # Current model intentionally converges PLANNED as execution-pending state.
-    # UI mapping is responsible for rendering this as Pending/Ready for operators.
     return StatusEnum.planned.value
+
+
+def derive_operation_runtime_projection_for_ids(
+    db: Session,
+    *,
+    tenant_id: str,
+    operation_ids: list[int],
+) -> dict[int, OperationRuntimeProjection]:
+    if not operation_ids:
+        return {}
+
+    started_sum = sa_func.sum(
+        case(
+            (ExecutionEvent.event_type == ExecutionEventType.OP_STARTED.value, 1),
+            else_=0,
+        )
+    )
+    completed_sum = sa_func.sum(
+        case(
+            (ExecutionEvent.event_type == ExecutionEventType.OP_COMPLETED.value, 1),
+            else_=0,
+        )
+    )
+    aborted_sum = sa_func.sum(
+        case(
+            (ExecutionEvent.event_type == ExecutionEventType.OP_ABORTED.value, 1),
+            else_=0,
+        )
+    )
+    downtime_started_sum = sa_func.sum(
+        case(
+            (
+                ExecutionEvent.event_type == ExecutionEventType.DOWNTIME_STARTED.value,
+                1,
+            ),
+            else_=0,
+        )
+    )
+    downtime_ended_sum = sa_func.sum(
+        case(
+            (ExecutionEvent.event_type == ExecutionEventType.DOWNTIME_ENDED.value, 1),
+            else_=0,
+        )
+    )
+
+    counts_rows = db.execute(
+        select(
+            ExecutionEvent.operation_id,
+            started_sum.label("started_count"),
+            completed_sum.label("completed_count"),
+            aborted_sum.label("aborted_count"),
+            downtime_started_sum.label("downtime_started_count"),
+            downtime_ended_sum.label("downtime_ended_count"),
+        )
+        .where(
+            ExecutionEvent.tenant_id == tenant_id,
+            ExecutionEvent.operation_id.in_(operation_ids),
+            ExecutionEvent.event_type.in_(
+                [
+                    ExecutionEventType.OP_STARTED.value,
+                    ExecutionEventType.OP_COMPLETED.value,
+                    ExecutionEventType.OP_ABORTED.value,
+                    ExecutionEventType.DOWNTIME_STARTED.value,
+                    ExecutionEventType.DOWNTIME_ENDED.value,
+                ]
+            ),
+        )
+        .group_by(ExecutionEvent.operation_id)
+    ).all()
+
+    counts_by_operation_id: dict[int, dict[str, int]] = {
+        operation_id: {
+            "started_count": 0,
+            "completed_count": 0,
+            "aborted_count": 0,
+            "downtime_started_count": 0,
+            "downtime_ended_count": 0,
+        }
+        for operation_id in operation_ids
+    }
+    for (
+        operation_id,
+        started_count,
+        completed_count,
+        aborted_count,
+        downtime_started_count,
+        downtime_ended_count,
+    ) in counts_rows:
+        counts_by_operation_id[operation_id] = {
+            "started_count": int(started_count or 0),
+            "completed_count": int(completed_count or 0),
+            "aborted_count": int(aborted_count or 0),
+            "downtime_started_count": int(downtime_started_count or 0),
+            "downtime_ended_count": int(downtime_ended_count or 0),
+        }
+
+    runtime_signal_subquery = (
+        select(
+            ExecutionEvent.operation_id.label("operation_id"),
+            ExecutionEvent.event_type.label("event_type"),
+            sa_func.row_number()
+            .over(
+                partition_by=ExecutionEvent.operation_id,
+                order_by=(ExecutionEvent.created_at.desc(), ExecutionEvent.id.desc()),
+            )
+            .label("row_num"),
+        )
+        .where(
+            ExecutionEvent.tenant_id == tenant_id,
+            ExecutionEvent.operation_id.in_(operation_ids),
+            ExecutionEvent.event_type.in_(_RUNTIME_EVENT_TYPES_FOR_LAST_SIGNAL),
+        )
+        .subquery()
+    )
+
+    runtime_signal_rows = db.execute(
+        select(
+            runtime_signal_subquery.c.operation_id,
+            runtime_signal_subquery.c.event_type,
+        ).where(runtime_signal_subquery.c.row_num == 1)
+    ).all()
+    last_runtime_event_by_operation_id: dict[int, str] = {
+        operation_id: event_type for operation_id, event_type in runtime_signal_rows
+    }
+
+    projection_by_operation_id: dict[int, OperationRuntimeProjection] = {}
+    for operation_id in operation_ids:
+        counts = counts_by_operation_id[operation_id]
+        status = _derive_status_from_runtime_facts(
+            has_started=counts["started_count"] > 0,
+            has_completed=counts["completed_count"] > 0,
+            has_aborted=counts["aborted_count"] > 0,
+            downtime_started_count=counts["downtime_started_count"],
+            downtime_ended_count=counts["downtime_ended_count"],
+            last_runtime_event=last_runtime_event_by_operation_id.get(operation_id),
+        )
+        projection_by_operation_id[operation_id] = OperationRuntimeProjection(
+            status=status,
+            downtime_open=(
+                counts["downtime_started_count"] > counts["downtime_ended_count"]
+            ),
+        )
+    return projection_by_operation_id
+
+
+def reconcile_operation_status_projection(
+    db: Session,
+    *,
+    operation,
+    tenant_id: str,
+):
+    if operation.tenant_id != tenant_id:
+        raise ValueError("Operation does not belong to the requesting tenant.")
+    projection = derive_operation_runtime_projection_for_ids(
+        db,
+        tenant_id=tenant_id,
+        operation_ids=[operation.id],
+    ).get(operation.id)
+    if projection is None:
+        return operation
+    if operation.status != projection.status:
+        operation.status = projection.status
+        db.add(operation)
+        db.commit()
+        db.refresh(operation)
+    return operation
+
+
+def detect_operation_status_projection_mismatches(
+    db: Session,
+    *,
+    tenant_id: str,
+    operation_ids: list[int],
+) -> list[dict[str, str | int]]:
+    projection_by_operation_id = derive_operation_runtime_projection_for_ids(
+        db,
+        tenant_id=tenant_id,
+        operation_ids=operation_ids,
+    )
+    operations = list(
+        db.scalars(
+            select(Operation).where(
+                Operation.tenant_id == tenant_id,
+                Operation.id.in_(operation_ids),
+            )
+        )
+    )
+    mismatches: list[dict[str, str | int]] = []
+    for operation in operations:
+        projection = projection_by_operation_id.get(operation.id)
+        if projection is None:
+            continue
+        if operation.status == projection.status:
+            continue
+        mismatches.append(
+            {
+                "operation_id": operation.id,
+                "operation_number": operation.operation_number,
+                "snapshot_status": operation.status,
+                "derived_status": projection.status,
+            }
+        )
+    return mismatches
+
+
+# INTENT: Terminal states (ABORTED, COMPLETED) are checked first because
+# they are irreversible — once reached, no subsequent event changes them.
+def _derive_status(events: list) -> str:
+    # An open downtime (DOWNTIME_STARTED > DOWNTIME_ENDED on the append-only
+    # log) is a runtime blocker and wins over PAUSED/RUNNING. end_downtime
+    # does not auto-resume — an explicit resume_execution is still required
+    # to leave the non-running state (station-execution-state-matrix.md).
+    #
+    # Runtime state is last-wins between four signals, tracked in arrival
+    # order (events arrive chronologically from the repository):
+    #   EXECUTION_PAUSED  → non-running (explicit pause)
+    #   EXECUTION_RESUMED → running
+    #   DOWNTIME_STARTED  → counted toward the open-downtime check
+    #   DOWNTIME_ENDED    → non-running (end_downtime transitions
+    #                       BLOCKED→PAUSED on the snapshot and never
+    #                       auto-resumes; a matching PAUSED→PAUSED case
+    #                       also trivially holds).
+    started_count = 0
+    completed_count = 0
+    aborted_count = 0
+    downtime_started_count = 0
+    downtime_ended_count = 0
+    last_runtime_event: str | None = None
+    for event in events:
+        if event.event_type == ExecutionEventType.OP_STARTED.value:
+            started_count += 1
+        elif event.event_type == ExecutionEventType.OP_COMPLETED.value:
+            completed_count += 1
+        elif event.event_type == ExecutionEventType.OP_ABORTED.value:
+            aborted_count += 1
+        elif event.event_type == ExecutionEventType.DOWNTIME_STARTED.value:
+            downtime_started_count += 1
+        elif event.event_type == ExecutionEventType.DOWNTIME_ENDED.value:
+            downtime_ended_count += 1
+            last_runtime_event = event.event_type
+        elif event.event_type in (
+            ExecutionEventType.EXECUTION_PAUSED.value,
+            ExecutionEventType.EXECUTION_RESUMED.value,
+        ):
+            last_runtime_event = event.event_type
+    return _derive_status_from_runtime_facts(
+        has_started=started_count > 0,
+        has_completed=completed_count > 0,
+        has_aborted=aborted_count > 0,
+        downtime_started_count=downtime_started_count,
+        downtime_ended_count=downtime_ended_count,
+        last_runtime_event=last_runtime_event,
+    )
 
 
 def _derive_progress(operation_quantity: int, completed_qty: int) -> int:
@@ -370,10 +608,10 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
     # projection-only and does NOT drive status — callers still use the
     # existing state machine for transitions.
     downtime_open = downtime_started_count > downtime_ended_count
-    # Projection uses operation.status (snapshot) rather than the derived
-    # `status` above so that snapshot-driven guards (e.g. BLOCKED) match the
-    # command handlers' expectations byte-for-byte.
-    allowed_actions = _derive_allowed_actions(operation.status, downtime_open)
+    # Detail semantics must be internally consistent: action affordances are
+    # derived from the same runtime-truth status exposed in `status`, not from
+    # potentially stale snapshot projection on operation.status.
+    allowed_actions = _derive_allowed_actions(status, downtime_open)
 
     return OperationDetail(
         id=operation.id,

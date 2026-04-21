@@ -447,3 +447,56 @@ def test_start_downtime_allows_second_cycle_after_end_downtime(running_operation
     assert second.downtime_open is True
     assert second.status == StatusEnum.blocked.value
     assert second.allowed_actions == ["end_downtime"]
+
+
+def test_detail_allowed_actions_uses_derived_status_when_snapshot_is_paused(
+    running_operation,
+):
+    db, op = running_operation
+
+    # Introduce stale projection: snapshot says PAUSED while event truth remains
+    # IN_PROGRESS (only OP_STARTED exists).
+    op.status = StatusEnum.paused.value
+    db.add(op)
+    db.commit()
+    db.refresh(op)
+
+    detail = derive_operation_detail(db, op)
+
+    assert detail.status == StatusEnum.in_progress.value
+    assert detail.allowed_actions == [
+        "report_production",
+        "pause_execution",
+        "complete_execution",
+        "start_downtime",
+    ]
+
+
+def test_detail_allowed_actions_uses_derived_status_when_snapshot_is_in_progress(
+    running_operation,
+):
+    db, op = running_operation
+
+    # Build PAUSED runtime truth: append a pause event.
+    from app.repositories.execution_event_repository import create_execution_event
+
+    create_execution_event(
+        db=db,
+        event_type="execution_paused",
+        production_order_id=op.work_order.production_order_id,
+        work_order_id=op.work_order_id,
+        operation_id=op.id,
+        payload={"paused_at": "2099-06-01T09:20:00", "actor_user_id": "seed"},
+        tenant_id="default",
+    )
+
+    # Introduce stale projection opposite direction: snapshot says IN_PROGRESS.
+    op.status = StatusEnum.in_progress.value
+    db.add(op)
+    db.commit()
+    db.refresh(op)
+
+    detail = derive_operation_detail(db, op)
+
+    assert detail.status == StatusEnum.paused.value
+    assert detail.allowed_actions == ["resume_execution", "start_downtime"]

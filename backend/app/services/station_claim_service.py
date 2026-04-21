@@ -3,15 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import case, func as sa_func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config.settings import settings
-from app.models.execution import ExecutionEvent, ExecutionEventType
 from app.models.master import Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.rbac import Role, Scope, UserRoleAssignment
 from app.models.station_claim import OperationClaim, OperationClaimAuditLog
 from app.security.dependencies import RequestIdentity
+from app.services.operation_service import derive_operation_runtime_projection_for_ids
 
 
 class ClaimConflictError(Exception):
@@ -188,7 +188,18 @@ def _validate_operation_for_station(
     if operation.station_scope_value != station_scope.scope_value:
         raise PermissionError("Operation is outside your station scope")
 
-    if operation.status not in (StatusEnum.planned.value, StatusEnum.in_progress.value):
+    runtime_projection = derive_operation_runtime_projection_for_ids(
+        db,
+        tenant_id=identity.tenant_id,
+        operation_ids=[operation.id],
+    ).get(operation.id)
+    if runtime_projection is None:
+        raise ValueError("Operation runtime status is unavailable")
+
+    if runtime_projection.status not in (
+        StatusEnum.planned.value,
+        StatusEnum.in_progress.value,
+    ):
         raise ValueError("Operation is not claimable in current status")
 
     return operation
@@ -213,13 +224,21 @@ def _validate_operation_for_active_claim_context(
     if operation.station_scope_value != station_scope.scope_value:
         raise PermissionError("Operation is outside your station scope")
 
+    runtime_projection = derive_operation_runtime_projection_for_ids(
+        db,
+        tenant_id=identity.tenant_id,
+        operation_ids=[operation.id],
+    ).get(operation.id)
+    if runtime_projection is None:
+        raise ValueError("Operation runtime status is unavailable")
+
     releasable_statuses = {
         StatusEnum.planned.value,
         StatusEnum.in_progress.value,
         StatusEnum.paused.value,
         StatusEnum.blocked.value,
     }
-    if operation.status not in releasable_statuses:
+    if runtime_projection.status not in releasable_statuses:
         raise ValueError("Operation is not releasable in current status")
 
     return operation
@@ -268,14 +287,14 @@ def get_station_queue(db: Session, identity: RequestIdentity) -> tuple[str, list
     # queue stays a "what can I still act on" list. PAUSED and BLOCKED are
     # included because pause_execution / start_downtime would otherwise make
     # an in-flight operation vanish from the picker (SE-AUDIT-OPERATION-
-    # SELECTION-LIST-001). Snapshot status is authoritative here: the queue
-    # read never scans events for status derivation, only for downtime_open.
-    active_queue_statuses = [
+    # SELECTION-LIST-001). Runtime status source of truth is append-only
+    # event derivation; Operation.status is projection only.
+    active_queue_statuses = {
         StatusEnum.planned.value,
         StatusEnum.in_progress.value,
         StatusEnum.paused.value,
         StatusEnum.blocked.value,
-    ]
+    }
 
     statement = (
         select(Operation, WorkOrder, ProductionOrder)
@@ -284,7 +303,6 @@ def get_station_queue(db: Session, identity: RequestIdentity) -> tuple[str, list
         .where(
             Operation.tenant_id == identity.tenant_id,
             Operation.station_scope_value == station_scope.scope_value,
-            Operation.status.in_(active_queue_statuses),
         )
         .order_by(
             Operation.planned_start.asc().nullslast(),
@@ -295,14 +313,26 @@ def get_station_queue(db: Session, identity: RequestIdentity) -> tuple[str, list
 
     rows = list(db.execute(statement))
     operation_ids = [operation.id for operation, _wo, _po in rows]
+    runtime_projection_by_operation_id = derive_operation_runtime_projection_for_ids(
+        db,
+        tenant_id=identity.tenant_id,
+        operation_ids=operation_ids,
+    )
+    active_rows = [
+        row
+        for row in rows
+        if runtime_projection_by_operation_id.get(row[0].id) is not None
+        and runtime_projection_by_operation_id[row[0].id].status in active_queue_statuses
+    ]
+
+    active_operation_ids = [operation.id for operation, _wo, _po in active_rows]
     claims = {}
-    downtime_open_by_op_id: dict[int, bool] = {}
-    if operation_ids:
+    if active_operation_ids:
         claim_rows = list(
             db.scalars(
                 select(OperationClaim).where(
                     OperationClaim.tenant_id == identity.tenant_id,
-                    OperationClaim.operation_id.in_(operation_ids),
+                    OperationClaim.operation_id.in_(active_operation_ids),
                     OperationClaim.released_at.is_(None),
                 )
             )
@@ -312,57 +342,14 @@ def get_station_queue(db: Session, identity: RequestIdentity) -> tuple[str, list
                 db, claim, identity=identity
             )
 
-        # Single aggregate query to compute downtime_open per operation in one
-        # DB roundtrip. Avoids N+1 event scans that would otherwise dominate
-        # the queue read for a busy station.
-        started_sum = sa_func.sum(
-            case(
-                (
-                    ExecutionEvent.event_type
-                    == ExecutionEventType.DOWNTIME_STARTED.value,
-                    1,
-                ),
-                else_=0,
-            )
-        )
-        ended_sum = sa_func.sum(
-            case(
-                (
-                    ExecutionEvent.event_type
-                    == ExecutionEventType.DOWNTIME_ENDED.value,
-                    1,
-                ),
-                else_=0,
-            )
-        )
-        downtime_rows = db.execute(
-            select(
-                ExecutionEvent.operation_id,
-                started_sum.label("started_count"),
-                ended_sum.label("ended_count"),
-            )
-            .where(
-                ExecutionEvent.tenant_id == identity.tenant_id,
-                ExecutionEvent.operation_id.in_(operation_ids),
-                ExecutionEvent.event_type.in_(
-                    [
-                        ExecutionEventType.DOWNTIME_STARTED.value,
-                        ExecutionEventType.DOWNTIME_ENDED.value,
-                    ]
-                ),
-            )
-            .group_by(ExecutionEvent.operation_id)
-        ).all()
-        for op_id, started_count, ended_count in downtime_rows:
-            downtime_open_by_op_id[op_id] = (started_count or 0) > (ended_count or 0)
-
     db.commit()
 
     items: list[dict] = []
-    for operation, work_order, production_order in rows:
+    for operation, work_order, production_order in active_rows:
         state, expires_at, claimed_by_user_id = _to_claim_state(
             identity, claims.get(operation.id)
         )
+        runtime_projection = runtime_projection_by_operation_id[operation.id]
         items.append(
             {
                 "operation_id": operation.id,
@@ -370,7 +357,7 @@ def get_station_queue(db: Session, identity: RequestIdentity) -> tuple[str, list
                 "name": operation.name,
                 "work_order_number": work_order.work_order_number,
                 "production_order_number": production_order.order_number,
-                "status": operation.status,
+                "status": runtime_projection.status,
                 "planned_start": operation.planned_start,
                 "planned_end": operation.planned_end,
                 "claim": {
@@ -378,7 +365,7 @@ def get_station_queue(db: Session, identity: RequestIdentity) -> tuple[str, list
                     "expires_at": expires_at,
                     "claimed_by_user_id": claimed_by_user_id,
                 },
-                "downtime_open": downtime_open_by_op_id.get(operation.id, False),
+                "downtime_open": runtime_projection.downtime_open,
             }
         )
 
@@ -508,10 +495,18 @@ def release_operation_claim(
         StatusEnum.paused.value,
         StatusEnum.blocked.value,
     }
-    if operation.status in _NON_RELEASABLE_ACTIVE_STATUSES:
+    runtime_projection = derive_operation_runtime_projection_for_ids(
+        db,
+        tenant_id=identity.tenant_id,
+        operation_ids=[operation.id],
+    ).get(operation.id)
+    if runtime_projection is None:
+        raise ValueError("Operation runtime status is unavailable")
+
+    if runtime_projection.status in _NON_RELEASABLE_ACTIVE_STATUSES:
         raise ValueError(
             "Cannot release claim while operation is in an active execution state "
-            f"({operation.status}). Complete or resolve the operation first."
+            f"({runtime_projection.status}). Complete or resolve the operation first."
         )
 
     claim = _get_unreleased_claim_for_update(db, identity.tenant_id, operation_id)
