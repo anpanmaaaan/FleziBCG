@@ -115,6 +115,8 @@ export const jaRegistry: I18nRegistry = {
   "station.loading": "読み込み中...",
   "station.queue.title": "ステーションキュー",
   "station.queue.empty": "キューに工程がありません。",
+  "station.queue.downtimeActive": "ダウンタイム発生中",
+  "station.queue.blockedByDowntime": "稼働停止（ダウンタイム中）",
   "station.workstation.label": "ワークステーション：",
   "station.action.refresh": "更新",
   "station.action.claiming": "取得中...",

@@ -19,6 +19,7 @@ export interface StationQueueItem {
   planned_start: string | null;
   planned_end: string | null;
   claim: ClaimSummary;
+  downtime_open: boolean;
 }
 
 export interface StationQueueResponse {

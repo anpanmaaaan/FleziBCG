@@ -28,6 +28,11 @@ class StationQueueItem(BaseModel):
     planned_start: datetime | None = None
     planned_end: datetime | None = None
     claim: ClaimSummary
+    # Source of truth: append-only event log. downtime is open iff
+    # DOWNTIME_STARTED count > DOWNTIME_ENDED count for the operation.
+    # Projected on the list so the cockpit can flag "⛔ Downtime" without
+    # fetching per-operation detail. Does not drive any state transitions.
+    downtime_open: bool = False
 
 
 class ClaimResponse(BaseModel):

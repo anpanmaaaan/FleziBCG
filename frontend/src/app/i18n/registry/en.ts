@@ -90,6 +90,8 @@ export const enRegistry: I18nRegistry = {
   "station.loading": "Loading...",
   "station.queue.title": "Station Queue",
   "station.queue.empty": "No operations in queue.",
+  "station.queue.downtimeActive": "Downtime Active",
+  "station.queue.blockedByDowntime": "Blocked by active downtime",
   "station.workstation.label": "Workstation:",
   "station.action.refresh": "Refresh",
   "station.action.claiming": "Claiming...",

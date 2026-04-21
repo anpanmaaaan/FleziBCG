@@ -58,7 +58,7 @@ def end_downtime(
     if started_count <= ended_count:
         raise EndDowntimeConflictError("STATE_NO_OPEN_DOWNTIME")
 
-    ended_at = datetime.utcnow()
+    ended_at = _utcnow_naive()
     payload = {
         "actor_user_id": actor_user_id,
         "note": getattr(request, "note", None),
@@ -118,9 +118,20 @@ def start_downtime(
             raise StartDowntimeConflictError("STATE_CLOSED")
         raise StartDowntimeConflictError("STATE_NOT_RUNNING_OR_PAUSED")
 
-    # Check for existing open downtime (event log scan, minimal interim logic)
+    # Open-downtime truth is append-only-log based: open iff
+    # DOWNTIME_STARTED count > DOWNTIME_ENDED count.
     events = get_events_for_operation(db, operation.id)
-    downtime_open = any(e.event_type == ExecutionEventType.DOWNTIME_STARTED.value for e in events)
+    downtime_started_count = sum(
+        1
+        for e in events
+        if e.event_type == ExecutionEventType.DOWNTIME_STARTED.value
+    )
+    downtime_ended_count = sum(
+        1
+        for e in events
+        if e.event_type == ExecutionEventType.DOWNTIME_ENDED.value
+    )
+    downtime_open = downtime_started_count > downtime_ended_count
     if downtime_open:
         raise StartDowntimeConflictError("DOWNTIME_ALREADY_OPEN")
 
@@ -128,7 +139,7 @@ def start_downtime(
     if not hasattr(request, "reason_class") or request.reason_class not in DowntimeReasonClass:
         raise StartDowntimeConflictError("INVALID_REASON_CLASS")
 
-    started_at = datetime.utcnow()
+    started_at = _utcnow_naive()
     payload = {
         "actor_user_id": actor_user_id,
         "reason_class": request.reason_class,
@@ -159,13 +170,20 @@ def start_downtime(
         raise ValueError("Operation not found after downtime start event.")
 
     return derive_operation_detail(db, operation)
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
 
 from app.models.execution import ExecutionEventType
 from app.models.master import StatusEnum
+
+
+def _utcnow_naive() -> datetime:
+    # datetime.utcnow() is deprecated; emit a timezone-aware UTC instant and
+    # strip the tzinfo so it still lands cleanly in naive DateTime columns
+    # (planned_start, actual_start, etc.) without changing storage semantics.
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 from app.repositories.execution_event_repository import (
     create_execution_event,
     get_events_for_operation,
@@ -233,17 +251,44 @@ def _derive_status(events: list) -> str:
     ):
         return StatusEnum.completed.value
     if any(event.event_type == ExecutionEventType.OP_STARTED.value for event in events):
-        # PAUSED/RUNNING is ordered last-wins between execution_paused and
-        # execution_resumed after start. Events are returned chronologically by
-        # the repository (created_at, id) so we can rely on iteration order.
+        # An open downtime (DOWNTIME_STARTED > DOWNTIME_ENDED on the append-only
+        # log) is a runtime blocker and wins over PAUSED/RUNNING. end_downtime
+        # does not auto-resume — an explicit resume_execution is still required
+        # to leave the non-running state (station-execution-state-matrix.md).
+        #
+        # Runtime state is last-wins between four signals, tracked in arrival
+        # order (events arrive chronologically from the repository):
+        #   EXECUTION_PAUSED  → non-running (explicit pause)
+        #   EXECUTION_RESUMED → running
+        #   DOWNTIME_STARTED  → counted toward the open-downtime check
+        #   DOWNTIME_ENDED    → non-running (end_downtime transitions
+        #                       BLOCKED→PAUSED on the snapshot and never
+        #                       auto-resumes; a matching PAUSED→PAUSED case
+        #                       also trivially holds). Treating
+        #                       DOWNTIME_ENDED as a "paused" signal when it
+        #                       is the most recent runtime event keeps the
+        #                       derived status aligned with the snapshot
+        #                       without emitting a synthetic pause event.
+        downtime_started_count = 0
+        downtime_ended_count = 0
         last_runtime_event: str | None = None
         for event in events:
-            if event.event_type in (
+            if event.event_type == ExecutionEventType.DOWNTIME_STARTED.value:
+                downtime_started_count += 1
+            elif event.event_type == ExecutionEventType.DOWNTIME_ENDED.value:
+                downtime_ended_count += 1
+                last_runtime_event = event.event_type
+            elif event.event_type in (
                 ExecutionEventType.EXECUTION_PAUSED.value,
                 ExecutionEventType.EXECUTION_RESUMED.value,
             ):
                 last_runtime_event = event.event_type
-        if last_runtime_event == ExecutionEventType.EXECUTION_PAUSED.value:
+        if downtime_started_count > downtime_ended_count:
+            return StatusEnum.blocked.value
+        if last_runtime_event in (
+            ExecutionEventType.EXECUTION_PAUSED.value,
+            ExecutionEventType.DOWNTIME_ENDED.value,
+        ):
             return StatusEnum.paused.value
         return StatusEnum.in_progress.value
     # Current model intentionally converges PLANNED as execution-pending state.
@@ -400,7 +445,7 @@ def start_operation(
                         "Operator already has a RUNNING operation at this station."
                     )
 
-    start_time = request.started_at or datetime.utcnow()
+    start_time = request.started_at or _utcnow_naive()
     payload = {
         "operator_id": request.operator_id,
         "started_at": start_time.isoformat(),
@@ -497,7 +542,7 @@ def complete_operation(
             "Operation must be IN_PROGRESS to complete."
         )
 
-    completed_at = request.completed_at or datetime.utcnow()
+    completed_at = request.completed_at or _utcnow_naive()
     payload = {
         "operator_id": request.operator_id,
         "completed_at": completed_at.isoformat(),
@@ -549,7 +594,7 @@ def pause_operation(
     if operation.status != StatusEnum.in_progress.value:
         raise PauseExecutionConflictError("STATE_NOT_RUNNING")
 
-    paused_at = datetime.utcnow()
+    paused_at = _utcnow_naive()
     payload = {
         "actor_user_id": actor_user_id,
         "reason_code": request.reason_code,
@@ -635,7 +680,7 @@ def resume_operation(
     if competing:
         raise ResumeExecutionConflictError("STATE_STATION_BUSY")
 
-    resumed_at = datetime.utcnow()
+    resumed_at = _utcnow_naive()
     payload = {
         "actor_user_id": actor_user_id,
         "note": request.note,
@@ -672,7 +717,7 @@ def abort_operation(
     if operation.status in (StatusEnum.completed.value, StatusEnum.aborted.value):
         raise ValueError("Operation already completed or aborted; cannot abort.")
 
-    aborted_at = datetime.utcnow()
+    aborted_at = _utcnow_naive()
     payload = {
         "operator_id": request.operator_id,
         "reason_code": request.reason_code,

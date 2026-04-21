@@ -46,6 +46,12 @@ export interface OperationDetail {
   production_order_number: string;
   qc_required: boolean;
   downtime_open: boolean;
+  // Backend-derived per-operation capability list. Canonical command names
+  // (report_production, pause_execution, resume_execution, start_downtime,
+  // end_downtime, complete_execution, start_execution). Does NOT encode
+  // identity-scoped guards (claim ownership, station-busy) — callers must
+  // still apply those and handle 409 reject codes at request time.
+  allowed_actions: string[];
 }
 
 export interface ReportQuantityPayload {

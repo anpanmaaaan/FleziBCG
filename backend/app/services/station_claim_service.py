@@ -3,10 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import case, func as sa_func, select
 from sqlalchemy.orm import Session
 
 from app.config.settings import settings
+from app.models.execution import ExecutionEvent, ExecutionEventType
 from app.models.master import Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.rbac import Role, Scope, UserRoleAssignment
 from app.models.station_claim import OperationClaim, OperationClaimAuditLog
@@ -210,6 +211,21 @@ def get_station_queue(db: Session, identity: RequestIdentity) -> tuple[str, list
     ensure_operator_context(identity)
     station_scope = resolve_station_scope(db, identity)
 
+    # Active non-terminal runtime states the operator must still see.
+    # Canonical per station-execution-state-matrix.md — terminal states
+    # (COMPLETED, COMPLETED_LATE, ABORTED) are deliberately excluded so the
+    # queue stays a "what can I still act on" list. PAUSED and BLOCKED are
+    # included because pause_execution / start_downtime would otherwise make
+    # an in-flight operation vanish from the picker (SE-AUDIT-OPERATION-
+    # SELECTION-LIST-001). Snapshot status is authoritative here: the queue
+    # read never scans events for status derivation, only for downtime_open.
+    active_queue_statuses = [
+        StatusEnum.planned.value,
+        StatusEnum.in_progress.value,
+        StatusEnum.paused.value,
+        StatusEnum.blocked.value,
+    ]
+
     statement = (
         select(Operation, WorkOrder, ProductionOrder)
         .join(WorkOrder, WorkOrder.id == Operation.work_order_id)
@@ -217,9 +233,7 @@ def get_station_queue(db: Session, identity: RequestIdentity) -> tuple[str, list
         .where(
             Operation.tenant_id == identity.tenant_id,
             Operation.station_scope_value == station_scope.scope_value,
-            Operation.status.in_(
-                [StatusEnum.planned.value, StatusEnum.in_progress.value]
-            ),
+            Operation.status.in_(active_queue_statuses),
         )
         .order_by(
             Operation.planned_start.asc().nullslast(),
@@ -231,6 +245,7 @@ def get_station_queue(db: Session, identity: RequestIdentity) -> tuple[str, list
     rows = list(db.execute(statement))
     operation_ids = [operation.id for operation, _wo, _po in rows]
     claims = {}
+    downtime_open_by_op_id: dict[int, bool] = {}
     if operation_ids:
         claim_rows = list(
             db.scalars(
@@ -245,6 +260,50 @@ def get_station_queue(db: Session, identity: RequestIdentity) -> tuple[str, list
             claims[claim.operation_id] = _expire_claim_if_needed(
                 db, claim, identity=identity
             )
+
+        # Single aggregate query to compute downtime_open per operation in one
+        # DB roundtrip. Avoids N+1 event scans that would otherwise dominate
+        # the queue read for a busy station.
+        started_sum = sa_func.sum(
+            case(
+                (
+                    ExecutionEvent.event_type
+                    == ExecutionEventType.DOWNTIME_STARTED.value,
+                    1,
+                ),
+                else_=0,
+            )
+        )
+        ended_sum = sa_func.sum(
+            case(
+                (
+                    ExecutionEvent.event_type
+                    == ExecutionEventType.DOWNTIME_ENDED.value,
+                    1,
+                ),
+                else_=0,
+            )
+        )
+        downtime_rows = db.execute(
+            select(
+                ExecutionEvent.operation_id,
+                started_sum.label("started_count"),
+                ended_sum.label("ended_count"),
+            )
+            .where(
+                ExecutionEvent.tenant_id == identity.tenant_id,
+                ExecutionEvent.operation_id.in_(operation_ids),
+                ExecutionEvent.event_type.in_(
+                    [
+                        ExecutionEventType.DOWNTIME_STARTED.value,
+                        ExecutionEventType.DOWNTIME_ENDED.value,
+                    ]
+                ),
+            )
+            .group_by(ExecutionEvent.operation_id)
+        ).all()
+        for op_id, started_count, ended_count in downtime_rows:
+            downtime_open_by_op_id[op_id] = (started_count or 0) > (ended_count or 0)
 
     db.commit()
 
@@ -268,6 +327,7 @@ def get_station_queue(db: Session, identity: RequestIdentity) -> tuple[str, list
                     "expires_at": expires_at,
                     "claimed_by_user_id": claimed_by_user_id,
                 },
+                "downtime_open": downtime_open_by_op_id.get(operation.id, False),
             }
         )
 

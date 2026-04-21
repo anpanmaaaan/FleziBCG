@@ -239,6 +239,8 @@ function QueueList({ items, loading, activeOperationId, onSelect }: QueueListPro
       {items.map((item) => {
         const active = activeOperationId === item.operation_id;
         const locked = item.claim.state === "other";
+        const showDowntimeTag = item.downtime_open;
+        const showBlockedDowntimeHint = item.status === "BLOCKED" && item.downtime_open;
         return (
           <button
             key={item.operation_id}
@@ -264,7 +266,19 @@ function QueueList({ items, loading, activeOperationId, onSelect }: QueueListPro
                 {t(mapExecutionStatusText(item.status) as I18nSemanticKey)}
               </StatusBadge>
             </div>
-            <p className="text-xs text-gray-500 mt-1">{item.operation_number}</p>
+            <div className="mt-1 flex items-center gap-2 flex-wrap">
+              <p className="text-xs text-gray-500">{item.operation_number}</p>
+              {showDowntimeTag && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold">
+                  {t("station.queue.downtimeActive")}
+                </span>
+              )}
+              {showBlockedDowntimeHint && (
+                <span className="text-xs text-red-700 font-medium">
+                  {t("station.queue.blockedByDowntime")}
+                </span>
+              )}
+            </div>
           </button>
         );
       })}
@@ -324,8 +338,11 @@ export function StationExecution() {
     return t(mapExecutionStatusText(status) as I18nSemanticKey);
   };
 
-  // canStartDowntime must be declared after operation is defined
-  const canStartDowntime = operation && ["IN_PROGRESS", "PAUSED"].includes(operation.status);
+  // Backend-derived capability check. Missing allowed_actions (e.g. detail not
+  // yet loaded) means no actions are offered by the client — backend still
+  // enforces on request.
+  const canDo = (action: string) =>
+    Array.isArray(operation?.allowed_actions) && operation!.allowed_actions.includes(action);
 
   // Initial queue load on mount
   useEffect(() => { void refreshQueue(); }, []);
@@ -865,7 +882,7 @@ export function StationExecution() {
             )}
             <button
               onClick={() => void startOperation()}
-              disabled={actionLoading || !canExecuteByClaim}
+              disabled={actionLoading || !canExecuteByClaim || !canDo("start_execution")}
               className="w-full h-16 bg-green-600 text-white text-xl font-bold rounded-2xl hover:bg-green-700 disabled:opacity-50 active:scale-[0.98] transition"
             >
               {t("station.action.clockOn")}
@@ -892,7 +909,7 @@ export function StationExecution() {
             )}
             <button
               onClick={() => void endDowntime()}
-              disabled={downtimeLoading || !canExecuteByClaim || !operation.downtime_open}
+              disabled={downtimeLoading || !canExecuteByClaim || !canDo("end_downtime")}
               className="w-full h-16 bg-blue-600 text-white text-xl font-bold rounded-2xl hover:bg-blue-700 disabled:opacity-50 active:scale-[0.98] transition"
             >
               {t("station.action.endDowntime")}
@@ -936,7 +953,7 @@ export function StationExecution() {
               </p>
               <button
                 onClick={() => void reportQuantity()}
-                disabled={actionLoading || !canExecuteByClaim}
+                disabled={actionLoading || !canExecuteByClaim || !canDo("report_production")}
                 className="w-full h-14 bg-blue-600 text-white text-lg font-semibold rounded-2xl hover:bg-blue-700 disabled:opacity-50 active:scale-[0.98] transition"
               >
                 {t("station.action.reportQty")}
@@ -944,7 +961,7 @@ export function StationExecution() {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => void pauseOperation()}
-                  disabled={actionLoading || !canExecuteByClaim}
+                  disabled={actionLoading || !canExecuteByClaim || !canDo("pause_execution")}
                   title={!canExecuteByClaim ? t("station.claim.required") : undefined}
                   className="h-14 bg-amber-500 text-white text-base font-semibold rounded-2xl hover:bg-amber-600 disabled:opacity-50 active:scale-[0.98] transition"
                 >
@@ -952,7 +969,7 @@ export function StationExecution() {
                 </button>
                 <button
                   onClick={() => setDowntimeModalOpen(true)}
-                  disabled={downtimeLoading || !canExecuteByClaim || !canStartDowntime || operation.downtime_open}
+                  disabled={downtimeLoading || !canExecuteByClaim || !canDo("start_downtime")}
                   title={!canExecuteByClaim ? t("station.claim.required") : undefined}
                   className="h-14 bg-slate-600 text-white text-base font-semibold rounded-2xl hover:bg-slate-700 disabled:opacity-50 active:scale-[0.98] transition"
                 >
@@ -961,7 +978,7 @@ export function StationExecution() {
               </div>
               <button
                 onClick={() => void completeOperation()}
-                disabled={actionLoading || !canExecuteByClaim}
+                disabled={actionLoading || !canExecuteByClaim || !canDo("complete_execution")}
                 title={!canExecuteByClaim ? t("station.claim.required") : undefined}
                 className="w-full h-12 bg-white border-2 border-orange-500 text-orange-700 text-base font-semibold rounded-2xl hover:bg-orange-50 disabled:opacity-50 active:scale-[0.99] transition"
               >
@@ -1000,7 +1017,7 @@ export function StationExecution() {
             {operation.downtime_open ? (
               <button
                 onClick={() => void endDowntime()}
-                disabled={downtimeLoading || !canExecuteByClaim}
+                disabled={downtimeLoading || !canExecuteByClaim || !canDo("end_downtime")}
                 className="w-full h-16 bg-blue-600 text-white text-xl font-bold rounded-2xl hover:bg-blue-700 disabled:opacity-50 active:scale-[0.98] transition"
               >
                 {t("station.action.endDowntime")}
@@ -1008,7 +1025,7 @@ export function StationExecution() {
             ) : (
               <button
                 onClick={() => void resumeOperation()}
-                disabled={actionLoading || !canExecuteByClaim}
+                disabled={actionLoading || !canExecuteByClaim || !canDo("resume_execution")}
                 className="w-full h-16 bg-green-600 text-white text-xl font-bold rounded-2xl hover:bg-green-700 disabled:opacity-50 active:scale-[0.98] transition"
               >
                 {t("station.action.resume")}
