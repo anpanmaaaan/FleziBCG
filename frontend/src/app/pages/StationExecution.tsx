@@ -57,12 +57,12 @@ function StartDowntimeModal({ open, onClose, onSubmit, loading }: {
     </div>
   );
 }
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { PageHeader } from "@/app/components";
 import { StatusBadge } from "@/app/components";
 import { toast } from "sonner";
-import { RefreshCw, Lock, X, ChevronDown } from "lucide-react";
+import { RefreshCw, Lock, X, ChevronDown, ArrowLeft } from "lucide-react";
 import { operationApi, type OperationDetail } from "@/app/api";
 import { stationApi, type StationQueueItem } from "@/app/api";
 import { HttpError } from "@/app/api";
@@ -219,11 +219,87 @@ interface QueueListProps {
   items: StationQueueItem[];
   loading: boolean;
   activeOperationId?: number;
+  filter: QueueFilter;
+  onFilterChange: (filter: QueueFilter) => void;
   onSelect: (item: StationQueueItem) => void;
 }
 
-function QueueList({ items, loading, activeOperationId, onSelect }: QueueListProps) {
+type QueueFilter = "all" | "mine" | "ready" | "paused" | "blocked" | "downtime";
+
+const isBackendClaimableQueueStatus = (status: StationQueueItem["status"]): boolean =>
+  status === "PLANNED" || status === "IN_PROGRESS";
+
+const matchesQueueFilter = (item: StationQueueItem, filter: QueueFilter): boolean => {
+  switch (filter) {
+    case "mine":
+      return item.claim.state === "mine";
+    case "ready":
+      return isBackendClaimableQueueStatus(item.status) && !item.downtime_open;
+    case "paused":
+      return item.status === "PAUSED";
+    case "blocked":
+      return item.status === "BLOCKED";
+    case "downtime":
+      return item.downtime_open;
+    case "all":
+    default:
+      return true;
+  }
+};
+
+function QueueList({
+  items,
+  loading,
+  activeOperationId,
+  filter,
+  onFilterChange,
+  onSelect,
+}: QueueListProps) {
   const { t } = useI18n();
+  const hasMineClaim = items.some((item) => item.claim.state === "mine");
+
+  const summary = useMemo(() => {
+    return items.reduce(
+      (acc, item) => {
+        if (isBackendClaimableQueueStatus(item.status)) {
+          acc.ready += 1;
+        }
+        if (item.status === "PAUSED") {
+          acc.paused += 1;
+        }
+        if (item.status === "BLOCKED") {
+          acc.blocked += 1;
+        }
+        if (item.downtime_open) {
+          acc.downtime += 1;
+        }
+        if (item.claim.state === "mine") {
+          acc.mine += 1;
+        }
+        return acc;
+      },
+      { ready: 0, paused: 0, blocked: 0, downtime: 0, mine: 0 },
+    );
+  }, [items]);
+
+  const filteredItems = useMemo(
+    () => items.filter((item) => matchesQueueFilter(item, filter)),
+    [filter, items],
+  );
+  const selectedIsFilteredOut =
+    activeOperationId !== undefined &&
+    items.some((item) => item.operation_id === activeOperationId) &&
+    !filteredItems.some((item) => item.operation_id === activeOperationId);
+
+  const filterDefs: { key: QueueFilter; label: string }[] = [
+    { key: "all", label: t("station.queue.filter.all") },
+    { key: "mine", label: t("station.queue.filter.mine") },
+    { key: "ready", label: t("station.queue.filter.ready") },
+    { key: "paused", label: t("station.queue.filter.paused") },
+    { key: "blocked", label: t("station.queue.filter.blocked") },
+    { key: "downtime", label: t("station.queue.filter.downtime") },
+  ];
+
   if (loading) {
     return <p className="text-sm text-gray-500 py-8 text-center">{t("station.loading")}</p>;
   }
@@ -235,12 +311,91 @@ function QueueList({ items, loading, activeOperationId, onSelect }: QueueListPro
     );
   }
   return (
-    <div className="flex flex-col gap-2">
-      {items.map((item) => {
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        <div className="rounded-lg border bg-white px-3 py-2">
+          <p className="text-[11px] text-gray-500">{t("station.queue.summary.ready")}</p>
+          <p className="text-sm font-semibold text-gray-900">{summary.ready}</p>
+        </div>
+        <div className="rounded-lg border bg-white px-3 py-2">
+          <p className="text-[11px] text-gray-500">{t("station.queue.summary.paused")}</p>
+          <p className="text-sm font-semibold text-amber-700">{summary.paused}</p>
+        </div>
+        <div className="rounded-lg border bg-white px-3 py-2">
+          <p className="text-[11px] text-gray-500">{t("station.queue.summary.blocked")}</p>
+          <p className="text-sm font-semibold text-red-700">{summary.blocked}</p>
+        </div>
+        <div className="rounded-lg border bg-white px-3 py-2">
+          <p className="text-[11px] text-gray-500">{t("station.queue.summary.downtime")}</p>
+          <p className="text-sm font-semibold text-red-700">{summary.downtime}</p>
+        </div>
+        <div className="rounded-lg border bg-white px-3 py-2">
+          <p className="text-[11px] text-gray-500">{t("station.queue.summary.mine")}</p>
+          <p className="text-sm font-semibold text-blue-700">{summary.mine}</p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        {filterDefs.map((entry) => {
+          const active = filter === entry.key;
+          return (
+            <button
+              key={entry.key}
+              type="button"
+              onClick={() => onFilterChange(entry.key)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
+                active
+                  ? "bg-blue-600 border-blue-600 text-white"
+                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              {entry.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {selectedIsFilteredOut && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          {t("station.queue.selectedOutsideFilter")}
+        </p>
+      )}
+
+      {filteredItems.length === 0 && (
+        <p className="text-sm text-gray-500 py-6 text-center">{t("station.queue.emptyFiltered")}</p>
+      )}
+
+      {filteredItems.map((item) => {
         const active = activeOperationId === item.operation_id;
         const locked = item.claim.state === "other";
         const showDowntimeTag = item.downtime_open;
         const showBlockedDowntimeHint = item.status === "BLOCKED" && item.downtime_open;
+        const isMine = item.claim.state === "mine";
+        const isClaimableByStatus = isBackendClaimableQueueStatus(item.status);
+
+        const rowTone =
+          item.status === "BLOCKED"
+            ? "border-red-200 bg-red-50"
+            : item.status === "PAUSED"
+            ? "border-amber-200 bg-amber-50"
+            : "border-gray-200 bg-white";
+
+        const claimHint =
+          item.claim.state === "mine"
+            ? t("station.claim.ownedBadge")
+            : item.claim.state === "other"
+            ? t("station.queue.claimedByOther")
+            : isClaimableByStatus && !hasMineClaim
+            ? t("station.queue.readyToClaim")
+            : null;
+
+        const claimHintTone =
+          item.claim.state === "mine"
+            ? "text-blue-700"
+            : item.claim.state === "other"
+            ? "text-orange-700"
+            : "text-emerald-700";
+
         return (
           <button
             key={item.operation_id}
@@ -252,12 +407,13 @@ function QueueList({ items, loading, activeOperationId, onSelect }: QueueListPro
                 ? "border-blue-500 bg-blue-50"
                 : locked
                 ? "border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed"
-                : "border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50 active:scale-[0.99]"
+                : `${rowTone} hover:border-blue-300 hover:bg-blue-50 active:scale-[0.99]`
             }`}
           >
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0">
                 {locked && <Lock className="w-4 h-4 text-orange-500 shrink-0" />}
+                {isMine && <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0" aria-hidden="true" />}
                 <p className="font-semibold text-base text-gray-900 truncate">
                   {item.name}
                 </p>
@@ -278,6 +434,7 @@ function QueueList({ items, loading, activeOperationId, onSelect }: QueueListPro
                   {t("station.queue.blockedByDowntime")}
                 </span>
               )}
+              {claimHint && <span className={`text-xs font-medium ${claimHintTone}`}>{claimHint}</span>}
             </div>
           </button>
         );
@@ -332,7 +489,9 @@ export function StationExecution() {
   const [scrapQty, setScrapQty] = useState<number>(0);
   const [stationScope, setStationScope] = useState<string>("-");
   const [queueItems, setQueueItems] = useState<StationQueueItem[]>([]);
+  const [queueFilter, setQueueFilter] = useState<QueueFilter>("all");
   const [queueOverlayOpen, setQueueOverlayOpen] = useState(false);
+  const [forceSelectionMode, setForceSelectionMode] = useState(false);
 
   const getStatusLabel = (status: OperationDetail["status"]): string => {
     return t(mapExecutionStatusText(status) as I18nSemanticKey);
@@ -361,12 +520,26 @@ export function StationExecution() {
     ? queueItems.find((item) => item.operation_id === operation.id) ?? null
     : null;
   const claimState = selectedQueueItem?.claim.state ?? "none";
+  const ownedClaimOperationId =
+    queueItems.find((item) => item.claim.state === "mine")?.operation_id ?? null;
+  const ownsAnotherClaim =
+    ownedClaimOperationId !== null && ownedClaimOperationId !== operation?.id;
+  const canClaimByStatus = operation
+    ? isBackendClaimableQueueStatus(operation.status)
+    : false;
+  const canClaimCurrentOperation = canClaimByStatus && !ownsAnotherClaim;
   const canExecuteByClaim = claimState === "mine";
+  // Release is only safe on PLANNED. On IN_PROGRESS / PAUSED / BLOCKED the
+  // operation has active execution context and the operator cannot reclaim after
+  // releasing, creating an unrecoverable dead-end. Backend enforces the same
+  // rule; the frontend guard removes the affordance proactively.
+  const canReleaseClaim = claimState === "mine" && operation?.status === "PLANNED";
   const canClockOnByStatus =
     operation?.status === "PLANNED";
 
-  // Mode B = operator has claimed this operation
-  const isExecutionMode = claimState === "mine";
+  // Mode B = operator has claimed this operation, unless user explicitly
+  // navigates back to the full selection surface.
+  const isExecutionMode = claimState === "mine" && !forceSelectionMode;
 
   const refreshQueue = async () => {
     setQueueLoading(true);
@@ -425,6 +598,7 @@ export function StationExecution() {
 
   const selectQueueOperation = async (item: StationQueueItem) => {
     setQueueOverlayOpen(false);
+    setForceSelectionMode(false);
     setOperationId(String(item.operation_id));
     setSearchParams({ operationId: String(item.operation_id) });
     await fetchOperation(String(item.operation_id));
@@ -435,6 +609,7 @@ export function StationExecution() {
     setClaimLoading(true);
     try {
       await stationApi.claim(operation.id, {});
+      setForceSelectionMode(false);
       toast.success(t("station.toast.claimed"));
       await refreshQueue();
     } catch (err) {
@@ -457,6 +632,11 @@ export function StationExecution() {
     } finally {
       setClaimLoading(false);
     }
+  };
+
+  const backToSelection = () => {
+    setQueueOverlayOpen(false);
+    setForceSelectionMode(true);
   };
 
   const startOperation = async () => {
@@ -632,7 +812,7 @@ export function StationExecution() {
 
         <div className="flex-1 overflow-auto p-4 max-w-2xl mx-auto w-full">
           {/* Selected operation — awaiting claim */}
-          {operation && claimState === "none" && (
+          {operation && claimState === "none" && canClaimByStatus && (
             <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <p className="font-semibold text-gray-900 truncate">{operation.name}</p>
@@ -644,10 +824,15 @@ export function StationExecution() {
                     {getStatusLabel(operation.status)}
                   </StatusBadge>
                 </div>
+                {ownsAnotherClaim && (
+                  <p className="mt-2 text-xs text-amber-700">
+                    {t("station.claim.singleActiveHint")}
+                  </p>
+                )}
               </div>
               <button
                 onClick={() => void claimOperation()}
-                disabled={claimLoading}
+                disabled={claimLoading || !canClaimCurrentOperation}
                 className="shrink-0 h-12 px-6 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50"
               >
                 {claimLoading ? t("station.action.claiming") : t("station.action.claim")}
@@ -673,6 +858,8 @@ export function StationExecution() {
                 items={queueItems}
                 loading={queueLoading}
                 activeOperationId={operation?.id}
+                filter={queueFilter}
+                onFilterChange={setQueueFilter}
                 onSelect={(item) => void selectQueueOperation(item)}
               />
               <details className="mt-4 border-t pt-3">
@@ -733,6 +920,13 @@ export function StationExecution() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
+            onClick={backToSelection}
+            className="h-9 px-3 border border-gray-300 rounded-lg text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-1"
+          >
+            <ArrowLeft className="w-3 h-3" />
+            {t("station.action.backToSelection")}
+          </button>
+          <button
             onClick={() => void refreshQueue()}
             disabled={queueLoading}
             className="h-9 px-3 border border-gray-300 rounded-lg text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-50"
@@ -749,7 +943,7 @@ export function StationExecution() {
           </button>
           <button
             onClick={() => void releaseClaim()}
-            disabled={claimLoading}
+            disabled={claimLoading || !canReleaseClaim}
             className="h-9 px-3 border border-red-200 rounded-lg text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
           >
             {t("station.action.release")}
@@ -781,6 +975,8 @@ export function StationExecution() {
               items={queueItems}
               loading={queueLoading}
               activeOperationId={operation.id}
+              filter={queueFilter}
+              onFilterChange={setQueueFilter}
               onSelect={(item) => void selectQueueOperation(item)}
             />
           </div>

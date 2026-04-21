@@ -1,0 +1,180 @@
+Theo mình, về **tương lai design đúng**, bạn nên tách rất rõ:
+
+## 1) Bình thường: **chỉ operator đang giữ ownership mới end downtime**
+
+Đây nên là default path.
+
+Vì SOP của bạn nhấn mạnh:
+
+* normal flow phải **operator-driven**
+* supervisor không nên trở thành người “click hộ” cho routine execution
+
+Và phần downtime SOP cũng nói:
+
+* chỉ end downtime khi nguyên nhân dừng thực sự đã được giải quyết
+* không được end chỉ để làm dashboard đẹp hơn 
+
+Nên trong **normal case**:
+
+* operator sở hữu claim
+* operator start downtime
+* operator end downtime
+* rồi operator resume
+
+---
+
+## 2) Bất thường: **không nên cho supervisor “bấm hộ trực tiếp” như routine**
+
+Thay vào đó phải đi qua **exception / controlled override path**.
+
+Canonical docs của bạn đã define rất rõ:
+
+* abnormal cases phải đi qua **explicit exception path**
+* supervisor involvement là cho **exception**, không phải cho routine execution 
+* exception matrix đã có sẵn các loại:
+
+  * `FORCE_RESUME_REQUEST`
+  * `BLOCK_OVERRIDE_REQUEST`
+  * `SUPPORT_INTERVENTION_REQUEST`
+* approved exception phải unlock một hiệu ứng backend rõ ràng như:
+
+  * `ALLOW_FORCE_RESUME`
+  * `ALLOW_BLOCK_OVERRIDE`
+
+### Nên hiểu như sau:
+
+Nếu operator **không thể tự end downtime** vì mất claim / rời ca / lỗi thao tác / dead-end ownership, thì:
+
+### **Supervisor không nên đơn thuần “end downtime hộ”**
+
+Supervisor nên:
+
+1. xác nhận đây là abnormal case thật
+2. raise hoặc review **exception path**
+3. approve đúng effect cần thiết
+4. hệ thống mới unlock recovery action tương ứng
+
+---
+
+# Vậy “ai” là người có thể giúp operator?
+
+## Mình khuyên chia làm 3 tầng
+
+### A. **Operator** — owner mặc định
+
+Là người **nên** end downtime trong hầu hết case.
+
+### B. **Supervisor** — owner của **operational recovery exception**
+
+Supervisor nên là người xử lý các case như:
+
+* operator mất claim giữa chừng
+* shift handover bị hỏng
+* block cần override vì operational reason
+* cần resume lại flow sau khi xác minh thực địa
+
+Nhưng cách làm đúng là qua:
+
+* `BLOCK_OVERRIDE_REQUEST`
+* hoặc `FORCE_RESUME_REQUEST`
+  chứ **không phải click end_downtime thay operator như hành động routine**.
+
+### C. **ADM / OTS** — chỉ under controlled support mode
+
+Khi system/ownership hỏng thật sự, hoặc cần support intervention:
+
+* dùng `SUPPORT_INTERVENTION_REQUEST`
+* hoặc support-mode / impersonation có audit đầy đủ 
+
+### D. **QCI/QAL** — chỉ khi block là quality-owned
+
+Nếu “không thể continue” vì **QC hold / quality stop**, thì owner đúng không phải supervisor mặc định mà là **QCI/QAL**. Business truth đã ghi:
+
+* operational exceptions thường do `SUP`
+* quality-owned decisions do `QCI/QAL` 
+
+---
+
+# Kiến trúc mình recommend cho tương lai
+
+## Không nên hỏi:
+
+**“Ai có thể end downtime hộ operator?”**
+
+## Nên đổi thành:
+
+**“Ai có quyền mở recovery path khi normal owner không thể tiếp tục?”**
+
+Và câu trả lời nên là:
+
+### 1. Nếu vẫn là downtime operational bình thường
+
+* operator end downtime
+
+### 2. Nếu operator không thể tiếp tục nhưng issue là operational
+
+* supervisor raise/review exception
+* approve `ALLOW_BLOCK_OVERRIDE` hoặc `ALLOW_FORCE_RESUME`
+* sau đó system cho phép recovery action hợp lệ
+
+### 3. Nếu issue là quality-owned
+
+* quality role quyết định
+* không cho supervisor tự xử lý như convenience action
+
+### 4. Nếu là sự cố hệ thống / ownership / support
+
+* support/admin qua controlled support path
+* full audit
+
+---
+
+# Ý kiến riêng của mình
+
+Mình **không recommend** future design kiểu:
+
+* “SUP có nút End Downtime hộ operator”
+
+vì cách đó:
+
+* phá boundary normal-vs-exception
+* rất dễ bị lạm dụng để “làm sạch KPI”
+* mâu thuẫn với SOP của chính bạn
+
+Mình recommend hơn:
+
+## **SUP không end downtime hộ trực tiếp**
+
+SUP nên có:
+
+* `Raise Recovery Exception`
+* `Approve Recovery`
+* `Transfer / Handover Ownership` sau này nếu cần
+
+Còn action kỹ thuật cuối cùng sau unlock có thể là:
+
+* operator mới tiếp tục
+* hoặc system cho phép controlled recovery step có audit
+
+---
+
+# Chốt thực dụng: what must be done now vs later
+
+## Nên làm **ngay trong phase sau QC**
+
+* chặn release claim ở active execution nếu chưa có handover flow
+* define rõ **claim continuity**
+* define rõ **recovery exception path** cho case operator bị kẹt
+
+## Nên design ngay nhưng implement sau
+
+* `BLOCK_OVERRIDE_REQUEST`
+* `FORCE_RESUME_REQUEST`
+* `SUPPORT_INTERVENTION_REQUEST`
+* handover / transfer ownership flow
+
+---
+
+# Một câu chốt
+
+**Tương lai, người “giúp operator” không nên là người tự click end_downtime hộ theo routine; đúng hơn phải là người có quyền mở một recovery/override path có audit, thường là SUP cho operational case, QCI/QAL cho quality-owned case, và ADM/OTS chỉ dưới controlled support mode.**

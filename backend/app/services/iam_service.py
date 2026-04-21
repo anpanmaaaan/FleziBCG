@@ -3,12 +3,22 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.rbac import Permission, Role, RolePermission, RoleScope, Scope, UserRole, UserRoleAssignment
+from app.models.rbac import (
+    Permission,
+    Role,
+    RolePermission,
+    RoleScope,
+    Scope,
+    UserRole,
+    UserRoleAssignment,
+)
 from app.security.dependencies import RequestIdentity
 from app.security.rbac import SYSTEM_ROLE_FAMILIES
 
 
-def _in_valid_window(valid_from: datetime | None, valid_to: datetime | None, now: datetime) -> bool:
+def _in_valid_window(
+    valid_from: datetime | None, valid_to: datetime | None, now: datetime
+) -> bool:
     if valid_from is not None and valid_from > now:
         return False
     if valid_to is not None and valid_to < now:
@@ -16,7 +26,9 @@ def _in_valid_window(valid_from: datetime | None, valid_to: datetime | None, now
     return True
 
 
-def get_role_assignments_for_identity(db: Session, identity: RequestIdentity) -> list[dict]:
+def get_role_assignments_for_identity(
+    db: Session, identity: RequestIdentity
+) -> list[dict]:
     now = datetime.now(timezone.utc)
 
     rows = list(
@@ -77,7 +89,9 @@ def get_role_assignments_for_identity(db: Session, identity: RequestIdentity) ->
     synthetic_assignment_id = 1
     for user_role, role, role_scope in legacy_rows:
         scope_type = role_scope.scope_type if role_scope is not None else "tenant"
-        scope_value = role_scope.scope_value if role_scope is not None else identity.tenant_id
+        scope_value = (
+            role_scope.scope_value if role_scope is not None else identity.tenant_id
+        )
         fallback_assignments.append(
             {
                 "assignment_id": None,
@@ -130,7 +144,9 @@ def create_custom_role(
     if base_role.code not in {"ADM", "OTS"} and allow_action_codes:
         for action in allow_action_codes:
             if action.startswith("admin."):
-                raise ValueError("Custom roles must not grant ADMIN actions beyond baseline")
+                raise ValueError(
+                    "Custom roles must not grant ADMIN actions beyond baseline"
+                )
 
     custom_role = Role(
         code=normalized_code,
@@ -167,7 +183,9 @@ def create_custom_role(
 
     allow_action_codes = allow_action_codes or []
     for action in allow_action_codes:
-        permission = db.scalar(select(Permission).where(Permission.action_code == action))
+        permission = db.scalar(
+            select(Permission).where(Permission.action_code == action)
+        )
         if permission is None:
             continue
         key = (permission.id, "tenant", "*")

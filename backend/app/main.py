@@ -32,7 +32,9 @@ app.include_router(api_router)
 
 
 @app.exception_handler(I18nHTTPException)
-async def i18n_exception_handler(request: Request, exc: I18nHTTPException) -> JSONResponse:
+async def i18n_exception_handler(
+    request: Request, exc: I18nHTTPException
+) -> JSONResponse:
     """Return structured { error_code, message } for i18n-aware exceptions."""
     locale = resolve_locale(request)
     return JSONResponse(

@@ -5,8 +5,17 @@ from app.db.session import SessionLocal
 from app.schemas.auth import AuthUser, LoginRequest, LoginResponse
 from app.schemas.session import SessionItem, SessionListResponse
 from app.security.auth import authenticate_user_db, create_access_token
-from app.security.dependencies import RequestIdentity, require_authenticated_identity, require_permission
-from app.services.session_service import create_login_session, list_user_sessions, revoke_all_sessions_for_user, revoke_session
+from app.security.dependencies import (
+    RequestIdentity,
+    require_authenticated_identity,
+    require_permission,
+)
+from app.services.session_service import (
+    create_login_session,
+    list_user_sessions,
+    revoke_all_sessions_for_user,
+    revoke_session,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -102,7 +111,9 @@ def list_sessions(
             revoked_at=item.revoked_at,
             revoke_reason=item.revoke_reason,
         )
-        for item in list_user_sessions(db, user_id=identity.user_id, tenant_id=identity.tenant_id)
+        for item in list_user_sessions(
+            db, user_id=identity.user_id, tenant_id=identity.tenant_id
+        )
     ]
     return SessionListResponse(sessions=sessions)
 

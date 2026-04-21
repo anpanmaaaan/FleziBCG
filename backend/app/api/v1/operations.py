@@ -14,7 +14,11 @@ from app.schemas.operation import (
     OperationStartRequest,
     OperationStartDowntimeRequest,
 )
-from app.security.dependencies import RequestIdentity, require_action, require_permission
+from app.security.dependencies import (
+    RequestIdentity,
+    require_action,
+    require_permission,
+)
 from app.services.operation_service import (
     CompleteOperationConflictError,
     EndDowntimeConflictError,
@@ -80,7 +84,9 @@ def start_operation_endpoint(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
-@router.post("/operations/{operation_id}/report-quantity", response_model=OperationDetail)
+@router.post(
+    "/operations/{operation_id}/report-quantity", response_model=OperationDetail
+)
 def report_quantity_endpoint(
     operation_id: int,
     request: OperationReportQuantityRequest,
@@ -203,7 +209,9 @@ def abort_operation_endpoint(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
-@router.post("/operations/{operation_id}/start-downtime", response_model=OperationDetail)
+@router.post(
+    "/operations/{operation_id}/start-downtime", response_model=OperationDetail
+)
 def start_downtime_endpoint(
     operation_id: int,
     request: OperationStartDowntimeRequest,
@@ -219,7 +227,7 @@ def start_downtime_endpoint(
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
 
-    from app.services.operation_service import start_downtime, StartDowntimeConflictError
+    from app.services.operation_service import StartDowntimeConflictError
 
     try:
         return start_downtime(
@@ -263,4 +271,3 @@ def end_downtime_endpoint(
         raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-

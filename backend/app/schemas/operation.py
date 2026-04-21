@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
+from app.models.execution import DowntimeReasonClass
+
 
 class OperationListItem(BaseModel):
     id: int
@@ -81,10 +83,6 @@ class OperationPauseRequest(BaseModel):
     reason_code: str | None = None
     note: str | None = None
 
-
-
-# Request schema for start_downtime
-from app.models.execution import DowntimeReasonClass
 
 class OperationStartDowntimeRequest(BaseModel):
     reason_class: DowntimeReasonClass

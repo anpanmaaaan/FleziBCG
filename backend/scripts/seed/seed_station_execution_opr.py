@@ -62,6 +62,7 @@ class _OpSpec(TypedDict):
     planned_end: str
     qc_required: NotRequired[bool]
 
+
 SEED_PREFIX = "PH6-STATION"
 TENANT_ID = "default"
 STATION_SCOPE = "STATION_01"
@@ -249,7 +250,9 @@ def seed_station_execution_for_opr() -> None:
         start_operation(
             db,
             op002,
-            OperationStartRequest(operator_id=None, started_at=_dt("2099-06-01T09:15:00")),
+            OperationStartRequest(
+                operator_id=None, started_at=_dt("2099-06-01T09:15:00")
+            ),
             tenant_id=TENANT_ID,
         )
         report_quantity(
@@ -264,13 +267,17 @@ def seed_station_execution_for_opr() -> None:
         start_operation(
             db,
             op003,
-            OperationStartRequest(operator_id=None, started_at=_dt("2099-06-01T11:15:00")),
+            OperationStartRequest(
+                operator_id=None, started_at=_dt("2099-06-01T11:15:00")
+            ),
             tenant_id=TENANT_ID,
         )
         pause_operation(
             db,
             _op("003"),
-            OperationPauseRequest(reason_code="SHIFT_CHANGE", note="Seed: operator break"),
+            OperationPauseRequest(
+                reason_code="SHIFT_CHANGE", note="Seed: operator break"
+            ),
             actor_user_id=SEED_ACTOR,
             tenant_id=TENANT_ID,
         )
@@ -282,13 +289,17 @@ def seed_station_execution_for_opr() -> None:
         start_operation(
             db,
             op004,
-            OperationStartRequest(operator_id=None, started_at=_dt("2099-06-01T12:15:00")),
+            OperationStartRequest(
+                operator_id=None, started_at=_dt("2099-06-01T12:15:00")
+            ),
             tenant_id=TENANT_ID,
         )
         pause_operation(
             db,
             _op("004"),
-            OperationPauseRequest(reason_code="WAITING_FOR_TOOL", note="Seed: waiting on tooling"),
+            OperationPauseRequest(
+                reason_code="WAITING_FOR_TOOL", note="Seed: waiting on tooling"
+            ),
             actor_user_id=SEED_ACTOR,
             tenant_id=TENANT_ID,
         )
@@ -309,7 +320,9 @@ def seed_station_execution_for_opr() -> None:
         start_operation(
             db,
             op005,
-            OperationStartRequest(operator_id=None, started_at=_dt("2099-06-01T13:45:00")),
+            OperationStartRequest(
+                operator_id=None, started_at=_dt("2099-06-01T13:45:00")
+            ),
             tenant_id=TENANT_ID,
         )
         start_downtime(
@@ -328,7 +341,9 @@ def seed_station_execution_for_opr() -> None:
         start_operation(
             db,
             op006,
-            OperationStartRequest(operator_id=None, started_at=_dt("2099-06-01T14:55:00")),
+            OperationStartRequest(
+                operator_id=None, started_at=_dt("2099-06-01T14:55:00")
+            ),
             tenant_id=TENANT_ID,
         )
         report_quantity(

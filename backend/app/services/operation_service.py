@@ -1,7 +1,35 @@
-
+from datetime import datetime, timezone
+from typing import Optional
 
 from sqlalchemy.orm import Session
-from app.schemas.operation import OperationDetail
+
+from app.models.execution import DowntimeReasonClass, ExecutionEventType
+from app.models.master import StatusEnum
+from app.repositories.execution_event_repository import (
+    create_execution_event,
+    get_events_for_operation,
+)
+from app.repositories.operation_repository import (
+    get_in_progress_operations_by_station,
+    get_operation_by_id,
+    mark_operation_aborted,
+    mark_operation_completed,
+    mark_operation_paused,
+    mark_operation_reported,
+    mark_operation_resumed,
+    mark_operation_started,
+)
+from app.schemas.operation import (
+    OperationAbortRequest,
+    OperationCompleteRequest,
+    OperationDetail,
+    OperationPauseRequest,
+    OperationReportQuantityRequest,
+    OperationResumeRequest,
+    OperationStartRequest,
+)
+from app.services.work_order_execution_service import recompute_work_order
+
 
 class StartDowntimeConflictError(ValueError):
     pass
@@ -24,14 +52,6 @@ def end_downtime(
     per canonical contract: execution must remain non-running until an
     explicit `resume_execution` command.
     """
-    from app.models.execution import ExecutionEventType
-    from app.models.master import StatusEnum
-    from app.repositories.execution_event_repository import (
-        create_execution_event,
-        get_events_for_operation,
-    )
-    from app.repositories.operation_repository import get_operation_by_id
-
     if operation.tenant_id != tenant_id:
         raise EndDowntimeConflictError("TENANT_MISMATCH")
 
@@ -46,14 +66,10 @@ def end_downtime(
     # Open-downtime guard: count started vs ended events on the append-only log.
     events = get_events_for_operation(db, operation.id)
     started_count = sum(
-        1
-        for e in events
-        if e.event_type == ExecutionEventType.DOWNTIME_STARTED.value
+        1 for e in events if e.event_type == ExecutionEventType.DOWNTIME_STARTED.value
     )
     ended_count = sum(
-        1
-        for e in events
-        if e.event_type == ExecutionEventType.DOWNTIME_ENDED.value
+        1 for e in events if e.event_type == ExecutionEventType.DOWNTIME_ENDED.value
     )
     if started_count <= ended_count:
         raise EndDowntimeConflictError("STATE_NO_OPEN_DOWNTIME")
@@ -108,13 +124,14 @@ def start_downtime(
     Start downtime for an operation. Allowed only if status is RUNNING or PAUSED, no open downtime, not completed/closed.
     Requires valid reason_class. Persists downtime_started event. Updates state per policy.
     """
-    from app.models.execution import DowntimeReasonClass, ExecutionEventType
-    from app.schemas.operation import OperationStartDowntimeRequest
-
     if operation.tenant_id != tenant_id:
         raise StartDowntimeConflictError("TENANT_MISMATCH")
     if operation.status not in (StatusEnum.in_progress.value, StatusEnum.paused.value):
-        if operation.status in (StatusEnum.completed.value, StatusEnum.completed_late.value, StatusEnum.aborted.value):
+        if operation.status in (
+            StatusEnum.completed.value,
+            StatusEnum.completed_late.value,
+            StatusEnum.aborted.value,
+        ):
             raise StartDowntimeConflictError("STATE_CLOSED")
         raise StartDowntimeConflictError("STATE_NOT_RUNNING_OR_PAUSED")
 
@@ -122,21 +139,20 @@ def start_downtime(
     # DOWNTIME_STARTED count > DOWNTIME_ENDED count.
     events = get_events_for_operation(db, operation.id)
     downtime_started_count = sum(
-        1
-        for e in events
-        if e.event_type == ExecutionEventType.DOWNTIME_STARTED.value
+        1 for e in events if e.event_type == ExecutionEventType.DOWNTIME_STARTED.value
     )
     downtime_ended_count = sum(
-        1
-        for e in events
-        if e.event_type == ExecutionEventType.DOWNTIME_ENDED.value
+        1 for e in events if e.event_type == ExecutionEventType.DOWNTIME_ENDED.value
     )
     downtime_open = downtime_started_count > downtime_ended_count
     if downtime_open:
         raise StartDowntimeConflictError("DOWNTIME_ALREADY_OPEN")
 
     # Validate reason_class
-    if not hasattr(request, "reason_class") or request.reason_class not in DowntimeReasonClass:
+    if (
+        not hasattr(request, "reason_class")
+        or request.reason_class not in DowntimeReasonClass
+    ):
         raise StartDowntimeConflictError("INVALID_REASON_CLASS")
 
     started_at = _utcnow_naive()
@@ -170,13 +186,6 @@ def start_downtime(
         raise ValueError("Operation not found after downtime start event.")
 
     return derive_operation_detail(db, operation)
-from datetime import datetime, timezone
-from typing import Optional
-
-from sqlalchemy.orm import Session
-
-from app.models.execution import ExecutionEventType
-from app.models.master import StatusEnum
 
 
 def _utcnow_naive() -> datetime:
@@ -184,30 +193,6 @@ def _utcnow_naive() -> datetime:
     # strip the tzinfo so it still lands cleanly in naive DateTime columns
     # (planned_start, actual_start, etc.) without changing storage semantics.
     return datetime.now(timezone.utc).replace(tzinfo=None)
-from app.repositories.execution_event_repository import (
-    create_execution_event,
-    get_events_for_operation,
-)
-from app.repositories.operation_repository import (
-    get_operation_by_id,
-    get_in_progress_operations_by_station,
-    mark_operation_started,
-    mark_operation_reported,
-    mark_operation_paused,
-    mark_operation_resumed,
-    mark_operation_completed,
-    mark_operation_aborted,
-)
-from app.schemas.operation import (
-    OperationDetail,
-    OperationStartRequest,
-    OperationReportQuantityRequest,
-    OperationCompleteRequest,
-    OperationAbortRequest,
-    OperationPauseRequest,
-    OperationResumeRequest,
-)
-from app.services.work_order_execution_service import recompute_work_order
 
 
 # WHY: Execution state machine: PLANNED→IN_PROGRESS→COMPLETED|ABORTED.
@@ -653,14 +638,10 @@ def resume_operation(
     # cannot cover.
     events = get_events_for_operation(db, operation.id)
     downtime_started_count = sum(
-        1
-        for e in events
-        if e.event_type == ExecutionEventType.DOWNTIME_STARTED.value
+        1 for e in events if e.event_type == ExecutionEventType.DOWNTIME_STARTED.value
     )
     downtime_ended_count = sum(
-        1
-        for e in events
-        if e.event_type == ExecutionEventType.DOWNTIME_ENDED.value
+        1 for e in events if e.event_type == ExecutionEventType.DOWNTIME_ENDED.value
     )
     if downtime_started_count > downtime_ended_count:
         raise ResumeExecutionConflictError("STATE_DOWNTIME_OPEN")

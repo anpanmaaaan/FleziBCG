@@ -7,6 +7,7 @@ an operation disappeared from the station picker after pause/downtime
 transitions. Proves that PAUSED and BLOCKED operations remain visible and that
 downtime_open is projected from the append-only event log.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -92,9 +93,7 @@ def _purge(db) -> None:
             db.execute(delete(Operation).where(Operation.work_order_id.in_(wo_ids)))
             db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
         db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
-    db.execute(
-        delete(UserRoleAssignment).where(UserRoleAssignment.user_id == _USER_ID)
-    )
+    db.execute(delete(UserRoleAssignment).where(UserRoleAssignment.user_id == _USER_ID))
     db.execute(
         delete(Scope).where(
             Scope.scope_value == _STATION_SCOPE_VALUE, Scope.tenant_id == _TENANT_ID
@@ -198,7 +197,10 @@ def station_queue_fixture():
         # the snapshot and event log both reflect the intended runtime state.
         # operator_id=None bypasses the station-busy guard for seeding.
         start_operation(
-            db, op_running, OperationStartRequest(operator_id=None), tenant_id=_TENANT_ID
+            db,
+            op_running,
+            OperationStartRequest(operator_id=None),
+            tenant_id=_TENANT_ID,
         )
         start_operation(
             db, op_paused, OperationStartRequest(operator_id=None), tenant_id=_TENANT_ID
@@ -211,7 +213,10 @@ def station_queue_fixture():
             tenant_id=_TENANT_ID,
         )
         start_operation(
-            db, op_blocked, OperationStartRequest(operator_id=None), tenant_id=_TENANT_ID
+            db,
+            op_blocked,
+            OperationStartRequest(operator_id=None),
+            tenant_id=_TENANT_ID,
         )
         start_downtime(
             db,
@@ -229,12 +234,15 @@ def station_queue_fixture():
         db.refresh(op_paused)
         db.refresh(op_blocked)
 
-        yield db, {
-            "planned": op_planned,
-            "running": op_running,
-            "paused": op_paused,
-            "blocked": op_blocked,
-        }
+        yield (
+            db,
+            {
+                "planned": op_planned,
+                "running": op_running,
+                "paused": op_paused,
+                "blocked": op_blocked,
+            },
+        )
     finally:
         _purge(db)
         db.close()

@@ -65,7 +65,12 @@ CANONICAL_ACTIONS = {
         (
             StatusEnum.in_progress.value,
             False,
-            ["report_production", "pause_execution", "complete_execution", "start_downtime"],
+            [
+                "report_production",
+                "pause_execution",
+                "complete_execution",
+                "start_downtime",
+            ],
         ),
         # IN_PROGRESS + downtime_open: a surprising but intentional case today.
         # In practice start_downtime transitions IN_PROGRESS → BLOCKED, so this
@@ -76,7 +81,12 @@ CANONICAL_ACTIONS = {
         (
             StatusEnum.in_progress.value,
             True,
-            ["report_production", "pause_execution", "complete_execution", "end_downtime"],
+            [
+                "report_production",
+                "pause_execution",
+                "complete_execution",
+                "end_downtime",
+            ],
         ),
         # PAUSED, no downtime: resume_execution + start_downtime.
         (
@@ -354,6 +364,7 @@ def test_event_roundtrip_start_then_end_downtime(running_operation):
     from app.repositories.execution_event_repository import (
         get_events_for_operation as _get_events,
     )
+
     roundtrip_events = _get_events(db, op.id)
     assert not any(
         e.event_type == _EET.EXECUTION_RESUMED.value for e in roundtrip_events

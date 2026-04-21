@@ -1,0 +1,307 @@
+Trong **MOM/MES best practice**, phần này thường vận hành theo hướng:
+
+## 1) Normal flow = **operator-owned**
+
+Trong vận hành bình thường, người **start downtime** và **end downtime** thường là:
+
+* operator đang chạy công việc đó
+* hoặc người đang giữ ownership/session/claim của operation hoặc station đó
+
+Lý do rất đơn giản:
+
+* downtime là một phần của **execution reality**
+* người đứng máy mới biết nguyên nhân dừng đã thực sự được xử lý chưa
+* nếu cho người khác “bấm hộ” quá dễ, dữ liệu downtime rất nhanh bị méo
+
+### Nghĩa là:
+
+* operator start downtime
+* operator end downtime
+* operator resume
+
+Đây là flow chuẩn nhất.
+
+---
+
+## 2) Ownership thường **persist qua active non-terminal states**
+
+Trong các hệ MES/MOM trưởng thành, ownership không chỉ đúng lúc `RUNNING`, mà thường giữ xuyên qua:
+
+* `IN_PROGRESS`
+* `PAUSED`
+* `BLOCKED`
+
+Tức là:
+
+* paused không làm mất owner
+* blocked vì downtime cũng không làm mất owner
+* end downtime xong vẫn là cùng owner đó xử lý tiếp
+
+Đây là cách tránh dead-end logic.
+
+### Nói ngắn:
+
+**active work context vẫn thuộc về một owner**, dù tạm dừng hay đang blocked.
+
+---
+
+## 3) Supervisor thường **không được dùng như operator dự phòng**
+
+Best practice không khuyến khích:
+
+* supervisor vào bấm `end downtime` hộ như action routine
+* supervisor “làm thay” operator chỉ để khép trạng thái
+
+Supervisor thường có vai trò:
+
+* monitor
+* verify
+* escalate
+* approve exception
+* coordinate recovery
+
+Chứ không nên là người thao tác execution thay operator hàng ngày.
+
+---
+
+## 4) Khi operator không thể tự xử lý, hệ tốt sẽ dùng **handover / override / exception path**
+
+Đây mới là phần rất MOM best practice.
+
+### Thay vì:
+
+“SUP có nút end downtime hộ operator”
+
+### Thường sẽ là:
+
+* **handover / take-over**
+* **override request**
+* **support intervention**
+* **exception approval**
+
+Tức là hệ sẽ hỏi:
+
+* ai là owner mới?
+* vì sao owner cũ không tiếp tục?
+* có cần approve không?
+* có cần audit trail không?
+
+Sau đó mới mở recovery path.
+
+---
+
+# Mô hình phổ biến nhất ngoài thực tế
+
+## Pattern A — **Ownership transfer**
+
+Khi operator cũ không thể tiếp tục:
+
+* supervisor hoặc line lead thực hiện **transfer ownership**
+* owner mới nhận operation
+* owner mới end downtime / resume
+
+Đây là pattern sạch nhất.
+
+### Dùng khi:
+
+* đổi ca
+* operator rời line
+* handover thật sự
+
+---
+
+## Pattern B — **Supervisor override with reason**
+
+Supervisor có thể can thiệp, nhưng:
+
+* phải có reason
+* phải bị audit
+* thường chỉ dùng cho case recovery
+* không phải button routine
+
+Ví dụ:
+
+* operator logout đột ngột
+* claim bị kẹt
+* line cần recovery nhanh
+* vật lý tại máy đã xử lý xong nhưng người sở hữu cũ không còn ở đó
+
+### Quan trọng:
+
+override phải để lại audit trail kiểu:
+
+* ai làm
+* thay ai
+* lúc nào
+* vì sao
+* scope nào
+
+---
+
+## Pattern C — **Support/Admin via impersonation**
+
+Ở các hệ mature hơn:
+
+* ADM/OTS không trực tiếp làm production action bằng account admin thường
+* họ vào **support/impersonation session**
+* mọi action được log là “ai thực hiện dưới mode support nào”
+
+Đây là best practice rất mạnh về governance.
+
+---
+
+## 5) Downtime không nên chỉ có 1 loại “BLOCKED”
+
+Best practice thường tách rõ blocker category, ít nhất ở mức logic:
+
+* downtime / machine stop
+* quality hold
+* material shortage
+* review/approval pending
+* maintenance / safety stop
+
+Vì nếu mọi thứ đều là `BLOCKED`, người dùng không biết:
+
+* ai là owner xử lý
+* action tiếp theo là gì
+* supervisor có can thiệp được không
+
+### Do đó hệ tốt thường có:
+
+* `blocked_reason_category`
+* hoặc một dimension riêng cho:
+
+  * execution state
+  * quality state
+  * approval/review state
+
+---
+
+## 6) “End downtime” không phải lúc nào cũng là action recovery đúng
+
+Một MOM tốt không nhìn “end downtime” như nút để thoát trạng thái, mà như:
+
+> xác nhận rằng nguyên nhân dừng vận hành đã được xử lý xong
+
+Nên trên thực tế:
+
+* nếu là machine stop do kỹ thuật → có thể cần maintenance clear
+* nếu là shortage → có thể cần material availability
+* nếu là quality stop → quality phải release
+* nếu là safety stop → có thể cần supervisor/maintenance confirmation
+
+### Tức là:
+
+“ai bấm end downtime” còn phụ thuộc **loại downtime**.
+
+---
+
+# Best practice thường chia quyền như này
+
+## Operator
+
+* start downtime
+* end downtime
+* resume
+* report quantity
+
+## Supervisor
+
+* monitor toàn line
+* xem downtime live
+* confirm abnormal case
+* mở handover / override path
+* approve selected recovery exceptions
+
+## Quality
+
+* release quality hold
+* xử lý quality-owned block
+
+## Maintenance / engineering
+
+* clear machine-related stop trong một số nhà máy
+
+## Support/Admin
+
+* support mode / impersonation
+* không nên là actor vận hành mặc định
+
+---
+
+# Cái gì bị coi là anti-pattern
+
+Mấy cái này là những điều MOM tốt thường tránh:
+
+### 1) Supervisor click hộ operator như routine
+
+Dễ làm sai ownership và audit.
+
+### 2) Release claim trong khi operation còn active mà không có handover
+
+Rất dễ tạo dead-end.
+
+### 3) Cho phép reclaim bừa trên blocked/paused mà không có policy
+
+Sẽ làm ownership nhảy loạn.
+
+### 4) End downtime mà không phân biệt block cause
+
+Dễ cho sai người xử lý.
+
+### 5) Admin làm production action bằng quyền admin thường
+
+Không tốt về governance.
+
+---
+
+# Nếu áp vào system của bạn
+
+Theo ý kiến riêng của mình, target design tốt nhất cho bạn là:
+
+## Giai đoạn gần
+
+### Giữ rule:
+
+* operator là owner mặc định
+* claim persist qua `IN_PROGRESS / PAUSED / BLOCKED`
+* không cho release nếu sẽ tạo dead-end
+* supervisor chưa end downtime trực tiếp như routine
+
+### Nếu operator không thể tiếp tục:
+
+* chưa cho “SUP bấm hộ” ngay
+* đi qua **recovery path**:
+
+  * transfer ownership
+  * hoặc exception/override có audit
+
+---
+
+## Giai đoạn sau
+
+Thêm 2 capability riêng:
+
+### 1. **Transfer / Handover Ownership**
+
+Đây là capability rất thực tế cho đổi ca.
+
+### 2. **Recovery Override**
+
+Ví dụ:
+
+* supervisor approve recovery
+* system cho phép selected corrective action
+* action được audit rõ
+
+---
+
+# Kết luận ngắn
+
+**MOM best practice thường không vận hành theo kiểu “ai rảnh thì end downtime hộ operator”, mà theo kiểu: operator là owner bình thường; nếu owner không thể tiếp tục thì đi qua handover, override, hoặc support path có audit rõ ràng.**
+
+Nếu bạn muốn, mình có thể viết tiếp cho bạn một **target operating model** riêng cho phần này với 3 mức:
+
+* **Now**
+* **Next**
+* **Future mature state**

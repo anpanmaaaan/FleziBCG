@@ -10,7 +10,7 @@ from .common import ScenarioContext, create_scenario_context, run_complete, run_
 def seed(db: Session) -> ScenarioContext:
     """
     S2: Completed Late
-    
+
     Validates:
     - All operations complete after their planned_end times
     - WO status resolves to COMPLETED_LATE
@@ -36,7 +36,9 @@ def seed(db: Session) -> ScenarioContext:
         # Complete AFTER planned_end to trigger COMPLETED_LATE status
         # Add 30 minutes delay to ensure actual_end > planned_end
         completion_time = datetime.fromisoformat(operation.planned_end.isoformat())
-        completion_time = completion_time.replace(hour=completion_time.hour + 1)  # 1 hour late
+        completion_time = completion_time.replace(
+            hour=completion_time.hour + 1
+        )  # 1 hour late
         run_complete(db, operation.id, completed_at=completion_time)
 
     return context

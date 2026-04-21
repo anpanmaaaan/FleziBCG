@@ -20,7 +20,13 @@ from fastapi import HTTPException
 class I18nHTTPException(HTTPException):
     """HTTPException that carries a semantic error_code for i18n resolution."""
 
-    def __init__(self, status_code: int, error_code: str, *, headers: dict[str, str] | None = None) -> None:
+    def __init__(
+        self,
+        status_code: int,
+        error_code: str,
+        *,
+        headers: dict[str, str] | None = None,
+    ) -> None:
         # Store the error_code; detail is set to the code as a fallback.
         super().__init__(status_code=status_code, detail=error_code, headers=headers)
         self.error_code = error_code

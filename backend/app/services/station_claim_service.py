@@ -117,6 +117,26 @@ def _get_unreleased_claim_for_update(
     return db.scalar(statement)
 
 
+def _get_operator_unreleased_claims_for_station_for_update(
+    db: Session,
+    *,
+    tenant_id: str,
+    claimed_by_user_id: str,
+    station_scope_id: int,
+) -> list[OperationClaim]:
+    statement = (
+        select(OperationClaim)
+        .where(
+            OperationClaim.tenant_id == tenant_id,
+            OperationClaim.claimed_by_user_id == claimed_by_user_id,
+            OperationClaim.station_scope_id == station_scope_id,
+            OperationClaim.released_at.is_(None),
+        )
+        .with_for_update()
+    )
+    return list(db.scalars(statement))
+
+
 # WHY: Claim expiry is evaluated lazily on every read/write access, not via
 # a background timer. This eliminates clock-skew race conditions between
 # a scheduler and the request path. The trade-off is a slightly stale
@@ -170,6 +190,37 @@ def _validate_operation_for_station(
 
     if operation.status not in (StatusEnum.planned.value, StatusEnum.in_progress.value):
         raise ValueError("Operation is not claimable in current status")
+
+    return operation
+
+
+def _validate_operation_for_active_claim_context(
+    db: Session,
+    *,
+    identity: RequestIdentity,
+    station_scope: StationScopeContext,
+    operation_id: int,
+) -> Operation:
+    operation = db.scalar(
+        select(Operation).where(
+            Operation.id == operation_id,
+            Operation.tenant_id == identity.tenant_id,
+        )
+    )
+    if operation is None:
+        raise LookupError("Operation not found")
+
+    if operation.station_scope_value != station_scope.scope_value:
+        raise PermissionError("Operation is outside your station scope")
+
+    releasable_statuses = {
+        StatusEnum.planned.value,
+        StatusEnum.in_progress.value,
+        StatusEnum.paused.value,
+        StatusEnum.blocked.value,
+    }
+    if operation.status not in releasable_statuses:
+        raise ValueError("Operation is not releasable in current status")
 
     return operation
 
@@ -360,6 +411,34 @@ def claim_operation(
             f"duration_minutes exceeds max allowed ({settings.claim_max_ttl_minutes})"
         )
 
+    if not settings.allow_claim_without_release:
+        # Canonical v1 default: one active claim per operator in station context.
+        # This blocks claim stacking that creates ambiguous work ownership.
+        existing_same_claim: OperationClaim | None = None
+        operator_claims = _get_operator_unreleased_claims_for_station_for_update(
+            db,
+            tenant_id=identity.tenant_id,
+            claimed_by_user_id=identity.user_id,
+            station_scope_id=station_scope.scope_id,
+        )
+        for operator_claim in operator_claims:
+            active_claim = _expire_claim_if_needed(
+                db, operator_claim, identity=identity
+            )
+            if active_claim is None:
+                continue
+            if active_claim.operation_id == operation_id:
+                existing_same_claim = active_claim
+                continue
+            raise ClaimConflictError(
+                "Operator already holds another active claim in this station. "
+                "Release, complete, or resolve current work before claiming another operation."
+            )
+
+        if existing_same_claim is not None:
+            db.commit()
+            return existing_same_claim, station_scope.scope_value
+
     claim = _get_unreleased_claim_for_update(db, identity.tenant_id, operation_id)
     claim = _expire_claim_if_needed(db, claim, identity=identity)
 
@@ -414,9 +493,26 @@ def release_operation_claim(
 ) -> tuple[OperationClaim, str]:
     ensure_operator_context(identity)
     station_scope = resolve_station_scope(db, identity)
-    _validate_operation_for_station(
+    operation = _validate_operation_for_active_claim_context(
         db, identity=identity, station_scope=station_scope, operation_id=operation_id
     )
+
+    # Safety guard: releasing claim while the operation is in an active
+    # execution state (IN_PROGRESS / PAUSED / BLOCKED) creates a dead-end
+    # because the operator cannot reclaim and cannot continue the required
+    # execution flow (e.g. end_downtime → resume_execution).
+    # PLANNED is the only active state where release is safe because no
+    # in-flight execution continuity is required yet.
+    _NON_RELEASABLE_ACTIVE_STATUSES = {
+        StatusEnum.in_progress.value,
+        StatusEnum.paused.value,
+        StatusEnum.blocked.value,
+    }
+    if operation.status in _NON_RELEASABLE_ACTIVE_STATUSES:
+        raise ValueError(
+            "Cannot release claim while operation is in an active execution state "
+            f"({operation.status}). Complete or resolve the operation first."
+        )
 
     claim = _get_unreleased_claim_for_update(db, identity.tenant_id, operation_id)
     claim = _expire_claim_if_needed(db, claim, identity=identity)
@@ -450,7 +546,7 @@ def get_operation_claim_status(
 ) -> dict:
     ensure_operator_context(identity)
     station_scope = resolve_station_scope(db, identity)
-    _validate_operation_for_station(
+    _validate_operation_for_active_claim_context(
         db, identity=identity, station_scope=station_scope, operation_id=operation_id
     )
 

@@ -11,8 +11,15 @@ from app.schemas.iam import (
     MeCapabilitiesResponse,
     RoleAssignmentSummary,
 )
-from app.security.dependencies import RequestIdentity, require_action, require_authenticated_identity
-from app.services.iam_service import create_custom_role, get_role_assignments_for_identity
+from app.security.dependencies import (
+    RequestIdentity,
+    require_action,
+    require_authenticated_identity,
+)
+from app.services.iam_service import (
+    create_custom_role,
+    get_role_assignments_for_identity,
+)
 
 router = APIRouter(prefix="/iam", tags=["iam"])
 
@@ -36,7 +43,9 @@ def me_capabilities(
     ]
 
     primary_assignment = next((item for item in assignments if item.is_primary), None)
-    active_session = get_active_impersonation_session(db, identity.user_id, identity.tenant_id)
+    active_session = get_active_impersonation_session(
+        db, identity.user_id, identity.tenant_id
+    )
 
     return MeCapabilitiesResponse(
         user=AuthUser(
@@ -52,8 +61,12 @@ def me_capabilities(
         impersonation=ImpersonationSummary(
             active=active_session is not None,
             session_id=active_session.id if active_session is not None else None,
-            acting_role_code=active_session.acting_role_code if active_session is not None else None,
-            expires_at=active_session.expires_at if active_session is not None else None,
+            acting_role_code=active_session.acting_role_code
+            if active_session is not None
+            else None,
+            expires_at=active_session.expires_at
+            if active_session is not None
+            else None,
         ),
     )
 

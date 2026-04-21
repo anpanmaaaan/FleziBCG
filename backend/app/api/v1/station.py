@@ -3,7 +3,13 @@ from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
 from app.schemas.operation import OperationDetail
-from app.schemas.station import ClaimRequest, ClaimResponse, ReleaseClaimRequest, StationQueueItem, StationQueueResponse
+from app.schemas.station import (
+    ClaimRequest,
+    ClaimResponse,
+    ReleaseClaimRequest,
+    StationQueueItem,
+    StationQueueResponse,
+)
 from app.security.dependencies import RequestIdentity, require_authenticated_identity
 from app.services.operation_service import derive_operation_detail
 from app.services.station_claim_service import (
