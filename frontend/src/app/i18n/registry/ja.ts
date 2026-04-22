@@ -225,6 +225,7 @@ export const jaRegistry: I18nRegistry = {
   "station.input.goodQtyDelta": "今回の良品数",
   "station.input.scrapQtyDelta": "今回の不良品数",
   "station.input.quickAddAria": "{label} に {amount} を追加",
+  "station.input.resetAria": "{label} をリセット",
   "station.input.deltaHint": "前回報告以降の生産数を入力してください。",
   "station.input.disabledHint.paused": "実行が一時停止中のため報告は無効です。報告を続けるには再開してください。",
   "station.input.disabledHint.blocked": "ダウンタイムが開いているため報告は無効です。報告前にダウンタイムを終了してください。",

@@ -260,6 +260,7 @@ export const enRegistry: I18nRegistry = {
   "station.input.goodQtyDelta": "Good Qty to add",
   "station.input.scrapQtyDelta": "Scrap Qty to add",
   "station.input.quickAddAria": "Add {amount} to {label}",
+  "station.input.resetAria": "Reset {label}",
   "station.input.deltaHint": "Enter quantities produced since last report.",
   "station.input.disabledHint.paused": "Reporting is disabled while execution is paused. Resume to continue reporting.",
   "station.input.disabledHint.blocked": "Reporting is disabled while downtime is open. End downtime before reporting.",

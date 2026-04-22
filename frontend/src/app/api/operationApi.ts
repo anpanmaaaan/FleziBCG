@@ -52,6 +52,8 @@ export interface OperationDetail {
   // identity-scoped guards (claim ownership, station-busy) — callers must
   // still apply those and handle 409 reject codes at request time.
   allowed_actions: string[];
+  paused_total_ms: number;
+  downtime_total_ms: number;
 }
 
 export interface ReportQuantityPayload {

@@ -234,6 +234,60 @@ def _parse_timestamp(value: Optional[str]) -> Optional[datetime]:
         return None
 
 
+def _normalize_dt(value: Optional[datetime]) -> Optional[datetime]:
+    if value is None:
+        return None
+    if value.tzinfo is not None:
+        return value.replace(tzinfo=None)
+    return value
+
+
+def _event_timestamp(event, payload_keys: tuple[str, ...]) -> Optional[datetime]:
+    payload = event.payload if isinstance(event.payload, dict) else {}
+    for key in payload_keys:
+        parsed = _parse_timestamp(payload.get(key))
+        if parsed is not None:
+            return _normalize_dt(parsed)
+    return _normalize_dt(getattr(event, "created_at", None))
+
+
+def _accumulate_event_interval_ms(
+    events: list,
+    *,
+    start_event_type: str,
+    end_event_type: str,
+    start_payload_keys: tuple[str, ...],
+    end_payload_keys: tuple[str, ...],
+    now_naive: datetime,
+) -> int:
+    total_ms = 0
+    open_started_at: datetime | None = None
+
+    for event in events:
+        if event.event_type == start_event_type:
+            started_at = _event_timestamp(event, start_payload_keys)
+            if started_at is not None and open_started_at is None:
+                open_started_at = started_at
+            continue
+
+        if event.event_type != end_event_type:
+            continue
+
+        ended_at = _event_timestamp(event, end_payload_keys)
+        if open_started_at is None or ended_at is None:
+            open_started_at = None
+            continue
+
+        if ended_at > open_started_at:
+            total_ms += int((ended_at - open_started_at).total_seconds() * 1000)
+        open_started_at = None
+
+    if open_started_at is not None and now_naive > open_started_at:
+        total_ms += int((now_naive - open_started_at).total_seconds() * 1000)
+
+    return total_ms
+
+
 _RUNTIME_EVENT_TYPES_FOR_LAST_SIGNAL = (
     ExecutionEventType.EXECUTION_PAUSED.value,
     ExecutionEventType.EXECUTION_RESUMED.value,
@@ -573,6 +627,7 @@ def _derive_allowed_actions(status: str, downtime_open: bool) -> list[str]:
 
 def derive_operation_detail(db: Session, operation) -> OperationDetail:
     events = get_events_for_operation(db, operation.id)
+    now_naive = _utcnow_naive()
     actual_start = None
     actual_end = None
     completed_qty = 0
@@ -612,6 +667,22 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
     # derived from the same runtime-truth status exposed in `status`, not from
     # potentially stale snapshot projection on operation.status.
     allowed_actions = _derive_allowed_actions(status, downtime_open)
+    paused_total_ms = _accumulate_event_interval_ms(
+        events,
+        start_event_type=ExecutionEventType.EXECUTION_PAUSED.value,
+        end_event_type=ExecutionEventType.EXECUTION_RESUMED.value,
+        start_payload_keys=("paused_at",),
+        end_payload_keys=("resumed_at",),
+        now_naive=now_naive,
+    )
+    downtime_total_ms = _accumulate_event_interval_ms(
+        events,
+        start_event_type=ExecutionEventType.DOWNTIME_STARTED.value,
+        end_event_type=ExecutionEventType.DOWNTIME_ENDED.value,
+        start_payload_keys=("started_at",),
+        end_payload_keys=("ended_at",),
+        now_naive=now_naive,
+    )
 
     return OperationDetail(
         id=operation.id,
@@ -635,6 +706,8 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
         qc_required=operation.qc_required,
         downtime_open=downtime_open,
         allowed_actions=allowed_actions,
+        paused_total_ms=paused_total_ms,
+        downtime_total_ms=downtime_total_ms,
     )
 
 

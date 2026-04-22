@@ -371,6 +371,77 @@ def test_event_roundtrip_start_then_end_downtime(running_operation):
     ), "end_downtime must not auto-resume execution"
 
 
+def test_derive_operation_detail_exposes_accumulated_pause_and_downtime_ms(
+    running_operation,
+):
+    db, op = running_operation
+
+    from app.models.execution import ExecutionEventType
+    from app.repositories.execution_event_repository import create_execution_event
+
+    # Two closed pause intervals: 5m + 2m = 7m total.
+    create_execution_event(
+        db=db,
+        event_type=ExecutionEventType.EXECUTION_PAUSED.value,
+        production_order_id=op.work_order.production_order_id,
+        work_order_id=op.work_order_id,
+        operation_id=op.id,
+        payload={"paused_at": "2099-06-01T09:20:00"},
+        tenant_id="default",
+    )
+    create_execution_event(
+        db=db,
+        event_type=ExecutionEventType.EXECUTION_RESUMED.value,
+        production_order_id=op.work_order.production_order_id,
+        work_order_id=op.work_order_id,
+        operation_id=op.id,
+        payload={"resumed_at": "2099-06-01T09:25:00"},
+        tenant_id="default",
+    )
+    create_execution_event(
+        db=db,
+        event_type=ExecutionEventType.EXECUTION_PAUSED.value,
+        production_order_id=op.work_order.production_order_id,
+        work_order_id=op.work_order_id,
+        operation_id=op.id,
+        payload={"paused_at": "2099-06-01T09:30:00"},
+        tenant_id="default",
+    )
+    create_execution_event(
+        db=db,
+        event_type=ExecutionEventType.EXECUTION_RESUMED.value,
+        production_order_id=op.work_order.production_order_id,
+        work_order_id=op.work_order_id,
+        operation_id=op.id,
+        payload={"resumed_at": "2099-06-01T09:32:00"},
+        tenant_id="default",
+    )
+
+    # One closed downtime interval: 6m total.
+    create_execution_event(
+        db=db,
+        event_type=ExecutionEventType.DOWNTIME_STARTED.value,
+        production_order_id=op.work_order.production_order_id,
+        work_order_id=op.work_order_id,
+        operation_id=op.id,
+        payload={"started_at": "2099-06-01T09:40:00"},
+        tenant_id="default",
+    )
+    create_execution_event(
+        db=db,
+        event_type=ExecutionEventType.DOWNTIME_ENDED.value,
+        production_order_id=op.work_order.production_order_id,
+        work_order_id=op.work_order_id,
+        operation_id=op.id,
+        payload={"ended_at": "2099-06-01T09:46:00"},
+        tenant_id="default",
+    )
+
+    detail = derive_operation_detail(db, op)
+    assert detail.paused_total_ms == 420000
+    assert detail.downtime_total_ms == 360000
+
+
 def test_blocked_snapshot_and_derived_status_align_during_open_downtime(
     running_operation,
 ):

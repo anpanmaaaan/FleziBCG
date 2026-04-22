@@ -450,3 +450,10 @@ def seed_station_execution_for_opr() -> None:
 
 if __name__ == "__main__":
     seed_station_execution_for_opr()
+
+    # Run the read-only seed contract check immediately after reseeding so
+    # drift is caught in the same operator workflow.
+    from scripts.verify_station_execution_seed import main as verify_seed_main
+
+    print("\nRunning PH6-STATION seed verification...")
+    verify_seed_main()

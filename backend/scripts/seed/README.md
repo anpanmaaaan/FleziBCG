@@ -154,7 +154,16 @@ python -m backend.scripts.seed.seed_all.py
 
 python -m scripts.seed.seed_station_execution_opr
   → Create dedicated Station Execution demo dataset for OPR user `operator`
-  → Seeds operations scoped to `STATION_01` with mixed states (PENDING + IN_PROGRESS)
+  → Seeds operations scoped to `STATION_01` with mixed states (PLANNED + IN_PROGRESS + PAUSED + BLOCKED + COMPLETED)
+  → Immediately runs PH6-STATION seed verification and exits non-zero if the reseed is not claim-ready
+
+# Shortcut: shell wrapper (reseed + verify from workspace root)
+./backend/scripts/seed_station.sh
+  → Equivalent to the above; locates venv automatically and fails fast if DB is unreachable
+
+python -m scripts.verify_station_execution_seed
+  → Run the PH6-STATION seed verification standalone without reseeding
+  → Checks: station scope resolves, ≥1 PLANNED, ≥1 IN_PROGRESS, ≥1 PLANNED passes _validate_operation_for_station()
 ```
 
 ---

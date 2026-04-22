@@ -62,7 +62,7 @@ import { useSearchParams } from "react-router";
 import { PageHeader } from "@/app/components";
 import { StatusBadge } from "@/app/components";
 import { toast } from "sonner";
-import { RefreshCw, Lock, X, ChevronDown, ArrowLeft } from "lucide-react";
+import { RefreshCw, Lock, X, ChevronDown, ArrowLeft, RotateCcw } from "lucide-react";
 import { operationApi, type OperationDetail } from "@/app/api";
 import { stationApi, type StationQueueItem } from "@/app/api";
 import { HttpError } from "@/app/api";
@@ -168,6 +168,8 @@ interface StepperProps {
   valueClassName?: string;
   disabled?: boolean;
   quickAddValues?: number[];
+  quickAddTone?: "good" | "scrap";
+  onReset?: () => void;
 }
 
 function Stepper({
@@ -178,20 +180,53 @@ function Stepper({
   valueClassName,
   disabled = false,
   quickAddValues,
+  quickAddTone = "good",
+  onReset,
 }: StepperProps) {
   const { t } = useI18n();
   const [keypadOpen, setKeypadOpen] = useState(false);
+  const quickAddClass =
+    quickAddTone === "scrap"
+      ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
+      : "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100";
 
   return (
-    <div className="flex flex-col gap-2">
-      <span className={`text-base font-semibold ${disabled ? "text-gray-400" : labelClassName ?? "text-gray-700"}`}>{label}</span>
-      <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-3">
+      <span className={`text-xl font-bold md:text-2xl lg:text-3xl ${disabled ? "text-gray-400" : labelClassName ?? "text-gray-700"}`}>{label}</span>
+      {quickAddValues && quickAddValues.length > 0 && (
+        <div className="flex flex-wrap gap-3">
+          {quickAddValues.map((amount) => (
+            <button
+              key={amount}
+              type="button"
+              onClick={() => onChange(value + amount)}
+              aria-label={t("station.input.quickAddAria", { amount, label })}
+              disabled={disabled}
+              className={`min-h-11 rounded-2xl border px-4 text-lg font-bold transition sm:min-h-12 sm:px-5 sm:text-xl md:min-h-14 md:px-6 md:text-2xl ${disabled ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-300" : quickAddClass}`}
+            >
+              +{amount}
+            </button>
+          ))}
+          {onReset && (
+            <button
+              type="button"
+              onClick={onReset}
+              aria-label={t("station.input.resetAria", { label })}
+              disabled={disabled}
+              className={`min-h-11 rounded-2xl border border-gray-200 px-4 text-lg font-bold transition sm:min-h-12 sm:px-5 sm:text-xl md:min-h-14 md:px-6 md:text-2xl ${disabled ? "cursor-not-allowed bg-gray-100 text-gray-300" : "bg-gray-100 text-gray-800 hover:bg-gray-200"}`}
+            >
+              <RotateCcw className="h-5 w-5 md:h-6 md:w-6" />
+            </button>
+          )}
+        </div>
+      )}
+      <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={() => onChange(Math.max(0, value - 1))}
           aria-label={t("station.aria.decrease", { label })}
           disabled={disabled}
-          className="w-14 h-14 rounded-xl bg-gray-100 text-2xl font-bold text-gray-700 hover:bg-gray-200 active:scale-95 transition select-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-300"
+          className="min-h-14 min-w-14 rounded-2xl bg-gray-100 text-2xl font-bold text-gray-700 hover:bg-gray-200 active:scale-95 transition select-none sm:min-h-16 sm:min-w-16 sm:text-3xl md:min-h-20 md:min-w-20 md:text-4xl disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-300"
         >
           −
         </button>
@@ -199,7 +234,7 @@ function Stepper({
           type="button"
           onClick={() => setKeypadOpen(true)}
           disabled={disabled}
-          className={`flex-1 h-14 rounded-xl bg-white border-2 text-2xl font-bold text-gray-900 hover:border-blue-400 transition disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-50 disabled:text-gray-400 ${valueClassName ?? "border-gray-300"}`}
+          className={`flex-1 min-h-14 rounded-2xl bg-white border px-4 py-3 text-center text-3xl font-bold text-gray-900 transition sm:min-h-16 sm:px-5 sm:py-4 sm:text-4xl md:min-h-18 md:px-6 md:py-4 md:text-5xl disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-50 disabled:text-gray-400 ${valueClassName ?? "border-gray-200 hover:border-blue-300"}`}
         >
           {value}
         </button>
@@ -208,27 +243,11 @@ function Stepper({
           onClick={() => onChange(value + 1)}
           aria-label={t("station.aria.increase", { label })}
           disabled={disabled}
-          className="w-14 h-14 rounded-xl bg-gray-100 text-2xl font-bold text-gray-700 hover:bg-gray-200 active:scale-95 transition select-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-300"
+          className="min-h-14 min-w-14 rounded-2xl bg-gray-100 text-2xl font-bold text-gray-700 hover:bg-gray-200 active:scale-95 transition select-none sm:min-h-16 sm:min-w-16 sm:text-3xl md:min-h-20 md:min-w-20 md:text-4xl disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-300"
         >
           +
         </button>
       </div>
-      {quickAddValues && quickAddValues.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {quickAddValues.map((amount) => (
-            <button
-              key={amount}
-              type="button"
-              onClick={() => onChange(value + amount)}
-              aria-label={t("station.input.quickAddAria", { amount, label })}
-              disabled={disabled}
-              className="min-w-12 h-9 px-3 rounded-full border border-emerald-200 bg-emerald-50 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-300"
-            >
-              +{amount}
-            </button>
-          ))}
-        </div>
-      )}
       {keypadOpen && !disabled && (
         <NumericKeypad
           label={label}
@@ -476,6 +495,45 @@ function QueueList({
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
+function KpiCard({ label, value, highlight = false }: { label: string; value: string | number; highlight?: boolean }) {
+  return (
+    <div className={`rounded-2xl border p-4 text-center md:p-5 ${highlight ? "border-blue-200 bg-blue-50/50 ring-2 ring-blue-100" : "border-slate-200 bg-white"}`}>
+      <div className={`text-base font-medium sm:text-lg md:text-xl ${highlight ? "text-blue-700" : "text-slate-700"}`}>{label}</div>
+      <div className={`mt-3 text-3xl leading-none sm:text-4xl md:text-5xl lg:text-6xl ${highlight ? "font-bold text-blue-700" : "font-bold text-slate-900"}`}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function TimeCluster({
+  targetTime,
+  elapsed,
+  overBy,
+}: {
+  targetTime: string;
+  elapsed: string;
+  overBy?: string | null;
+}) {
+  const { t } = useI18n();
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 md:p-5">
+      <div className="grid grid-cols-2 gap-3 sm:gap-5">
+        <div>
+          <div className="text-sm font-medium text-slate-600 sm:text-base md:text-lg">{t("station.timer.targetTime")}</div>
+          <div className="mt-2 text-2xl font-semibold text-slate-900 sm:text-3xl md:text-4xl">{targetTime}</div>
+        </div>
+        <div>
+          <div className="text-sm font-medium text-slate-600 sm:text-base md:text-lg">{t("station.timer.elapsed")}</div>
+          <div className="mt-2 text-2xl font-semibold text-slate-900 sm:text-3xl md:text-4xl">{elapsed}</div>
+          {overBy ? <div className="mt-2 text-xs font-medium text-amber-600 sm:text-sm md:text-base">{t("station.timer.overBy", { duration: overBy })}</div> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function StationExecution() {
     const [downtimeModalOpen, setDowntimeModalOpen] = useState(false);
     const [downtimeLoading, setDowntimeLoading] = useState(false);
@@ -630,10 +688,8 @@ export function StationExecution() {
     return formatDuration(targetExecutionMs);
   }, [formatDuration, targetExecutionMs, t]);
 
-  // Backend currently does not expose accumulated pause/downtime durations
-  // in operation detail. Keep these counters explicit but non-authoritative.
-  const pausedTotalMs: number | null = null;
-  const downtimeTotalMs: number | null = null;
+  const pausedTotalMs = operation?.paused_total_ms ?? 0;
+  const downtimeTotalMs = operation?.downtime_total_ms ?? 0;
 
   const guidanceMessage = useMemo(() => {
     if (!canExecuteByClaim) return t("station.claim.required");
@@ -1029,10 +1085,10 @@ export function StationExecution() {
   const remainingQty = Math.max(0, operation.quantity - operation.completed_qty);
 
   return (
-    <div className="h-full flex flex-col bg-gray-50 overflow-hidden">
+    <div className="h-full flex flex-col bg-gray-50 min-h-0 overflow-hidden">
       {/* Compact single-row header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-white border-b shadow-sm shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="flex flex-col gap-3 px-3 py-3 bg-white border-b shadow-sm shrink-0 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
           <span className="text-sm text-gray-500 shrink-0 whitespace-nowrap">
             {t("station.workstation.label")} {stationScope}
           </span>
@@ -1050,8 +1106,8 @@ export function StationExecution() {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="hidden md:inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-semibold">
+        <div className="flex w-full flex-wrap items-center gap-2 shrink-0 lg:w-auto lg:flex-nowrap lg:justify-end">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-semibold order-first sm:order-none">
             {t("station.claim.ownedBadge")}
           </span>
           <button
@@ -1093,7 +1149,7 @@ export function StationExecution() {
           onClick={() => setQueueOverlayOpen(false)}
         >
           <div
-            className="absolute top-16 right-4 w-80 bg-white rounded-xl shadow-2xl border p-4 max-h-96 overflow-auto"
+            className="absolute top-16 left-2 right-2 sm:left-auto sm:right-4 w-auto sm:w-80 bg-white rounded-xl shadow-2xl border p-4 max-h-[70vh] overflow-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-3">
@@ -1119,110 +1175,100 @@ export function StationExecution() {
       )}
 
       {/* Execution body — must not scroll on iPad landscape */}
-      <div className="flex-1 flex flex-col p-4 gap-2 overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col p-3 sm:p-4 gap-3 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-50">
         {/* Hero summary card */}
-        <section className="bg-white border rounded-xl p-3 shrink-0">
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <div className="flex items-center gap-4 text-sm text-gray-700 min-w-0 flex-wrap">
+        <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
+          <div className="mb-4 border-b border-slate-200 pb-4">
+            <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm sm:text-base md:text-xl">
               <span className="whitespace-nowrap">
-                <span className="text-gray-500">{t("station.context.workOrder")}:</span>{" "}
-                <span className="font-medium text-gray-800">{operation.work_order_number}</span>
+                <span className="text-slate-500">{t("station.context.workOrder")}:</span>{" "}
+                <span className="font-semibold text-slate-900">{operation.work_order_number}</span>
               </span>
               <span className="whitespace-nowrap">
-                <span className="text-gray-500">{t("station.context.productionOrder")}:</span>{" "}
-                <span className="font-medium text-gray-800">{operation.production_order_number}</span>
+                <span className="text-slate-500">{t("station.context.productionOrder")}:</span>{" "}
+                <span className="font-semibold text-slate-900">{operation.production_order_number}</span>
               </span>
               <span className="whitespace-nowrap">
-                <span className="text-gray-500">{t("station.context.startedAt")}:</span>{" "}
-                <span className="font-medium text-gray-800">
+                <span className="text-slate-500">{t("station.context.startedAt")}:</span>{" "}
+                <span className="font-semibold text-slate-900">
                   {operation.actual_start
                     ? new Date(operation.actual_start).toLocaleString()
                     : t("station.context.notStarted")}
                 </span>
               </span>
             </div>
-            <span className="inline-flex md:hidden items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs font-semibold shrink-0">
-              {t("station.claim.ownedBadge")}
-            </span>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2">
-            <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-center">
-              <p className="text-[13px] font-semibold text-gray-600 mb-1">{t("station.qty.target")}</p>
-              <p className="text-xl font-extrabold text-gray-700 leading-tight">{operation.quantity}</p>
-            </div>
-            <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-center">
-              <p className="text-[13px] font-semibold text-gray-600 mb-1">{t("station.qty.completed")}</p>
-              <p className="text-xl font-extrabold text-gray-900 leading-tight">{operation.completed_qty}</p>
-            </div>
-            <div className="rounded-xl border border-blue-200 ring-1 ring-blue-100 bg-blue-50 px-3 py-2.5 text-center shadow-sm">
-              <p className="text-[13px] font-semibold text-blue-700 mb-1">{t("station.qty.remaining")}</p>
-              <p className="text-[28px] font-black text-blue-700 leading-tight">{remainingQty}</p>
-            </div>
-            <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-center">
-              <p className="text-[13px] font-semibold text-gray-600 mb-1">{t("station.timer.targetTime")}</p>
-              <p className="text-lg font-semibold text-gray-800 leading-tight">{targetTimeLabel}</p>
-            </div>
-            <div className={`rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-center ${operation.status === "IN_PROGRESS" ? "text-gray-900" : "text-gray-800"}`}>
-              <p className="text-[13px] font-semibold text-gray-600 mb-1">{t("station.timer.elapsed")}</p>
-              <p className="text-lg font-semibold leading-tight">
-                {elapsedExecutionMs !== null ? formatDuration(elapsedExecutionMs) : t("station.timer.unavailable")}
-              </p>
-              {overTargetMs !== null && (
-                <p className="mt-0.5 text-[11px] text-amber-700 font-medium">
-                  {t("station.timer.overBy", { duration: formatDuration(overTargetMs) })}
-                </p>
-              )}
-            </div>
+          <div className="grid gap-3 md:gap-4 lg:grid-cols-[1fr_1fr_1fr_minmax(280px,360px)]">
+            <KpiCard label={t("station.qty.target")} value={operation.quantity} />
+            <KpiCard label={t("station.qty.completed")} value={operation.completed_qty} />
+            <KpiCard label={t("station.qty.remaining")} value={remainingQty} highlight />
+            <TimeCluster
+              targetTime={targetTimeLabel}
+              elapsed={elapsedExecutionMs !== null ? formatDuration(elapsedExecutionMs) : t("station.timer.unavailable")}
+              overBy={overTargetMs !== null ? formatDuration(overTargetMs) : null}
+            />
           </div>
 
-          <div className="flex items-center gap-4 text-[15px] text-gray-600 flex-wrap">
-            <span><span className="font-medium text-gray-700">{t("station.qty.totalGood")}</span>: <span className="font-semibold text-green-700">{operation.good_qty}</span></span>
-            <span><span className="font-medium text-gray-700">{t("station.qty.totalScrap")}</span>: <span className="font-semibold text-red-600">{operation.scrap_qty}</span></span>
-            {(operation.status === "PAUSED" || operation.status === "BLOCKED") && pausedTotalMs === null && downtimeTotalMs === null && (
-              <span className="text-xs text-gray-500">{t("station.timer.detailsUnavailable")}</span>
+          <div className="mt-4 flex flex-wrap gap-x-4 sm:gap-x-8 gap-y-2 text-sm sm:text-base md:text-xl text-slate-700">
+            <span><span className="text-slate-500">{t("station.qty.totalGood")}</span>: <span className="font-semibold text-emerald-700">{operation.good_qty}</span></span>
+            <span><span className="text-slate-500">{t("station.qty.totalScrap")}</span>: <span className="font-semibold text-rose-600">{operation.scrap_qty}</span></span>
+            {(operation.status === "PAUSED" || operation.status === "BLOCKED") && (
+              <span>
+                <span className="text-slate-500">{t("station.timer.pausedTotal")}</span>: {formatDuration(pausedTotalMs)}
+              </span>
+            )}
+            {(operation.status === "PAUSED" || operation.status === "BLOCKED") && (
+              <span>
+                <span className="text-slate-500">{t("station.timer.downtimeTotal")}</span>: {formatDuration(downtimeTotalMs)}
+              </span>
             )}
           </div>
         </section>
 
         {/* Report / input block */}
-        <section className="bg-white border rounded-xl p-3 shrink-0">
-          <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">
+        <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
+          <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-2">
             {t("station.block.inputReporting")}
           </p>
-          <p className="text-sm text-gray-600 mb-2">{reportingHint}</p>
-          <div className="grid grid-cols-2 gap-6 mb-3">
-            <div className="rounded-xl border border-gray-200 px-3 py-2 bg-white">
+          <p className="mt-2 text-sm sm:text-base text-slate-600 md:text-xl mb-5">{reportingHint}</p>
+          <div className="grid gap-5 lg:grid-cols-2 mb-6">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
               <Stepper
                 label={t("station.input.goodQtyDelta")}
                 value={goodQty}
                 onChange={setGoodQty}
-                labelClassName="text-emerald-800"
+                labelClassName="text-emerald-700"
                 disabled={!canReportProduction}
                 quickAddValues={[1, 5, 10, 20]}
+                quickAddTone="good"
+                onReset={() => setGoodQty(0)}
               />
             </div>
-            <div className="rounded-xl border border-gray-200 px-3 py-2 bg-white">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
               <Stepper
                 label={t("station.input.scrapQtyDelta")}
                 value={scrapQty}
                 onChange={setScrapQty}
-                labelClassName="text-amber-800"
+                labelClassName="text-amber-700"
                 disabled={!canReportProduction}
+                quickAddValues={[1, 2, 5]}
+                quickAddTone="scrap"
+                onReset={() => setScrapQty(0)}
               />
             </div>
           </div>
           <button
             onClick={() => void reportQuantity()}
             disabled={actionLoading || !canReportProduction}
-            className="w-full h-14 px-5 bg-blue-600 text-white text-lg font-bold tracking-wide rounded-xl hover:bg-blue-700 disabled:opacity-50"
+            className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-md transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-blue-600 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
           >
             {t("station.action.reportQty")}
           </button>
         </section>
 
         {/* Guidance line */}
-        <div className="shrink-0 px-1 py-1 text-sm font-normal text-amber-700 leading-snug">
+        <div className="shrink-0 px-1 py-1 text-sm sm:text-base text-slate-700 md:text-2xl leading-snug">
           {guidanceMessage}
         </div>
 
@@ -1232,7 +1278,7 @@ export function StationExecution() {
             <button
               onClick={() => void startOperation()}
               disabled={actionLoading || !canExecuteByClaim || !canDo("start_execution")}
-              className="w-full h-16 bg-green-600 text-white text-xl font-bold tracking-wide rounded-2xl hover:bg-green-700 disabled:opacity-50 active:scale-[0.98] transition"
+              className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold tracking-wide bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl"
             >
               {t("station.action.clockOn")}
             </button>
@@ -1244,14 +1290,14 @@ export function StationExecution() {
                 <button
                   onClick={() => void pauseOperation()}
                   disabled={actionLoading || !canPauseExecution}
-                  className="h-14 px-5 bg-amber-500 text-white text-lg font-bold tracking-wide rounded-xl hover:bg-amber-600 disabled:opacity-50"
+                  className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-amber-400 text-slate-900 hover:bg-amber-500 disabled:opacity-50"
                 >
                   {t("station.action.pause")}
                 </button>
                 <button
                   onClick={() => setDowntimeModalOpen(true)}
                   disabled={downtimeLoading || !canStartDowntime}
-                  className="h-14 px-5 bg-slate-600 text-white text-lg font-bold tracking-wide rounded-xl hover:bg-slate-700 disabled:opacity-50"
+                  className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-slate-600 text-white hover:bg-slate-700 disabled:opacity-50"
                 >
                   {t("station.action.startDowntime")}
                 </button>
@@ -1260,7 +1306,7 @@ export function StationExecution() {
                 <button
                   onClick={() => void completeOperation()}
                   disabled={actionLoading || !canCompleteExecution}
-                  className="h-14 px-5 bg-white border-2 border-orange-500 text-orange-700 text-lg font-bold tracking-wide rounded-xl hover:bg-orange-50 disabled:opacity-50"
+                  className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl border-2 border-amber-500 bg-white text-amber-700 hover:bg-amber-50 disabled:opacity-50"
                 >
                   {t("station.action.completeOperation")}
                 </button>
@@ -1275,14 +1321,14 @@ export function StationExecution() {
                   <button
                     onClick={() => void resumeOperation()}
                     disabled={actionLoading || !canResumeExecution}
-                    className="h-14 px-5 bg-green-600 text-white text-lg font-bold tracking-wide rounded-xl hover:bg-green-700 disabled:opacity-50"
+                    className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
                   >
                     {t("station.action.resume")}
                   </button>
                   <button
                     onClick={() => setDowntimeModalOpen(true)}
                     disabled={downtimeLoading || !canStartDowntime}
-                    className="h-14 px-5 bg-slate-600 text-white text-lg font-bold tracking-wide rounded-xl hover:bg-slate-700 disabled:opacity-50"
+                    className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-slate-600 text-white hover:bg-slate-700 disabled:opacity-50"
                   >
                     {t("station.action.startDowntime")}
                   </button>
@@ -1291,7 +1337,7 @@ export function StationExecution() {
                 <button
                   onClick={() => void endDowntime()}
                   disabled={downtimeLoading || !canEndDowntimeAction}
-                  className="w-full h-14 px-5 bg-blue-600 text-white text-lg font-bold tracking-wide rounded-xl hover:bg-blue-700 disabled:opacity-50"
+                  className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
                 >
                   {t("station.action.endDowntime")}
                 </button>
@@ -1303,7 +1349,7 @@ export function StationExecution() {
             <button
               onClick={() => void endDowntime()}
               disabled={downtimeLoading || !canEndDowntimeAction}
-              className="w-full h-14 px-5 bg-blue-600 text-white text-lg font-bold tracking-wide rounded-xl hover:bg-blue-700 disabled:opacity-50"
+              className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
             >
               {t("station.action.endDowntime")}
             </button>

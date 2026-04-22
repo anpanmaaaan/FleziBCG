@@ -56,6 +56,10 @@ class OperationDetail(OperationListItem):
     # (claim ownership, station-busy) are NOT encoded here — callers must
     # still enforce those. Missing action ⇒ backend will reject the command.
     allowed_actions: list[str] = []
+    # Accumulated runtime durations derived from append-only events.
+    # Includes closed intervals plus any currently open interval up to now.
+    paused_total_ms: int = 0
+    downtime_total_ms: int = 0
 
 
 class OperationStartRequest(BaseModel):
