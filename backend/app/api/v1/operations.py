@@ -311,6 +311,12 @@ def close_operation_endpoint(
     if not operation or operation.tenant_id != identity.tenant_id:
         raise HTTPException(status_code=404, detail="Operation not found")
 
+    if _effective_role_code(identity) != "SUP":
+        raise HTTPException(
+            status_code=403,
+            detail="Missing required role for close_operation: SUP",
+        )
+
     try:
         return close_operation(
             db,

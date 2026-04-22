@@ -185,6 +185,8 @@ If the answer is unclear, stop and clarify before coding.
 - `close_operation` command path is implemented (close event + `closure_status` transition + close metadata)
 - `reopen_operation` command path is implemented (reopen event + `closure_status` transition + reopen metadata)
 - reopened records use interim controlled non-running runtime behavior (`PAUSED` projection) until broader orthogonal dimensions are implemented
+- reopen preserves a valid station ownership path when one already exists: active claims are retained, and the last historical claim owner is restored on reopen when safe; generic paused-record claimability remains unchanged
+- close authorization is currently hardened to a narrow phase rule: `SUP` role required at API boundary; this is stricter than broad EXECUTE-family access and avoids ambiguous close ownership until full canonical close-policy dimensions are implemented
 ### Deferred
 - `quality_status` and `review_status` dimensions
 - approved-effects lifecycle, full dispatch dimension, and full canonical state-matrix parity

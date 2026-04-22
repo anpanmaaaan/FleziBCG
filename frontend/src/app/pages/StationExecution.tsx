@@ -6,6 +6,58 @@ const DOWNTIME_REASONS: { value: DowntimeReasonClass; label: string }[] = [
   { value: "QUALITY_HOLD", label: "station.downtime.reason.qualityHold" },
   { value: "OTHER", label: "station.downtime.reason.other" },
 ];
+
+function ReopenOperationModal({ open, onClose, onSubmit, loading }: {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (reason: string) => void;
+  loading: boolean;
+}) {
+  const { t } = useI18n();
+  const [reason, setReason] = useState("");
+
+  useEffect(() => {
+    if (!open) {
+      setReason("");
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  const trimmedReason = reason.trim();
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-96" onClick={e => e.stopPropagation()}>
+        <h2 className="text-lg font-bold mb-4">{t("station.action.reopen")}</h2>
+        <label className="block mb-2 text-sm font-medium text-gray-700">
+          {t("station.reopen.reason.label")}
+          <textarea
+            className="mt-1 block w-full border border-gray-300 rounded-lg p-2 min-h-28 resize-y"
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            placeholder={t("station.reopen.reason.placeholder")}
+            disabled={loading}
+          />
+        </label>
+        <p className="text-xs text-gray-500">{t("station.reopen.reason.helper")}</p>
+        <div className="flex gap-2 mt-4 justify-end">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700" disabled={loading}>
+            {t("station.reopen.dialog.cancel")}
+          </button>
+          <button
+            onClick={() => onSubmit(trimmedReason)}
+            className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-50"
+            disabled={loading || trimmedReason.length === 0}
+          >
+            {t("station.reopen.dialog.submit")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StartDowntimeModal({ open, onClose, onSubmit, loading }: {
   open: boolean;
   onClose: () => void;
@@ -537,6 +589,7 @@ function TimeCluster({
 export function StationExecution() {
     const [downtimeModalOpen, setDowntimeModalOpen] = useState(false);
     const [downtimeLoading, setDowntimeLoading] = useState(false);
+  const [reopenModalOpen, setReopenModalOpen] = useState(false);
 
       // ...existing code...
       // ...existing code...
@@ -624,6 +677,8 @@ export function StationExecution() {
   const canCompleteExecution = canExecuteByClaim && canDo("complete_execution");
   const canResumeExecution = canExecuteByClaim && canDo("resume_execution");
   const canEndDowntimeAction = canExecuteByClaim && canDo("end_downtime");
+  const canCloseOperation = canDo("close_operation") && operation?.closure_status === "OPEN";
+  const canReopenOperation = canDo("reopen_operation") && operation?.closure_status === "CLOSED";
   // Release is only safe on PLANNED. On IN_PROGRESS / PAUSED / BLOCKED the
   // operation has active execution context and the operator cannot reclaim after
   // releasing, creating an unrecoverable dead-end. Backend enforces the same
@@ -692,6 +747,9 @@ export function StationExecution() {
   const downtimeTotalMs = operation?.downtime_total_ms ?? 0;
 
   const guidanceMessage = useMemo(() => {
+    if (operation?.closure_status === "CLOSED") {
+      return t("station.closed.guidance");
+    }
     if (!canExecuteByClaim) return t("station.claim.required");
     if (operation?.status === "BLOCKED" && operation.downtime_open) {
       return t("station.hint.nextAction.endDowntime");
@@ -717,6 +775,9 @@ export function StationExecution() {
   }, [canExecuteByClaim, operation?.downtime_open, operation?.status, t]);
 
   const reportingHint = useMemo(() => {
+    if (operation?.closure_status === "CLOSED") {
+      return t("station.closed.reportingDisabled");
+    }
     if (canReportProduction) return t("station.input.deltaHint");
     if (operation?.status === "BLOCKED" && operation.downtime_open) {
       return t("station.input.disabledHint.blocked");
@@ -972,6 +1033,51 @@ export function StationExecution() {
     }
   };
 
+  const closeOperation = async () => {
+    if (!operation) return;
+    const confirmed = window.confirm(t("station.confirm.closeOperation"));
+    if (!confirmed) return;
+    setActionLoading(true);
+    try {
+      const data = await operationApi.close(operation.id, {});
+      toast.success(t("station.toast.closed") + getStatusLabel(data.status));
+    } catch (err) {
+      if (err instanceof HttpError && err.status === 409) {
+        const key = rejectReasonKey(err.detail);
+        toast.error(key ? t(key as never) : t("station.toast.closeFailed"));
+      } else {
+        toast.error(err instanceof Error ? err.message : t("station.toast.closeFailed"));
+      }
+    } finally {
+      setActionLoading(false);
+      await fetchOperation(String(operation.id));
+      await refreshQueue();
+    }
+  };
+
+  const reopenOperation = async (reason: string) => {
+    if (!operation) return;
+    setActionLoading(true);
+    try {
+      const data = await operationApi.reopen(operation.id, { reason });
+      toast.success(t("station.toast.reopened") + getStatusLabel(data.status));
+      setReopenModalOpen(false);
+    } catch (err) {
+      if (err instanceof HttpError && err.status === 409) {
+        const key = rejectReasonKey(err.detail);
+        toast.error(key ? t(key as never) : t("station.toast.reopenFailed"));
+      } else if (err instanceof HttpError && typeof err.detail === "string" && err.detail === "REOPEN_REASON_REQUIRED") {
+        toast.error(t("station.reopen.reason.required"));
+      } else {
+        toast.error(err instanceof Error ? err.message : t("station.toast.reopenFailed"));
+      }
+    } finally {
+      setActionLoading(false);
+      await fetchOperation(String(operation.id));
+      await refreshQueue();
+    }
+  };
+
   // ── MODE A — Operation Selection ──────────────────────────────────────────
   if (!isExecutionMode) {
     return (
@@ -1100,6 +1206,11 @@ export function StationExecution() {
           >
             {getStatusLabel(operation.status)}
           </StatusBadge>
+          {operation.closure_status === "CLOSED" && (
+            <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-900 text-white text-xs font-semibold">
+              {t("station.closure.closedBadge")}
+            </span>
+          )}
           {operation.downtime_open && (
             <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold">
               ● {t("station.downtime.active.banner")}
@@ -1224,6 +1335,37 @@ export function StationExecution() {
               </span>
             )}
           </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div className={`rounded-2xl border px-4 py-3 ${operation.closure_status === "CLOSED" ? "border-slate-300 bg-slate-100" : "border-slate-200 bg-slate-50"}`}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t("station.closure.sectionTitle")}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{t(operation.closure_status === "CLOSED" ? "station.closure.closedState" : "station.closure.openState")}</p>
+              <p className="mt-1 text-xs text-slate-600">
+                {t(operation.closure_status === "CLOSED" ? "station.closed.executionBlocked" : "station.closure.openHelper")}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t("station.reopen.audit.title")}</p>
+              <p className="mt-1 text-sm text-slate-900">
+                {t("station.reopen.audit.count", { count: operation.reopen_count ?? 0 })}
+              </p>
+              {operation.last_closed_at && (
+                <p className="mt-1 text-xs text-slate-600">
+                  {t("station.reopen.audit.lastClosed", {
+                    at: new Date(operation.last_closed_at).toLocaleString(),
+                    by: operation.last_closed_by ?? "-",
+                  })}
+                </p>
+              )}
+              {operation.last_reopened_at && (
+                <p className="mt-1 text-xs text-slate-600">
+                  {t("station.reopen.audit.lastReopened", {
+                    at: new Date(operation.last_reopened_at).toLocaleString(),
+                    by: operation.last_reopened_by ?? "-",
+                  })}
+                </p>
+              )}
+            </div>
+          </div>
         </section>
 
         {/* Report / input block */}
@@ -1267,6 +1409,37 @@ export function StationExecution() {
           </button>
         </section>
 
+        {(canCloseOperation || canReopenOperation || operation.closure_status === "CLOSED") && (
+          <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
+            <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-2">
+              {t("station.closure.sectionTitle")}
+            </p>
+            <p className="mt-2 text-sm sm:text-base text-slate-600 md:text-xl mb-5">
+              {t(operation.closure_status === "CLOSED" ? "station.closed.secondaryHint" : "station.closure.secondaryHint")}
+            </p>
+            <div className="flex flex-col gap-3">
+              {canCloseOperation && (
+                <button
+                  onClick={() => void closeOperation()}
+                  disabled={actionLoading || !canCloseOperation}
+                  className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl border-2 border-slate-400 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {t("station.action.closeOperation")}
+                </button>
+              )}
+              {canReopenOperation && (
+                <button
+                  onClick={() => setReopenModalOpen(true)}
+                  disabled={actionLoading || !canReopenOperation}
+                  className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {t("station.action.reopen")}
+                </button>
+              )}
+            </div>
+          </section>
+        )}
+
         {/* Guidance line */}
         <div className="shrink-0 px-1 py-1 text-sm sm:text-base text-slate-700 md:text-2xl leading-snug">
           {guidanceMessage}
@@ -1277,7 +1450,7 @@ export function StationExecution() {
           {operation.status === "PLANNED" && (
             <button
               onClick={() => void startOperation()}
-              disabled={actionLoading || !canExecuteByClaim || !canDo("start_execution")}
+              disabled={actionLoading || operation.closure_status === "CLOSED" || !canExecuteByClaim || !canDo("start_execution")}
               className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold tracking-wide bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl"
             >
               {t("station.action.clockOn")}
@@ -1289,14 +1462,14 @@ export function StationExecution() {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => void pauseOperation()}
-                  disabled={actionLoading || !canPauseExecution}
+                  disabled={actionLoading || operation.closure_status === "CLOSED" || !canPauseExecution}
                   className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-amber-400 text-slate-900 hover:bg-amber-500 disabled:opacity-50"
                 >
                   {t("station.action.pause")}
                 </button>
                 <button
                   onClick={() => setDowntimeModalOpen(true)}
-                  disabled={downtimeLoading || !canStartDowntime}
+                  disabled={downtimeLoading || operation.closure_status === "CLOSED" || !canStartDowntime}
                   className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-slate-600 text-white hover:bg-slate-700 disabled:opacity-50"
                 >
                   {t("station.action.startDowntime")}
@@ -1305,7 +1478,7 @@ export function StationExecution() {
               {canCompleteExecution && (
                 <button
                   onClick={() => void completeOperation()}
-                  disabled={actionLoading || !canCompleteExecution}
+                  disabled={actionLoading || operation.closure_status === "CLOSED" || !canCompleteExecution}
                   className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl border-2 border-amber-500 bg-white text-amber-700 hover:bg-amber-50 disabled:opacity-50"
                 >
                   {t("station.action.completeOperation")}
@@ -1320,14 +1493,14 @@ export function StationExecution() {
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => void resumeOperation()}
-                    disabled={actionLoading || !canResumeExecution}
+                    disabled={actionLoading || operation.closure_status === "CLOSED" || !canResumeExecution}
                     className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
                   >
                     {t("station.action.resume")}
                   </button>
                   <button
                     onClick={() => setDowntimeModalOpen(true)}
-                    disabled={downtimeLoading || !canStartDowntime}
+                    disabled={downtimeLoading || operation.closure_status === "CLOSED" || !canStartDowntime}
                     className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-slate-600 text-white hover:bg-slate-700 disabled:opacity-50"
                   >
                     {t("station.action.startDowntime")}
@@ -1336,7 +1509,7 @@ export function StationExecution() {
               ) : (
                 <button
                   onClick={() => void endDowntime()}
-                  disabled={downtimeLoading || !canEndDowntimeAction}
+                  disabled={downtimeLoading || operation.closure_status === "CLOSED" || !canEndDowntimeAction}
                   className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
                 >
                   {t("station.action.endDowntime")}
@@ -1348,13 +1521,20 @@ export function StationExecution() {
           {operation.status === "BLOCKED" && operation.downtime_open && (
             <button
               onClick={() => void endDowntime()}
-              disabled={downtimeLoading || !canEndDowntimeAction}
+              disabled={downtimeLoading || operation.closure_status === "CLOSED" || !canEndDowntimeAction}
               className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
             >
               {t("station.action.endDowntime")}
             </button>
           )}
         </section>
+
+        <ReopenOperationModal
+          open={reopenModalOpen}
+          onClose={() => setReopenModalOpen(false)}
+          onSubmit={reopenOperation}
+          loading={actionLoading}
+        />
 
         <StartDowntimeModal
           open={downtimeModalOpen}

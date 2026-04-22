@@ -6,13 +6,13 @@ Station Execution is the operator-facing execution module for deterministic, rea
 Station Execution is responsible for:
 - selecting work from station-scoped queue
 - enforcing claim-before-execution behavior in operator flow
-- triggering Clock On (start), quantity report, and Clock Off (complete)
+- triggering Clock On (start), quantity report, Pause/Resume, downtime start/end, and Clock Off (complete)
+- surfacing closure-aware close/reopen foundation using backend-derived affordances
 - reflecting backend-derived execution status after each action
 
 Station Execution explicitly does not own:
 - planning or scheduling decisions
 - QC workflow decisions
-- pause/resume semantics
 - labor tracking
 - routing orchestration beyond current execution updates
 
@@ -26,6 +26,7 @@ Operator responsibilities:
 - claim an operation before execution actions
 - Clock On to begin execution
 - report produced quantities during execution
+- pause/resume and downtime actions during execution
 - Clock Off to finalize execution
 
 ### Supervisor (read-only reference)
@@ -40,6 +41,7 @@ Execution lifecycle is locked and event-driven:
 PLANNED (UI label: Pending)
   -> Clock On
 IN_PROGRESS
+  -> Pause / Resume / Downtime controls (backend-guarded runtime transitions)
   -> Clock Off
 COMPLETED / ABORTED
 
@@ -165,11 +167,14 @@ The following invariants are mandatory:
 
 ## 8) Explicit Non-Goals
 Station Execution intentionally excludes:
-- pause/resume execution controls
 - QC gating within execution transitions
 - labor time accounting
 - APS or scheduling logic
 - advanced routing progression control beyond current behavior
+
+The following are implemented as foundation but remain partial versus full canonical target:
+- close_operation / reopen_operation with closure-aware FE support
+- current phase-close authorization is intentionally narrow (SUP-only at API boundary)
 
 ## 9) Extension Guidance (Forward-Looking)
 QC v1 layering guidance:

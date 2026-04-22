@@ -16,7 +16,14 @@ export type {
 } from "./dashboardApi";
 
 export { operationApi } from "./operationApi";
-export type { OperationExecutionStatus, OperationDetail, ReportQuantityPayload } from "./operationApi";
+export type {
+  CloseOperationPayload,
+  OperationClosureStatus,
+  OperationExecutionStatus,
+  OperationDetail,
+  ReopenOperationPayload,
+  ReportQuantityPayload,
+} from "./operationApi";
 
 export { operationMonitorApi } from "./operationMonitorApi";
 export type {

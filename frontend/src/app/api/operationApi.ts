@@ -21,6 +21,16 @@ export type OperationExecutionStatus =
   | "COMPLETED"
   | "ABORTED";
 
+export type OperationClosureStatus = "OPEN" | "CLOSED";
+
+export interface CloseOperationPayload {
+  note?: string | null;
+}
+
+export interface ReopenOperationPayload {
+  reason: string;
+}
+
 export interface EndDowntimePayload {
   note?: string | null;
 }
@@ -31,6 +41,7 @@ export interface OperationDetail {
   name: string;
   sequence: number;
   status: OperationExecutionStatus;
+  closure_status: OperationClosureStatus;
   planned_start: string | null;
   planned_end: string | null;
   actual_start: string | null;
@@ -54,6 +65,11 @@ export interface OperationDetail {
   allowed_actions: string[];
   paused_total_ms: number;
   downtime_total_ms: number;
+  reopen_count: number;
+  last_reopened_at: string | null;
+  last_reopened_by: string | null;
+  last_closed_at: string | null;
+  last_closed_by: string | null;
 }
 
 export interface ReportQuantityPayload {
@@ -133,6 +149,20 @@ export const operationApi = {
 
   endDowntime(operationId: string | number, payload: EndDowntimePayload = {}) {
     return request<OperationDetail>(`${operationPath(operationId)}/end-downtime`, {
+      method: "POST",
+      body: payload,
+    });
+  },
+
+  close(operationId: string | number, payload: CloseOperationPayload = {}) {
+    return request<OperationDetail>(`${operationPath(operationId)}/close`, {
+      method: "POST",
+      body: payload,
+    });
+  },
+
+  reopen(operationId: string | number, payload: ReopenOperationPayload) {
+    return request<OperationDetail>(`${operationPath(operationId)}/reopen`, {
       method: "POST",
       body: payload,
     });

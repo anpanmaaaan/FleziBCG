@@ -13,7 +13,7 @@ from app.repositories.execution_event_repository import create_execution_event
 from scripts.reconcile_operation_status_projection import run_status_projection_reconcile
 
 _PREFIX = "TEST-RECONCILE-CMD"
-_TENANT_A = "default"
+_TENANT_A = "tenant-a"
 _TENANT_B = "tenant-b"
 
 

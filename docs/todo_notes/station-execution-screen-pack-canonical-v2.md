@@ -14,15 +14,16 @@ Tài liệu này gom 3 file canonical về screen của Station Execution thành
 - report quantity
 - pause / resume
 - downtime start / end
+- closure-aware close / reopen foundation
 - active-state continuity (`IN_PROGRESS`, `PAUSED`, `BLOCKED`)
 - queue filter persistence / selected-outside-filter helper
 
 ## Explicitly deferred
 - QC measurement / QC hold / quality disposition
 - exception / approval / disposition
-- close / reopen
 - station session open/close as first-class hardened flow
 - claim handover / reassignment / support recovery transfer
+- full close/reopen policy matrix parity (quality/review-owned gating and approval-owned variants)
 
 
 ---
@@ -47,7 +48,7 @@ Tài liệu này chốt **screen inventory** cho phần Station Execution **trư
 ### Out of scope for this baseline
 - QC measurement / QC hold / quality disposition
 - exception / approval / disposition inbox
-- close / reopen
+- full close/reopen policy matrix parity (beyond current foundation)
 - station session open/close as first-class screen
 - supervisor/global-ops screens ngoài operator station flow
 - claim handover / reassignment / support recovery transfer
@@ -76,7 +77,7 @@ Tài liệu này chốt **screen inventory** cho phần Station Execution **trư
 | SE-SCR-06 | QC Measurement Entry | Thuộc nhánh QC lite kế tiếp |
 | SE-SCR-07 | QC Hold / Quality Disposition | Thuộc nhánh QC lite kế tiếp |
 | SE-SCR-08 | Exception Raise / Disposition | Thuộc nhánh exception / approval |
-| SE-SCR-09 | Close / Reopen Operation | Thuộc nhánh close/reopen |
+| SE-SCR-09 | Full close/reopen policy-gated variants | Foundation đã implemented; policy-gated variants thuộc nhánh quality/review/approval |
 | SE-SCR-10 | Station Session Entry / Close | Chưa harden thành first-class flow |
 | SE-SCR-11 | Claim Handover / Reassignment / Support Recovery | Chưa có; không dùng ordinary release path để giải quyết active execution dead-end |
 
@@ -230,7 +231,11 @@ Màn action chính cho operation đã chọn.
    - End Downtime
    - Complete Operation
 
-5. **Session / secondary actions**
+5. **Closure actions (secondary / guarded)**
+  - Close Operation (backend truth-gated)
+  - Reopen Operation with required reason (backend truth-gated)
+
+6. **Session / secondary actions**
    - Release Claim (only when safe under current semantics)
    - session-level controls nếu có
 
@@ -306,7 +311,7 @@ Giữ continuity khi user đang dùng filter mà item selected không còn thu�
 ## 7. Explicit non-goals of this baseline
 - QC entry / QC hold
 - exception/disposition
-- close/reopen
+- full close/reopen policy matrix parity (quality/review/approval-owned variants)
 - generic block cause beyond downtime
 - URL persistence / storage persistence của queue filter
 - claim handover / claim transfer / supervised reassignment

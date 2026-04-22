@@ -101,6 +101,7 @@ Controlled support only, audited and policy-gated.
 
 - `SUP` may execute selected station commands conditionally for recovery or oversight, but is not intended to behave as the default operator.
 - `QCI/QAL` may participate in `submit_qc_measurement` or `close_operation` only when a quality-owned policy explicitly requires their role in the flow.
+- Current implementation-phase note (core pre-QC baseline): `close_operation` is intentionally hardened to a narrow SUP-only API rule until richer quality/review dimensions and policy-gated close variants are implemented.
 
 ---
 

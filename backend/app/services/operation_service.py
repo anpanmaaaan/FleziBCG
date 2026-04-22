@@ -1,12 +1,14 @@
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy import case, func as sa_func, select
 from sqlalchemy.orm import Session
 
+from app.config.settings import settings
 from app.models.execution import DowntimeReasonClass, ExecutionEvent, ExecutionEventType
 from app.models.master import ClosureStatusEnum, Operation, StatusEnum
+from app.models.station_claim import OperationClaim, OperationClaimAuditLog
 from app.repositories.execution_event_repository import (
     create_execution_event,
     get_events_for_operation,
@@ -226,6 +228,81 @@ class ReopenOperationConflictError(ValueError):
 def _ensure_operation_open_for_write(operation) -> None:
     if operation.closure_status == ClosureStatusEnum.closed.value:
         raise ClosedRecordConflictError("STATE_CLOSED_RECORD")
+
+
+def _restore_claim_continuity_for_reopen(db: Session, *, operation, tenant_id: str) -> None:
+    now = datetime.now(timezone.utc)
+    active_claim = db.scalar(
+        select(OperationClaim)
+        .where(
+            OperationClaim.tenant_id == tenant_id,
+            OperationClaim.operation_id == operation.id,
+            OperationClaim.released_at.is_(None),
+        )
+        .order_by(OperationClaim.id.desc())
+        .with_for_update()
+    )
+    if active_claim is not None:
+        extended_expiry = max(
+            active_claim.expires_at,
+            now + timedelta(minutes=settings.claim_default_ttl_minutes),
+        )
+        if extended_expiry != active_claim.expires_at:
+            active_claim.expires_at = extended_expiry
+            db.add(active_claim)
+            db.flush()
+        return
+
+    last_claim = db.scalar(
+        select(OperationClaim)
+        .where(
+            OperationClaim.tenant_id == tenant_id,
+            OperationClaim.operation_id == operation.id,
+        )
+        .order_by(OperationClaim.claimed_at.desc(), OperationClaim.id.desc())
+        .with_for_update()
+    )
+    if last_claim is None:
+        return
+
+    conflicting_claim = db.scalar(
+        select(OperationClaim)
+        .where(
+            OperationClaim.tenant_id == tenant_id,
+            OperationClaim.claimed_by_user_id == last_claim.claimed_by_user_id,
+            OperationClaim.station_scope_id == last_claim.station_scope_id,
+            OperationClaim.released_at.is_(None),
+            OperationClaim.operation_id != operation.id,
+        )
+        .order_by(OperationClaim.id.desc())
+        .with_for_update()
+    )
+    if conflicting_claim is not None and conflicting_claim.expires_at > now:
+        raise ReopenOperationConflictError("STATE_REOPEN_OWNER_HAS_OTHER_ACTIVE_CLAIM")
+
+    restored_claim = OperationClaim(
+        tenant_id=tenant_id,
+        operation_id=operation.id,
+        station_scope_id=last_claim.station_scope_id,
+        claimed_by_user_id=last_claim.claimed_by_user_id,
+        claimed_at=now,
+        expires_at=now + timedelta(minutes=settings.claim_default_ttl_minutes),
+    )
+    db.add(restored_claim)
+    db.flush()
+    db.add(
+        OperationClaimAuditLog(
+            claim_id=restored_claim.id,
+            tenant_id=tenant_id,
+            operation_id=operation.id,
+            station_scope_id=last_claim.station_scope_id,
+            actor_user_id=last_claim.claimed_by_user_id,
+            acting_role_code=None,
+            event_type="CLAIM_RESTORED_ON_REOPEN",
+            reason="reopen claim continuity restored",
+        )
+    )
+    db.flush()
 
 
 @dataclass(frozen=True)
@@ -817,6 +894,8 @@ def reopen_operation(
     reason = (request.reason or "").strip()
     if not reason:
         raise ReopenOperationConflictError("REOPEN_REASON_REQUIRED")
+
+    _restore_claim_continuity_for_reopen(db, operation=operation, tenant_id=tenant_id)
 
     reopened_at = _utcnow_naive()
     payload = {

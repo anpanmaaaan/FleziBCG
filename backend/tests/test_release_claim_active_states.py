@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import delete, select
 
 from app.db.session import SessionLocal
-from app.models.execution import ExecutionEvent
+from app.models.execution import ExecutionEvent, ExecutionEventType
 from app.models.master import Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.rbac import Role, Scope, UserRoleAssignment
 from app.models.station_claim import OperationClaim, OperationClaimAuditLog
@@ -223,15 +223,77 @@ def _claim_as_owner(db, operation_id: int) -> None:
     )
 
 
+def _set_runtime_status(db, operation: Operation, status: str) -> None:
+    work_order = db.get(WorkOrder, operation.work_order_id)
+    assert work_order is not None
+
+    events: list[ExecutionEvent] = []
+    if status in {
+        StatusEnum.in_progress.value,
+        StatusEnum.paused.value,
+        StatusEnum.blocked.value,
+        StatusEnum.completed.value,
+    }:
+        events.append(
+            ExecutionEvent(
+                event_type=ExecutionEventType.OP_STARTED.value,
+                production_order_id=work_order.production_order_id,
+                work_order_id=work_order.id,
+                operation_id=operation.id,
+                payload={"started_at": datetime(2099, 7, 1, 9, 0, 0).isoformat()},
+                tenant_id=_TENANT_ID,
+            )
+        )
+
+    if status == StatusEnum.paused.value:
+        events.append(
+            ExecutionEvent(
+                event_type=ExecutionEventType.EXECUTION_PAUSED.value,
+                production_order_id=work_order.production_order_id,
+                work_order_id=work_order.id,
+                operation_id=operation.id,
+                payload={"paused_at": datetime(2099, 7, 1, 9, 15, 0).isoformat()},
+                tenant_id=_TENANT_ID,
+            )
+        )
+    elif status == StatusEnum.blocked.value:
+        events.append(
+            ExecutionEvent(
+                event_type=ExecutionEventType.DOWNTIME_STARTED.value,
+                production_order_id=work_order.production_order_id,
+                work_order_id=work_order.id,
+                operation_id=operation.id,
+                payload={"started_at": datetime(2099, 7, 1, 9, 20, 0).isoformat()},
+                tenant_id=_TENANT_ID,
+            )
+        )
+    elif status == StatusEnum.completed.value:
+        events.append(
+            ExecutionEvent(
+                event_type=ExecutionEventType.OP_COMPLETED.value,
+                production_order_id=work_order.production_order_id,
+                work_order_id=work_order.id,
+                operation_id=operation.id,
+                payload={"completed_at": datetime(2099, 7, 1, 9, 30, 0).isoformat()},
+                tenant_id=_TENANT_ID,
+            )
+        )
+
+    if events:
+        db.add_all(events)
+
+    operation.status = status
+    db.add(operation)
+    db.commit()
+
+
 def test_release_claim_rejects_in_progress(release_claim_fixture):
     """Guard: release on IN_PROGRESS is blocked to prevent execution dead-end."""
     db, ops = release_claim_fixture
     operation = ops["in_progress"]
 
     _claim_as_owner(db, operation.id)
-    operation.status = StatusEnum.in_progress.value
-    db.add(operation)
-    db.commit()
+    _set_runtime_status(db, operation, StatusEnum.in_progress.value)
 
     with pytest.raises(ValueError, match="active execution state"):
         release_operation_claim(
@@ -248,9 +310,7 @@ def test_release_claim_rejects_paused(release_claim_fixture):
     operation = ops["paused"]
 
     _claim_as_owner(db, operation.id)
-    operation.status = StatusEnum.paused.value
-    db.add(operation)
-    db.commit()
+    _set_runtime_status(db, operation, StatusEnum.paused.value)
 
     with pytest.raises(ValueError, match="active execution state"):
         release_operation_claim(
@@ -267,9 +327,7 @@ def test_release_claim_rejects_blocked(release_claim_fixture):
     operation = ops["blocked"]
 
     _claim_as_owner(db, operation.id)
-    operation.status = StatusEnum.blocked.value
-    db.add(operation)
-    db.commit()
+    _set_runtime_status(db, operation, StatusEnum.blocked.value)
 
     with pytest.raises(ValueError, match="active execution state"):
         release_operation_claim(
@@ -306,9 +364,7 @@ def test_release_claim_rejects_terminal_status(release_claim_fixture):
     operation = ops["terminal"]
 
     _claim_as_owner(db, operation.id)
-    operation.status = StatusEnum.completed.value
-    db.add(operation)
-    db.commit()
+    _set_runtime_status(db, operation, StatusEnum.completed.value)
 
     with pytest.raises(
         ValueError, match="Operation is not releasable in current status"
@@ -384,9 +440,7 @@ def test_get_claim_status_returns_mine_on_in_progress(release_claim_fixture):
     operation = ops["in_progress"]
 
     _claim_as_owner(db, operation.id)
-    operation.status = StatusEnum.in_progress.value
-    db.add(operation)
-    db.commit()
+    _set_runtime_status(db, operation, StatusEnum.in_progress.value)
 
     status = get_operation_claim_status(db, _identity(_OWNER_USER_ID), operation.id)
 
@@ -400,9 +454,7 @@ def test_get_claim_status_returns_mine_on_paused(release_claim_fixture):
     operation = ops["paused"]
 
     _claim_as_owner(db, operation.id)
-    operation.status = StatusEnum.paused.value
-    db.add(operation)
-    db.commit()
+    _set_runtime_status(db, operation, StatusEnum.paused.value)
 
     status = get_operation_claim_status(db, _identity(_OWNER_USER_ID), operation.id)
 
@@ -415,9 +467,7 @@ def test_get_claim_status_returns_mine_on_blocked(release_claim_fixture):
     operation = ops["blocked"]
 
     _claim_as_owner(db, operation.id)
-    operation.status = StatusEnum.blocked.value
-    db.add(operation)
-    db.commit()
+    _set_runtime_status(db, operation, StatusEnum.blocked.value)
 
     status = get_operation_claim_status(db, _identity(_OWNER_USER_ID), operation.id)
 
@@ -430,9 +480,7 @@ def test_get_claim_status_rejects_wrong_station_scope(release_claim_fixture):
     operation = ops["blocked"]
 
     _claim_as_owner(db, operation.id)
-    operation.status = StatusEnum.blocked.value
-    db.add(operation)
-    db.commit()
+    _set_runtime_status(db, operation, StatusEnum.blocked.value)
 
     with pytest.raises(
         PermissionError, match="Operation is outside your station scope"
@@ -445,9 +493,7 @@ def test_get_claim_status_rejects_terminal_status(release_claim_fixture):
     operation = ops["terminal"]
 
     _claim_as_owner(db, operation.id)
-    operation.status = StatusEnum.completed.value
-    db.add(operation)
-    db.commit()
+    _set_runtime_status(db, operation, StatusEnum.completed.value)
 
     with pytest.raises(
         ValueError, match="Operation is not releasable in current status"
@@ -460,9 +506,7 @@ def test_get_claim_status_expires_stale_claim_on_read(release_claim_fixture):
     operation = ops["paused"]
 
     _claim_as_owner(db, operation.id)
-    operation.status = StatusEnum.paused.value
-    db.add(operation)
-    db.commit()
+    _set_runtime_status(db, operation, StatusEnum.paused.value)
 
     claim = db.scalar(
         select(OperationClaim).where(
