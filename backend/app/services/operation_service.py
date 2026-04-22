@@ -6,9 +6,10 @@ from sqlalchemy import case, func as sa_func, select
 from sqlalchemy.orm import Session
 
 from app.config.settings import settings
-from app.models.execution import DowntimeReasonClass, ExecutionEvent, ExecutionEventType
+from app.models.execution import ExecutionEvent, ExecutionEventType
 from app.models.master import ClosureStatusEnum, Operation, StatusEnum
 from app.models.station_claim import OperationClaim, OperationClaimAuditLog
+from app.repositories.downtime_reason_repository import get_downtime_reason_by_code
 from app.repositories.execution_event_repository import (
     create_execution_event,
     get_events_for_operation,
@@ -122,8 +123,11 @@ def start_downtime(
     tenant_id: str = "default",
 ) -> OperationDetail:
     """
-    Start downtime for an operation. Allowed only if status is RUNNING or PAUSED, no open downtime, not completed/closed.
-    Requires valid reason_class. Persists downtime_started event. Updates state per policy.
+    Start downtime for an operation. Allowed only if status is RUNNING or
+    PAUSED, no open downtime, and the operation record is not closed.
+    Requires a valid, active DB-backed `reason_code` from the
+    `downtime_reasons` master-data table. Persists `downtime_started` event
+    and updates state per policy.
     """
     if operation.tenant_id != tenant_id:
         raise StartDowntimeConflictError("TENANT_MISMATCH")
@@ -144,17 +148,28 @@ def start_downtime(
     if downtime_open:
         raise StartDowntimeConflictError("DOWNTIME_ALREADY_OPEN")
 
-    # Validate reason_class
-    if (
-        not hasattr(request, "reason_class")
-        or request.reason_class not in DowntimeReasonClass
-    ):
-        raise StartDowntimeConflictError("INVALID_REASON_CLASS")
+    # Reason is resolved only from DB-backed master data. The request schema
+    # already guarantees a non-blank reason_code, so a missing value here
+    # would be a programming error, not a user input error.
+    reason_code = (getattr(request, "reason_code", None) or "").strip()
+    if not reason_code:
+        raise StartDowntimeConflictError("INVALID_REASON_CODE")
+
+    reason = get_downtime_reason_by_code(
+        db, tenant_id=operation.tenant_id, reason_code=reason_code
+    )
+    if reason is None:
+        raise StartDowntimeConflictError("INVALID_REASON_CODE")
+    if not reason.active_flag:
+        raise StartDowntimeConflictError("INACTIVE_REASON")
 
     started_at = _utcnow_naive()
     payload = {
         "actor_user_id": actor_user_id,
-        "reason_class": request.reason_class,
+        "reason_code": reason.reason_code,
+        "reason_name": reason.reason_name,
+        "reason_group": reason.reason_group,
+        "planned_flag": reason.planned_flag,
         "note": getattr(request, "note", None),
         "started_at": started_at.isoformat(),
     }

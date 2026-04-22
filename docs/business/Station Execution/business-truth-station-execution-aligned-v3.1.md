@@ -1,4 +1,11 @@
 # Business Truth — Station Execution
+
+## History
+
+| Date | Version | Change |
+|---|---|---|
+| 2026-04-22 | v3.1 | Align downtime reason documentation to backend master data using `reason_code`. |
+
 ## Current implemented baseline alignment note
 
 Status: **Authoritative business truth for the current implemented backend baseline**  
@@ -211,8 +218,22 @@ The richer canonical split between reported good and accepted good remains **des
 ### BT-DT-001 — Downtime is an interval event pair
 Implemented.
 
-### BT-DT-002 — Downtime requires reason classification
+### BT-DT-002 — Downtime requires backend master-data reason selection
 Implemented in the current baseline path.
+
+- operator selects a downtime reason by `reason_code` from a backend-provided, read-only catalog
+- frontend must not derive, classify, or hardcode downtime reasons
+- backend validates `reason_code`
+- backend derives and persists the master-data semantics used by execution:
+	- `reason_name`
+	- `reason_group`
+	- `planned_flag`
+	- `requires_comment`
+	- `requires_supervisor_review`
+
+### BT-DT-002A — Downtime reason invariant
+Frontend must not derive or hardcode downtime reasons.
+Backend master data is the single source of truth for downtime reason semantics.
 
 ### BT-DT-003 — Open downtime blocks progression
 Implemented now for:

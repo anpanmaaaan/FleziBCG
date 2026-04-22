@@ -1,8 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
-
-from app.models.execution import DowntimeReasonClass
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class OperationListItem(BaseModel):
@@ -95,8 +93,19 @@ class OperationPauseRequest(BaseModel):
 
 
 class OperationStartDowntimeRequest(BaseModel):
-    reason_class: DowntimeReasonClass
+    # Canonical path: reason_code resolves to a `downtime_reasons` master row.
+    # Classification (reason_group) is derived server-side from the master row
+    # and is not a client input.
+    reason_code: str
     note: str | None = None
+
+    @field_validator("reason_code")
+    @classmethod
+    def _reason_code_not_blank(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("reason_code must be a non-blank string")
+        return stripped
 
 
 class OperationEndDowntimeRequest(BaseModel):

@@ -25,6 +25,9 @@ export type {
   ReportQuantityPayload,
 } from "./operationApi";
 
+export { fetchDowntimeReasons } from "./downtimeReasons";
+export type { DowntimeReasonOption } from "./downtimeReasons";
+
 export { operationMonitorApi } from "./operationMonitorApi";
 export type {
   ProductionOrderSummaryMonitor,

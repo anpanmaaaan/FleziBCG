@@ -1,5 +1,11 @@
 # Station Execution — Screen Design (Aligned Current Baseline)
 
+## History
+
+| Date | Version | Change |
+|---|---|---|
+| 2026-04-22 | v3.1 | Align downtime reason documentation to backend master data using `reason_code`. |
+
 ## 1. Design principles
 - Backend is source of truth.
 - Queue is the scan / select / claim / reopen-context surface.
@@ -101,7 +107,14 @@ When reopened:
 - `CLOSED` -> closure-aware message + reopen path if allowed
 
 ## 4. Start Downtime
-- fields: reason class, optional note
+- source of options: backend API `/api/v1/downtime-reasons`
+- option display: `reason_name`
+- submit payload: `reason_code` only
+- frontend must not hardcode or derive downtime reason semantics
+- loading state required while catalog is being fetched
+- empty state required when no active reasons are available
+- submit disabled when no reason is selected
+- fields: downtime reason from system catalog, optional note
 - submit returns to same cockpit
 - cockpit moves into blocked/downtime-active focus
 

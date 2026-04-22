@@ -1,11 +1,24 @@
-import { type DowntimeReasonClass } from "@/app/api/operationApi";
-const DOWNTIME_REASONS: { value: DowntimeReasonClass; label: string }[] = [
-  { value: "PLANNED_MAINTENANCE", label: "station.downtime.reason.plannedMaintenance" },
-  { value: "UNPLANNED_BREAKDOWN", label: "station.downtime.reason.unplannedBreakdown" },
-  { value: "MATERIAL_SHORTAGE", label: "station.downtime.reason.materialShortage" },
-  { value: "QUALITY_HOLD", label: "station.downtime.reason.qualityHold" },
-  { value: "OTHER", label: "station.downtime.reason.other" },
-];
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router";
+import { PageHeader } from "@/app/components";
+import { StatusBadge } from "@/app/components";
+import { toast } from "sonner";
+import { RefreshCw, Lock, X, ChevronDown, ArrowLeft, RotateCcw } from "lucide-react";
+import {
+  fetchDowntimeReasons,
+  operationApi,
+  type DowntimeReasonOption,
+  type OperationDetail,
+} from "@/app/api";
+import { stationApi, type StationQueueItem } from "@/app/api";
+import { HttpError } from "@/app/api";
+import { useAuth } from "@/app/auth";
+import {
+  mapExecutionStatusBadgeVariant,
+  mapExecutionStatusText,
+} from "@/app/api";
+import { useI18n } from "@/app/i18n";
+import type { I18nSemanticKey } from "@/app/i18n/keys";
 
 function ReopenOperationModal({ open, onClose, onSubmit, loading }: {
   open: boolean;
@@ -58,16 +71,44 @@ function ReopenOperationModal({ open, onClose, onSubmit, loading }: {
   );
 }
 
-function StartDowntimeModal({ open, onClose, onSubmit, loading }: {
+function StartDowntimeModal({ open, onClose, onSubmit, loading, reasons, reasonsLoading }: {
   open: boolean;
   onClose: () => void;
-  onSubmit: (reason: DowntimeReasonClass, note: string) => void;
+  onSubmit: (reasonCode: string, note: string) => void;
   loading: boolean;
+  reasons: DowntimeReasonOption[];
+  reasonsLoading: boolean;
 }) {
   const { t } = useI18n();
-  const [reason, setReason] = useState<DowntimeReasonClass>("PLANNED_MAINTENANCE");
+  const [reasonCode, setReasonCode] = useState("");
   const [note, setNote] = useState("");
+
+  useEffect(() => {
+    if (!open) {
+      setReasonCode("");
+      setNote("");
+      return;
+    }
+
+    setReasonCode((current) => {
+      if (current && reasons.some((item) => item.reason_code === current)) {
+        return current;
+      }
+      return reasons[0]?.reason_code ?? "";
+    });
+  }, [open, reasons]);
+
   if (!open) return null;
+
+  const selectedReason = reasons.find((item) => item.reason_code === reasonCode) ?? null;
+  const noteRequired = selectedReason?.requires_comment ?? false;
+  const noteValue = note.trim();
+  const submitDisabled =
+    loading ||
+    reasonsLoading ||
+    !reasonCode ||
+    (noteRequired && noteValue.length === 0);
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl p-6 w-96" onClick={e => e.stopPropagation()}>
@@ -76,31 +117,42 @@ function StartDowntimeModal({ open, onClose, onSubmit, loading }: {
           {t("station.downtime.reason.label")}
           <select
             className="mt-1 block w-full border border-gray-300 rounded-lg p-2"
-            value={reason}
-            onChange={e => setReason(e.target.value as DowntimeReasonClass)}
-            disabled={loading}
+            value={reasonCode}
+            onChange={e => setReasonCode(e.target.value)}
+            disabled={loading || reasonsLoading || reasons.length === 0}
           >
-            {DOWNTIME_REASONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{t(opt.label as any)}</option>
-            ))}
+            {reasons.length === 0 ? (
+              <option value="">{t("station.downtime.reason.empty")}</option>
+            ) : (
+              reasons.map((item) => (
+                <option key={item.reason_code} value={item.reason_code}>{item.reason_name}</option>
+              ))
+            )}
           </select>
         </label>
+        {selectedReason ? (
+          <p className="mb-2 text-xs text-gray-500">
+            {t("station.downtime.reason.groupPrefix")} {selectedReason.reason_group}
+          </p>
+        ) : null}
         <label className="block mb-2 text-sm font-medium text-gray-700">
-          {t("station.downtime.note.label")}
+          {noteRequired ? t("station.downtime.note.requiredLabel") : t("station.downtime.note.label")}
           <input
             className="mt-1 block w-full border border-gray-300 rounded-lg p-2"
             value={note}
             onChange={e => setNote(e.target.value)}
-            placeholder={t("station.downtime.note.placeholder")}
-            disabled={loading}
+            placeholder={noteRequired ? t("station.downtime.note.requiredPlaceholder") : t("station.downtime.note.placeholder")}
+            disabled={loading || reasonsLoading}
           />
         </label>
+        {reasonsLoading ? <p className="text-xs text-gray-500">{t("station.downtime.reason.loading")}</p> : null}
+        {!reasonsLoading && reasons.length === 0 ? <p className="text-xs text-amber-700">{t("station.downtime.reason.emptyHelp")}</p> : null}
         <div className="flex gap-2 mt-4 justify-end">
           <button onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700" disabled={loading}>{t("common.action.cancel")}</button>
           <button
-            onClick={() => onSubmit(reason, note)}
+            onClick={() => onSubmit(reasonCode, noteValue)}
             className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-50"
-            disabled={loading}
+            disabled={submitDisabled}
           >
             {t("station.action.startDowntime")}
           </button>
@@ -109,22 +161,6 @@ function StartDowntimeModal({ open, onClose, onSubmit, loading }: {
     </div>
   );
 }
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router";
-import { PageHeader } from "@/app/components";
-import { StatusBadge } from "@/app/components";
-import { toast } from "sonner";
-import { RefreshCw, Lock, X, ChevronDown, ArrowLeft, RotateCcw } from "lucide-react";
-import { operationApi, type OperationDetail } from "@/app/api";
-import { stationApi, type StationQueueItem } from "@/app/api";
-import { HttpError } from "@/app/api";
-import { useAuth } from "@/app/auth";
-import {
-  mapExecutionStatusBadgeVariant,
-  mapExecutionStatusText,
-} from "@/app/api";
-import { useI18n } from "@/app/i18n";
-import type { I18nSemanticKey } from "@/app/i18n/keys";
 
 // ── Numeric Keypad Overlay ────────────────────────────────────────────────────
 
@@ -587,35 +623,12 @@ function TimeCluster({
 }
 
 export function StationExecution() {
-    const [downtimeModalOpen, setDowntimeModalOpen] = useState(false);
-    const [downtimeLoading, setDowntimeLoading] = useState(false);
+  const [downtimeModalOpen, setDowntimeModalOpen] = useState(false);
+  const [downtimeLoading, setDowntimeLoading] = useState(false);
+  const [downtimeReasons, setDowntimeReasons] = useState<DowntimeReasonOption[]>([]);
+  const [downtimeReasonsLoading, setDowntimeReasonsLoading] = useState(false);
   const [reopenModalOpen, setReopenModalOpen] = useState(false);
 
-      // ...existing code...
-      // ...existing code...
-      // ...existing code...
-    // ...existing code...
-    const startDowntime = async (reason: DowntimeReasonClass, note: string) => {
-      if (!operation) return;
-      setDowntimeLoading(true);
-      try {
-        await operationApi.startDowntime(operation.id, { reason_class: reason, note });
-        toast.success(t("station.toast.downtimeStarted"));
-        setDowntimeModalOpen(false);
-        await fetchOperation(String(operation.id));
-        await refreshQueue();
-      } catch (err) {
-        let msg = t("station.toast.downtimeFailed");
-        if (err instanceof HttpError && err.status === 409 && typeof err.detail === "string") {
-          if (err.detail.startsWith("STATE_")) msg = t(`station.reject.${err.detail}` as never);
-          else if (err.detail.startsWith("DOWNTIME_")) msg = t(`station.reject.${err.detail}` as never);
-          else if (err.detail.startsWith("INVALID_")) msg = t(`station.reject.${err.detail}` as never);
-        }
-        toast.error(msg);
-      } finally {
-        setDowntimeLoading(false);
-      }
-    };
   const { t } = useI18n();
   const { currentUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -655,6 +668,12 @@ export function StationExecution() {
     }
     // Intentional: run only when queryOperationId changes
   }, [queryOperationId]);
+
+  useEffect(() => {
+    if (downtimeModalOpen) {
+      void loadDowntimeReasons();
+    }
+  }, [downtimeModalOpen]);
 
   const isCanonicalOperationId = (value: string) => /^\d+$/.test(value.trim());
 
@@ -819,6 +838,19 @@ export function StationExecution() {
     }
   };
 
+  const loadDowntimeReasons = async () => {
+    setDowntimeReasonsLoading(true);
+    try {
+      const data = await fetchDowntimeReasons();
+      setDowntimeReasons(data);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("station.downtime.reason.loadFailed"));
+      setDowntimeReasons([]);
+    } finally {
+      setDowntimeReasonsLoading(false);
+    }
+  };
+
   const fetchOperation = async (id: string) => {
     const trimmedId = id.trim();
     if (!trimmedId) return;
@@ -931,6 +963,28 @@ export function StationExecution() {
       setActionLoading(false);
       await fetchOperation(String(operation.id));
       await refreshQueue();
+    }
+  };
+
+  const startDowntime = async (reasonCode: string, note: string) => {
+    if (!operation) return;
+    setDowntimeLoading(true);
+    try {
+      await operationApi.startDowntime(operation.id, { reason_code: reasonCode, note });
+      toast.success(t("station.toast.downtimeStarted"));
+      setDowntimeModalOpen(false);
+      await fetchOperation(String(operation.id));
+      await refreshQueue();
+    } catch (err) {
+      let msg = t("station.toast.downtimeFailed");
+      if (err instanceof HttpError && err.status === 409 && typeof err.detail === "string") {
+        if (err.detail.startsWith("STATE_")) msg = t(`station.reject.${err.detail}` as never);
+        else if (err.detail.startsWith("DOWNTIME_")) msg = t(`station.reject.${err.detail}` as never);
+        else if (err.detail.startsWith("INVALID_")) msg = t(`station.reject.${err.detail}` as never);
+      }
+      toast.error(msg);
+    } finally {
+      setDowntimeLoading(false);
     }
   };
 
@@ -1541,6 +1595,8 @@ export function StationExecution() {
           onClose={() => setDowntimeModalOpen(false)}
           onSubmit={startDowntime}
           loading={downtimeLoading}
+          reasons={downtimeReasons}
+          reasonsLoading={downtimeReasonsLoading}
         />
       </div>
     </div>

@@ -32,7 +32,7 @@ from sqlalchemy import delete, select
 
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
-from app.models.execution import DowntimeReasonClass, ExecutionEvent
+from app.models.execution import ExecutionEvent
 from app.models.master import Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.station_claim import OperationClaim, OperationClaimAuditLog
 from app.schemas.operation import (
@@ -307,7 +307,7 @@ def seed_station_execution_for_opr() -> None:
             db,
             _op("004"),
             OperationStartDowntimeRequest(
-                reason_class=DowntimeReasonClass.MATERIAL_SHORTAGE,
+                reason_code="MATERIAL_SHORTAGE",
                 note="Seed: material arriving next shift",
             ),
             actor_user_id=SEED_ACTOR,
@@ -329,7 +329,7 @@ def seed_station_execution_for_opr() -> None:
             db,
             _op("005"),
             OperationStartDowntimeRequest(
-                reason_class=DowntimeReasonClass.UNPLANNED_BREAKDOWN,
+                reason_code="BREAKDOWN_GENERIC",
                 note="Seed: pneumatic line failure",
             ),
             actor_user_id=SEED_ACTOR,

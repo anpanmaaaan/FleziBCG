@@ -3,16 +3,22 @@ Use the canonical Station Execution docs in docs/business/Station Execution alre
 
 You are implementing and hardening the Station Execution domain of an AI-driven MOM/MES platform.
 
-You must treat the following files as the canonical source of truth for Station Execution v1:
+You must treat the following files as the canonical source of truth for Station Execution v3:
 
-- business-truth-station-execution.md
-- station-execution-state-matrix.md
-- station-execution-command-event-contracts.md
-- station-execution-authorization-matrix.md
-- station-execution-exception-and-approval-matrix.md
-- station-execution-operational-sop.md
-- station-execution-policy-and-master-data.md
-- station-execution-workflow-diagrams.md
+- docs/business/Station Execution/business-truth-station-execution-aligned-v3.1.md
+- docs/business/Station Execution/station-execution-authorization-matrix-aligned-v3.md
+- docs/business/Station Execution/station-execution-authorization-matrix-aligned-v3.md
+- docs/business/Station Execution/station-execution-be-doc-v3-review-update-summary.md
+- docs/business/Station Execution/station-execution-command-event-contracts-aligned-v3.md
+- docs/business/Station Execution/station-execution-operational-sop-aligned-v3.1.md
+- docs/business/Station Execution/station-execution-policy-and-master-data-aligned-v3.md
+- docs/business/Station Execution/station-execution-screen-design-aligned-v3.1.md
+- docs/business/Station Execution/station-execution-screen-list-aligned-v3.1.md
+- docs/business/Station Execution/station-execution-screen-pack-aligned-v3.1.md
+- docs/business/Station Execution/station-execution-screen-pack-v3-review-update-summary.md
+- docs/business/Station Execution/station-execution-screen-transition-aligned-v3.md
+- docs/business/Station Execution/station-execution-state-matrix-aligned-v3.1.md
+- docs/business/Station Execution/station-execution-workflow-diagrams-aligned-v3.md
 
 Project principles you must respect:
 - Backend is the source of truth

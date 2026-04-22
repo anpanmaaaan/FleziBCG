@@ -4,6 +4,7 @@ from app.api.v1 import (
     approvals,
     auth,
     dashboard,
+    downtime_reasons,
     execution_timeline,
     iam,
     impersonations,
@@ -22,6 +23,7 @@ api_router.include_router(impersonations.router)
 api_router.include_router(approvals.router)
 api_router.include_router(iam.router)
 api_router.include_router(station.router)
+api_router.include_router(downtime_reasons.router)
 
 
 @api_router.get("/ping")

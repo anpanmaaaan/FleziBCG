@@ -34,16 +34,6 @@ class ExecutionEventType(str, Enum):
     OPERATION_REOPENED = "operation_reopened"
 
 
-# Interim downtime reason catalog (minimal, replace with canonical infra when available)
-class DowntimeReasonClass(str, Enum):
-    UNSPECIFIED = "UNSPECIFIED"
-    PLANNED_MAINTENANCE = "PLANNED_MAINTENANCE"
-    UNPLANNED_BREAKDOWN = "UNPLANNED_BREAKDOWN"
-    MATERIAL_SHORTAGE = "MATERIAL_SHORTAGE"
-    QUALITY_HOLD = "QUALITY_HOLD"
-    OTHER = "OTHER"
-
-
 class ExecutionEvent(Base):
     __tablename__ = "execution_events"
 
