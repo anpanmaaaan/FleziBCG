@@ -12,7 +12,6 @@ from app.models.master import Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.execution import ExecutionEvent
 from app.models.rbac import Scope
 from app.models.station_claim import OperationClaim
-from app.models.execution import DowntimeReasonClass
 from app.security.dependencies import RequestIdentity
 
 client = TestClient(app)
@@ -165,7 +164,7 @@ def test_start_downtime_auth(
 ):
     op = seeded_operation
     payload = {
-        "reason_class": DowntimeReasonClass.PLANNED_MAINTENANCE.value,
+        "reason_code": "PLANNED_MAINT",
         "note": "Routine check",
     }
     headers = make_auth_headers(role_code, action_codes)

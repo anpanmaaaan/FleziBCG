@@ -13,7 +13,7 @@ import pytest
 from sqlalchemy import delete, select
 
 from app.db.session import SessionLocal
-from app.models.execution import DowntimeReasonClass, ExecutionEvent
+from app.models.execution import ExecutionEvent
 from app.models.master import Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.rbac import Role, Scope, UserRoleAssignment
 from app.models.station_claim import OperationClaim, OperationClaimAuditLog
@@ -220,7 +220,7 @@ def station_queue_fixture():
             db,
             op_blocked,
             OperationStartDowntimeRequest(
-                reason_class=DowntimeReasonClass.UNPLANNED_BREAKDOWN, note="test"
+                reason_code="BREAKDOWN_GENERIC", note="test"
             ),
             actor_user_id="seed",
             tenant_id=_TENANT_ID,

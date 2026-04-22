@@ -1,14 +1,5 @@
-
-export type DowntimeReasonClass =
-  | "UNSPECIFIED"
-  | "PLANNED_MAINTENANCE"
-  | "UNPLANNED_BREAKDOWN"
-  | "MATERIAL_SHORTAGE"
-  | "QUALITY_HOLD"
-  | "OTHER";
-
 export interface StartDowntimePayload {
-  reason_class: DowntimeReasonClass;
+  reason_code: string;
   note?: string | null;
 }
 import { request } from "./httpClient";

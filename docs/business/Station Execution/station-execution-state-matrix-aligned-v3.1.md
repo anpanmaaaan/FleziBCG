@@ -1,4 +1,11 @@
 # Station Execution State Matrix
+
+## History
+
+| Date | Version | Change |
+|---|---|---|
+| 2026-04-22 | v3.1 | Align downtime reason documentation to backend master data using `reason_code`. |
+
 ## Current implemented backend baseline
 
 Status: **Authoritative implementation matrix for the current backend baseline**  
@@ -51,7 +58,7 @@ Implemented safe default:
 | PAUSE-001 | `status = IN_PROGRESS`; `closure_status = OPEN`; claim owned by actor | `pause_execution` | actor authorized | invalid state; closed record | `execution_paused` | `PAUSED` |
 | RESUME-001 | `status = PAUSED`; `closure_status = OPEN`; claim owned by actor; no open downtime | `resume_execution` | actor authorized; no competing running execution | open downtime; invalid state; closed record; missing ownership | `execution_resumed` | `IN_PROGRESS` |
 | PROD-REP-001 | `status = IN_PROGRESS`; `closure_status = OPEN`; claim owned by actor | `report_production` | non-negative delta; at least one delta > 0 | invalid delta; invalid state; closed record; missing ownership | `production_reported` / implementation legacy event naming may still exist internally | quantities updated; status unchanged |
-| DT-START-001 | `status IN (IN_PROGRESS, PAUSED)`; `closure_status = OPEN`; claim owned by actor; no open downtime | `start_downtime` | valid reason classification | downtime already open; invalid state; closed record | `downtime_started` | `BLOCKED` with downtime open in current baseline behavior |
+| DT-START-001 | `status IN (IN_PROGRESS, PAUSED)`; `closure_status = OPEN`; claim owned by actor; no open downtime | `start_downtime` | valid `reason_code` from backend downtime reason master data | downtime already open; invalid state; closed record; invalid or inactive `reason_code` | `downtime_started` | `BLOCKED` with downtime open in current baseline behavior |
 | DT-END-001 | open downtime exists; `closure_status = OPEN`; claim owned by actor | `end_downtime` | actor authorized | no open downtime; closed record; missing ownership | `downtime_ended` | `PAUSED` |
 | COMPLETE-001 | `status = IN_PROGRESS`; `closure_status = OPEN`; claim owned by actor; no open downtime | `complete_execution` | actor authorized | invalid state; closed record; open downtime; missing ownership | `execution_completed` | `COMPLETED` + `OPEN` |
 

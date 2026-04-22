@@ -7,7 +7,7 @@ from sqlalchemy import delete, select, text
 
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
-from app.models.execution import DowntimeReasonClass, ExecutionEvent, ExecutionEventType
+from app.models.execution import ExecutionEvent, ExecutionEventType
 from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.schemas.operation import (
     OperationAbortRequest,
@@ -220,7 +220,7 @@ def test_closed_record_rejects_all_execution_writes_with_same_code(db_session):
         start_downtime(
             db,
             op_dt_start,
-            OperationStartDowntimeRequest(reason_class=DowntimeReasonClass.OTHER, note="n"),
+            OperationStartDowntimeRequest(reason_code="OTHER", note="n"),
             actor_user_id="opr-001",
             tenant_id=_TENANT_ID,
         )
@@ -330,7 +330,7 @@ def test_open_record_keeps_existing_behavior_and_not_closed_error(db_session):
         start_downtime(
             db,
             op_dt,
-            OperationStartDowntimeRequest(reason_class=DowntimeReasonClass.OTHER, note="n"),
+            OperationStartDowntimeRequest(reason_code="OTHER", note="n"),
             actor_user_id="opr-001",
             tenant_id=_TENANT_ID,
         )

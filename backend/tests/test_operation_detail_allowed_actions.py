@@ -21,7 +21,7 @@ import pytest
 from sqlalchemy import delete, select
 
 from app.db.session import SessionLocal
-from app.models.execution import DowntimeReasonClass, ExecutionEvent
+from app.models.execution import ExecutionEvent
 from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.station_claim import OperationClaim, OperationClaimAuditLog
 from app.schemas.operation import (
@@ -369,7 +369,7 @@ def test_event_roundtrip_start_then_end_downtime(running_operation):
         db,
         op,
         OperationStartDowntimeRequest(
-            reason_class=DowntimeReasonClass.MATERIAL_SHORTAGE,
+            reason_code="MATERIAL_SHORTAGE",
             note="roundtrip-test",
         ),
         actor_user_id="test-actor",
@@ -513,7 +513,7 @@ def test_blocked_snapshot_and_derived_status_align_during_open_downtime(
         db,
         op,
         OperationStartDowntimeRequest(
-            reason_class=DowntimeReasonClass.UNPLANNED_BREAKDOWN,
+            reason_code="BREAKDOWN_GENERIC",
             note="derive-status-blocked",
         ),
         actor_user_id="test-actor",
@@ -543,7 +543,7 @@ def test_start_downtime_allows_second_cycle_after_end_downtime(running_operation
         db,
         op,
         OperationStartDowntimeRequest(
-            reason_class=DowntimeReasonClass.MATERIAL_SHORTAGE,
+            reason_code="MATERIAL_SHORTAGE",
             note="cycle-1-start",
         ),
         actor_user_id="test-actor",
@@ -564,7 +564,7 @@ def test_start_downtime_allows_second_cycle_after_end_downtime(running_operation
         db,
         op,
         OperationStartDowntimeRequest(
-            reason_class=DowntimeReasonClass.UNPLANNED_BREAKDOWN,
+            reason_code="BREAKDOWN_GENERIC",
             note="cycle-2-start",
         ),
         actor_user_id="test-actor",

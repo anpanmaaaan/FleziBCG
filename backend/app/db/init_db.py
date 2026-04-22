@@ -11,6 +11,7 @@ from app.db.session import SessionLocal
 # Forgetting an import causes a silent missing-table bug.
 from app.models.master import ProductionOrder, WorkOrder, Operation  # noqa: F401
 from app.models.execution import ExecutionEvent  # noqa: F401
+from app.models.downtime_reason import DowntimeReason  # noqa: F401
 from app.models.rbac import (  # noqa: F401
     Role,  # noqa: F401
     Permission,  # noqa: F401

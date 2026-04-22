@@ -1,5 +1,11 @@
 # Station Execution — Canonical Screen Pack (Aligned Current Baseline)
 
+## History
+
+| Date | Version | Change |
+|---|---|---|
+| 2026-04-22 | v3.1 | Align downtime reason documentation to backend master data using `reason_code`. |
+
 This pack consolidates the current canonical screen baseline for Station Execution
 aligned to the implemented **Station Execution Core / pre-QC / pre-review** scope.
 
@@ -77,7 +83,7 @@ Station Execution baseline before QC lite / review flow expansion.
 |---|---|---|---|---|---|---|
 | SE-SCR-01 | Station Queue / Operation Selection | Main page mode | OPR | View station queue, filter, claim claimable item, reopen owned active context | Default station execution landing | Yes |
 | SE-SCR-02 | Station Execution Cockpit | Main page mode | OPR | Execute backend-truth-aligned commands on selected operation | Select item from queue | Yes |
-| SE-SCR-03 | Start Downtime | Modal / inline panel | OPR | Enter downtime reason + note and open downtime | From cockpit | Yes |
+| SE-SCR-03 | Start Downtime | Modal / inline panel | OPR | Select downtime reason from backend catalog, optionally add note, and open downtime | From cockpit | Yes |
 | SE-SCR-04 | Release Claim Confirmation | Dialog | OPR / controlled support | Confirm release only for planned/unstarted safe context | From queue/cockpit when allowed | Yes |
 | SE-SCR-05 | Selected item outside filter helper | Inline helper state | OPR | Preserve filter and explain selected item outside visible subset | From queue after refresh/action | Yes |
 | SE-SCR-06 | Back to Selection navigation | Header navigation affordance | OPR | Return from cockpit to full selection mode without losing context | From cockpit | Yes |
@@ -196,7 +202,15 @@ When reopened:
 - `CLOSED` -> closure-aware message + reopen path if allowed
 
 ## 4. Start Downtime
-- fields: reason class, optional note
+- dropdown source: backend API `/api/v1/downtime-reasons`
+- display: `reason_name`
+- submit payload: `reason_code` only
+- classification/taxonomy remains backend-governed master data, not client authority
+- UI states:
+   - loading state while fetching catalog
+   - empty state when no active downtime reasons are available
+   - submit disabled when no reason is selected
+- fields: downtime reason from system catalog, optional note
 - submit returns to same cockpit
 - cockpit moves into blocked/downtime-active focus
 
