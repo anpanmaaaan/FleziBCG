@@ -46,6 +46,8 @@ ACTION_CODE_REGISTRY: dict[str, PermissionFamily] = {
     "execution.resume": "EXECUTE",
     "execution.start_downtime": "EXECUTE",
     "execution.end_downtime": "EXECUTE",
+    "execution.close": "EXECUTE",
+    "execution.reopen": "EXECUTE",
     "approval.create": "APPROVE",
     "approval.decide": "APPROVE",
     "admin.impersonation.create": "ADMIN",

@@ -22,7 +22,7 @@ from sqlalchemy import delete, select
 
 from app.db.session import SessionLocal
 from app.models.execution import DowntimeReasonClass, ExecutionEvent
-from app.models.master import Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.station_claim import OperationClaim, OperationClaimAuditLog
 from app.schemas.operation import (
     OperationEndDowntimeRequest,
@@ -43,6 +43,8 @@ CANONICAL_ACTIONS = {
     "start_downtime",
     "end_downtime",
     "complete_execution",
+    "close_operation",
+    "reopen_operation",
 }
 
 
@@ -54,17 +56,23 @@ CANONICAL_ACTIONS = {
 
 
 @pytest.mark.parametrize(
-    "status, downtime_open, expected",
+    "status, downtime_open, closure_status, expected",
     [
         # PLANNED: only start_execution is allowed. Nothing else, regardless
         # of the downtime flag (a PLANNED op cannot have downtime events).
-        (StatusEnum.planned.value, False, ["start_execution"]),
+        (
+            StatusEnum.planned.value,
+            False,
+            ClosureStatusEnum.open.value,
+            ["start_execution"],
+        ),
         # IN_PROGRESS, no downtime: the three execution-level commands plus
         # start_downtime. resume_execution is NOT in the list (running ops
         # cannot resume themselves).
         (
             StatusEnum.in_progress.value,
             False,
+            ClosureStatusEnum.open.value,
             [
                 "report_production",
                 "pause_execution",
@@ -81,6 +89,7 @@ CANONICAL_ACTIONS = {
         (
             StatusEnum.in_progress.value,
             True,
+            ClosureStatusEnum.open.value,
             [
                 "report_production",
                 "pause_execution",
@@ -92,28 +101,66 @@ CANONICAL_ACTIONS = {
         (
             StatusEnum.paused.value,
             False,
+            ClosureStatusEnum.open.value,
             ["resume_execution", "start_downtime"],
         ),
         # PAUSED + downtime_open: resume is correctly suppressed (resume_operation
         # rejects with STATE_DOWNTIME_OPEN at the service layer), only end_downtime
         # remains.
-        (StatusEnum.paused.value, True, ["end_downtime"]),
+        (
+            StatusEnum.paused.value,
+            True,
+            ClosureStatusEnum.open.value,
+            ["end_downtime"],
+        ),
         # BLOCKED + downtime_open: only end_downtime. This is the normal way a
         # BLOCKED op appears in practice (start_downtime on RUNNING → BLOCKED).
-        (StatusEnum.blocked.value, True, ["end_downtime"]),
+        (
+            StatusEnum.blocked.value,
+            True,
+            ClosureStatusEnum.open.value,
+            ["end_downtime"],
+        ),
         # BLOCKED, no downtime: currently returns []. This is awkward because
         # in the live model the only way to leave BLOCKED is end_downtime, and
         # end_downtime rejects without an open downtime. A BLOCKED snapshot
         # with no open downtime would be stuck. Tested as-is because it matches
         # current pure-projection truth; flagged in the report.
-        (StatusEnum.blocked.value, False, []),
-        # Closed records return [] regardless of downtime_open.
-        (StatusEnum.completed.value, False, []),
-        (StatusEnum.completed.value, True, []),
-        (StatusEnum.completed_late.value, False, []),
-        (StatusEnum.completed_late.value, True, []),
-        (StatusEnum.aborted.value, False, []),
-        (StatusEnum.aborted.value, True, []),
+        (StatusEnum.blocked.value, False, ClosureStatusEnum.open.value, []),
+        # COMPLETED and COMPLETED_LATE can be explicitly closed.
+        (
+            StatusEnum.completed.value,
+            False,
+            ClosureStatusEnum.open.value,
+            ["close_operation"],
+        ),
+        (
+            StatusEnum.completed.value,
+            True,
+            ClosureStatusEnum.open.value,
+            ["end_downtime", "close_operation"],
+        ),
+        (
+            StatusEnum.completed_late.value,
+            False,
+            ClosureStatusEnum.open.value,
+            ["close_operation"],
+        ),
+        (
+            StatusEnum.completed_late.value,
+            True,
+            ClosureStatusEnum.open.value,
+            ["end_downtime", "close_operation"],
+        ),
+        (StatusEnum.aborted.value, False, ClosureStatusEnum.open.value, []),
+        (StatusEnum.aborted.value, True, ClosureStatusEnum.open.value, []),
+        # Any CLOSED record only exposes reopen affordance.
+        (
+            StatusEnum.completed.value,
+            False,
+            ClosureStatusEnum.closed.value,
+            ["reopen_operation"],
+        ),
     ],
     ids=[
         "PLANNED",
@@ -129,10 +176,11 @@ CANONICAL_ACTIONS = {
         "COMPLETED_LATE_with_downtime_open",
         "ABORTED",
         "ABORTED_with_downtime_open",
+        "CLOSED_completed_reopen",
     ],
 )
-def test_derive_allowed_actions_matrix(status, downtime_open, expected):
-    result = _derive_allowed_actions(status, downtime_open)
+def test_derive_allowed_actions_matrix(status, downtime_open, closure_status, expected):
+    result = _derive_allowed_actions(status, downtime_open, closure_status)
     # Exact match, not membership, so ordering and extras both fail the test.
     assert result == expected, (
         f"allowed_actions for status={status}, downtime_open={downtime_open} "
@@ -149,7 +197,11 @@ def test_derive_allowed_actions_never_includes_unknown_actions():
     """Sanity: the pure function never emits anything outside the canonical set."""
     for status_member in StatusEnum:
         for downtime_open in (False, True):
-            actions = _derive_allowed_actions(status_member.value, downtime_open)
+            actions = _derive_allowed_actions(
+                status_member.value,
+                downtime_open,
+                ClosureStatusEnum.open.value,
+            )
             unknown = set(actions) - CANONICAL_ACTIONS
             assert unknown == set(), (
                 f"Unexpected action(s) {unknown!r} for "
@@ -158,14 +210,18 @@ def test_derive_allowed_actions_never_includes_unknown_actions():
 
 
 def test_derive_allowed_actions_closed_is_always_empty():
-    """Closed records cannot emit any action, with or without an open downtime."""
+    """Closed records expose reopen_operation regardless of runtime status."""
     for closed in (
         StatusEnum.completed.value,
         StatusEnum.completed_late.value,
         StatusEnum.aborted.value,
     ):
-        assert _derive_allowed_actions(closed, False) == []
-        assert _derive_allowed_actions(closed, True) == []
+        assert _derive_allowed_actions(closed, False, ClosureStatusEnum.closed.value) == [
+            "reopen_operation"
+        ]
+        assert _derive_allowed_actions(closed, True, ClosureStatusEnum.closed.value) == [
+            "reopen_operation"
+        ]
 
 
 # ─── Event-driven round-trip against the real session ───────────────────────

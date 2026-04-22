@@ -30,6 +30,8 @@ class ExecutionEventType(str, Enum):
     EXECUTION_RESUMED = "execution_resumed"
     DOWNTIME_STARTED = "downtime_started"
     DOWNTIME_ENDED = "downtime_ended"
+    OPERATION_CLOSED_AT_STATION = "operation_closed_at_station"
+    OPERATION_REOPENED = "operation_reopened"
 
 
 # Interim downtime reason catalog (minimal, replace with canonical infra when available)

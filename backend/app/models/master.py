@@ -25,6 +25,11 @@ class StatusEnum(str, Enum):
     late = "LATE"
 
 
+class ClosureStatusEnum(str, Enum):
+    open = "OPEN"
+    closed = "CLOSED"
+
+
 class ProductionOrder(Base):
     __tablename__ = "production_orders"
 
@@ -103,6 +108,16 @@ class Operation(Base):
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, default=StatusEnum.planned.value
     )
+    # INTENT: Orthogonal business-record closure state.
+    # OPEN/CLOSED must remain separate from runtime execution status.
+    closure_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default=ClosureStatusEnum.open.value
+    )
+    reopen_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_reopened_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_reopened_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    last_closed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_closed_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
     planned_start: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     planned_end: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     actual_start: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

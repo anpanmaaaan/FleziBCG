@@ -254,6 +254,14 @@ Possible values:
 
 Important: reopen is **not** a closure status. Reopen is represented by an event plus reopen metadata such as `reopen_count`, `last_reopened_at`, and `last_reopened_by`.
 
+Implementation note (incremental orthogonalization):
+
+- `closure_status` is implemented as a separate persisted dimension in backend operation records
+- canonical invariant is enforced: `CLOSED` records reject execution write commands
+- `close_operation` and `reopen_operation` command foundations are implemented
+- current reopen effect is an interim controlled non-running reopened state (`PAUSED` projection)
+- fuller close/reopen policy gates that depend on `quality_status` / `review_status` remain deferred
+
 ---
 
 ## 7. Station session business truth

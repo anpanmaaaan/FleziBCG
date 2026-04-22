@@ -6,7 +6,7 @@ from sqlalchemy import case, func as sa_func, select
 from sqlalchemy.orm import Session
 
 from app.models.execution import DowntimeReasonClass, ExecutionEvent, ExecutionEventType
-from app.models.master import Operation, StatusEnum
+from app.models.master import ClosureStatusEnum, Operation, StatusEnum
 from app.repositories.execution_event_repository import (
     create_execution_event,
     get_events_for_operation,
@@ -15,17 +15,21 @@ from app.repositories.operation_repository import (
     get_in_progress_operations_by_station,
     get_operation_by_id,
     mark_operation_aborted,
+    mark_operation_closed,
     mark_operation_completed,
     mark_operation_paused,
     mark_operation_reported,
+    mark_operation_reopened,
     mark_operation_resumed,
     mark_operation_started,
 )
 from app.schemas.operation import (
     OperationAbortRequest,
+    OperationCloseRequest,
     OperationCompleteRequest,
     OperationDetail,
     OperationPauseRequest,
+    OperationReopenRequest,
     OperationReportQuantityRequest,
     OperationResumeRequest,
     OperationStartRequest,
@@ -56,14 +60,7 @@ def end_downtime(
     """
     if operation.tenant_id != tenant_id:
         raise EndDowntimeConflictError("TENANT_MISMATCH")
-
-    # Contracts §10 STATE_* family: closed records reject before any state work.
-    if operation.status in (
-        StatusEnum.completed.value,
-        StatusEnum.completed_late.value,
-        StatusEnum.aborted.value,
-    ):
-        raise EndDowntimeConflictError("STATE_CLOSED_RECORD")
+    _ensure_operation_open_for_write(operation)
 
     # Open-downtime guard: count started vs ended events on the append-only log.
     events = get_events_for_operation(db, operation.id)
@@ -128,13 +125,8 @@ def start_downtime(
     """
     if operation.tenant_id != tenant_id:
         raise StartDowntimeConflictError("TENANT_MISMATCH")
+    _ensure_operation_open_for_write(operation)
     if operation.status not in (StatusEnum.in_progress.value, StatusEnum.paused.value):
-        if operation.status in (
-            StatusEnum.completed.value,
-            StatusEnum.completed_late.value,
-            StatusEnum.aborted.value,
-        ):
-            raise StartDowntimeConflictError("STATE_CLOSED")
         raise StartDowntimeConflictError("STATE_NOT_RUNNING_OR_PAUSED")
 
     # Open-downtime truth is append-only-log based: open iff
@@ -219,6 +211,23 @@ class ResumeExecutionConflictError(ValueError):
     pass
 
 
+class ClosedRecordConflictError(ValueError):
+    pass
+
+
+class CloseOperationConflictError(ValueError):
+    pass
+
+
+class ReopenOperationConflictError(ValueError):
+    pass
+
+
+def _ensure_operation_open_for_write(operation) -> None:
+    if operation.closure_status == ClosureStatusEnum.closed.value:
+        raise ClosedRecordConflictError("STATE_CLOSED_RECORD")
+
+
 @dataclass(frozen=True)
 class OperationRuntimeProjection:
     status: str
@@ -292,6 +301,9 @@ _RUNTIME_EVENT_TYPES_FOR_LAST_SIGNAL = (
     ExecutionEventType.EXECUTION_PAUSED.value,
     ExecutionEventType.EXECUTION_RESUMED.value,
     ExecutionEventType.DOWNTIME_ENDED.value,
+    ExecutionEventType.OP_COMPLETED.value,
+    ExecutionEventType.OP_ABORTED.value,
+    ExecutionEventType.OPERATION_REOPENED.value,
 )
 
 
@@ -307,6 +319,14 @@ def _derive_status_from_runtime_facts(
     if has_aborted:
         return StatusEnum.aborted.value
     if has_completed:
+        if last_runtime_event in (
+            ExecutionEventType.OPERATION_REOPENED.value,
+            ExecutionEventType.EXECUTION_PAUSED.value,
+            ExecutionEventType.DOWNTIME_ENDED.value,
+        ):
+            return StatusEnum.paused.value
+        if last_runtime_event == ExecutionEventType.EXECUTION_RESUMED.value:
+            return StatusEnum.in_progress.value
         return StatusEnum.completed.value
     if has_started:
         if downtime_started_count > downtime_ended_count:
@@ -561,6 +581,9 @@ def _derive_status(events: list) -> str:
         elif event.event_type in (
             ExecutionEventType.EXECUTION_PAUSED.value,
             ExecutionEventType.EXECUTION_RESUMED.value,
+            ExecutionEventType.OP_COMPLETED.value,
+            ExecutionEventType.OP_ABORTED.value,
+            ExecutionEventType.OPERATION_REOPENED.value,
         ):
             last_runtime_event = event.event_type
     return _derive_status_from_runtime_facts(
@@ -586,14 +609,19 @@ def _derive_progress(operation_quantity: int, completed_qty: int) -> int:
 # Canonical names per station-execution-command-event-contracts.md §3.
 _CLOSED_STATUSES = frozenset(
     {
-        StatusEnum.completed.value,
-        StatusEnum.completed_late.value,
         StatusEnum.aborted.value,
     }
 )
 
 
-def _derive_allowed_actions(status: str, downtime_open: bool) -> list[str]:
+def _derive_allowed_actions(
+    status: str,
+    downtime_open: bool,
+    closure_status: str = ClosureStatusEnum.open.value,
+) -> list[str]:
+    if closure_status == ClosureStatusEnum.closed.value:
+        return ["reopen_operation"]
+
     if status in _CLOSED_STATUSES:
         return []
 
@@ -621,6 +649,9 @@ def _derive_allowed_actions(status: str, downtime_open: bool) -> list[str]:
 
     if downtime_open:
         actions.append("end_downtime")
+
+    if status in (StatusEnum.completed.value, StatusEnum.completed_late.value):
+        actions.append("close_operation")
 
     return actions
 
@@ -666,7 +697,11 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
     # Detail semantics must be internally consistent: action affordances are
     # derived from the same runtime-truth status exposed in `status`, not from
     # potentially stale snapshot projection on operation.status.
-    allowed_actions = _derive_allowed_actions(status, downtime_open)
+    allowed_actions = _derive_allowed_actions(
+        status,
+        downtime_open,
+        operation.closure_status,
+    )
     paused_total_ms = _accumulate_event_interval_ms(
         events,
         start_event_type=ExecutionEventType.EXECUTION_PAUSED.value,
@@ -690,6 +725,7 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
         name=operation.name,
         sequence=operation.sequence,
         status=status,
+        closure_status=operation.closure_status,
         planned_start=operation.planned_start,
         planned_end=operation.planned_end,
         quantity=operation.quantity,
@@ -708,7 +744,107 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
         allowed_actions=allowed_actions,
         paused_total_ms=paused_total_ms,
         downtime_total_ms=downtime_total_ms,
+        reopen_count=operation.reopen_count,
+        last_reopened_at=operation.last_reopened_at,
+        last_reopened_by=operation.last_reopened_by,
+        last_closed_at=operation.last_closed_at,
+        last_closed_by=operation.last_closed_by,
     )
+
+
+def close_operation(
+    db: Session,
+    operation,
+    request: OperationCloseRequest,
+    *,
+    actor_user_id: str,
+    tenant_id: str = "default",
+) -> OperationDetail:
+    if operation.tenant_id != tenant_id:
+        raise ValueError("Operation does not belong to the requesting tenant.")
+    if operation.closure_status == ClosureStatusEnum.closed.value:
+        raise CloseOperationConflictError("STATE_ALREADY_CLOSED")
+
+    detail = derive_operation_detail(db, operation)
+    if detail.status not in (
+        StatusEnum.completed.value,
+        StatusEnum.completed_late.value,
+    ):
+        raise CloseOperationConflictError("STATE_NOT_COMPLETED")
+
+    closed_at = _utcnow_naive()
+    payload = {
+        "actor_user_id": actor_user_id,
+        "note": request.note,
+        "closed_at": closed_at.isoformat(),
+    }
+
+    create_execution_event(
+        db=db,
+        event_type=ExecutionEventType.OPERATION_CLOSED_AT_STATION.value,
+        production_order_id=operation.work_order.production_order_id,
+        work_order_id=operation.work_order_id,
+        operation_id=operation.id,
+        payload=payload,
+        tenant_id=operation.tenant_id,
+    )
+
+    operation = mark_operation_closed(
+        db,
+        operation,
+        closed_at=closed_at,
+        closed_by=actor_user_id,
+    )
+    operation = get_operation_by_id(db, operation.id)
+    if not operation:
+        raise ValueError("Operation not found after close event")
+    return derive_operation_detail(db, operation)
+
+
+def reopen_operation(
+    db: Session,
+    operation,
+    request: OperationReopenRequest,
+    *,
+    actor_user_id: str,
+    tenant_id: str = "default",
+) -> OperationDetail:
+    if operation.tenant_id != tenant_id:
+        raise ValueError("Operation does not belong to the requesting tenant.")
+    if operation.closure_status != ClosureStatusEnum.closed.value:
+        raise ReopenOperationConflictError("STATE_NOT_CLOSED")
+
+    reason = (request.reason or "").strip()
+    if not reason:
+        raise ReopenOperationConflictError("REOPEN_REASON_REQUIRED")
+
+    reopened_at = _utcnow_naive()
+    payload = {
+        "actor_user_id": actor_user_id,
+        "reason": reason,
+        "reopened_at": reopened_at.isoformat(),
+    }
+
+    create_execution_event(
+        db=db,
+        event_type=ExecutionEventType.OPERATION_REOPENED.value,
+        production_order_id=operation.work_order.production_order_id,
+        work_order_id=operation.work_order_id,
+        operation_id=operation.id,
+        payload=payload,
+        tenant_id=operation.tenant_id,
+    )
+
+    operation = mark_operation_reopened(
+        db,
+        operation,
+        reopened_at=reopened_at,
+        reopened_by=actor_user_id,
+    )
+    operation = get_operation_by_id(db, operation.id)
+    if not operation:
+        raise ValueError("Operation not found after reopen event")
+    return derive_operation_detail(db, operation)
 
 
 def start_operation(
@@ -716,6 +852,7 @@ def start_operation(
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
+    _ensure_operation_open_for_write(operation)
     if operation.status != StatusEnum.planned.value:
         raise StartOperationConflictError("Operation must be PLANNED to start.")
 
@@ -779,6 +916,7 @@ def report_quantity(
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
+    _ensure_operation_open_for_write(operation)
     if operation.status != StatusEnum.in_progress.value:
         raise ValueError("Operation must be IN_PROGRESS to report quantity.")
 
@@ -826,6 +964,7 @@ def complete_operation(
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
+    _ensure_operation_open_for_write(operation)
     # EDGE: Two-step status check gives distinct error messages — a COMPLETED
     # operation gets a "cannot complete again" error, while a PLANNED one
     # gets "must be IN_PROGRESS". This helps operators diagnose issues.
@@ -875,6 +1014,7 @@ def pause_operation(
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
+    _ensure_operation_open_for_write(operation)
 
     # State guard per station-execution-state-matrix.md PAUSE-001:
     # allowed only when execution_status = RUNNING and closure_status = OPEN.
@@ -927,6 +1067,7 @@ def resume_operation(
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
+    _ensure_operation_open_for_write(operation)
 
     # State guard per station-execution-state-matrix.md RESUME-001:
     # allowed only when execution_status = PAUSED, closure_status = OPEN, and
@@ -1006,6 +1147,7 @@ def abort_operation(
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
+    _ensure_operation_open_for_write(operation)
     if operation.status in (StatusEnum.completed.value, StatusEnum.aborted.value):
         raise ValueError("Operation already completed or aborted; cannot abort.")
 

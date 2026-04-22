@@ -3,7 +3,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.session import Session
 
-from app.models.master import Operation, WorkOrder, StatusEnum
+from app.models.master import ClosureStatusEnum, Operation, WorkOrder, StatusEnum
 
 
 def get_operations_by_work_order(db: Session, work_order_id: int) -> list[Operation]:
@@ -155,6 +155,42 @@ def mark_operation_aborted(
     operation.status = StatusEnum.aborted.value
     if operation.actual_end is None:
         operation.actual_end = aborted_at
+
+    db.add(operation)
+    db.commit()
+    db.refresh(operation)
+    return operation
+
+
+def mark_operation_closed(
+    db: Session,
+    operation: Operation,
+    *,
+    closed_at: datetime,
+    closed_by: str,
+) -> Operation:
+    operation.closure_status = ClosureStatusEnum.closed.value
+    operation.last_closed_at = closed_at
+    operation.last_closed_by = closed_by
+
+    db.add(operation)
+    db.commit()
+    db.refresh(operation)
+    return operation
+
+
+def mark_operation_reopened(
+    db: Session,
+    operation: Operation,
+    *,
+    reopened_at: datetime,
+    reopened_by: str,
+) -> Operation:
+    operation.closure_status = ClosureStatusEnum.open.value
+    operation.status = StatusEnum.paused.value
+    operation.reopen_count = (operation.reopen_count or 0) + 1
+    operation.last_reopened_at = reopened_at
+    operation.last_reopened_by = reopened_by
 
     db.add(operation)
     db.commit()

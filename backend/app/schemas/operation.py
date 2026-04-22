@@ -11,6 +11,7 @@ class OperationListItem(BaseModel):
     name: str
     sequence: int
     status: str
+    closure_status: str = "OPEN"
     supervisor_bucket: str | None = None
     planned_start: datetime | None = None
     planned_end: datetime | None = None
@@ -60,6 +61,11 @@ class OperationDetail(OperationListItem):
     # Includes closed intervals plus any currently open interval up to now.
     paused_total_ms: int = 0
     downtime_total_ms: int = 0
+    reopen_count: int = 0
+    last_reopened_at: datetime | None = None
+    last_reopened_by: str | None = None
+    last_closed_at: datetime | None = None
+    last_closed_by: str | None = None
 
 
 class OperationStartRequest(BaseModel):
@@ -99,3 +105,11 @@ class OperationEndDowntimeRequest(BaseModel):
 
 class OperationResumeRequest(BaseModel):
     note: str | None = None
+
+
+class OperationCloseRequest(BaseModel):
+    note: str | None = None
+
+
+class OperationReopenRequest(BaseModel):
+    reason: str

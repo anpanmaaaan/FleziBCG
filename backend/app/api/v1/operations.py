@@ -5,10 +5,12 @@ from app.db.session import SessionLocal
 from app.repositories.operation_repository import get_operation_by_id
 from app.schemas.operation import (
     OperationAbortRequest,
+    OperationCloseRequest,
     OperationCompleteRequest,
     OperationDetail,
     OperationEndDowntimeRequest,
     OperationPauseRequest,
+    OperationReopenRequest,
     OperationReportQuantityRequest,
     OperationResumeRequest,
     OperationStartRequest,
@@ -20,17 +22,22 @@ from app.security.dependencies import (
     require_permission,
 )
 from app.services.operation_service import (
+    ClosedRecordConflictError,
+    CloseOperationConflictError,
     CompleteOperationConflictError,
     EndDowntimeConflictError,
     PauseExecutionConflictError,
+    ReopenOperationConflictError,
     ResumeExecutionConflictError,
     StartOperationConflictError,
     abort_operation,
+    close_operation,
     complete_operation,
     derive_operation_detail,
     end_downtime,
     pause_operation,
     report_quantity,
+    reopen_operation,
     resume_operation,
     start_operation,
     start_downtime,
@@ -38,6 +45,10 @@ from app.services.operation_service import (
 from app.services.station_claim_service import ensure_operation_claim_owned_by_identity
 
 router = APIRouter()
+
+
+def _effective_role_code(identity: RequestIdentity) -> str:
+    return (identity.acting_role_code or identity.role_code or "").upper()
 
 
 def get_db():
@@ -78,6 +89,8 @@ def start_operation_endpoint(
 
     try:
         return start_operation(db, operation, request, tenant_id=identity.tenant_id)
+    except ClosedRecordConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     except StartOperationConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
@@ -104,6 +117,8 @@ def report_quantity_endpoint(
 
     try:
         return report_quantity(db, operation, request, tenant_id=identity.tenant_id)
+    except ClosedRecordConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -132,6 +147,8 @@ def pause_operation_endpoint(
             actor_user_id=identity.user_id,
             tenant_id=identity.tenant_id,
         )
+    except ClosedRecordConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     except PauseExecutionConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
@@ -162,6 +179,8 @@ def resume_operation_endpoint(
             actor_user_id=identity.user_id,
             tenant_id=identity.tenant_id,
         )
+    except ClosedRecordConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     except ResumeExecutionConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
@@ -186,6 +205,8 @@ def complete_operation_endpoint(
 
     try:
         return complete_operation(db, operation, request, tenant_id=identity.tenant_id)
+    except ClosedRecordConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     except CompleteOperationConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
@@ -205,6 +226,8 @@ def abort_operation_endpoint(
 
     try:
         return abort_operation(db, operation, request, tenant_id=identity.tenant_id)
+    except ClosedRecordConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -237,6 +260,8 @@ def start_downtime_endpoint(
             actor_user_id=identity.user_id,
             tenant_id=identity.tenant_id,
         )
+    except ClosedRecordConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     except StartDowntimeConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
@@ -267,7 +292,65 @@ def end_downtime_endpoint(
             actor_user_id=identity.user_id,
             tenant_id=identity.tenant_id,
         )
+    except ClosedRecordConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     except EndDowntimeConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/operations/{operation_id}/close", response_model=OperationDetail)
+def close_operation_endpoint(
+    operation_id: int,
+    request: OperationCloseRequest,
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(require_action("execution.close")),
+):
+    operation = get_operation_by_id(db, operation_id)
+    if not operation or operation.tenant_id != identity.tenant_id:
+        raise HTTPException(status_code=404, detail="Operation not found")
+
+    try:
+        return close_operation(
+            db,
+            operation,
+            request,
+            actor_user_id=identity.user_id,
+            tenant_id=identity.tenant_id,
+        )
+    except CloseOperationConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/operations/{operation_id}/reopen", response_model=OperationDetail)
+def reopen_operation_endpoint(
+    operation_id: int,
+    request: OperationReopenRequest,
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(require_action("execution.reopen")),
+):
+    operation = get_operation_by_id(db, operation_id)
+    if not operation or operation.tenant_id != identity.tenant_id:
+        raise HTTPException(status_code=404, detail="Operation not found")
+
+    if _effective_role_code(identity) != "SUP":
+        raise HTTPException(
+            status_code=403,
+            detail="Missing required role for reopen_operation: SUP",
+        )
+
+    try:
+        return reopen_operation(
+            db,
+            operation,
+            request,
+            actor_user_id=identity.user_id,
+            tenant_id=identity.tenant_id,
+        )
+    except ReopenOperationConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

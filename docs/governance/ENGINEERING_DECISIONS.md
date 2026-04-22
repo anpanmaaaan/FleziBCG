@@ -176,3 +176,15 @@ Before coding, every contributor should answer:
 4. Am I changing contract/API/schema?
 5. Am I introducing or depending on AI behavior?
 If the answer is unclear, stop and clarify before coding.
+
+---
+## 11. Station Execution Orthogonalization Status
+### Implemented now
+- `closure_status` exists as a separate operation dimension (`OPEN`/`CLOSED`)
+- closed-record invariant is enforced on execution write paths: closed records reject writes with a machine-readable closed-record conflict code
+- `close_operation` command path is implemented (close event + `closure_status` transition + close metadata)
+- `reopen_operation` command path is implemented (reopen event + `closure_status` transition + reopen metadata)
+- reopened records use interim controlled non-running runtime behavior (`PAUSED` projection) until broader orthogonal dimensions are implemented
+### Deferred
+- `quality_status` and `review_status` dimensions
+- approved-effects lifecycle, full dispatch dimension, and full canonical state-matrix parity
