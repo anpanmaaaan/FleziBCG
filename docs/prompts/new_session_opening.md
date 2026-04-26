@@ -1,7 +1,7 @@
 Use /workspaces/FleziBCG/.github/copilot-instructions.md as mandatory system constraints.
-Use the canonical Station Execution docs in docs/design already provided in this session as truth.
+Use the canonical design docs in docs/design already provided in this session as truth.
 
-You are implementing and hardening the Station Execution domain of an AI-driven MOM/MES platform.
+You are implementing and hardening an AI-driven MOM/MES platform.
 
 You must treat the following files as the canonical source of truth for Station Execution v3:
 
