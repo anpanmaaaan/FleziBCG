@@ -26,8 +26,10 @@ This document is authoritative for:
 - AI engineering rules
 - definition of done
 
-For business logic truth, see:
-- `docs/system/mes-business-logic-v1.md`
+For business and domain truth, see:
+- `docs/design/00_platform/product-business-truth-overview.md`
+- `docs/design/02_domain/execution/business-truth-station-execution-v4.md`
+- `docs/design/02_domain/quality/quality-domain-contracts.md`
 
 For structure/layout truth, see:
 - `docs/governance/SOURCE_STRUCTURE.md`
@@ -41,7 +43,7 @@ For reconciled implementation truths, see:
 
 When documents disagree, apply the following precedence:
 
-1. `docs/system/mes-business-logic-v1.md`
+1. the most specific authoritative design/business-truth document in `docs/design/`
 2. `docs/governance/CODING_RULES.md`
 3. `docs/governance/ENGINEERING_DECISIONS.md`
 4. `docs/governance/SOURCE_STRUCTURE.md`

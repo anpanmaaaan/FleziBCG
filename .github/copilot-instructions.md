@@ -1,7 +1,7 @@
-## MOM Lite — Coding Entry Instructions
-Before coding, always read these documents as instruction in order:
+## FleziBCG MOM — Coding Entry Instructions
+Before coding, always read these documents in order:
 1. `/workspaces/FleziBCG/.github/agent/AGENT.md`
-2. `docs/system/mes-business-logic-v1.md`
+2. `docs/business/design`
 3. `docs/governance/CODING_RULES.md`
 4. `docs/governance/ENGINEERING_DECISIONS.md`
 5. `docs/governance/SOURCE_STRUCTURE.md`
@@ -15,10 +15,10 @@ It is **not** the authoritative source for:
 - database rules
 - IAM/session rules
 - AI engineering rules
-Those rules live in the governance and system documents above.
+Those rules live in the design and governance documents above.
 ---
 ## Project Overview
-MOM Lite is a lightweight ISA-95-aligned MES/MOM system.
+FleziBCG MOM is a lightweight ISA-95-aligned MOM platform.
 ### Current runtime architecture
 - modular monolith
 - backend: Python 3.12, FastAPI, SQLAlchemy 2.x, PostgreSQL
@@ -67,7 +67,7 @@ Follow the rules in `docs/governance/CODING_RULES.md`.
 ---
 ## Final Reminder
 When documents disagree:
-1. business logic contract wins
+1. most specific authoritative design/business truth document wins
 2. coding rules win next
 3. engineering decisions clarify implementation intent
 4. source structure explains ownership only
