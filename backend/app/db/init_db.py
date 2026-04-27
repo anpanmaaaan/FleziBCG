@@ -58,11 +58,10 @@ def _apply_sql_migrations() -> None:
 
 
 def init_db():
-    # WHY: SQL migrations run before create_all() so that ALTER TABLE
-    # statements see existing tables, and create_all() only adds any
-    # tables not yet covered by migrations.
-    _apply_sql_migrations()
+    # WHY: create_all() runs first to ensure all base tables exist, then
+    # SQL migrations run ALTER TABLE statements against those tables.
     Base.metadata.create_all(bind=engine)
+    _apply_sql_migrations()
     # INTENT: Seed order matters — RBAC roles/permissions first, then approval
     # rules (which reference role codes), then demo users (which reference roles).
     with SessionLocal() as db:

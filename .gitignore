@@ -24,6 +24,13 @@ __pycache__/
 *.pyo
 *.pyd
 .env
+.env.*
+docker/.env*
+# Allow safe templates to stay tracked
+!.env.example
+!.env.template
+!docker/.env.example
+!docker/.env.template
 .venv/
 venv/
 env/
