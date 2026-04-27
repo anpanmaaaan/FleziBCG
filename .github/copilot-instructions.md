@@ -1,74 +1,160 @@
-## FleziBCG MOM — Coding Entry Instructions
-Before coding, always read these documents in order:
-1. `/workspaces/FleziBCG/.github/agent/AGENT.md`
-2. `docs/design`
-4. `docs/governance/CODING_RULES.md`
-5. `docs/governance/ENGINEERING_DECISIONS.md`
-6. `docs/governance/SOURCE_STRUCTURE.md`
+# GitHub Copilot Instructions — FleziBCG MOM
 
-## Purpose of this file
-This file is a short entry instruction only.
-It is **not** the authoritative source for:
+## 🔰 Entry Rule (MANDATORY)
+Before coding, always read these documents in order:
+
+1. /workspaces/FleziBCG/.github/agent/AGENT.md
+2. docs/design
+3. docs/governance/CODING_RULES.md
+4. docs/governance/ENGINEERING_DECISIONS.md
+5. docs/governance/SOURCE_STRUCTURE.md
+
+This file is NOT the source of truth for:
 - business logic
 - coding conventions
-- API contract rules
+- API contracts
 - database rules
 - IAM/session rules
-- AI engineering rules
-Those rules live in the design and governance documents above.
+- AI rules
+
+Those live in design & governance docs.
+
 ---
-## Project Overview
+
+## 🧠 AI Skill System
+
+This repo uses local AI skill prompts under:
+
+docs/ai-skills/
+
+### General usage rules
+
+- Always read the relevant skill file before proposing changes
+- Prefer small, reviewable changes
+- Work in vertical slices
+- Do not invent product scope
+- State assumptions explicitly
+- Prefer behavior-based tests over implementation tests
+- Do NOT suggest destructive Git commands unless explicitly requested
+
+---
+
+## 🎯 Skill Invocation Mapping
+
+| User intent | Skill to use |
+|------------|-------------|
+| use TDD | docs/ai-skills/tdd.md |
+| break into issues | docs/ai-skills/to-issues.md |
+| triage bug / audit | docs/ai-skills/triage-issue.md |
+| architecture review | docs/ai-skills/improve-codebase-architecture.md |
+| write PRD | docs/ai-skills/to-prd.md |
+
+If unclear → ask user which skill to apply.
+
+---
+
+## 🏗️ Project Overview
+
 FleziBCG MOM is a lightweight ISA-95-aligned MOM platform.
-### Current runtime architecture
+
+### Current architecture
 - modular monolith
 - backend: Python 3.12, FastAPI, SQLAlchemy 2.x, PostgreSQL
-- frontend: React 18, TypeScript, Vite, Tailwind CSS
-- authentication: JWT + Argon2
-- deployment target: local / Docker / on-prem friendly
+- frontend: React 18, TypeScript, Vite, Tailwind
+- auth: JWT + Argon2
+- deployment: local / Docker / on-prem
+
 ### Product direction
-The long-term direction is AI-driven MES/MOM, but:
-- execution truth remains deterministic
-- backend remains source of truth
-- AI is advisory by default
+- AI-assisted MES/MOM
+- Backend = deterministic execution truth
+- AI = advisory only
+
 ---
-## Hard Constraints
+
+## 🚫 Hard Constraints (NON-NEGOTIABLE)
+
 ### 1. Backend is source of truth
 - frontend never derives execution state
 - frontend never decides authorization
-- persona is UX-only
-### 2. Execution is event-driven
-- execution events are append-only
-- status is derived from events
-- projections are not the source of truth
-### 3. Tenant and scope isolation are mandatory
-- no tenant-blind access to tenant-owned data
-- validated tenant/scope context must be explicit
-### 4. Service layer owns business logic
-- routes stay thin
-- repositories are data access only
-### 5. JWT proves identity, not authorization
-- permissions are checked server-side per request
-- frontend must not encode permission truth
-### 6. Admin/support are not default production actors
-- privileged operational access must go through approved support / impersonation flow
-- all such actions must be auditable
-### 7. AI may explain, predict, and recommend
-AI must not:
-- silently mutate execution
-- bypass auth, approval, or SoD
-- present uncertain output as system fact
+
+### 2. Event-driven execution
+- events are append-only
+- status derived from events
+- projections ≠ source of truth
+
+### 3. Tenant isolation
+- no tenant-blind access
+- tenant context must be explicit
+
+### 4. Layer responsibilities
+- service layer = business logic
+- routes = thin
+- repository = data access only
+
+### 5. Auth model
+- JWT = identity only
+- authorization always server-side
+
+### 6. Privileged access
+- no implicit admin access
+- must go through audited support flow
+
+### 7. AI constraints
+AI MUST NOT:
+- mutate execution
+- bypass auth / approval
+- present uncertain output as fact
+
 ---
-## PR Reminder
-Before opening a PR, determine which type it is:
+
+## 🔁 Working Principles
+
+- Follow design → contract → implementation
+- Respect domain boundaries
+- No cross-domain leakage
+- Enforce invariants explicitly
+- Prefer explicit over implicit
+
+---
+
+## 🔍 PR Rules
+
+Before opening PR, classify:
+
 - Mechanical PR
 - Intentional Behavior PR
 - Architecture / Contract PR
-Follow the rules in `docs/governance/CODING_RULES.md`.
+
+Follow rules in:
+docs/governance/CODING_RULES.md
+
 ---
-## Final Reminder
-When documents disagree:
-1. most specific authoritative design/business truth document wins
-2. coding rules win next
-3. engineering decisions clarify implementation intent
-4. source structure explains ownership only
-Do not invent a third interpretation in code.
+
+## ⚠️ Conflict Resolution Rule
+
+If documents conflict:
+
+1. Domain / business truth doc wins
+2. Coding rules next
+3. Engineering decisions clarify intent
+4. Source structure defines ownership only
+
+Never invent a third interpretation.
+
+---
+
+## 🧩 AI Behavior Expectation
+
+Copilot must behave like:
+
+- MOM domain-aware engineer
+- strict with invariants
+- cautious with architecture
+- explicit in reasoning
+- aligned with design baseline
+
+Not like:
+
+- autocomplete tool
+- guess-based generator
+- shortcut implementer
