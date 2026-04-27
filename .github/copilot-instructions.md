@@ -1,10 +1,10 @@
 ## FleziBCG MOM — Coding Entry Instructions
 Before coding, always read these documents in order:
 1. `/workspaces/FleziBCG/.github/agent/AGENT.md`
-2. `docs/business/design`
-3. `docs/governance/CODING_RULES.md`
-4. `docs/governance/ENGINEERING_DECISIONS.md`
-5. `docs/governance/SOURCE_STRUCTURE.md`
+2. `docs/design`
+4. `docs/governance/CODING_RULES.md`
+5. `docs/governance/ENGINEERING_DECISIONS.md`
+6. `docs/governance/SOURCE_STRUCTURE.md`
 
 ## Purpose of this file
 This file is a short entry instruction only.

@@ -1,11 +1,5 @@
 # Source Structure
 
-## History
-
-| Date | Version | Change |
-|---|---:|---|
-| 2026-04-26 | v1.1 | Hardening Task 2 alignment. Clarified CloudBeaver is local/dev-only tooling and must not be deployed as default production runtime. |
-
 Monorepo layout, entrypoints, folder ownership, and public contract baselines.
 
 This document is authoritative for:
@@ -128,20 +122,15 @@ For those, see:
 
 ## 5. Runtime Surfaces
 
-| Service     | Purpose                                 | Production posture |
-|-------------|-----------------------------------------|---|
-| db          | PostgreSQL                              | production runtime |
-| backend     | FastAPI backend                         | production runtime |
-| frontend    | Vite / nginx frontend surface           | production runtime |
-| cloudbeaver | DB inspection / admin tooling           | **local/dev-only; not production runtime** |
+| Service     | Purpose                                 |
+|-------------|-----------------------------------------|
+| db          | PostgreSQL                              |
+| backend     | FastAPI backend                         |
+| frontend    | Vite / nginx frontend surface           |
+| cloudbeaver | DB inspection / admin tooling           |
 
-CloudBeaver rule:
+---
 
-```text
-CloudBeaver may be used only for local/dev DB inspection.
-It must not be deployed as a default production runtime surface.
-Production DB access must use approved, audited admin access paths such as bastion/VPN/managed DB console with least privilege.
-```
 ## 6. Frozen Public Contract Baselines
 
 These hashes represent the canonical public API surface. Any change to these must be treated as an intentional contract change.
