@@ -1,0 +1,250 @@
+name: FleziBCG PR Gate
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changed-files:
+    name: Classify changed files
+    runs-on: ubuntu-latest
+    outputs:
+      mom_critical: ${{ steps.classify.outputs.mom_critical }}
+      db_or_migration: ${{ steps.classify.outputs.db_or_migration }}
+      frontend_only: ${{ steps.classify.outputs.frontend_only }}
+      docs_only: ${{ steps.classify.outputs.docs_only }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get changed files
+        id: changed
+        uses: tj-actions/changed-files@v45
+        with:
+          separator: "
+"
+
+      - name: Classify PR risk
+        id: classify
+        shell: bash
+        run: |
+          echo "Changed files:"
+          echo "${{ steps.changed.outputs.all_changed_files }}"
+
+          MOM_CRITICAL=false
+          DB_OR_MIGRATION=false
+          FRONTEND_ONLY=true
+          DOCS_ONLY=true
+
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+
+            case "$file" in
+              backend/*|api/*|server/*|app/*|src/backend/*)
+                FRONTEND_ONLY=false
+                DOCS_ONLY=false
+                ;;
+              frontend/*|web/*|src/frontend/*)
+                DOCS_ONLY=false
+                ;;
+              docs/*|*.md)
+                ;;
+              *)
+                FRONTEND_ONLY=false
+                DOCS_ONLY=false
+                ;;
+            esac
+
+            case "$file" in
+              *migration*|*alembic*|*schema*|*models*|*database*|*db*|*.sql)
+                DB_OR_MIGRATION=true
+                ;;
+            esac
+
+            case "$file" in
+              *execution*|*station*|*session*|*operator*|*equipment*|*event*|*projection*|*downtime*|*production*|*quality*|*material*|*inventory*|*traceability*)
+                MOM_CRITICAL=true
+                ;;
+            esac
+          done <<< "${{ steps.changed.outputs.all_changed_files }}"
+
+          echo "mom_critical=$MOM_CRITICAL" >> "$GITHUB_OUTPUT"
+          echo "db_or_migration=$DB_OR_MIGRATION" >> "$GITHUB_OUTPUT"
+          echo "frontend_only=$FRONTEND_ONLY" >> "$GITHUB_OUTPUT"
+          echo "docs_only=$DOCS_ONLY" >> "$GITHUB_OUTPUT"
+
+  backend-tests:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    needs: changed-files
+    if: needs.changed-files.outputs.docs_only != 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        shell: bash
+        run: |
+          if [ -f backend/pyproject.toml ]; then
+            cd backend
+            python -m pip install --upgrade pip
+            pip install -e ".[dev]" || pip install -e .
+          elif [ -f requirements.txt ]; then
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
+          elif [ -f backend/requirements.txt ]; then
+            python -m pip install --upgrade pip
+            pip install -r backend/requirements.txt
+          else
+            echo "No backend dependency file found. Skipping install."
+          fi
+
+      - name: Run backend tests
+        shell: bash
+        run: |
+          if [ -d backend/tests ]; then
+            cd backend
+            pytest -q
+          elif [ -d tests ]; then
+            pytest -q
+          else
+            echo "No backend tests found. Add tests for non-doc PRs."
+            exit 1
+          fi
+
+  frontend-tests:
+    name: Frontend checks
+    runs-on: ubuntu-latest
+    needs: changed-files
+    if: needs.changed-files.outputs.docs_only != 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install frontend dependencies
+        shell: bash
+        run: |
+          if [ -f frontend/package-lock.json ]; then
+            cd frontend && npm ci
+          elif [ -f frontend/pnpm-lock.yaml ]; then
+            cd frontend && corepack enable && pnpm install --frozen-lockfile
+          elif [ -f frontend/yarn.lock ]; then
+            cd frontend && corepack enable && yarn install --frozen-lockfile
+          elif [ -f frontend/package.json ]; then
+            cd frontend && npm install
+          else
+            echo "No frontend package.json found. Skipping."
+          fi
+
+      - name: Run frontend checks
+        shell: bash
+        run: |
+          if [ -f frontend/package.json ]; then
+            cd frontend
+            npm run lint --if-present
+            npm run typecheck --if-present
+            npm test --if-present -- --run
+          else
+            echo "No frontend project found. Skipping."
+          fi
+
+  hard-mode-mom-gate:
+    name: Hard Mode MOM gate
+    runs-on: ubuntu-latest
+    needs: changed-files
+    if: needs.changed-files.outputs.mom_critical == 'true' || needs.changed-files.outputs.db_or_migration == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify Hard Mode MOM docs exist
+        shell: bash
+        run: |
+          test -f docs/ai-skills/hard-mode-mom.md
+          test -f docs/ai-skills/flezibcg-ai-brain-v6-auto-execution.md || true
+
+      - name: Hard Mode MOM static reject scan
+        shell: bash
+        run: |
+          echo "Running lightweight Hard Mode MOM static scan..."
+
+          # Reject obvious direct mutation patterns in critical files.
+          # This is intentionally conservative and should be refined as code structure matures.
+          CRITICAL_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -Ei 'execution|station|session|operator|equipment|event|projection|downtime|production|quality|material|inventory|traceability|migration|alembic|models|schema|database|db' || true)
+
+          if [ -z "$CRITICAL_FILES" ]; then
+            echo "No critical files to scan."
+            exit 0
+          fi
+
+          echo "$CRITICAL_FILES"
+
+          FAIL=0
+
+          for file in $CRITICAL_FILES; do
+            [ -f "$file" ] || continue
+
+            if grep -nE '\.status\s*=\s*["'\''A-Z_]+["'\'']' "$file"; then
+              echo "::error file=$file::Potential direct status mutation detected. Hard Mode requires command → validate → event → projection."
+              FAIL=1
+            fi
+
+            if grep -nE 'good_qty\s*\+=|scrap_qty\s*\+=|quantity\s*\+=' "$file"; then
+              if ! grep -qiE 'emit_event|append_event|create_event|record_event|Event' "$file"; then
+                echo "::error file=$file::Quantity mutation found without obvious event emission."
+                FAIL=1
+              fi
+            fi
+
+            if grep -nE 'tenant_id|scope_id|plant_id' "$file" >/dev/null; then
+              true
+            else
+              case "$file" in
+                *execution*|*station*|*session*|*operator*|*downtime*|*production*)
+                  echo "::warning file=$file::No tenant/scope marker found in critical operational file. Verify tenant isolation manually."
+                  ;;
+              esac
+            fi
+          done
+
+          if [ "$FAIL" -eq 1 ]; then
+            echo "Hard Mode MOM gate failed."
+            exit 1
+          fi
+
+          echo "Hard Mode MOM static scan passed."
+
+  pr-gate-summary:
+    name: PR Gate Summary
+    runs-on: ubuntu-latest
+    needs: [changed-files, backend-tests, frontend-tests, hard-mode-mom-gate]
+    if: always()
+    steps:
+      - name: Summary
+        shell: bash
+        run: |
+          echo "## FleziBCG PR Gate Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- MOM critical: ${{ needs.changed-files.outputs.mom_critical }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- DB/migration: ${{ needs.changed-files.outputs.db_or_migration }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Frontend only: ${{ needs.changed-files.outputs.frontend_only }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Docs only: ${{ needs.changed-files.outputs.docs_only }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Required reviewer checklist: docs/review/pr-hard-mode-checklist.md" >> "$GITHUB_STEP_SUMMARY"

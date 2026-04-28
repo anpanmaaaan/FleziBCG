@@ -1,160 +1,252 @@
-# GitHub Copilot Instructions — FleziBCG MOM
+# GitHub Copilot Instructions — FleziBCG MOM + AI Brain v6
 
-## 🔰 Entry Rule (MANDATORY)
-Before coding, always read these documents in order:
+---
 
-1. /workspaces/FleziBCG/.github/agent/AGENT.md
-2. docs/design
-3. docs/governance/CODING_RULES.md
-4. docs/governance/ENGINEERING_DECISIONS.md
-5. docs/governance/SOURCE_STRUCTURE.md
+# 🔰 0. Entry Rule (MANDATORY)
 
-This file is NOT the source of truth for:
-- business logic
-- coding conventions
-- API contracts
-- database rules
-- IAM/session rules
-- AI rules
+Before coding, always read in order:
+
+1. `.github/agent/AGENT.md`
+2. `docs/design`
+3. `docs/governance/CODING_RULES.md`
+4. `docs/governance/ENGINEERING_DECISIONS.md`
+5. `docs/governance/SOURCE_STRUCTURE.md`
+
+⚠️ This file is NOT the source of truth for:
+
+* business logic
+* API contracts
+* database rules
+* IAM/session rules
 
 Those live in design & governance docs.
 
 ---
 
-## 🧠 AI Skill System
+# 🧠 1. AI Brain v6 — Auto Execution (DEFAULT)
 
-This repo uses local AI skill prompts under:
+Use:
 
+```text
+docs/ai-skills/flezibcg-ai-brain-v6-auto-execution.md
+```
+
+---
+
+## 🔁 Auto Routing (MANDATORY)
+
+For every non-trivial task, ALWAYS start with:
+
+```markdown
+## Routing
+- Selected brain:
+- Selected mode:
+- Hard Mode MOM:
+- Reason:
+```
+
+---
+
+## 🧠 Brain Selection
+
+### Use MOM Brain when:
+
+* execution / operation
+* station / session / operator
+* event / projection
+* production / downtime / quantity
+* quality affecting execution
+* material / WIP / traceability
+* ERP manufacturing integration
+* OEE / shopfloor / Andon
+
+### Use Generic Brain when:
+
+* normal software logic
+* UI / dashboard
+* generic API
+* non-MOM feature
+
+👉 If unsure → **default to MOM Brain**
+
+---
+
+## ⚙️ Mode Selection
+
+| Mode         | Use                       |
+| ------------ | ------------------------- |
+| Fast         | trivial change            |
+| Strict       | DB / auth / state / event |
+| QA           | testing / E2E             |
+| Architecture | design                    |
+| Product      | scope / roadmap           |
+| Refactor     | cleanup                   |
+| Debug        | bug                       |
+| Release      | deploy                    |
+
+⚠️ Never use Fast for risky logic.
+
+---
+
+## 🔥 Hard Mode MOM (AUTO-TRIGGER)
+
+Turn ON if task touches:
+
+* state machine
+* execution command
+* event
+* projection truth
+* station/session/operator
+* production / downtime
+* completion / closure
+* invariant / tenant / auth
+
+---
+
+## 🚫 Hard Mode Reject Rules
+
+Reject code if:
+
+* sai state machine
+* thiếu event
+* thiếu invariant
+* mutate state trực tiếp
+* projection = source of truth
+* frontend quyết định logic
+* thiếu tenant/auth check
+* bypass service layer
+
+---
+
+# 🏗️ 2. Core MOM Constraints (NON-NEGOTIABLE)
+
+## Backend = source of truth
+
+* frontend chỉ gửi intent
+* frontend không derive state
+* frontend không authorize
+
+---
+
+## Event-driven execution
+
+* event = append-only
+* state = derive từ event
+* projection ≠ truth
+
+---
+
+## Tenant isolation
+
+* luôn có tenant context
+* không query cross-tenant
+
+---
+
+## Layer responsibility
+
+* service = business logic
+* route = thin
+* repo = data only
+
+---
+
+## Auth model
+
+* JWT = identity only
+* permission = backend
+
+---
+
+## Privileged access
+
+* không implicit admin
+* phải audit
+
+---
+
+# 🧪 3. Engineering Principles
+
+* small, reviewable change
+* vertical slice
+* explicit assumption
+* behavior-based test
+* no scope invention
+
+---
+
+# 🎯 4. AI Skill System
+
+Skills nằm ở:
+
+```text
 docs/ai-skills/
+```
 
-### General usage rules
+### Mapping
 
-- Always read the relevant skill file before proposing changes
-- Prefer small, reviewable changes
-- Work in vertical slices
-- Do not invent product scope
-- State assumptions explicitly
-- Prefer behavior-based tests over implementation tests
-- Do NOT suggest destructive Git commands unless explicitly requested
-
----
-
-## 🎯 Skill Invocation Mapping
-
-| User intent | Skill to use |
-|------------|-------------|
-| use TDD | docs/ai-skills/tdd.md |
-| break into issues | docs/ai-skills/to-issues.md |
-| triage bug / audit | docs/ai-skills/triage-issue.md |
-| architecture review | docs/ai-skills/improve-codebase-architecture.md |
-| write PRD | docs/ai-skills/to-prd.md |
-
-If unclear → ask user which skill to apply.
+| Intent       | Skill                            |
+| ------------ | -------------------------------- |
+| TDD          | tdd.md                           |
+| breakdown    | to-issues.md                     |
+| audit        | triage-issue.md                  |
+| architecture | improve-codebase-architecture.md |
+| PRD          | to-prd.md                        |
 
 ---
 
-## 🏗️ Project Overview
+# 🔍 5. PR Rules
 
-FleziBCG MOM is a lightweight ISA-95-aligned MOM platform.
+Phải classify:
 
-### Current architecture
-- modular monolith
-- backend: Python 3.12, FastAPI, SQLAlchemy 2.x, PostgreSQL
-- frontend: React 18, TypeScript, Vite, Tailwind
-- auth: JWT + Argon2
-- deployment: local / Docker / on-prem
+* Mechanical
+* Behavior
+* Architecture
 
-### Product direction
-- AI-assisted MES/MOM
-- Backend = deterministic execution truth
-- AI = advisory only
+Theo:
 
----
-
-## 🚫 Hard Constraints (NON-NEGOTIABLE)
-
-### 1. Backend is source of truth
-- frontend never derives execution state
-- frontend never decides authorization
-
-### 2. Event-driven execution
-- events are append-only
-- status derived from events
-- projections ≠ source of truth
-
-### 3. Tenant isolation
-- no tenant-blind access
-- tenant context must be explicit
-
-### 4. Layer responsibilities
-- service layer = business logic
-- routes = thin
-- repository = data access only
-
-### 5. Auth model
-- JWT = identity only
-- authorization always server-side
-
-### 6. Privileged access
-- no implicit admin access
-- must go through audited support flow
-
-### 7. AI constraints
-AI MUST NOT:
-- mutate execution
-- bypass auth / approval
-- present uncertain output as fact
-
----
-
-## 🔁 Working Principles
-
-- Follow design → contract → implementation
-- Respect domain boundaries
-- No cross-domain leakage
-- Enforce invariants explicitly
-- Prefer explicit over implicit
-
----
-
-## 🔍 PR Rules
-
-Before opening PR, classify:
-
-- Mechanical PR
-- Intentional Behavior PR
-- Architecture / Contract PR
-
-Follow rules in:
+```text
 docs/governance/CODING_RULES.md
+```
 
 ---
 
-## ⚠️ Conflict Resolution Rule
+# ⚠️ 6. Conflict Resolution
 
-If documents conflict:
+1. Business truth doc
+2. Coding rules
+3. Engineering decisions
+4. Source structure
 
-1. Domain / business truth doc wins
-2. Coding rules next
-3. Engineering decisions clarify intent
-4. Source structure defines ownership only
-
-Never invent a third interpretation.
+❌ Never invent new interpretation
 
 ---
 
-## 🧩 AI Behavior Expectation
+# 🧠 7. Expected AI Behavior
 
 Copilot must behave like:
 
-- MOM domain-aware engineer
-- strict with invariants
-- cautious with architecture
-- explicit in reasoning
-- aligned with design baseline
+* MOM domain-aware engineer
+* strict with invariants
+* architecture-aware
+* explicit reasoning
 
-Not like:
+NOT:
 
-- autocomplete tool
-- guess-based generator
-- shortcut implementer
+* autocomplete tool
+* guess-based generator
+* shortcut coder
+
+---
+
+# 🧱 8. Final Principle
+
+```text
+Route → Select brain → Select mode → Hard Mode if needed → Execute → Verify
+```
+
+```text
+Execution truth > speed
+Event integrity > shortcut
+Invariant > convenience
+```
