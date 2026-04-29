@@ -18,6 +18,8 @@ export const I18N_NAMESPACES = {
   qcCheckpoints: "qcCheckpoints",
   routeDetail: "routeDetail",
   routeList: "routeList",
+  productList: "productList",
+  productDetail: "productDetail",
   defects: "defects",
   dispatch: "dispatch",
   trace: "trace",
@@ -31,6 +33,7 @@ export const I18N_NAMESPACES = {
   columnManager: "columnManager",
   gantt: "gantt",
   app: "app",
+  screenStatus: "screenStatus",
 } as const;
 
 export type I18nNamespace = (typeof I18N_NAMESPACES)[keyof typeof I18N_NAMESPACES];

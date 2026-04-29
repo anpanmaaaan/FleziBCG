@@ -7,6 +7,86 @@ This folder contains seed data generators for Phase 6 MES Lite, aligned with the
 Seed data is **NOT** for realism; it is for **validation** of core business rules. Each seed scenario is a regression test that exercises specific parts of the execution model.
 
 ## Seed Scenarios (S1–S4)
+---
+
+## Quick Start (All-In-One)
+
+```bash
+cd backend
+.venv\Scripts\python scripts/seed/seed_all_master_and_execution.py
+```
+
+This creates complete master data + execution test scenarios (~10 seconds).
+
+---
+
+## Master Data Seed Scripts (NEW)
+
+### 1. seed_products_and_routing.py
+
+Creates manufacturing master data foundation:
+- **6 Products:** WIDGET-A, WIDGET-B, FRAME-001, MOTOR-STD, BEARING-001, CONNECTOR-A
+- **3 Routings:** R-WIDGET-A (3 ops), R-WIDGET-B (4 ops), R-FRAME (2 ops)
+- **Resource Requirements:** Skill/capability assignments (ASSEMBLY_WORKER, QC_INSPECTOR, WELDER, etc.)
+
+```bash
+.venv\Scripts\python scripts/seed/seed_products_and_routing.py
+```
+
+**Idempotent:** Yes. Safe to run multiple times.
+
+---
+
+### 2. seed_production_orders_with_master_data.py
+
+Creates production orders linked to master data:
+- **3 Production Orders:**
+  - PRD-WIDGET-A-001 (100 units, R-WIDGET-A routing)
+  - PRD-WIDGET-B-001 (50 units, R-WIDGET-B routing)
+  - PRD-FRAME-001-001 (150 units, R-FRAME routing)
+- **9 Operations** distributed across 5 stations (A, B, C, D, E)
+
+```bash
+.venv\Scripts\python scripts/seed/seed_production_orders_with_master_data.py
+```
+
+**Prerequisites:** Run `seed_products_and_routing.py` first.
+
+**Idempotent:** Yes.
+
+---
+
+### 3. seed_test_data.py
+
+Creates execution test scenarios (operations in stations with users/roles):
+- **Scenario 1:** STATION-A with alice/bob (3 PLANNED operations)
+- **Scenario 2:** STATION-B with alice-b/supervisor (1 IN_PROGRESS, 1 PLANNED)
+- **Scenario 3:** STATION-A/B/C multi-station workflow
+
+```bash
+.venv\Scripts\python scripts/seed/seed_test_data.py
+```
+
+**Idempotent:** Yes.
+
+---
+
+## Orchestrator
+
+```bash
+.venv\Scripts\python scripts/seed/seed_all_master_and_execution.py
+```
+
+Runs all scripts in correct order:
+1. Master data (products, routings)
+2. Production orders linked to master data
+3. Execution test scenarios
+
+Output: Ready-to-use database with comprehensive test data.
+
+---
+
+## Legacy Seed Scenarios (S1–S4)
 
 All scenarios are run automatically by `seed_all.py` and verified by `seed_all.py` verification suite.
 

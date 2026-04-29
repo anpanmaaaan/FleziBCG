@@ -4,6 +4,8 @@ import { LoginPage } from "./pages/LoginPage";
 import { Home } from "./pages/Home";
 import { Dashboard } from "./pages/Dashboard";
 import { ProductionOrderList } from "./pages/ProductionOrderList";
+import { ProductList } from "./pages/ProductList";
+import { ProductDetail } from "./pages/ProductDetail";
 import { RouteList } from "./pages/RouteList";
 import { RouteDetail } from "./pages/RouteDetail";
 import { OperationList } from "./pages/OperationList";
@@ -48,6 +50,8 @@ export const router = createBrowserRouter([
       
       // Production Management
       { path: "production-orders", Component: ProductionOrderList },
+      { path: "products", Component: ProductList },
+      { path: "products/:productId", Component: ProductDetail },
       { path: "dispatch", Component: DispatchQueue },
       
       // Routes & Operations

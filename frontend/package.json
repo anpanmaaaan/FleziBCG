@@ -7,6 +7,7 @@
     "build": "vite build",
     "dev": "vite",
     "lint": "eslint src/",
+    "check:routes": "node scripts/route-smoke-check.mjs",
     "lint:i18n": "npm run lint:i18n:hardcode && npm run lint:i18n:registry",
     "lint:i18n:hardcode": "bash scripts/check_i18n_hardcode.sh",
     "lint:i18n:registry": "node scripts/check_i18n_registry_parity.mjs"

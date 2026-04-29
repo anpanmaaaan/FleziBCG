@@ -663,8 +663,10 @@ def _derive_status(events: list) -> str:
             started_count += 1
         elif event.event_type == ExecutionEventType.OP_COMPLETED.value:
             completed_count += 1
+            last_runtime_event = event.event_type
         elif event.event_type == ExecutionEventType.OP_ABORTED.value:
             aborted_count += 1
+            last_runtime_event = event.event_type
         elif event.event_type == ExecutionEventType.DOWNTIME_STARTED.value:
             downtime_started_count += 1
         elif event.event_type == ExecutionEventType.DOWNTIME_ENDED.value:
@@ -673,8 +675,6 @@ def _derive_status(events: list) -> str:
         elif event.event_type in (
             ExecutionEventType.EXECUTION_PAUSED.value,
             ExecutionEventType.EXECUTION_RESUMED.value,
-            ExecutionEventType.OP_COMPLETED.value,
-            ExecutionEventType.OP_ABORTED.value,
             ExecutionEventType.OPERATION_REOPENED.value,
         ):
             last_runtime_event = event.event_type

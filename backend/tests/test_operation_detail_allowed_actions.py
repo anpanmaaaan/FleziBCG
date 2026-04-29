@@ -4,7 +4,7 @@ Regression tests for OperationDetail.allowed_actions projection.
 Scope: Proves that _derive_allowed_actions(status, downtime_open) and the
 derive_operation_detail round-trip return exactly the canonical lower_snake
 action names currently promised by station-execution-command-event-contracts.md
-§3. These tests lock the projection behavior as it exists today so backend
+ﾂｧ3. These tests lock the projection behavior as it exists today so backend
 refactors cannot silently break the Station Execution cockpit.
 
 Non-goals:
@@ -30,6 +30,7 @@ from app.schemas.operation import (
 )
 from app.services.operation_service import (
     _derive_allowed_actions,
+    _derive_status,
     derive_operation_detail,
     end_downtime,
     start_downtime,
@@ -48,7 +49,7 @@ CANONICAL_ACTIONS = {
 }
 
 
-# ─── Pure unit tests for _derive_allowed_actions ─────────────────────────────
+# 笏笏笏 Pure unit tests for _derive_allowed_actions 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
 # These are the authoritative coverage for every (status, downtime_open) combo
 # the cockpit can encounter. derive_operation_detail delegates to this function,
 # so proving the pure projection is correct is necessary and sufficient for
@@ -81,9 +82,9 @@ CANONICAL_ACTIONS = {
             ],
         ),
         # IN_PROGRESS + downtime_open: a surprising but intentional case today.
-        # In practice start_downtime transitions IN_PROGRESS → BLOCKED, so this
+        # In practice start_downtime transitions IN_PROGRESS 竊・BLOCKED, so this
         # combination should not appear via normal commands. The pure function
-        # still has to answer deterministically — it keeps the IN_PROGRESS action
+        # still has to answer deterministically 窶・it keeps the IN_PROGRESS action
         # block AND adds end_downtime, but omits start_downtime (already open).
         # Reported explicitly because it looks awkward on paper.
         (
@@ -114,7 +115,7 @@ CANONICAL_ACTIONS = {
             ["end_downtime"],
         ),
         # BLOCKED + downtime_open: only end_downtime. This is the normal way a
-        # BLOCKED op appears in practice (start_downtime on RUNNING → BLOCKED).
+        # BLOCKED op appears in practice (start_downtime on RUNNING 竊・BLOCKED).
         (
             StatusEnum.blocked.value,
             True,
@@ -224,12 +225,100 @@ def test_derive_allowed_actions_closed_is_always_empty():
         ]
 
 
-# ─── Event-driven round-trip against the real session ───────────────────────
-# Exercises derive_operation_detail end-to-end: start_downtime ⇒ downtime_open
+# 笏笏笏 Event-driven round-trip against the real session 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+# Exercises derive_operation_detail end-to-end: start_downtime 竍・downtime_open
 # flips, allowed_actions loses start_downtime and gains end_downtime; then
-# end_downtime ⇒ downtime_open clears, BLOCKED snapshot transitions to PAUSED,
+# end_downtime 竍・downtime_open clears, BLOCKED snapshot transitions to PAUSED,
 # and allowed_actions returns to the PAUSED set.
 
+
+
+# ─── Pure unit tests for _derive_status ────────────────────────────────────────────
+# _derive_status walks the append-only event log and derives the operation's
+# runtime status. These tests use lightweight fake event objects to cover key
+# paths without DB access.
+#
+# Test IDs follow the Hard Mode MOM v3 Test Matrix for P0-C-02.
+
+
+class _FakeEvent:
+    """Minimal fake ExecutionEvent for _derive_status unit tests."""
+
+    def __init__(self, event_type: str) -> None:
+        self.event_type = event_type
+
+
+@pytest.mark.parametrize(
+    "event_types, expected_status, test_id",
+    [
+        # P0C02-T7: No events → PLANNED.
+        ([], StatusEnum.planned.value, "no_events_planned"),
+        # P0C02-T6: OP_STARTED only → IN_PROGRESS.
+        (["OP_STARTED"], StatusEnum.in_progress.value, "started_only_in_progress"),
+        # P0C02-T1: OP_STARTED → OP_COMPLETED → COMPLETED.
+        (["OP_STARTED", "OP_COMPLETED"], StatusEnum.completed.value, "started_then_completed"),
+        # P0C02-T5: OP_STARTED → OP_ABORTED → ABORTED.
+        (["OP_STARTED", "OP_ABORTED"], StatusEnum.aborted.value, "started_then_aborted"),
+        # P0C02-T2: OP_STARTED → OP_COMPLETED → operation_reopened → PAUSED.
+        # Reopen resets the operation back to non-running; explicit resume required.
+        (
+            ["OP_STARTED", "OP_COMPLETED", "operation_reopened"],
+            StatusEnum.paused.value,
+            "completed_then_reopened_paused",
+        ),
+        # P0C02-T3: OP_STARTED → OP_COMPLETED → operation_reopened →
+        #           execution_resumed → IN_PROGRESS.
+        (
+            ["OP_STARTED", "OP_COMPLETED", "operation_reopened", "execution_resumed"],
+            StatusEnum.in_progress.value,
+            "reopen_then_resumed_in_progress",
+        ),
+        # P0C02-T4: REGRESSION BUG — before the fix this returned IN_PROGRESS.
+        # Root cause: OP_COMPLETED did not update last_runtime_event in
+        # _derive_status, so after execution_resumed the second OP_COMPLETED
+        # left last_runtime_event=execution_resumed, causing
+        # _derive_status_from_runtime_facts to take the IN_PROGRESS branch.
+        #
+        # Fix: add `last_runtime_event = event.event_type` to the OP_COMPLETED
+        # (and OP_ABORTED) elif branches, and remove them from the dead-code
+        # final elif block.
+        #
+        # This test MUST fail before the fix and pass after.
+        (
+            [
+                "OP_STARTED",
+                "OP_COMPLETED",
+                "operation_reopened",
+                "execution_resumed",
+                "OP_COMPLETED",
+            ],
+            StatusEnum.completed.value,
+            "reopen_resume_complete_must_be_COMPLETED",
+        ),
+    ],
+    ids=lambda x: x if isinstance(x, str) else None,
+)
+def test_derive_status_event_sequence(event_types, expected_status, test_id):
+    from app.models.execution import ExecutionEventType
+
+    _ET_MAP = {
+        "OP_STARTED": ExecutionEventType.OP_STARTED.value,
+        "OP_COMPLETED": ExecutionEventType.OP_COMPLETED.value,
+        "OP_ABORTED": ExecutionEventType.OP_ABORTED.value,
+        "execution_resumed": ExecutionEventType.EXECUTION_RESUMED.value,
+        "execution_paused": ExecutionEventType.EXECUTION_PAUSED.value,
+        "operation_reopened": ExecutionEventType.OPERATION_REOPENED.value,
+        "downtime_started": ExecutionEventType.DOWNTIME_STARTED.value,
+        "downtime_ended": ExecutionEventType.DOWNTIME_ENDED.value,
+    }
+    events = [_FakeEvent(_ET_MAP[et]) for et in event_types]
+    result = _derive_status(events)
+    assert result == expected_status, (
+        f"[{test_id}] _derive_status({event_types!r}) expected "
+        f"{expected_status!r}, got {result!r}. "
+        "If test_id=reopen_resume_complete_must_be_COMPLETED: this is the "
+        "P0-C-02 regression -- OP_COMPLETED must update last_runtime_event."
+    )
 
 _ROUNDTRIP_PREFIX = "TEST-ALLOWED-ACTIONS"
 
@@ -353,7 +442,7 @@ def running_operation():
 def test_event_roundtrip_start_then_end_downtime(running_operation):
     db, op = running_operation
 
-    # Baseline: IN_PROGRESS, no downtime → full running set.
+    # Baseline: IN_PROGRESS, no downtime 竊・full running set.
     before = derive_operation_detail(db, op)
     assert before.downtime_open is False
     assert before.allowed_actions == [
@@ -364,7 +453,7 @@ def test_event_roundtrip_start_then_end_downtime(running_operation):
     ]
 
     # Drive start_downtime through the real service. This appends a
-    # DOWNTIME_STARTED event AND transitions the snapshot IN_PROGRESS → BLOCKED.
+    # DOWNTIME_STARTED event AND transitions the snapshot IN_PROGRESS 竊・BLOCKED.
     start_downtime(
         db,
         op,
@@ -392,7 +481,7 @@ def test_event_roundtrip_start_then_end_downtime(running_operation):
     assert op.status == StatusEnum.blocked.value
 
     # Drive end_downtime. Per current backend policy this closes the downtime,
-    # transitions BLOCKED → PAUSED on the snapshot (so a subsequent resume
+    # transitions BLOCKED 竊・PAUSED on the snapshot (so a subsequent resume
     # becomes addressable), and the projection must reflect the PAUSED set.
     end_downtime(
         db,
@@ -526,7 +615,7 @@ def test_blocked_snapshot_and_derived_status_align_during_open_downtime(
     assert op.status == StatusEnum.blocked.value
     assert detail.status == StatusEnum.blocked.value
     assert detail.downtime_open is True
-    # allowed_actions is unchanged by the derive_status fix — snapshot-driven
+    # allowed_actions is unchanged by the derive_status fix 窶・snapshot-driven
     # and still correctly yields only ["end_downtime"] for BLOCKED + open
     # downtime.
     assert detail.allowed_actions == ["end_downtime"]

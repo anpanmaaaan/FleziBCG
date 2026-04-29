@@ -1,141 +1,160 @@
-import { useState } from "react";
-import { Plus, Edit, Trash2, Eye, Copy, Download, Search, ArrowUpDown, Calendar, ChevronDown, Edit2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Download, Search } from "lucide-react";
 import { useNavigate } from "react-router";
-import { routes as initialRoutes } from "@/app/data/mockData";
-import { Switch } from "@/app/components/ui/switch";
+import { HttpError, routingApi, type RoutingItemFromAPI } from "@/app/api";
+import { BackendRequiredNotice, RoutingLifecycleBadge } from "@/app/components";
+import { useI18n } from "@/app/i18n";
 
 export function RouteList() {
   const navigate = useNavigate();
-  const [routes, setRoutes] = useState(initialRoutes);
-  const [searchValues, setSearchValues] = useState({
-    route: "",
-    lastUpdated: "",
-    status: "",
-  });
+  const { t } = useI18n();
+  const [searchRoute, setSearchRoute] = useState("");
+  const [routings, setRoutings] = useState<RoutingItemFromAPI[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-
-  // Toggle Active/Inactive status
-  const handleToggleStatus = (routeId: string) => {
-    setRoutes(prevRoutes =>
-      prevRoutes.map(route =>
-        route.id === routeId
-          ? { ...route, status: route.status === 'Active' ? 'Inactive' as const : 'Active' as const }
-          : route
-      )
-    );
+  const resolveErrorMessage = (error: unknown): string => {
+    if (error instanceof HttpError) {
+      if (error.status === 401) {
+        return t("routeList.error.unauthorized");
+      }
+      if (error.status === 403) {
+        return t("routeList.error.forbidden");
+      }
+      if (typeof error.message === "string" && error.message.trim().length > 0) {
+        return error.message;
+      }
+    }
+    return t("routeList.error.load");
   };
 
-  // Navigate to route detail page
-  const handleEditClick = (routeId: string) => {
-    navigate(`/routes/${routeId}`);
+  const loadRoutings = async (signal?: AbortSignal) => {
+    setLoading(true);
+    setErrorMessage(null);
+    try {
+      const rows = await routingApi.listRoutings(signal);
+      setRoutings(rows);
+    } catch (error) {
+      if (signal?.aborted) {
+        return;
+      }
+      setErrorMessage(resolveErrorMessage(error));
+    } finally {
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
+    }
   };
 
-  const filteredRoutes = routes.filter(route => {
-    return (
-      route.name.toLowerCase().includes(searchValues.route.toLowerCase()) &&
-      (searchValues.status === "" || route.status === searchValues.status)
-    );
-  });
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadRoutings(controller.signal);
+    return () => controller.abort();
+  }, []);
 
-  const totalPages = Math.ceil(filteredRoutes.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedRoutes = filteredRoutes.slice(startIndex, startIndex + itemsPerPage);
+  const filteredRoutings = useMemo(() => {
+    return routings.filter((routing) => {
+      const q = searchRoute.trim().toLowerCase();
+      if (!q) {
+        return true;
+      }
+      return (
+        routing.routing_code.toLowerCase().includes(q)
+        || routing.routing_name.toLowerCase().includes(q)
+      );
+    });
+  }, [routings, searchRoute]);
 
   return (
     <div className="h-full flex flex-col bg-white">
-      {/* Content */}
       <div className="flex-1 overflow-auto p-6">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-xl">Route list</h2>
+          <h2 className="text-xl">{t("routeList.title")}</h2>
           <button className="flex items-center gap-2 px-4 py-2 border rounded hover:bg-gray-50">
             <Download className="w-4 h-4" />
-            <span>Export</span>
+            <span>{t("routeList.action.export")}</span>
           </button>
         </div>
 
-        {/* Table */}
-        <div className="border rounded-lg overflow-hidden">
+        <BackendRequiredNotice message={t("routeList.notice.backendRequired")} tone="amber" />
+
+        {loading && (
+          <div className="rounded-lg border bg-white px-4 py-10 text-center text-sm text-gray-500">
+            {t("routeList.loading")}
+          </div>
+        )}
+
+        {!loading && errorMessage && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-800">
+            <p className="mb-3">{errorMessage}</p>
+            <button
+              type="button"
+              onClick={() => void loadRoutings()}
+              className="px-3 py-1.5 rounded border border-red-300 bg-white hover:bg-red-100"
+            >
+              {t("routeList.action.retry")}
+            </button>
+          </div>
+        )}
+
+        {!loading && !errorMessage && (
+          <div className="border rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-6 py-3 text-left w-1/3">
+                  <th className="px-6 py-3 text-left w-2/5">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm uppercase">ROUTE</span>
-                      <ArrowUpDown className="w-4 h-4" />
+                      <span className="text-sm uppercase">{t("routeList.col.route")}</span>
                     </div>
                     <div className="relative">
                       <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                       <input
                         type="text"
-                        placeholder="Search"
-                        value={searchValues.route}
-                        onChange={(e) => setSearchValues(prev => ({ ...prev, route: e.target.value }))}
+                        placeholder={t("routeList.search.placeholder")}
+                        value={searchRoute}
+                        onChange={(e) => setSearchRoute(e.target.value)}
                         className="w-full pl-9 pr-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
                       />
                     </div>
                   </th>
-                  <th className="px-6 py-3 text-left w-1/4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm uppercase">LAST UPDATED</span>
-                      <ArrowUpDown className="w-4 h-4" />
-                    </div>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder="MM/DD/YYYY"
-                        className="w-full pr-9 pl-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
-                      />
-                      <Calendar className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    </div>
+                  <th className="px-6 py-3 text-left w-1/5">
+                    <div className="text-sm uppercase">{t("routeList.col.lastUpdated")}</div>
                   </th>
-                  <th className="px-6 py-3 text-left w-1/4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm uppercase">STATUS</span>
-                      <ArrowUpDown className="w-4 h-4" />
-                    </div>
-                    <div className="relative">
-                      <select
-                        value={searchValues.status}
-                        onChange={(e) => setSearchValues(prev => ({ ...prev, status: e.target.value }))}
-                        className="w-full appearance-none px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
-                      >
-                        <option value="">Select</option>
-                        <option value="Active">Active</option>
-                        <option value="Inactive">Inactive</option>
-                      </select>
-                      <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                    </div>
+                  <th className="px-6 py-3 text-left w-1/5">
+                    <div className="text-sm uppercase">{t("routeList.col.status")}</div>
                   </th>
-                  <th className="px-6 py-3 text-left w-1/6">
-                    <span className="text-sm uppercase">ACTION</span>
+                  <th className="px-6 py-3 text-left w-1/5">
+                    <span className="text-sm uppercase">{t("routeList.col.action")}</span>
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {paginatedRoutes.map((route, index) => (
-                  <tr key={route.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="px-6 py-4 font-medium">{route.name}</td>
-                    <td className="px-6 py-4">{route.lastUpdated}</td>
+                {filteredRoutings.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-10 text-center text-sm text-gray-500">
+                      {t("routeList.empty")}
+                    </td>
+                  </tr>
+                )}
+
+                {filteredRoutings.map((routing, index) => (
+                  <tr key={routing.routing_id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <Switch 
-                          checked={route.status === 'Active'} 
-                          onCheckedChange={() => handleToggleStatus(route.id)}
-                        />
-                        <span className={route.status === 'Active' ? 'text-gray-900' : 'text-gray-500'}>
-                          {route.status}
-                        </span>
-                      </div>
+                      <div className="font-medium text-gray-900">{routing.routing_code}</div>
+                      <div className="text-xs text-gray-600">{routing.routing_name}</div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-700">{new Date(routing.updated_at).toLocaleString()}</td>
+                    <td className="px-6 py-4">
+                      <RoutingLifecycleBadge status={routing.lifecycle_status} />
                     </td>
                     <td className="px-6 py-4">
-                      <button 
-                        className="p-2 hover:bg-gray-200 rounded"
-                        onClick={() => handleEditClick(route.id)}
+                      <button
+                        type="button"
+                        className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50"
+                        onClick={() => navigate(`/routes/${routing.routing_id}`)}
                       >
-                        <Edit2 className="w-4 h-4" />
+                        {t("routeList.action.view")}
                       </button>
                     </td>
                   </tr>
@@ -144,61 +163,7 @@ export function RouteList() {
             </table>
           </div>
         </div>
-
-        {/* Pagination */}
-        <div className="mt-6 flex items-center justify-center gap-2">
-          <span className="text-sm text-gray-600">
-            Showing 1 - {Math.min(itemsPerPage, filteredRoutes.length)} of {filteredRoutes.length} results
-          </span>
-          <div className="flex items-center gap-1 ml-4">
-            <button
-              onClick={() => setCurrentPage(1)}
-              disabled={currentPage === 1}
-              className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50"
-            >
-              «
-            </button>
-            <button
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50"
-            >
-              ‹
-            </button>
-            <button className="px-3 py-1 border rounded bg-blue-500 text-white">
-              1
-            </button>
-            <button
-              onClick={() => setCurrentPage(2)}
-              className="px-3 py-1 border rounded hover:bg-gray-50"
-            >
-              2
-            </button>
-            <button
-              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage >= totalPages}
-              className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50"
-            >
-              ›
-            </button>
-            <button
-              onClick={() => setCurrentPage(totalPages)}
-              disabled={currentPage >= totalPages}
-              className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50"
-            >
-              »
-            </button>
-          </div>
-          <select
-            value={itemsPerPage}
-            onChange={(e) => setItemsPerPage(Number(e.target.value))}
-            className="ml-4 px-3 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-focus-ring"
-          >
-            <option value={10}>10</option>
-            <option value={20}>20</option>
-            <option value={50}>50</option>
-          </select>
-        </div>
+        )}
       </div>
     </div>
   );

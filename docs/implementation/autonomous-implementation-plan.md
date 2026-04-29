@@ -35,19 +35,49 @@ Deferred / blocked inside P0-A:
 
 ### P0-B Manufacturing Master Data Minimum
 
-Status: In progress with Product Foundation completed.
+Status: In progress with Product Foundation, Routing Foundation, and Resource Requirement Mapping completed.
 
 Completed slices:
 - Reason/reference data foundation baseline via governed downtime-reason admin management
 - Product foundation backend slice (P0-B-01) implemented from approved executable contract
+- Routing foundation backend slice (P0-B-02) implemented with tenant-scoped routing lifecycle and operation-sequence governance
+- Resource Requirement Mapping backend slice (P0-B-03) implemented with tenant-scoped operation linkage, lifecycle-governed mutation, and candidate domain events
 
 Blocked / deferred slices:
-1. Routing foundation
-  - Status: BLOCKED
-  - Reason: Depends on unresolved product-definition contract and routing identity/version semantics.
-2. Resource requirement mapping
-  - Status: BLOCKED
-  - Reason: Depends on unresolved product/routing contract and requirement model semantics.
+1. Higher-scope manufacturing flows (outside P0-B minimum)
+  - Status: DEFERRED
+  - Reason: Explicitly out of scope for P0-B-03 (dispatch, execution queue, APS, BOM, Backflush, ERP integration).
+
+### P0-C Station Execution Baseline
+
+Status: In progress. Entry audit complete. Slices P0-C-01 through P0-C-03 complete.
+
+Completed slices:
+- P0-C-01 Work Order / Operation Foundation Alignment
+  - Tests added for PENDING/LATE status in _derive_allowed_actions projection contract
+  - Tests added for tenant isolation at service layer (start, close, report_quantity)
+  - Tests added for WO→PO→Operation hierarchy read consistency
+  - Design gap documented: ProductionOrder.route_id has no FK to Routing.routing_id
+  - Backend suite: 148 passed, 1 skipped, exit 0
+- P0-C-02 Execution State Machine Guard Alignment
+  - Bug fixed: `_derive_status` dead-code for OP_COMPLETED/OP_ABORTED causing wrong status in reopen→resume→complete sequence
+  - Added `last_runtime_event = event.event_type` to OP_COMPLETED and OP_ABORTED elif branches
+  - Removed dead code: OP_COMPLETED and OP_ABORTED from final elif in `_derive_status`
+  - 7 new pure-unit regression tests added to test_operation_detail_allowed_actions.py
+  - Projection consistency between `_derive_status` (single-op) and bulk reconciler now guaranteed
+  - Backend suite: 153 passed, 1 skipped, exit 0
+- P0-C-03 Execution Event Log / Projection Consistency
+  - Added detail-vs-bulk projection parity tests for core event sequences (reopen/resume/complete, aborted, downtime open, downtime ended)
+  - Added reconcile-command parity regression test ensuring post-apply detail and bulk projection alignment
+  - Hardened event repository ordering for operation detail projection: `created_at, id` deterministic ordering
+  - No event contract change, no command expansion, no schema migration, no claim/session migration
+  - Backend suite: 159 passed, 1 skipped, exit 0
+
+Pending slices (in recommended order):
+- P0-C-04 Station Session Ownership Alignment
+- P0-C-05 Start / Pause / Resume Command Hardening
+- P0-C-06 Production Reporting + Downtime Commands
+- P0-C-07 Complete / Close / Reopen Guard Alignment
 
 ## Current Slice Ledger
 
@@ -140,13 +170,60 @@ Blocked / deferred slices:
      - Focused product tests passed: 8 passed
      - Requested regression subset passed: 8 passed
 
+7. P0-B-02 Routing Foundation backend implementation
+   - Scope:
+     - Routing aggregate and routing operation sequence models
+     - Routing schemas, repository, service, and API routes
+     - Lifecycle transitions DRAFT/RELEASED/RETIRED with RELEASED structural immutability
+     - Tenant isolation and cross-tenant routing detail 404 behavior
+     - Product-linkage invariants including retired-product new-link rejection
+     - Security-event emission using candidate routing event names pending registry finalization
+   - Changed backend surfaces:
+     - backend/app/models/routing.py
+     - backend/app/schemas/routing.py
+     - backend/app/repositories/routing_repository.py
+     - backend/app/services/routing_service.py
+     - backend/app/api/v1/routings.py
+     - backend/app/api/v1/router.py
+     - backend/app/db/init_db.py
+     - backend/tests/test_routing_foundation_service.py
+     - backend/tests/test_routing_foundation_api.py
+   - Verification summary:
+     - Backend import check passed
+     - Focused routing tests passed: 8 passed
+     - Product + execution regression subset passed: 18 passed
+     - Full backend suite passed: 134 passed, 1 skipped
+
+8. P0-B-03 Resource Requirement Mapping backend implementation
+   - Scope:
+     - Resource requirement model/table linked to routing and routing operation
+     - Resource requirement schemas, repository, service, and nested routing-operation API routes
+     - Tenant isolation and same-tenant routing/operation linkage validation
+     - Parent routing lifecycle guards (DRAFT-only mutation)
+  - Canonical domain-event naming for requirement create/update/remove
+   - Changed backend surfaces:
+     - backend/app/models/resource_requirement.py
+     - backend/app/schemas/resource_requirement.py
+     - backend/app/repositories/resource_requirement_repository.py
+     - backend/app/services/resource_requirement_service.py
+     - backend/app/api/v1/routings.py
+     - backend/app/db/init_db.py
+     - backend/scripts/migrations/0016_resource_requirements.sql
+     - backend/tests/test_resource_requirement_service.py
+     - backend/tests/test_resource_requirement_api.py
+   - Verification summary:
+     - Backend import check passed
+     - Focused P0-B-03 tests passed: 7 passed
+     - Requested product+routing regression subset passed: 16 passed
+     - Full backend suite passed: 141 passed, 1 skipped
+
 ### Next Slice Selection
 
 Name: STOP_AFTER_P0_B_01 (explicit user instruction)
 
 Entry hypothesis:
 - P0-B-01 is complete and verified against the approved product foundation contract.
-- Candidate product event names remain provisional and tracked as `CANDIDATE_ACCEPTED_FOR_P0_B` and `NEEDS_EVENT_REGISTRY_FINALIZATION`.
+- Product event names are canonical for P0-B and tracked as `CANONICAL_FOR_P0_B`.
 
 Stop conditions before implementation:
 - STOP triggered by user request to stop after this slice

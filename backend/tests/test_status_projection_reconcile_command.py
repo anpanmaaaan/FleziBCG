@@ -10,6 +10,10 @@ from app.models.execution import ExecutionEvent, ExecutionEventType
 from app.models.master import Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.station_claim import OperationClaim, OperationClaimAuditLog
 from app.repositories.execution_event_repository import create_execution_event
+from app.services.operation_service import (
+    derive_operation_detail,
+    derive_operation_runtime_projection_for_ids,
+)
 from scripts.reconcile_operation_status_projection import run_status_projection_reconcile
 
 _PREFIX = "TEST-RECONCILE-CMD"
@@ -266,6 +270,35 @@ def test_reconcile_command_does_not_mutate_event_history():
 
         db.refresh(op)
         assert op.status == StatusEnum.in_progress.value
+    finally:
+        _purge(db)
+        db.close()
+
+
+def test_reconcile_command_apply_preserves_detail_bulk_projection_parity():
+    db = SessionLocal()
+    try:
+        _purge(db)
+        op = _seed_operation_with_runtime_mismatch(
+            db,
+            tenant_id=_TENANT_A,
+            suffix="A6",
+            snapshot_status=StatusEnum.paused.value,
+        )
+
+        result = run_status_projection_reconcile(tenant_id=_TENANT_A, apply=True)
+        assert result["mismatch_count"] == 1
+        assert result["reconciled_count"] == 1
+
+        db.refresh(op)
+        detail = derive_operation_detail(db, op)
+        bulk = derive_operation_runtime_projection_for_ids(
+            db,
+            tenant_id=_TENANT_A,
+            operation_ids=[op.id],
+        )[op.id]
+        assert detail.status == bulk.status == StatusEnum.in_progress.value
+        assert detail.downtime_open is bulk.downtime_open is False
     finally:
         _purge(db)
         db.close()

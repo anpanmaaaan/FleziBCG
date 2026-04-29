@@ -20,6 +20,7 @@ import {
 import { PageHeader } from "@/app/components";
 import { StatusBadge } from "@/app/components";
 import { StatsCard } from "@/app/components";
+import { ScreenStatusBadge } from "@/app/components";
 import { operationApi, type OperationDetail } from "@/app/api";
 import {
   mapExecutionStatusText,
@@ -386,6 +387,9 @@ type TabType = "overview" | "quality" | "materials" | "timeline" | "documents";
                   >
                     <Icon className="w-4 h-4" />
                     {tab.label}
+                    {(["quality", "materials", "timeline", "documents"] as string[]).includes(tab.id) && (
+                      <ScreenStatusBadge phase="MOCK" size="sm" />
+                    )}
                   </button>
                 );
               })}

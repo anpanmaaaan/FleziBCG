@@ -33,6 +33,8 @@ from app.models.station_claim import OperationClaim, OperationClaimAuditLog  # n
 from app.models.user import User  # noqa: F401
 from app.models.security_event import SecurityEventLog  # noqa: F401
 from app.models.product import Product  # noqa: F401
+from app.models.routing import Routing, RoutingOperation  # noqa: F401
+from app.models.resource_requirement import ResourceRequirement  # noqa: F401
 from app.security.rbac import seed_rbac_core
 from app.services.approval_service import seed_approval_rules
 from app.services.user_service import seed_demo_users
