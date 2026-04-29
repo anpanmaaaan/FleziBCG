@@ -34,12 +34,28 @@ def _anonymous_identity(tenant_id: str) -> RequestIdentity:
     )
 
 
+def _normalize_tenant(tenant_id: str | None) -> str:
+    return (tenant_id or "").strip() or "default"
+
+
+def _assert_tenant_header_matches_identity(
+    auth_identity: AuthIdentity,
+    x_tenant_id: str | None,
+) -> None:
+    if x_tenant_id is None:
+        return
+    request_tenant = _normalize_tenant(x_tenant_id)
+    if request_tenant != auth_identity.tenant_id:
+        raise HTTPException(status_code=403, detail="Tenant header mismatch")
+
+
 def get_request_identity(
     request: Request,
-    x_tenant_id: str = Header("default", alias="X-Tenant-ID"),
+    x_tenant_id: str | None = Header(default=None, alias="X-Tenant-ID"),
 ) -> RequestIdentity:
     auth_identity: AuthIdentity | None = getattr(request.state, "auth_identity", None)
     if auth_identity:
+        _assert_tenant_header_matches_identity(auth_identity, x_tenant_id)
         return RequestIdentity(
             user_id=auth_identity.user_id,
             username=auth_identity.username,
@@ -50,7 +66,7 @@ def get_request_identity(
             session_id=auth_identity.session_id,
         )
 
-    tenant = x_tenant_id or "default"
+    tenant = _normalize_tenant(x_tenant_id)
     return _anonymous_identity(tenant)
 
 
@@ -63,11 +79,15 @@ def _get_security_db():
 
 
 def require_authenticated_identity(
-    request: Request, db=Depends(_get_security_db)
+    request: Request,
+    x_tenant_id: str | None = Header(default=None, alias="X-Tenant-ID"),
+    db=Depends(_get_security_db),
 ) -> RequestIdentity:
     auth_identity: AuthIdentity | None = getattr(request.state, "auth_identity", None)
     if not auth_identity:
         raise HTTPException(status_code=401, detail="Authentication required")
+
+    _assert_tenant_header_matches_identity(auth_identity, x_tenant_id)
 
     # INVARIANT: Session validity is checked on every authenticated request,
     # not just at login. This enables real-time revocation (e.g., admin

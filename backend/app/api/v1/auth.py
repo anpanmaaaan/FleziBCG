@@ -1,15 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
 from app.schemas.auth import AuthUser, LoginRequest, LoginResponse
 from app.schemas.session import SessionItem, SessionListResponse
-from app.security.auth import authenticate_user_db, create_access_token
+from app.security.auth import AuthIdentity, authenticate_user_db, create_access_token
 from app.security.dependencies import (
     RequestIdentity,
     require_authenticated_identity,
     require_permission,
 )
+from app.services.security_event_service import record_security_event
 from app.services.session_service import (
     create_login_session,
     list_user_sessions,
@@ -29,14 +30,61 @@ def get_db():
 
 
 @router.post("/login", response_model=LoginResponse)
-def login(request: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:
-    identity = authenticate_user_db(db, request.username, request.password)
+def login(
+    request: LoginRequest,
+    x_tenant_id: str = Header("default", alias="X-Tenant-ID"),
+    db: Session = Depends(get_db),
+) -> LoginResponse:
+    tenant_id = (x_tenant_id or "").strip() or "default"
+    identity = authenticate_user_db(
+        db,
+        request.username,
+        request.password,
+        tenant_id=tenant_id,
+    )
     if not identity:
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
-    session = create_login_session(db, identity.user_id, identity.tenant_id)
+    session = create_login_session(db, identity.user_id, tenant_id)
     identity.session_id = session.session_id
     access_token = create_access_token(identity)
+    return LoginResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=AuthUser(
+            user_id=identity.user_id,
+            username=identity.username,
+            email=identity.email,
+            tenant_id=identity.tenant_id,
+            role_code=identity.role_code,
+            session_id=identity.session_id,
+        ),
+    )
+
+
+@router.post("/refresh", response_model=LoginResponse)
+def refresh(
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(require_authenticated_identity),
+) -> LoginResponse:
+    refreshed_identity = AuthIdentity(
+        user_id=identity.user_id,
+        username=identity.username,
+        email=identity.email,
+        tenant_id=identity.tenant_id,
+        role_code=identity.role_code,
+        session_id=identity.session_id,
+    )
+    access_token = create_access_token(refreshed_identity)
+    record_security_event(
+        db,
+        tenant_id=identity.tenant_id,
+        actor_user_id=identity.user_id,
+        event_type="AUTH.REFRESH",
+        resource_type="session",
+        resource_id=identity.session_id,
+        detail="refresh",
+    )
     return LoginResponse(
         access_token=access_token,
         token_type="bearer",
@@ -118,7 +166,7 @@ def list_sessions(
     return SessionListResponse(sessions=sessions)
 
 
-@router.delete("/sessions/{session_id}")
+@router.post("/sessions/{session_id}/revoke")
 def admin_revoke_session(
     session_id: str,
     db: Session = Depends(get_db),
@@ -134,3 +182,13 @@ def admin_revoke_session(
     if not ok:
         raise HTTPException(status_code=404, detail="Session not found")
     return {"status": "ok", "revoked_session_id": session_id}
+
+
+# Backward-compatible alias for older clients.
+@router.delete("/sessions/{session_id}")
+def admin_revoke_session_legacy(
+    session_id: str,
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(require_permission("ADMIN")),
+):
+    return admin_revoke_session(session_id=session_id, db=db, identity=identity)

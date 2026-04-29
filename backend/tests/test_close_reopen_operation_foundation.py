@@ -100,6 +100,7 @@ def _mk_op(
     suffix: str,
     status: str,
     closure_status: str,
+    station_scope_value: str = "STATION_01",
 ) -> Operation:
     op = Operation(
         operation_number=f"{_PREFIX}-OP-{suffix}",
@@ -108,7 +109,7 @@ def _mk_op(
         name=f"op {suffix}",
         status=status,
         closure_status=closure_status,
-        station_scope_value="STATION_01",
+        station_scope_value=station_scope_value,
         quantity=10,
         tenant_id=_TENANT_ID,
     )
@@ -243,6 +244,7 @@ def test_reopen_operation_success_updates_metadata_appends_event_and_projects_pa
         suffix="REOPEN-OK",
         status=StatusEnum.completed.value,
         closure_status=ClosureStatusEnum.open.value,
+        station_scope_value="TEST_CLOSE_REOPEN_STATION",
     )
     db.add(
         ExecutionEvent(

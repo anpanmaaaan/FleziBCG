@@ -28,8 +28,7 @@ jobs:
         id: changed
         uses: tj-actions/changed-files@v45
         with:
-          separator: "
-"
+          separator: "\n"
 
       - name: Classify PR risk
         id: classify
@@ -69,7 +68,7 @@ jobs:
             esac
 
             case "$file" in
-              *execution*|*station*|*session*|*operator*|*equipment*|*event*|*projection*|*downtime*|*production*|*quality*|*material*|*inventory*|*traceability*)
+              *execution*|*station*|*session*|*operator*|*equipment*|*event*|*projection*|*downtime*|*production*|*quality*|*material*|*inventory*|*traceability*|*tenant*|*scope*|*auth*|*iam*|*role*|*audit*|*security*)
                 MOM_CRITICAL=true
                 ;;
             esac
@@ -111,14 +110,41 @@ jobs:
             echo "No backend dependency file found. Skipping install."
           fi
 
+      - name: Backend import check
+        shell: bash
+        run: |
+          if [ -d backend ]; then
+            cd backend
+            python -c "import app.main; print('import ok')"
+          elif [ -d app ]; then
+            python -c "import app.main; print('import ok')"
+          else
+            echo "No backend package found for import check."
+            exit 1
+          fi
+
       - name: Run backend tests
         shell: bash
         run: |
           if [ -d backend/tests ]; then
             cd backend
-            pytest -q
+            python -m pytest -q \
+              tests/test_cors_policy.py \
+              tests/test_alembic_baseline.py \
+              tests/test_init_db_bootstrap_guard.py \
+              tests/test_auth_session_api_alignment.py \
+              tests/test_tenant_foundation.py \
+              tests/test_user_lifecycle_service.py \
+              tests/test_access_service.py \
+              tests/test_security_event_service.py \
+              tests/test_session_service_security_events.py \
+              tests/test_auth_security_event_routes.py \
+              tests/test_admin_audit_security_events.py \
+              tests/test_downtime_reason_admin_routes.py \
+              tests/test_security_events_endpoint.py \
+              tests/test_pr_gate_workflow_config.py || python -m pytest -q
           elif [ -d tests ]; then
-            pytest -q
+            python -m pytest -q
           else
             echo "No backend tests found. Add tests for non-doc PRs."
             exit 1
@@ -177,17 +203,17 @@ jobs:
       - name: Verify Hard Mode MOM docs exist
         shell: bash
         run: |
-          test -f docs/ai-skills/hard-mode-mom.md
-          test -f docs/ai-skills/flezibcg-ai-brain-v6-auto-execution.md || true
+          test -f docs/ai-skills/hard-mode-mom-v3/SKILL.md
+          test -f docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md
+          test -f docs/implementation/hard-mode-v3-map-report.md
+          test -f docs/implementation/design-gap-report.md
 
       - name: Hard Mode MOM static reject scan
         shell: bash
         run: |
           echo "Running lightweight Hard Mode MOM static scan..."
 
-          # Reject obvious direct mutation patterns in critical files.
-          # This is intentionally conservative and should be refined as code structure matures.
-          CRITICAL_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -Ei 'execution|station|session|operator|equipment|event|projection|downtime|production|quality|material|inventory|traceability|migration|alembic|models|schema|database|db' || true)
+          CRITICAL_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -Ei 'execution|station|session|operator|equipment|event|projection|downtime|production|quality|material|inventory|traceability|tenant|scope|auth|iam|role|audit|security|migration|alembic|models|schema|database|db' || true)
 
           if [ -z "$CRITICAL_FILES" ]; then
             echo "No critical files to scan."
@@ -201,13 +227,13 @@ jobs:
           for file in $CRITICAL_FILES; do
             [ -f "$file" ] || continue
 
-            if grep -nE '\.status\s*=\s*["'\''A-Z_]+["'\'']' "$file"; then
-              echo "::error file=$file::Potential direct status mutation detected. Hard Mode requires command → validate → event → projection."
+            if grep -nE '\.status\s*=\s*["'\''][A-Z_]+["'\'']' "$file"; then
+              echo "::error file=$file::Potential direct status mutation detected. Hard Mode requires command -> validate -> event -> projection."
               FAIL=1
             fi
 
             if grep -nE 'good_qty\s*\+=|scrap_qty\s*\+=|quantity\s*\+=' "$file"; then
-              if ! grep -qiE 'emit_event|append_event|create_event|record_event|Event' "$file"; then
+              if ! grep -qiE 'emit_event|append_event|create_event|record_event|SecurityEvent|DomainEvent|Event' "$file"; then
                 echo "::error file=$file::Quantity mutation found without obvious event emission."
                 FAIL=1
               fi

@@ -13,3 +13,20 @@ class DowntimeReasonItem(BaseModel):
     requires_supervisor_review: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DowntimeReasonUpsertRequest(BaseModel):
+    reason_code: str
+    reason_name: str
+    reason_group: str
+    planned_flag: bool = False
+    default_block_mode: str = "BLOCK"
+    requires_comment: bool = False
+    requires_supervisor_review: bool = False
+    sort_order: int = 0
+
+
+class DowntimeReasonAdminItem(DowntimeReasonItem):
+    default_block_mode: str
+    active_flag: bool
+    sort_order: int

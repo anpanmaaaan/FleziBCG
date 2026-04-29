@@ -1,6 +1,12 @@
+---
+name: generic-brain-core
+description: Generic engineering rules for non-MOM software tasks.
+---
+
 # Generic Brain Core
 
 Rules:
+
 - define source of truth
 - service/application layer owns business logic
 - controllers/routes stay thin

@@ -7,6 +7,17 @@ from sqlalchemy.orm import Session
 from app.config.settings import settings
 from app.models.session import Session as AuthSession
 from app.models.session import SessionAuditLog
+from app.services.security_event_service import record_security_event
+
+
+def _event_type_for_session_action(reason: str) -> str:
+    mapping = {
+        "login": "AUTH.LOGIN",
+        "logout": "AUTH.LOGOUT",
+        "logout_all": "AUTH.LOGOUT_ALL",
+        "admin_revoke": "AUTH.SESSION_REVOKE",
+    }
+    return mapping.get(reason, "AUTH.SESSION_REVOKE")
 
 
 def create_login_session(db: Session, user_id: str, tenant_id: str) -> AuthSession:
@@ -29,6 +40,16 @@ def create_login_session(db: Session, user_id: str, tenant_id: str) -> AuthSessi
             event_type="SESSION_CREATED",
             detail="login",
         )
+    )
+    record_security_event(
+        db,
+        tenant_id=tenant_id,
+        actor_user_id=user_id,
+        event_type=_event_type_for_session_action("login"),
+        resource_type="session",
+        resource_id=session.session_id,
+        detail="login",
+        commit=False,
     )
     db.commit()
     db.refresh(session)
@@ -78,6 +99,16 @@ def revoke_session(
             detail=reason[:512],
         )
     )
+    record_security_event(
+        db,
+        tenant_id=tenant_id,
+        actor_user_id=actor_user_id,
+        event_type=_event_type_for_session_action(reason),
+        resource_type="session",
+        resource_id=session.session_id,
+        detail=reason[:512],
+        commit=False,
+    )
     db.commit()
     return True
 
@@ -107,6 +138,16 @@ def revoke_all_sessions_for_user(
                 event_type="SESSION_REVOKED",
                 detail=reason[:512],
             )
+        )
+        record_security_event(
+            db,
+            tenant_id=tenant_id,
+            actor_user_id=user_id,
+            event_type=_event_type_for_session_action(reason),
+            resource_type="session",
+            resource_id=session.session_id,
+            detail=reason[:512],
+            commit=False,
         )
     db.commit()
     return len(active_sessions)
