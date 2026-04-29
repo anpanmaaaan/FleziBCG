@@ -153,6 +153,34 @@ When implementing UI:
 
 ---
 
+## Route Accessibility Gate
+
+For FE route/page work, build/lint passing is necessary but not sufficient.
+
+Any new route/page must verify all of the following:
+
+1. Route is registered in the actual router tree.
+2. Route is nested under the correct layout boundary.
+3. Route is not swallowed by an index/catch-all/fallback redirect path.
+4. Auth guard behavior is explicitly understood.
+5. Persona route enforcement is updated if present.
+6. Sidebar/menu entry exists when the screen is intended to be user-accessible.
+7. `screenStatus` entry exists and matches the route pattern.
+8. Direct URL access is smoke-tested manually or automatically.
+
+---
+
+## Persona Route Enforcement Rule
+
+- Persona is UX routing/navigation policy, not backend permission truth.
+- If frontend persona allowlists exist, every new route must update the persona accessibility matrix.
+- Do not bypass backend auth.
+- Do not invent permission checks in frontend.
+- If a route should not be visible for a persona, document the reason.
+- If a route is hidden from sidebar but still registered, document whether it is internal/detail-only.
+
+---
+
 ## Component Quality Checklist
 
 Before finalizing a UI component, verify:
@@ -204,6 +232,17 @@ CONNECTED / MOCK / SHELL / FUTURE
 ## Known Limitations
 
 ## Next Recommended FE Slice
+
+## Route Accessibility Verification
+- Route path:
+- Registered in routes.tsx: Yes/No
+- Nested under Layout: Yes/No
+- Auth guard behavior:
+- Persona allowlist updated: Yes/No/N/A
+- Sidebar/menu entry added: Yes/No/N/A
+- screenStatus entry added: Yes/No
+- Direct URL checked:
+- Detail route checked if applicable:
 ```
 
 ---

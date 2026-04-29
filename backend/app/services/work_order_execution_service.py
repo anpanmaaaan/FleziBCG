@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
@@ -79,7 +79,7 @@ def recompute_work_order(db: Session, work_order_id: int) -> WorkOrder:
     ]
     actual_start = min(started_times) if started_times else None
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     work_order.status = _derive_work_order_status(
         completed_ops=completed_ops,
         total_ops=total_ops,

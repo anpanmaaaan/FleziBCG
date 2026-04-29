@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { PageHeader } from "@/app/components";
 import { StatusBadge } from "@/app/components";
+import { MockWarningBanner } from "@/app/components";
 import { toast } from "sonner";
 import { RefreshCw, Lock, X, ChevronDown, ArrowLeft, RotateCcw } from "lucide-react";
 import {
@@ -1155,6 +1156,7 @@ export function StationExecution() {
             </div>
           }
         />
+        <MockWarningBanner phase="PARTIAL" note={t("screenStatus.banner.deprecation.body" as any)} />
 
         <div className="flex-1 overflow-auto p-4 max-w-2xl mx-auto w-full">
           {/* Selected operation — awaiting claim */}

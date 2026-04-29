@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Breadcrumb } from '@/app/components';
+import { MockWarningBanner } from '@/app/components';
+import { useI18n } from '@/app/i18n';
 import {
   Activity,
   TrendingUp,
@@ -47,6 +49,7 @@ type TimeRange = 'today' | 'shift' | '7days' | 'month';
 type ShiftType = 'all' | 'day' | 'night';
 
 export function OEEDeepDive() {
+  const { t } = useI18n();
   const [timeRange, setTimeRange] = useState<TimeRange>('today');
   const [shift, setShift] = useState<ShiftType>('all');
   const [selectedLines, setSelectedLines] = useState<string[]>(['all']);
@@ -188,6 +191,7 @@ export function OEEDeepDive() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <MockWarningBanner phase="MOCK" note={t("screenStatus.banner.aiMock.note" as any)} />
       {/* Header */}
       <div className="bg-white border-b sticky top-0 z-10">
         <div className="px-6 py-4">

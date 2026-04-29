@@ -191,6 +191,18 @@ jobs:
             echo "No frontend project found. Skipping."
           fi
 
+      # TODO(FE-GOV-02.1): Promote route smoke check to blocking after one stabilization cycle.
+      - name: Route smoke check (non-blocking signal)
+        continue-on-error: true
+        shell: bash
+        run: |
+          if [ -f frontend/package.json ]; then
+            cd frontend
+            npm run check:routes --if-present
+          else
+            echo "No frontend project found. Skipping."
+          fi
+
   hard-mode-mom-gate:
     name: Hard Mode MOM gate
     runs-on: ubuntu-latest

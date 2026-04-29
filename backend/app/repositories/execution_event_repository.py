@@ -36,7 +36,7 @@ def get_events_for_operation(db: Session, operation_id: int) -> list[ExecutionEv
     statement = (
         select(ExecutionEvent)
         .where(ExecutionEvent.operation_id == operation_id)
-        .order_by(ExecutionEvent.created_at)
+        .order_by(ExecutionEvent.created_at, ExecutionEvent.id)
     )
     return list(db.scalars(statement))
 

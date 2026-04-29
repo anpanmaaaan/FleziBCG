@@ -72,8 +72,7 @@ def _emit_product_event(
             "changed_fields": changed_fields,
             "occurred_at": datetime.now(timezone.utc).isoformat(),
             "event_name_status": [
-                "CANDIDATE_ACCEPTED_FOR_P0_B",
-                "NEEDS_EVENT_REGISTRY_FINALIZATION",
+                "CANONICAL_FOR_P0_B",
             ],
         },
         separators=(",", ":"),

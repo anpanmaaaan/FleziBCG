@@ -403,3 +403,343 @@ Name: Migration bookkeeping alignment + full backend verification
 
 ### Event naming status
 CANONICAL
+## Slice HM3-009
+Name: P0-B-02 Routing Foundation backend implementation
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/design/02_domain/product_definition/routing-foundation-contract.md | Defines P0-B routing aggregate, command set, lifecycle, API, and invariants | Enables bounded routing foundation implementation |
+| docs/design/02_domain/product_definition/product-foundation-contract.md | Retired products cannot be newly linked for downstream routing/release flows | Product linkage guard required in routing service |
+| docs/governance/CODING_RULES.md | Backend-authoritative invariants and tenant isolation | Enforce lifecycle and tenant rules in service layer |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| create_routing | ROUTING.CREATED | domain_event (transitional persistence via security event infrastructure) | CANONICAL_FOR_P0_B_ROUTING | tenant_id, actor_user_id, routing_id, routing_code, product_id, lifecycle_status, changed_fields, occurred_at | routing read models (future) | routing-foundation-contract |
+| update_routing | ROUTING.UPDATED | domain_event (transitional persistence via security event infrastructure) | CANONICAL_FOR_P0_B_ROUTING | same minimum payload | routing read models (future) | routing-foundation-contract |
+| add_routing_operation | ROUTING.OPERATION_ADDED | domain_event (transitional persistence via security event infrastructure) | CANONICAL_FOR_P0_B_ROUTING | same minimum payload + operation_id | routing read models (future) | routing-foundation-contract |
+| update_routing_operation | ROUTING.OPERATION_UPDATED | domain_event (transitional persistence via security event infrastructure) | CANONICAL_FOR_P0_B_ROUTING | same minimum payload + operation_id | routing read models (future) | routing-foundation-contract |
+| remove_routing_operation | ROUTING.OPERATION_REMOVED | domain_event (transitional persistence via security event infrastructure) | CANONICAL_FOR_P0_B_ROUTING | same minimum payload + operation_id | routing read models (future) | routing-foundation-contract |
+| release_routing | ROUTING.RELEASED | domain_event (transitional persistence via security event infrastructure) | CANONICAL_FOR_P0_B_ROUTING | same minimum payload | downstream linkage eligibility | routing-foundation-contract |
+| retire_routing | ROUTING.RETIRED | domain_event (transitional persistence via security event infrastructure) | CANONICAL_FOR_P0_B_ROUTING | same minimum payload | downstream new-link block | routing-foundation-contract |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---:|---|---|
+| routing_code unique per tenant | tenant | service + repository + DB unique constraint | yes | yes | routing-foundation-contract |
+| tenant-scoped list/detail/mutation and cross-tenant detail 404 | tenant | route identity + service/repository filters | no | yes | routing-foundation-contract |
+| product_id must resolve in same tenant | domain_link | service validation | no | yes | routing-foundation-contract |
+| retired product cannot be newly linked | lifecycle_link | service validation | no | yes | product-foundation-contract |
+| sequence_no unique within routing | sequence | service validation + DB unique constraint | yes | yes | routing-foundation-contract |
+| RELEASED structural fields immutable (routing_code, product_id, operations sequence) | state_machine | service validation | no | yes | routing-foundation-contract |
+| RETIRED update/release rejected | state_machine | service validation | no | yes | routing-foundation-contract |
+
+### State Transition Map
+| Entity | Current State | Command | Allowed? | Event | Next Projection State | Invalid Case Test | Source |
+|---|---|---|---:|---|---|---|---|
+| Routing | n/a | create_routing | yes | ROUTING.CREATED | DRAFT | n/a | routing-foundation-contract |
+| Routing | DRAFT | update_routing | yes | ROUTING.UPDATED | DRAFT | n/a | routing-foundation-contract |
+| Routing | DRAFT | add/update/remove operation | yes | ROUTING.OPERATION_* | DRAFT | duplicate sequence and missing operation | routing-foundation-contract |
+| Routing | DRAFT | release_routing | yes | ROUTING.RELEASED | RELEASED | non-DRAFT release rejected | routing-foundation-contract |
+| Routing | RELEASED | update_routing (routing_name only) | yes | ROUTING.UPDATED | RELEASED | structural update rejected | routing-foundation-contract |
+| Routing | RELEASED | add/update/remove operation | no | none | RELEASED | mutation rejected | routing-foundation-contract |
+| Routing | DRAFT or RELEASED | retire_routing | yes | ROUTING.RETIRED | RETIRED | already retired rejected | routing-foundation-contract |
+| Routing | RETIRED | update/release | no | none | RETIRED | rejected | routing-foundation-contract |
+
+### Test Matrix
+| Test ID | Scenario | Type | Given | When | Then | Event Assertion | Invariant Assertion |
+|---|---|---|---|---|---|---|---|
+| HM3-009-T1 | fail-first missing modules/routes | test_first | no routing implementation | run routing tests | import errors | n/a | gate enforced before coding |
+| HM3-009-T2 | service invariant and lifecycle coverage | happy_path and invalid_state | in-memory DB with product linkage | run service tests | pass | ROUTING.* events emitted | uniqueness, lifecycle, and linkage guards enforced |
+| HM3-009-T3 | API tenant and lifecycle coverage | api_contract | in-memory API app with dependency overrides | run API tests | pass | ROUTING.* write paths exercised | 404 cross-tenant, 409 duplicate, 400 guard rejections |
+| HM3-009-T4 | product + execution regression subset | regression | routing slice merged | run subset | pass | n/a | no unintended regressions |
+| HM3-009-T5 | full backend verification | regression | routing slice merged | run full suite | pass | n/a | baseline remains green |
+
+### Final verification result
+- Fail-first captured:
+  - `ModuleNotFoundError: No module named 'app.models.routing'`
+  - `ModuleNotFoundError: No module named 'app.api.v1.routings'`
+- Backend import check: passed (`backend import ok`)
+- Focused routing tests: 8 passed
+- Product + execution regression subset: 18 passed
+- Full backend suite: 134 passed, 1 skipped, 24 warnings
+
+### Scope guard confirmation
+- Changes are limited to P0-B-02 routing foundation backend scope.
+- No resource-requirement mapping, BOM, planning, or dispatch logic introduced.
+
+### Event naming status
+CANONICAL_FOR_P0_B_ROUTING
+
+## Slice HM3-010
+Name: TECH-DEBT-01 Datetime UTC Hygiene
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/governance/CODING_RULES.md | Keep backend changes minimal and verifiable, avoid unrelated scope expansion | Timestamp deprecation cleanup only |
+| backend/app/services/work_order_execution_service.py | Runtime warning source from datetime.utcnow() | Replace with UTC-safe now path without business-rule changes |
+
+### Scope Guard
+- No Product/Routing business logic changes.
+- No schema changes and no migrations.
+- No P0-B-03 implementation.
+
+### Classification Map
+| File | Classification | Action |
+|---|---|---|
+| backend/app/services/work_order_execution_service.py | service timestamp usage | replace datetime.utcnow() |
+| backend/app/services/operation_service.py | helper/util timestamp usage | no runtime deprecated call; helper already uses datetime.now(timezone.utc).replace(tzinfo=None) |
+
+### Pattern Replacement
+- datetime.utcnow() -> datetime.now(timezone.utc).replace(tzinfo=None)
+
+### Test Matrix
+| Test ID | Scenario | Type | Given | When | Then |
+|---|---|---|---|---|---|
+| HM3-010-T1 | focused product+routing checks | regression | timestamp patch applied | run 4 focused test files | 16 passed |
+| HM3-010-T2 | full backend regression | regression | timestamp patch applied | run pytest -q | 134 passed, 1 skipped |
+
+### Final verification result
+- Focused tests: 16 passed.
+- Full backend suite: 134 passed, 1 skipped.
+- Warning count: 24 -> 0.
+- Remaining datetime.utcnow runtime warnings: none.
+
+## Slice HM3-011
+Name: P0-B-03 Resource Requirement Mapping backend implementation
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/design/02_domain/product_definition/resource-requirement-mapping-contract.md | Approved executable contract for P0-B-03 aggregate fields, lifecycle guards, events, and API surface | Enables bounded implementation without inventing behavior |
+| docs/design/02_domain/product_definition/routing-foundation-contract.md | Parent routing lifecycle controls structural mutation scope | Requirement mutation must be DRAFT-only |
+| docs/governance/CODING_RULES.md | Tenant isolation, service-owned business rules, thin routes | Enforce invariants in service layer and keep route layer thin |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| create_resource_requirement | RESOURCE_REQUIREMENT.CREATED | domain_event (transitional persistence via security event infrastructure) | CANONICAL_FOR_P0_B_RESOURCE_REQUIREMENT | tenant_id, actor_user_id, requirement_id, routing_id, operation_id, required_resource_type, required_capability_code, changed_fields, occurred_at | resource requirement read models (future), planning linkage consumers (future), audit pipelines | resource-requirement-mapping-contract |
+| update_resource_requirement | RESOURCE_REQUIREMENT.UPDATED | domain_event (transitional persistence via security event infrastructure) | CANONICAL_FOR_P0_B_RESOURCE_REQUIREMENT | same minimum payload | resource requirement read models (future), planning linkage consumers (future), audit pipelines | resource-requirement-mapping-contract |
+| remove_resource_requirement | RESOURCE_REQUIREMENT.REMOVED | domain_event (transitional persistence via security event infrastructure) | CANONICAL_FOR_P0_B_RESOURCE_REQUIREMENT | same minimum payload | resource requirement read models (future), planning linkage consumers (future), audit pipelines | resource-requirement-mapping-contract |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---:|---|---|
+| tenant isolation on list/detail/mutation | tenant | route identity + service/repository filters | no | yes | resource-requirement-mapping-contract |
+| operation belongs to routing and tenant | domain_link | service validation | no | yes | resource-requirement-mapping-contract |
+| required_resource_type enum validity | invalid_input | schema + service validation | no | yes | resource-requirement-mapping-contract |
+| required_capability_code required | invalid_input | schema + service validation | no | yes | resource-requirement-mapping-contract |
+| quantity_required positive integer | quantity | schema + service validation | no | yes | resource-requirement-mapping-contract |
+| uniqueness on tenant_id+operation_id+resource_type+capability_code | db_invariant | DB unique constraint + service pre-check | yes | yes | resource-requirement-mapping-contract |
+| parent routing DRAFT required for create/update/remove | state_machine | service validation | no | yes | routing-foundation-contract + resource-requirement-mapping-contract |
+| RELEASED/RETIRED routing reject mutation | state_machine | service validation | no | yes | routing-foundation-contract + resource-requirement-mapping-contract |
+| no dispatch/reservation/planning/execution truth introduced | integration_boundary | scope guard + service boundary | no | yes | resource-requirement-mapping-contract |
+
+### State Transition Map
+| Entity | Current State | Command | Allowed? | Event | Next Projection State | Invalid Case Test | Source |
+|---|---|---|---:|---|---|---|---|
+| RoutingRequirement | parent routing DRAFT | create_resource_requirement | yes | RESOURCE_REQUIREMENT.CREATED | requirement row exists | n/a | resource-requirement-mapping-contract |
+| RoutingRequirement | parent routing DRAFT | update_resource_requirement | yes | RESOURCE_REQUIREMENT.UPDATED | requirement row updated | n/a | resource-requirement-mapping-contract |
+| RoutingRequirement | parent routing DRAFT | remove_resource_requirement | yes | RESOURCE_REQUIREMENT.REMOVED | requirement row deleted | n/a | resource-requirement-mapping-contract |
+| RoutingRequirement | parent routing RELEASED | create/update/remove | no | none | unchanged | mutation rejected | routing-foundation-contract + resource-requirement-mapping-contract |
+| RoutingRequirement | parent routing RETIRED | create/update/remove | no | none | unchanged | mutation rejected | routing-foundation-contract + resource-requirement-mapping-contract |
+
+### Test Matrix
+| Test ID | Scenario | Type | Given | When | Then | Event Assertion | Invariant Assertion |
+|---|---|---|---|---|---|---|---|
+| HM3-011-T1 | fail-first missing schema/service module | test_first | no P0-B-03 implementation | run focused tests | module import error | n/a | gate enforced before coding |
+| HM3-011-T2 | service happy/invalid-state/invariant coverage | happy_path and invalid_state | in-memory DB with routing operation linkage | run service tests | pass | RESOURCE_REQUIREMENT.* emitted | linkage, quantity, uniqueness, lifecycle guards enforced |
+| HM3-011-T3 | API tenant/lifecycle/auth coverage | api_contract | in-memory API app with dependency overrides | run API tests | pass | RESOURCE_REQUIREMENT.* write paths exercised | 404 cross-tenant, 409 duplicate, 400 guard rejections, 403 auth gate |
+| HM3-011-T4 | product+routing regression subset | regression | P0-B-03 merged | run subset | pass | n/a | no unintended regressions |
+| HM3-011-T5 | full backend verification | regression | P0-B-03 merged | run full suite | pass | n/a | baseline remains green |
+
+### Final verification result
+- Fail-first captured:
+	- `ModuleNotFoundError: No module named 'app.schemas.resource_requirement'`
+- Backend import check: passed (`backend import ok`)
+- Focused P0-B-03 tests: 7 passed
+- Requested product + routing regression subset: 16 passed
+- Full backend suite: 141 passed, 1 skipped
+- Migration verification: `resource_requirements` table present with expected columns, uniqueness, and foreign keys
+
+### Scope guard confirmation
+- Changes are limited to P0-B-03 resource requirement mapping backend scope.
+- No dispatch/execution queue, planning/APS, BOM/recipe, Backflush, ERP sync, or frontend UI changes introduced.
+
+### Event naming status
+CANONICAL_FOR_P0_B_RESOURCE_REQUIREMENT
+
+---
+
+## Slice HM3-012
+Name: P0-C-01 Work Order / Operation Foundation Alignment
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/design/02_domain/execution/execution-state-machine.md | Runtime/closure state shell; ownership/session semantics separate from state names | State machine unchanged in P0-C-01 |
+| docs/design/02_domain/execution/station-execution-state-matrix-v4.md | INV-001 (closed records reject writes), INV-002 (one running per station), INV-004 (valid context required for writes) | Tenant isolation invariants now tested |
+| docs/design/02_domain/execution/station-execution-command-event-contracts-v4.md | Canonical command/event set; claim deprecated as migration debt | No new events or commands in P0-C-01 |
+| docs/design/02_domain/product_definition/product-foundation-contract.md | Tenant ownership is mandatory for all domain entities | Tenant isolation tests added |
+| docs/design/02_domain/product_definition/routing-foundation-contract.md | Routing is tenant-owned; downstream linkage governed by lifecycle | Routing FK gap documented as DG-P0C01-ROUTING-FK-001 |
+| docs/implementation/p0-c-execution-entry-audit.md | P0-C-01 entry conditions; confirmed tenant checks exist at service layer; confirmed PENDING/LATE not covered in tests | Gaps now tested |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|
+| P0-C-01 (tests only) | none_required | none_required | n/a | n/a | No new commands or events in this slice |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---|---|---|
+| tenant_id mismatch rejects execution writes | tenant | service layer | no | YES — P0C01-T3/T3b/T4 | state-matrix INV-001; product-foundation-contract |
+| StatusEnum.PENDING returns no executable actions | state_machine | `_derive_allowed_actions` | no | YES — P0C01-T1 | master.py design comment |
+| StatusEnum.LATE returns no executable actions | state_machine | `_derive_allowed_actions` | no | YES — P0C01-T2 | master.py design comment |
+| WO→PO→Operation hierarchy read projects correctly | projection_consistency | `derive_operation_detail` | no | YES — P0C01-T5 | routing/product contracts |
+| WorkOrder.tenant_id == Operation.tenant_id at INSERT | tenant | application consistency | no | YES — P0C01-T6 | product-foundation-contract |
+| ProductionOrder.route_id → Routing.routing_id (no DB FK) | integration_boundary | NONE (gap) | documented as gap | N/A | routing-foundation-contract |
+| Claim behavior not expanded | session | no claim model changes | no | existing tests | ENGINEERING_DECISIONS §10 |
+| Session-owned target not introduced prematurely | session | no StationSession commands | no | no session commands added | ENGINEERING_DECISIONS §10 |
+
+### State Transition Map
+No state transition changes in P0-C-01.
+
+### Test Matrix
+| Test ID | Scenario | Type | Given | When | Then | Event Assertion | Invariant Assertion |
+|---|---|---|---|---|---|---|---|
+| P0C01-T1 | PENDING returns [] from allowed_actions | invalid_state | status=PENDING | `_derive_allowed_actions(...)` | `[]` | none | PENDING is not executable |
+| P0C01-T2 | LATE returns [] from allowed_actions | invalid_state | status=LATE | `_derive_allowed_actions(...)` | `[]` | none | LATE is not executable |
+| P0C01-T3 | start_operation rejects wrong tenant | wrong_tenant | op.tenant_id=A, caller tenant=B | `start_operation(...)` | ValueError raised | none | tenant isolation |
+| P0C01-T3b | report_quantity rejects wrong tenant | wrong_tenant | op.tenant_id=A, caller tenant=B | `report_quantity(...)` | ValueError raised | none | tenant isolation |
+| P0C01-T4 | close_operation rejects wrong tenant | wrong_tenant | completed op.tenant_id=A, caller tenant=B | `close_operation(...)` | ValueError raised | none | tenant isolation |
+| P0C01-T5 | WO→PO→Operation hierarchy reads correctly | happy_path | seeded WO/PO/Operation | `derive_operation_detail(...)` | work_order_number and production_order_number correct | none | projection_consistency |
+| P0C01-T6 | WorkOrder and Operation share tenant_id | db_invariant | seeded with tenant_A | read both records | op.tenant_id == wo.tenant_id | none | tenant insertion consistency |
+
+### Final verification result
+- Targeted: `test_operation_status_projection_reconcile.py test_status_projection_reconcile_command.py test_operation_detail_allowed_actions.py` → 30 passed, exit 0
+- Regression: `test_close_reopen_operation_foundation.py test_claim_single_active_per_operator.py test_work_order_operation_foundation.py` → 15 passed, exit 0
+- Full backend suite: 148 passed, 1 skipped, exit 0
+
+### Scope guard confirmation
+- Tests only. No production code changes.
+- No claim removal or expansion.
+- No session-owned migration.
+- No schema migration.
+- No dispatch, APS, BOM, backflush, ERP, FE/UI changes.
+
+### Event naming status
+none_required — P0-C-01 is test-only; no new domain events introduced.
+
+## Slice HM3-013
+Name: P0-C-02 Execution State Machine Guard Alignment
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/design/02_domain/execution/execution-state-machine.md | Terminal states are irreversible event facts; no transition without event | `_derive_status` must update `last_runtime_event` on OP_COMPLETED and OP_ABORTED |
+| docs/design/02_domain/execution/station-execution-state-matrix-v4.md | REOPEN-001 yields PAUSED; CLOSE-001 requires COMPLETED | Reopen→resume→complete must yield COMPLETED from event log projection |
+| docs/design/02_domain/execution/station-execution-command-event-contracts-v4.md | OP_COMPLETED is canonical terminal signal | Both `_derive_status` and bulk reconciler must agree on last signal |
+| docs/implementation/p0-c-execution-entry-audit.md | Mixed event naming; BLOCKED+no-downtime stuck acknowledged | Acknowledged, documented, consistent with HM3-012 |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| P0-C-02 bug fix only | none_required | none_required | N/A | n/a | none | No new events |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---|---|---|
+| `_derive_status` consistent with bulk reconciler | projection_consistency | `_derive_status` (fixed) | no | YES — P0C02-T4 | state machine + reconciler path |
+| reopen→resume→complete yields COMPLETED | state_machine | `_derive_status` (fixed) | no | YES — P0C02-T4 | state matrix REOPEN-001/CLOSE-001 |
+| OP_COMPLETED updates last_runtime_event | state_machine | `_derive_status` (fixed) | no | YES — P0C02-T1/T4 | execution state machine |
+| OP_ABORTED updates last_runtime_event | state_machine | `_derive_status` (fixed) | no | YES — P0C02-T5 | execution state machine |
+| BLOCKED+no-downtime → [] allowed_actions | state_machine | `_derive_allowed_actions` (unchanged) | no | existing | HM3-012 |
+| Claim behavior unchanged | session | no claim changes | no | existing | ENGINEERING_DECISIONS §10 |
+
+### State Transition Map
+No canonical transition changes. Fix is projection derivation only — does not alter which transitions are valid, only that `_derive_status` returns the correct post-transition status.
+
+### Test Matrix
+| Test ID | Scenario | Type | Given | When | Then | Event Assertion | Invariant Assertion |
+|---|---|---|---|---|---|---|---|
+| P0C02-T7 | no events | pure unit | empty event list | `_derive_status([])` | PLANNED | none | planned with no events |
+| P0C02-T6 | OP_STARTED only | pure unit | [OP_STARTED] | `_derive_status` | IN_PROGRESS | none | started but not complete |
+| P0C02-T1 | start then complete | pure unit | [OP_STARTED, OP_COMPLETED] | `_derive_status` | COMPLETED | none | terminal signal correct |
+| P0C02-T5 | start then abort | pure unit | [OP_STARTED, OP_ABORTED] | `_derive_status` | ABORTED | none | terminal signal correct |
+| P0C02-T2 | complete then reopen | pure unit | [OP_STARTED, OP_COMPLETED, operation_reopened] | `_derive_status` | PAUSED | none | REOPEN-001 |
+| P0C02-T3 | complete, reopen, resume | pure unit | [OP_STARTED, OP_COMPLETED, operation_reopened, execution_resumed] | `_derive_status` | IN_PROGRESS | none | in_progress after resume |
+| **P0C02-T4** | **reopen→resume→complete** | **regression bug** | **[OP_STARTED, OP_COMPLETED, operation_reopened, execution_resumed, OP_COMPLETED]** | **`_derive_status`** | **COMPLETED** | **none** | **fails before fix (returns IN_PROGRESS)** |
+
+### Final verification result
+- Regression test P0C02-T4: FAILED before fix, PASSED after fix
+- 6 other parametrized cases: passed before and after fix
+- Full backend suite: 153 passed, 1 skipped, exit 0 (up from 148 baseline)
+
+### Scope guard confirmation
+- No claim model changes.
+- No session-owned migration.
+- No schema migration.
+- No new domain events introduced.
+- No `_derive_allowed_actions` behavior changes.
+
+### Event naming status
+none_required — P0-C-02 is a bug fix slice; no new domain events introduced.
+
+## Slice HM3-014
+Name: P0-C-03 Execution Event Log / Projection Consistency
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/design/02_domain/execution/execution-state-machine.md | No transition without event; completed cannot silently resume running | projection derivation must stay deterministic and event-log based |
+| docs/design/02_domain/execution/station-execution-state-matrix-v4.md | INV-001 closed-record guard, INV-003 downtime blocker, REOPEN-001 paused projection after reopen | detail and bulk projections must remain consistent for command legality |
+| docs/design/02_domain/execution/station-execution-command-event-contracts-v4.md | Canonical command/event intent set | no event/command expansion in this slice |
+| docs/implementation/p0-c-execution-entry-audit.md | projection reconciliation seam already exists; claim/session migration is deferred debt | keep implementation narrow to projection parity |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| P0-C-03 projection consistency slice | none_required | none_required | N/A | n/a | deterministic projection/read parity | no new events |
+
+No new domain event introduced. Existing event behavior preserved.
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---|---|---|
+| event log remains authoritative for runtime projection | projection_consistency | service + repository ordering | no | YES | coding rules + execution state machine |
+| detail and bulk projection statuses agree | projection_consistency | operation service | no | YES | P0-C-03 scope |
+| closure_status CLOSED yields reopen-only action affordance | state_machine | `_derive_allowed_actions` | no | YES | state matrix INV-001 |
+| open downtime projects BLOCKED consistently | state_machine | status derivation helpers | no | YES | state matrix INV-003 |
+| reconcile apply does not mutate event history truth | event_append_only | reconcile script/service | no | existing + YES | reconcile tests |
+| claim behavior unchanged | session | no claim model/service changes | no | existing | ENGINEERING_DECISIONS §10 |
+| session-owned target not introduced prematurely | session | no station session command/event additions | no | YES scope guard | entry audit |
+
+### State Transition Map
+No canonical transition changes in P0-C-03. Only projection derivation/read determinism was hardened.
+
+### Test Matrix
+| Test ID | Scenario | Type | Given | When | Then | Event Assertion | Invariant Assertion |
+|---|---|---|---|---|---|---|---|
+| P0C03-T1 | reopen/resume/complete parity | projection_consistency | OP_STARTED, OP_COMPLETED, OPERATION_REOPENED, EXECUTION_RESUMED, OP_COMPLETED | derive detail and bulk | both COMPLETED | none | detail/bulk agreement |
+| P0C03-T2 | aborted parity | projection_consistency | OP_STARTED, OP_ABORTED | derive detail and bulk | both ABORTED | none | detail/bulk agreement |
+| P0C03-T3 | downtime-open parity | projection_consistency | OP_STARTED, DOWNTIME_STARTED | derive detail and bulk | both BLOCKED and downtime_open true | none | downtime blocker consistency |
+| P0C03-T4 | downtime-ended parity | projection_consistency | OP_STARTED, DOWNTIME_STARTED, DOWNTIME_ENDED | derive detail and bulk | both PAUSED and downtime_open false | none | blocker-cleared non-running consistency |
+| P0C03-T5 | closed action override | regression | closure_status CLOSED completed operation | derive detail | allowed_actions is reopen-only | none | INV-001 action override |
+| P0C03-T6 | reconcile apply parity | regression | runtime mismatch repaired by command apply | derive detail and bulk post-apply | both IN_PROGRESS | none | repair parity invariant |
+
+### Final verification result
+- Required targeted run 1: 41 passed, exit 0
+- Required targeted run 2: 15 passed, exit 0
+- Full backend suite: 159 passed, 1 skipped, exit 0
+
+### Scope guard confirmation
+- No claim/session migration behavior changes.
+- No schema migration.
+- No new domain events.
+- No command-set additions.
+- No FE/UI or out-of-scope domain changes.
+
+### Event naming status
+none_required — P0-C-03 introduced no new domain events.

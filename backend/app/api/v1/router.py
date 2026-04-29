@@ -12,6 +12,7 @@ from app.api.v1 import (
     operations,
     products,
     production_orders,
+    routings,
     security_events,
     station,
     users,
@@ -31,6 +32,7 @@ api_router.include_router(users.router)
 api_router.include_router(station.router)
 api_router.include_router(downtime_reasons.router)
 api_router.include_router(products.router)
+api_router.include_router(routings.router)
 api_router.include_router(security_events.router)
 
 

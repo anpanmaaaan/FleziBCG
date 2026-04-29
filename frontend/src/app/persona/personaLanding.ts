@@ -26,6 +26,7 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "Global Operations", to: "/operations?lens=supervisor" },
     { label: "Production Orders", to: "/production-orders" },
     { label: "Work Orders", to: "/work-orders" },
+    { label: "Products", to: "/products" },
     { label: "Routes", to: "/routes" },
     { label: "Quality", to: "/quality" },
     { label: "Defects", to: "/defects" },
@@ -34,6 +35,7 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "Global Operations", to: "/operations?lens=ie" },
     { label: "Production Orders", to: "/production-orders" },
     { label: "Work Orders", to: "/work-orders" },
+    { label: "Products", to: "/products" },
     { label: "Routes", to: "/routes" },
     { label: "Traceability", to: "/traceability" },
     { label: "Quality", to: "/quality" },
@@ -45,6 +47,7 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "Traceability", to: "/traceability" },
     { label: "Production Orders", to: "/production-orders" },
     { label: "Work Orders", to: "/work-orders" },
+    { label: "Products", to: "/products" },
     { label: "Routes", to: "/routes" },
   ],
   PMG: [
@@ -53,6 +56,7 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "Global Operations", to: "/operations" },
     { label: "Production Orders", to: "/production-orders" },
     { label: "Work Orders", to: "/work-orders" },
+    { label: "Products", to: "/products" },
     { label: "Routes", to: "/routes" },
     { label: "Dispatch", to: "/dispatch" },
     { label: "Quality", to: "/quality" },
@@ -223,6 +227,10 @@ function canAccessRoutes(persona: ResolvedPersona): boolean {
   return persona === "SUP" || persona === "IEP" || persona === "QC" || persona === "PMG";
 }
 
+function canAccessProducts(persona: ResolvedPersona): boolean {
+  return persona === "SUP" || persona === "IEP" || persona === "QC" || persona === "PMG";
+}
+
 function canAccessQuality(persona: ResolvedPersona): boolean {
   return persona === "SUP" || persona === "IEP" || persona === "QC" || persona === "PMG";
 }
@@ -299,6 +307,10 @@ export function isRouteAllowedForPersona(persona: ResolvedPersona, pathname: str
 
   if (pathname === "/routes" || pathname.startsWith("/routes/")) {
     return canAccessRoutes(persona);
+  }
+
+  if (pathname === "/products" || pathname.startsWith("/products/")) {
+    return canAccessProducts(persona);
   }
 
   if (pathname === "/quality") {

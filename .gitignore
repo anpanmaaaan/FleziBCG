@@ -8,13 +8,15 @@ coverage/
 .npm/
 pnpm-lock.yaml
 yarn.lock
-package-lock.json
 
 ############################
 # Vite / React
 ############################
 .vite/
 vite.config.ts.timestamp*
+frontend/.turbo/
+frontend/.eslintcache
+frontend/.stylelintcache
 
 ############################
 # Python / Backend
@@ -56,6 +58,10 @@ htmlcov/
 # Logs
 ############################
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
 ############################
 # OS
@@ -78,6 +84,9 @@ frontend/dist/
 backend/dist/
 frontend/.env.local
 backend/.env.local
+.env.local
+.env.*.local
+frontend/.env.*.local
 
 ############################
 # Temporary / Debug

@@ -94,6 +94,8 @@ docs/audit/frontend-source-alignment-snapshot.md
 
 If `docs/audit/frontend-source-alignment-snapshot.md` is missing, do not invent current frontend source status. Either inspect source directly or create the snapshot first.
 
+For FE route/page work, build/lint is not sufficient by itself. Route Accessibility Gate must pass.
+
 For UI work, also keep the legacy enforcer available:
 
 ```text

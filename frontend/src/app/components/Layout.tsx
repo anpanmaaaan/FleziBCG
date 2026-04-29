@@ -12,6 +12,7 @@ import {
 } from "@/app/persona";
 import { AccessDeniedScreen } from "./AccessDeniedScreen";
 import { ActiveImpersonationBanner } from "./ActiveImpersonationBanner";
+import { RouteStatusBanner } from "./RouteStatusBanner";
 import { TopBar } from "./TopBar";
 import { useImpersonation } from "@/app/impersonation";
 
@@ -51,6 +52,9 @@ export function Layout() {
     }
     if (location.pathname === "/station" || location.pathname === "/station-execution") {
       return "Station Execution";
+    }
+    if (location.pathname === "/products" || location.pathname.startsWith("/products/")) {
+      return "Products";
     }
     return "MES Lite";
   }, [location.pathname]);
@@ -98,6 +102,7 @@ export function Layout() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <TopBar currentPage={currentPageTitle} />
         <ActiveImpersonationBanner />
+        <RouteStatusBanner />
         <div className="flex-1 overflow-auto">
           <Outlet />
         </div>
