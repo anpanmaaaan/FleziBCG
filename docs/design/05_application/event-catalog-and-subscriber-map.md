@@ -10,11 +10,21 @@ Status: Event catalog/subscriber note.
 
 ## Event families
 - foundation/auth/session events
+- product foundation events (P0-B canonical)
 - execution session/context events
 - execution lifecycle events
 - quality events
 - traceability/material events later
 - AI/twin projection input events later
+
+## Product foundation events (P0-B canonical)
+- PRODUCT.CREATED
+- PRODUCT.UPDATED
+- PRODUCT.RELEASED
+- PRODUCT.RETIRED
+
+Reference registry:
+- `docs/design/02_registry/product-event-registry.md`
 
 ## Typical consumers
 - execution read models

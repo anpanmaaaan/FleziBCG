@@ -1,21 +1,39 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.requests import Request
 
 from app.api.v1.router import api_router
+from app.config.settings import settings
 from app.db.init_db import init_db
 from app.i18n.exceptions import I18nHTTPException
 from app.i18n.resolver import resolve_locale, t
 from app.security.auth import decode_access_token
 
-app = FastAPI(title="MES Lite", version="0.1.0")
 
-
-@app.on_event("startup")
-def startup_init_db() -> None:
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: initialize DB migrations/seeds with production-safe defaults.
     init_db()
+    yield
 
 
+app = FastAPI(title="MES Lite", version="0.1.0", lifespan=lifespan)
+
+
+def apply_cors_middleware(fastapi_app: FastAPI) -> None:
+    fastapi_app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_allow_origins_list,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-Tenant-ID"],
+    )
+
+
+apply_cors_middleware(app)
 @app.middleware("http")
 async def auth_identity_middleware(request: Request, call_next):
     auth_header = request.headers.get("Authorization")

@@ -1,15 +1,9 @@
 # FleziBCG Review Gates
 
-This folder contains PR review checklists.
+Use:
 
-## Files
+- `docs/review/pr-hard-mode-checklist.md`
+- `docs/ai-skills/pr-gate-reviewer/SKILL.md`
+- `.copilot/prompts/pr-gate-review.prompt.md`
 
-- `pr-hard-mode-checklist.md`: reviewer checklist for PRs, especially MOM-critical changes.
-
-## How to use
-
-1. Create PR.
-2. Fill `.github/pull_request_template.md`.
-3. GitHub Actions runs `.github/workflows/pr-gate.yml`.
-4. If PR touches MOM-critical files, Hard Mode MOM gate runs.
-5. Reviewer uses `docs/ai-skills/pr-gate-reviewer.md`.
+Hard Mode MOM v3 is mandatory for risky implementation PRs.

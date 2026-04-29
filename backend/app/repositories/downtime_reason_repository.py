@@ -45,3 +45,61 @@ def list_active_downtime_reasons(
         .order_by(DowntimeReason.sort_order, DowntimeReason.reason_code)
     )
     return list(db.scalars(statement))
+
+
+def upsert_downtime_reason(
+    db: Session,
+    *,
+    tenant_id: str,
+    reason_code: str,
+    reason_name: str,
+    reason_group: str,
+    planned_flag: bool,
+    default_block_mode: str,
+    requires_comment: bool,
+    requires_supervisor_review: bool,
+    sort_order: int,
+) -> DowntimeReason:
+    row = get_downtime_reason_by_code(db, tenant_id=tenant_id, reason_code=reason_code)
+    if row is None:
+        row = DowntimeReason(
+            tenant_id=tenant_id,
+            reason_code=reason_code,
+            reason_name=reason_name,
+            reason_group=reason_group,
+            planned_flag=planned_flag,
+            default_block_mode=default_block_mode,
+            requires_comment=requires_comment,
+            requires_supervisor_review=requires_supervisor_review,
+            active_flag=True,
+            sort_order=sort_order,
+        )
+        db.add(row)
+    else:
+        row.reason_name = reason_name
+        row.reason_group = reason_group
+        row.planned_flag = planned_flag
+        row.default_block_mode = default_block_mode
+        row.requires_comment = requires_comment
+        row.requires_supervisor_review = requires_supervisor_review
+        row.active_flag = True
+        row.sort_order = sort_order
+
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def deactivate_downtime_reason(
+    db: Session,
+    *,
+    tenant_id: str,
+    reason_code: str,
+) -> DowntimeReason | None:
+    row = get_downtime_reason_by_code(db, tenant_id=tenant_id, reason_code=reason_code)
+    if row is None:
+        return None
+    row.active_flag = False
+    db.commit()
+    db.refresh(row)
+    return row

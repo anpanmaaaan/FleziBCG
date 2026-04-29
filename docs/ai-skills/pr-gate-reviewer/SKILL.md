@@ -1,6 +1,9 @@
-# Skill: PR Gate Reviewer
+---
+name: pr-gate-reviewer
+description: Reviews FleziBCG PRs using adaptive routing, Hard Mode MOM v3 triggers, test coverage expectations, and release readiness checks.
+---
 
-Use this skill to review a pull request before merge.
+# PR Gate Reviewer
 
 ## Inputs
 
@@ -17,10 +20,10 @@ First classify:
 
 - Selected brain: Generic / MOM
 - Selected mode: Fast / Strict / QA / Architecture / Product / Refactor / Debug / Release
-- Hard Mode MOM: ON / OFF
+- Hard Mode MOM v3: ON / OFF
 - Reason
 
-## Hard Mode MOM auto-trigger
+## Hard Mode v3 auto-trigger
 
 Turn ON if PR touches:
 
@@ -35,20 +38,21 @@ Turn ON if PR touches:
 - quality hold affecting execution
 - material/inventory execution impact
 - tenant/scope/auth for operational commands
+- IAM lifecycle
+- role/action/scope assignment
+- audit/security event
 - critical invariant
 
-## Reject PR if
+## Request changes if
 
+- v3 maps are missing for risky implementation
 - state machine is wrong
 - required event is missing
 - required invariant is missing
-- execution state is mutated directly
-- projection/read model is treated as source of truth
+- projection/read model is source of truth
 - frontend becomes execution or permission truth
-- tenant/scope/auth is not enforced server-side
-- service/application layer is bypassed
-- critical invariant relies only on UI validation
-- risky change has no test
+- tenant/scope/auth is not server-side
+- risky change has no negative tests
 - PR mixes mechanical refactor with behavior change without clear reason
 
 ## Output
@@ -62,33 +66,12 @@ APPROVE / REQUEST_CHANGES / COMMENT_ONLY
 ## Routing
 - Selected brain:
 - Selected mode:
-- Hard Mode MOM:
+- Hard Mode MOM v3:
 - Reason:
-
-## Summary
-...
 
 ## Findings
 | Severity | Area | Finding | Evidence | Required action |
 |---|---|---|---|---|
-
-## State machine check
-...
-
-## Event check
-...
-
-## Invariant check
-...
-
-## Tenant/auth check
-...
-
-## Test coverage check
-...
-
-## Release/docs check
-...
 
 ## Required changes before merge
 1. ...

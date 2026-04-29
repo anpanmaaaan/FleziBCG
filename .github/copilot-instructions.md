@@ -1,41 +1,30 @@
-# GitHub Copilot Instructions — FleziBCG MOM + AI Brain v6
+# GitHub Copilot Instructions — FleziBCG AI Brain Enterprise v4 — Stitch UI
 
----
+## Entry Rule
 
-# 🔰 0. Entry Rule (MANDATORY)
+Before non-trivial work, read in order:
 
-Before coding, always read in order:
+1. `.github/agent/AGENT.md` if present
+2. `docs/design/INDEX.md`
+3. `docs/design/AUTHORITATIVE_FILE_MAP.md`
+4. `docs/governance/CODING_RULES.md`
+5. `docs/governance/ENGINEERING_DECISIONS.md`
+6. `docs/governance/SOURCE_STRUCTURE.md`
+7. `docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md`
 
-1. `.github/agent/AGENT.md`
-2. `docs/design`
-3. `docs/governance/CODING_RULES.md`
-4. `docs/governance/ENGINEERING_DECISIONS.md`
-5. `docs/governance/SOURCE_STRUCTURE.md`
+This file is not the authoritative source for business logic. Design and governance docs are.
 
-⚠️ This file is NOT the source of truth for:
-
-* business logic
-* API contracts
-* database rules
-* IAM/session rules
-
-Those live in design & governance docs.
-
----
-
-# 🧠 1. AI Brain v6 — Auto Execution (DEFAULT)
+## Default AI Skill
 
 Use:
 
 ```text
-docs/ai-skills/flezibcg-ai-brain-v6-auto-execution.md
+docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md
 ```
 
----
+## Required Routing Output
 
-## 🔁 Auto Routing (MANDATORY)
-
-For every non-trivial task, ALWAYS start with:
+For every non-trivial task:
 
 ```markdown
 ## Routing
@@ -45,208 +34,95 @@ For every non-trivial task, ALWAYS start with:
 - Reason:
 ```
 
----
+## Hard Mode MOM v3
 
-## 🧠 Brain Selection
+Hard Mode MOM v3 is mandatory for autonomous implementation and risky changes.
 
-### Use MOM Brain when:
-
-* execution / operation
-* station / session / operator
-* event / projection
-* production / downtime / quantity
-* quality affecting execution
-* material / WIP / traceability
-* ERP manufacturing integration
-* OEE / shopfloor / Andon
-
-### Use Generic Brain when:
-
-* normal software logic
-* UI / dashboard
-* generic API
-* non-MOM feature
-
-👉 If unsure → **default to MOM Brain**
-
----
-
-## ⚙️ Mode Selection
-
-| Mode         | Use                       |
-| ------------ | ------------------------- |
-| Fast         | trivial change            |
-| Strict       | DB / auth / state / event |
-| QA           | testing / E2E             |
-| Architecture | design                    |
-| Product      | scope / roadmap           |
-| Refactor     | cleanup                   |
-| Debug        | bug                       |
-| Release      | deploy                    |
-
-⚠️ Never use Fast for risky logic.
-
----
-
-## 🔥 Hard Mode MOM (AUTO-TRIGGER)
-
-Turn ON if task touches:
-
-* state machine
-* execution command
-* event
-* projection truth
-* station/session/operator
-* production / downtime
-* completion / closure
-* invariant / tenant / auth
-
----
-
-## 🚫 Hard Mode Reject Rules
-
-Reject code if:
-
-* sai state machine
-* thiếu event
-* thiếu invariant
-* mutate state trực tiếp
-* projection = source of truth
-* frontend quyết định logic
-* thiếu tenant/auth check
-* bypass service layer
-
----
-
-# 🏗️ 2. Core MOM Constraints (NON-NEGOTIABLE)
-
-## Backend = source of truth
-
-* frontend chỉ gửi intent
-* frontend không derive state
-* frontend không authorize
-
----
-
-## Event-driven execution
-
-* event = append-only
-* state = derive từ event
-* projection ≠ truth
-
----
-
-## Tenant isolation
-
-* luôn có tenant context
-* không query cross-tenant
-
----
-
-## Layer responsibility
-
-* service = business logic
-* route = thin
-* repo = data only
-
----
-
-## Auth model
-
-* JWT = identity only
-* permission = backend
-
----
-
-## Privileged access
-
-* không implicit admin
-* phải audit
-
----
-
-# 🧪 3. Engineering Principles
-
-* small, reviewable change
-* vertical slice
-* explicit assumption
-* behavior-based test
-* no scope invention
-
----
-
-# 🎯 4. AI Skill System
-
-Skills nằm ở:
+Use:
 
 ```text
-docs/ai-skills/
+docs/ai-skills/hard-mode-mom-v3/SKILL.md
 ```
 
-### Mapping
+Hard Mode MOM v3 triggers when work touches:
 
-| Intent       | Skill                            |
-| ------------ | -------------------------------- |
-| TDD          | tdd.md                           |
-| breakdown    | to-issues.md                     |
-| audit        | triage-issue.md                  |
-| architecture | improve-codebase-architecture.md |
-| PRD          | to-prd.md                        |
+- execution state machine
+- execution commands/events
+- projections/read models
+- station/session/operator/equipment
+- production reporting
+- downtime
+- completion/closure
+- quality hold
+- material/inventory execution impact
+- tenant/scope/auth
+- IAM lifecycle
+- role/action/scope assignment
+- audit/security event
+- critical invariant
+- DB migration enforcing governance or operational truth
 
----
+Before coding under v3, the agent must generate:
 
-# 🔍 5. PR Rules
+1. Design Evidence Extract
+2. Event Map
+3. Invariant Map
+4. State Transition Map if stateful
+5. Test Matrix
+6. Verdict before coding
 
-Phải classify:
+If any is missing: reject implementation.
 
-* Mechanical
-* Behavior
-* Architecture
+## Hard Mode MOM v2
 
-Theo:
+Use v2 for smaller/manual reviews:
 
 ```text
-docs/governance/CODING_RULES.md
+docs/ai-skills/hard-mode-mom-v2/SKILL.md
 ```
 
----
+## FE / UI / UX Work — Stitch DESIGN.md Integration
 
-# ⚠️ 6. Conflict Resolution
-
-1. Business truth doc
-2. Coding rules
-3. Engineering decisions
-4. Source structure
-
-❌ Never invent new interpretation
-
----
-
-# 🧠 7. Expected AI Behavior
-
-Copilot must behave like:
-
-* MOM domain-aware engineer
-* strict with invariants
-* architecture-aware
-* explicit reasoning
-
-NOT:
-
-* autocomplete tool
-* guess-based generator
-* shortcut coder
-
----
-
-# 🧱 8. Final Principle
+When the task touches frontend UI, UX design, React components, Tailwind styling, Figma Make, Google Stitch, `DESIGN.md`, screen packs, or design consistency, read:
 
 ```text
-Route → Select brain → Select mode → Hard Mode if needed → Execute → Verify
+docs/ai-skills/stitch-design-md-ui-ux/SKILL.md
+DESIGN.md
+docs/design/DESIGN.md
+docs/audit/frontend-source-alignment-snapshot.md
 ```
 
+If `docs/audit/frontend-source-alignment-snapshot.md` is missing, do not invent current frontend source status. Either inspect source directly or create the snapshot first.
+
+For UI work, also keep the legacy enforcer available:
+
 ```text
-Execution truth > speed
-Event integrity > shortcut
-Invariant > convenience
+docs/ai-skills/design-system-enforcer/SKILL.md
 ```
+
+This UI/UX skill does not override Hard Mode MOM.
+
+If a UI task touches execution, quality, material, station, operation, tenant/scope/auth, governed actions, allowed actions, operational status, or event/projection truth, also apply:
+
+```text
+docs/ai-skills/hard-mode-mom-v3/SKILL.md
+```
+
+Hard reject UI output that fakes backend truth, authorization, execution transitions, quality pass/fail, ERP posting, backflush completion, or deterministic AI decisions.
+
+## Non-negotiables
+
+- Backend is source of truth.
+- Frontend sends intent only.
+- Frontend does not derive execution state.
+- Frontend does not decide authorization.
+- Events are append-only operational facts.
+- Projections are read models.
+- JWT proves identity only.
+- Authorization is server-side.
+- AI is advisory only.
+- Critical invariants must not rely only on UI validation.
+- Do not invent product scope.
+- Work in vertical slices.
+- Prefer behavior-based tests.
+- Do not use destructive Git commands unless explicitly requested and confirmed.

@@ -17,6 +17,14 @@ class Settings(BaseSettings):
     postgres_password: str = "mes"
     postgres_host: str = "localhost"
     postgres_port: int = 5432
+    # SECURITY: Explicit CORS allow-list. Comma-separated origins to avoid
+    # wildcard trust in browser clients.
+    cors_allow_origins: str = (
+        "http://localhost:5173,"
+        "http://127.0.0.1:5173,"
+        "http://localhost:80,"
+        "http://127.0.0.1:80"
+    )
     # WHY: "change-me" is a deliberately insecure default so that forgetting to
     # set a real secret in production is immediately obvious (fails auth).
     jwt_secret_key: str = "change-me"
@@ -58,6 +66,14 @@ class Settings(BaseSettings):
                 f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
             )
         return self
+
+    @property
+    def cors_allow_origins_list(self) -> list[str]:
+        return [
+            origin.strip()
+            for origin in self.cors_allow_origins.split(",")
+            if origin.strip()
+        ]
 
 
 settings = Settings()

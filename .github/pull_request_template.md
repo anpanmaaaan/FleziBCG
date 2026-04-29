@@ -27,28 +27,23 @@
 
 - Selected brain:
 - Selected mode:
-- Hard Mode MOM: ON / OFF
+- Hard Mode MOM v3: ON / OFF
 - Reason:
 
-## Hard Mode MOM checklist
+## Hard Mode MOM v3
 
-Required if PR touches execution/state/event/invariant/tenant/auth.
+Required if PR touches execution/state/event/invariant/tenant/auth/IAM/access/audit.
 
-- [ ] State machine is valid.
-- [ ] Required events are emitted.
-- [ ] Required invariants are enforced.
-- [ ] Projection/read model is not source of truth.
-- [ ] Frontend does not decide execution or permission truth.
-- [ ] Tenant/scope/auth checks are server-side.
-- [ ] Service/application layer owns business logic.
+- [ ] Design Evidence Extract included
+- [ ] Event Map included
+- [ ] Invariant Map included
+- [ ] State Transition Map included if stateful
+- [ ] Test Matrix included
+- [ ] Tests written and run
+- [ ] Negative tests included
+- [ ] Verification report updated
 
 ## Tests
-
-- [ ] Backend tests
-- [ ] Frontend tests
-- [ ] E2E tests
-- [ ] Migration test/check
-- [ ] Manual verification
 
 Commands run:
 

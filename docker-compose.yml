@@ -68,11 +68,13 @@ services:
   cloudbeaver:
     image: dbeaver/cloudbeaver:latest
     restart: unless-stopped
+    profiles:
+      - dev-tools
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "8978:8978"
+      - "127.0.0.1:8978:8978"
     environment:
       CLOUDBEAVER_WEB_SERVER_PORT: 8978
       CLOUDBEAVER_APP_ANONYMOUS_ACCESS_ENABLED: "false"
