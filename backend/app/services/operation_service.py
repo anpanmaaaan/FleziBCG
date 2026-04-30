@@ -37,7 +37,26 @@ from app.schemas.operation import (
     OperationResumeRequest,
     OperationStartRequest,
 )
+from app.services.station_session_diagnostic import (
+    StationSessionDiagnostic,
+    get_station_session_diagnostic,
+)
 from app.services.work_order_execution_service import recompute_work_order
+
+
+def _compute_session_diagnostic(
+    db: Session, operation, tenant_id: str
+) -> StationSessionDiagnostic:
+    """
+    P0-C-04D: Non-blocking session context observation.
+
+    Called after the tenant_id guard passes inside execution commands.
+    Result is informational only — never used for command rejection in this slice.
+    Provides the integration point for P0-C-04E (hard enforcement).
+    """
+    return get_station_session_diagnostic(
+        db, tenant_id=tenant_id, station_id=operation.station_scope_value
+    )
 
 
 class StartDowntimeConflictError(ValueError):
@@ -63,6 +82,7 @@ def end_downtime(
     """
     if operation.tenant_id != tenant_id:
         raise EndDowntimeConflictError("TENANT_MISMATCH")
+    _session_ctx = _compute_session_diagnostic(db, operation, tenant_id)  # P0-C-04D
     _ensure_operation_open_for_write(operation)
 
     # Open-downtime guard: count started vs ended events on the append-only log.
@@ -131,6 +151,7 @@ def start_downtime(
     """
     if operation.tenant_id != tenant_id:
         raise StartDowntimeConflictError("TENANT_MISMATCH")
+    _session_ctx = _compute_session_diagnostic(db, operation, tenant_id)  # P0-C-04D
     _ensure_operation_open_for_write(operation)
     if operation.status not in (StatusEnum.in_progress.value, StatusEnum.paused.value):
         raise StartDowntimeConflictError("STATE_NOT_RUNNING_OR_PAUSED")
@@ -854,6 +875,7 @@ def close_operation(
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
+    _session_ctx = _compute_session_diagnostic(db, operation, tenant_id)  # P0-C-04D
     if operation.closure_status == ClosureStatusEnum.closed.value:
         raise CloseOperationConflictError("STATE_ALREADY_CLOSED")
 
@@ -903,6 +925,7 @@ def reopen_operation(
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
+    _session_ctx = _compute_session_diagnostic(db, operation, tenant_id)  # P0-C-04D
     if operation.closure_status != ClosureStatusEnum.closed.value:
         raise ReopenOperationConflictError("STATE_NOT_CLOSED")
 
@@ -946,6 +969,7 @@ def start_operation(
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
+    _session_ctx = _compute_session_diagnostic(db, operation, tenant_id)  # P0-C-04D
     _ensure_operation_open_for_write(operation)
     if operation.status != StatusEnum.planned.value:
         raise StartOperationConflictError("Operation must be PLANNED to start.")
@@ -1010,6 +1034,7 @@ def report_quantity(
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
+    _session_ctx = _compute_session_diagnostic(db, operation, tenant_id)  # P0-C-04D
     _ensure_operation_open_for_write(operation)
     if operation.status != StatusEnum.in_progress.value:
         raise ValueError("Operation must be IN_PROGRESS to report quantity.")
@@ -1058,6 +1083,7 @@ def complete_operation(
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
+    _session_ctx = _compute_session_diagnostic(db, operation, tenant_id)  # P0-C-04D
     _ensure_operation_open_for_write(operation)
     # EDGE: Two-step status check gives distinct error messages — a COMPLETED
     # operation gets a "cannot complete again" error, while a PLANNED one
@@ -1108,6 +1134,7 @@ def pause_operation(
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
+    _session_ctx = _compute_session_diagnostic(db, operation, tenant_id)  # P0-C-04D
     _ensure_operation_open_for_write(operation)
 
     # State guard per station-execution-state-matrix.md PAUSE-001:
@@ -1161,6 +1188,7 @@ def resume_operation(
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
+    _session_ctx = _compute_session_diagnostic(db, operation, tenant_id)  # P0-C-04D
     _ensure_operation_open_for_write(operation)
 
     # State guard per station-execution-state-matrix.md RESUME-001:

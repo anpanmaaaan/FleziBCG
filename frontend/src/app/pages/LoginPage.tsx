@@ -47,7 +47,7 @@ export function LoginPage() {
           </div>
 
           <h1 className="text-xl font-semibold text-slate-800 text-center mb-6">
-            Sign in to MES Lite
+            Sign in to FleziBCG
           </h1>
 
           <form onSubmit={handleSubmit} className="space-y-4">

@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router";
-import { PageHeader, ProductLifecycleBadge, ProductTypeBadge, ScreenStatusBadge } from "@/app/components";
+import {
+  BackendRequiredNotice,
+  PageHeader,
+  ProductLifecycleBadge,
+  ProductTypeBadge,
+  ScreenStatusBadge,
+} from "@/app/components";
 import { HttpError, productApi, type ProductItemFromAPI } from "@/app/api";
 import { useI18n } from "@/app/i18n";
 
@@ -74,6 +80,7 @@ export function ProductDetail() {
     <div className="h-full flex flex-col bg-white">
       <PageHeader
         title={t("productDetail.title")}
+        subtitle={t("productDetail.notice.shell")}
         showBackButton
         actions={(
           <div className="flex items-center gap-2">
@@ -98,12 +105,10 @@ export function ProductDetail() {
       />
 
       <div className="flex-1 overflow-auto p-6 space-y-4">
-        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          {t("productDetail.notice.shell")}
-        </div>
+        <BackendRequiredNotice message={t("productDetail.notice.shell")} tone="blue" />
 
         {loading && (
-          <div className="rounded-lg border bg-white px-4 py-10 text-center text-sm text-gray-500">
+          <div className="rounded-lg border border-gray-200 bg-white px-4 py-10 text-center text-sm text-gray-500 shadow-sm">
             {t("productDetail.loading")}
           </div>
         )}
@@ -121,12 +126,12 @@ export function ProductDetail() {
         )}
 
         {!loading && !missingProductId && !notFound && errorMessage && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-800">
-            <p className="mb-3">{errorMessage}</p>
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-800 shadow-sm">
+            <p>{errorMessage}</p>
             <button
               type="button"
               onClick={() => void loadProduct()}
-              className="px-3 py-1.5 rounded border border-red-300 bg-white hover:bg-red-100"
+              className="mt-3 inline-flex rounded border border-red-300 bg-white px-3 py-1.5 hover:bg-red-100"
             >
               {t("productDetail.action.retry")}
             </button>
@@ -135,7 +140,7 @@ export function ProductDetail() {
 
         {!loading && !missingProductId && !notFound && !errorMessage && product && (
           <>
-            <div className="rounded-lg border bg-white p-4">
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center gap-3 mb-3">
                 <h2 className="text-base font-semibold text-gray-900">{t("productDetail.section.summary")}</h2>
                 <ScreenStatusBadge phase="PARTIAL" size="sm" />
@@ -163,7 +168,7 @@ export function ProductDetail() {
               <p className="text-sm text-gray-500">{t("productDetail.placeholder.summary")}</p>
             </div>
 
-            <div className="rounded-lg border bg-white p-4">
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
               <h2 className="text-base font-semibold text-gray-900 mb-3">{t("productDetail.section.routing")}</h2>
               <p className="text-sm text-gray-500">{t("productDetail.placeholder.routing")}</p>
             </div>

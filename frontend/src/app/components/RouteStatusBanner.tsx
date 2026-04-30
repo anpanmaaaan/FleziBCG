@@ -32,7 +32,7 @@ export function RouteStatusBanner() {
 
   return (
     <>
-      <div className="bg-white border-b border-gray-200 px-6 py-2 flex justify-end">
+      <div className="flex justify-end border-b border-gray-200 bg-slate-50 px-6 py-2">
         <ScreenStatusBadge phase={statusEntry.phase} size="sm" />
       </div>
       {shouldShowGlobalBanner && (

@@ -475,7 +475,150 @@ P0-B minimum product-definition slices are implemented and verified through P0-B
 
 ALLOW_COMPLETE
 
-Completed slices are implemented and validated sufficiently for current scope, including P0-B-03 Resource Requirement Mapping. Refresh-token advanced rotation policy remains deferred by ADR and is unchanged by this slice. Alembic bookkeeping stays aligned at `0001`, and the backend verification baseline is green (`141 passed, 1 skipped`).
+---
+
+### 15. P0-C-04B StationSession Model + Lifecycle Foundation
+
+Design Evidence Extract
+- Contract source: `docs/design/02_domain/execution/station-session-ownership-contract.md`
+- Canonical execution docs: state matrix v4, command/event contracts v4, policy/master-data v4
+- Compatibility guardrail: claim remains migration debt and must remain backward-compatible
+
+Verification commands and outcomes
+- Focused StationSession lifecycle tests:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_station_session_lifecycle.py`
+	- Result: 9 passed in 4.55s, exit code 0
+- Claim regression subset:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_claim_single_active_per_operator.py tests/test_release_claim_active_states.py tests/test_station_queue_active_states.py tests/test_reopen_resumability_claim_continuity.py tests/test_close_reopen_operation_foundation.py`
+	- Result: 36 passed in 11.31s, exit code 0
+- Full backend suite:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q`
+	- Result: 168 passed, 1 skipped in 21.98s, exit code 0
+
+Event naming status
+- `STATION_SESSION.OPENED`
+- `STATION_SESSION.OPERATOR_IDENTIFIED`
+- `STATION_SESSION.EQUIPMENT_BOUND`
+- `STATION_SESSION.CLOSED`
+- Status: `CANONICAL_FOR_P0_C_STATION_SESSION` (finalized in P0-C-04B hardening, 2026-04-30)
+
+Compatibility impact
+- Claim behavior preserved.
+- No execution command behavior changes in this slice.
+
+Completed slices are implemented and validated sufficiently for current scope, including P0-B-03 Resource Requirement Mapping. Refresh-token advanced rotation policy remains deferred by ADR and is unchanged by this slice. Alembic bookkeeping stays aligned at `0001`, and the backend verification baseline is green (`168 passed, 1 skipped`).
+
+---
+
+### 16. P0-C-04C Diagnostic Session Context Bridge
+
+Hard Mode MOM v3 Gate Verdict: ALLOW_IMPLEMENTATION
+
+Behavior contract:
+- `get_station_session_diagnostic(db, tenant_id, station_id)` — pure read-only, always returns `StationSessionDiagnostic`, never raises
+- `SessionReadiness.OPEN` / `SessionReadiness.NO_ACTIVE_SESSION`
+- Missing session is a diagnostic signal only — not a command rejection
+- Tenant isolation enforced in every lookup
+- No new domain events
+- No execution command behavior change
+- No claim model/service changes
+
+Verification runs:
+- Diagnostic bridge tests:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -v tests/test_station_session_diagnostic_bridge.py`
+	- Result: 7 passed in 3.60s, exit code 0
+- Station session lifecycle regression:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_station_session_lifecycle.py`
+	- Result: 9 passed, exit code 0
+- Claim regression subset:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_claim_single_active_per_operator.py tests/test_release_claim_active_states.py tests/test_station_queue_active_states.py tests/test_reopen_resumability_claim_continuity.py tests/test_close_reopen_operation_foundation.py`
+	- Result: 36 passed, exit code 0 (combined with lifecycle: 45 passed total)
+- Full backend suite:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest --tb=short`
+	- Result: 175 passed, 1 skipped in 22.83s, exit code 0
+
+Event naming status: none_required — P0-C-04C is read-only diagnostic; no new domain events introduced.
+
+Compatibility impact:
+- Claim behavior preserved.
+- No execution command behavior changes.
+- Station session lifecycle events unchanged (CANONICAL_FOR_P0_C_STATION_SESSION).
+
+Backend verification baseline is green (`175 passed, 1 skipped`). Recommended next: P0-C-04D (command context guard alignment).
+
+---
+
+### 17. P0-C-04D Command Context Diagnostic Integration / Guard Readiness
+
+Hard Mode MOM v3 Gate Verdict: ALLOW_IMPLEMENTATION
+
+Integration design:
+- `_compute_session_diagnostic(db, operation, tenant_id)` private helper in `operation_service.py`
+- Calls `get_station_session_diagnostic(db, tenant_id=..., station_id=operation.station_scope_value)`
+- Wired into all 9 execution commands after the tenant_id guard
+- Result stored as `_session_ctx` — informational only, never used for rejection
+
+All 9 commands wired: `start_operation`, `report_quantity`, `complete_operation`, `pause_operation`, `resume_operation`, `start_downtime`, `end_downtime`, `close_operation`, `reopen_operation`
+
+Verification runs:
+- Command context diagnostic tests:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -v tests/test_station_session_diagnostic_bridge.py tests/test_station_session_command_context_diagnostic.py`
+	- Result: 16 passed in 7.21s, exit code 0
+- Session lifecycle + claim + projection regression:
+	- Combined targeted run: 86 passed in 13.93s, exit code 0
+- Full backend suite:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest --tb=short`
+	- Result: 184 passed, 1 skipped in 25.60s, exit code 0
+
+Event naming status: none_required — P0-C-04D introduced no new domain events.
+
+Compatibility impact:
+- Claim behavior preserved.
+- No execution command behavior changes.
+- OperationDetail API response shape unchanged.
+- Station session lifecycle events unchanged (CANONICAL_FOR_P0_C_STATION_SESSION).
+
+Backend verification baseline is green (`184 passed, 1 skipped`). Recommended next: P0-C-04E (Claim compatibility / deprecation lock).
+
+---
+
+### 18. P0-C-04E Claim Compatibility / Deprecation Lock
+
+Hard Mode MOM v3 Gate Verdict: ALLOW_IMPLEMENTATION
+
+Scope:
+- DOC-ONLY slice. No production code changes.
+- Compatibility lock document codifies 8 non-negotiable boundary invariants for the OperationClaim migration debt layer.
+- Claim source map: `ensure_operation_claim_owned_by_identity` called at 8 route-layer guard sites in `operations.py` (lines 86, 114, 138, 170, 202, 249, 283).
+- Diagnostic bridge non-interference contract: `_compute_session_diagnostic` / `_session_ctx` never touches claim lifecycle.
+- Test compatibility lock registers: 45 claim tests, 16 diagnostic bridge + session tests, 9 command context tests = 70 total lock tests.
+- Migration debt register: claim removal deferred; requires explicit ADR + migration plan in a future slice.
+
+Invariant confirmations:
+- OperationClaim model/service/tests unchanged.
+- Execution command behavior unchanged.
+- OperationDetail API response shape unchanged.
+- No new domain events.
+- No schema migration.
+- No claim expansion.
+
+Files introduced:
+- `docs/implementation/p0-c-04-claim-compatibility-deprecation-lock.md`
+
+Verification runs:
+- Claim suite (isolation run):
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest tests/test_claim_single_active_per_operator.py tests/test_release_claim_active_states.py tests/test_station_queue_active_states.py tests/test_reopen_resumability_claim_continuity.py tests/test_close_operation_auth.py tests/test_start_downtime_auth.py tests/test_close_reopen_operation_foundation.py tests/test_operation_detail_allowed_actions.py -q`
+	- Result: 36 passed in 142.69s, exit code 0
+- Full backend suite:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q`
+	- Result: 184 passed, 1 skipped in 27.77s, exit code 0
+
+Event naming status: none_required — P0-C-04E introduced no new domain events.
+
+Compatibility impact:
+- Claim behavior preserved and boundary-locked.
+- Diagnostic bridge preserved (non-interference confirmed).
+- Session lifecycle events unchanged (CANONICAL_FOR_P0_C_STATION_SESSION).
 
 ---
 

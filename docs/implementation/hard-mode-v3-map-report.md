@@ -130,6 +130,63 @@ Name: P0-A backend CI/test hardening
 ### Event naming status
 CANONICAL
 
+## Slice HM3-013
+Name: P0-C-04B StationSession model + lifecycle foundation
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/design/02_domain/execution/station-session-ownership-contract.md | Defines StationSession fields, lifecycle, candidate events, and compatibility boundary | Direct executable source for P0-C-04B scope |
+| docs/design/02_domain/execution/station-execution-state-matrix-v4.md | Session/context transitions and ownership guard semantics | Lifecycle transition map for open/identify/bind/close |
+| docs/design/02_domain/execution/station-execution-command-event-contracts-v4.md | Canonical session events and claim deprecation note | Event emission set and canonical status enforcement |
+| docs/design/02_domain/execution/station-execution-policy-and-master-data-v4.md | Active station session required in target model; claim is compatibility debt | Preserve current command behavior while building lifecycle foundation |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| open_station_session | STATION_SESSION.OPENED | domain_event (transitional persistence via security-event infrastructure) | CANONICAL_FOR_P0_C_STATION_SESSION | tenant_id, station_id, session_id, actor_user_id, opened_at | session ownership read model (future) | station-session contract |
+| identify_operator_at_station | STATION_SESSION.OPERATOR_IDENTIFIED | domain_event (transitional persistence via security-event infrastructure) | CANONICAL_FOR_P0_C_STATION_SESSION | tenant_id, station_id, session_id, operator_user_id, actor_user_id | session operator context (future) | station-session contract |
+| bind_equipment_to_station_session | STATION_SESSION.EQUIPMENT_BOUND | domain_event (transitional persistence via security-event infrastructure) | CANONICAL_FOR_P0_C_STATION_SESSION | tenant_id, station_id, session_id, equipment_id, actor_user_id | session equipment context (future) | station-session contract |
+| close_station_session | STATION_SESSION.CLOSED | domain_event (transitional persistence via security-event infrastructure) | CANONICAL_FOR_P0_C_STATION_SESSION | tenant_id, station_id, session_id, actor_user_id, closed_at | active session projection ends | station-session contract |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---:|---|---|
+| tenant isolation mandatory | tenant | route + service + repository | yes | yes | station-session contract |
+| station scope isolation mandatory | scope | service scope validation | no | yes | station-session contract |
+| one active OPEN session per tenant+station | session | service + partial unique index | yes | yes | station-session contract |
+| operator identity explicit | operator | lifecycle command validation | no | yes | station-session contract |
+| CLOSED terminal in P0-C-04B | state_machine | service validation | no | yes | station-session contract |
+| claim behavior preserved | compatibility | scope guard + regression tests | no | yes | p0-c-04 alignment review |
+| no dual authoritative ownership | projection_consistency | slice boundary + service scope | no | yes | p0-c-04 alignment review |
+| no execution command behavior change | migration_boundary | scope guard | no | yes | station-session contract |
+
+### State Transition Map
+| Entity | Current State | Command | Allowed? | Event | Next Projection State | Invalid Case Test | Source |
+|---|---|---|---:|---|---|---|---|
+| StationSession | none | open_station_session | yes | STATION_SESSION.OPENED | OPEN | second active session same station rejected | station-session contract |
+| StationSession | OPEN | identify_operator_at_station | yes | STATION_SESSION.OPERATOR_IDENTIFIED | OPEN | closed session identify rejected | station-session contract |
+| StationSession | OPEN | bind_equipment_to_station_session | yes | STATION_SESSION.EQUIPMENT_BOUND | OPEN | closed session bind rejected | station-session contract |
+| StationSession | OPEN | close_station_session | yes | STATION_SESSION.CLOSED | CLOSED | double close rejected | station-session contract |
+| StationSession | CLOSED | identify/bind/close | no | none | CLOSED | closed terminal assertions | station-session contract |
+
+### Test Matrix
+| Test ID | Scenario | Type | Given | When | Then | Event Assertion | Invariant Assertion |
+|---|---|---|---|---|---|---|---|
+| HM3-013-T1 | open session happy path | happy_path | authorized actor with station scope | open | OPEN session created | OPENED emitted | tenant/scope enforced |
+| HM3-013-T2 | reject second active session same station | db_invariant | existing OPEN session | open same station | reject | no duplicate OPENED | one active OPEN enforced |
+| HM3-013-T3 | allow sessions for different stations | happy_path | actor scoped to two stations | open both stations | both OPEN | OPENED emitted twice | per-station isolation |
+| HM3-013-T4 | identify operator | happy_path | OPEN session | identify operator | operator set | OPERATOR_IDENTIFIED emitted | explicit operator context |
+| HM3-013-T5 | bind equipment | happy_path | OPEN session | bind equipment | equipment set | EQUIPMENT_BOUND emitted | OPEN mutation only |
+| HM3-013-T6 | close session and terminal behavior | invalid_state | OPEN then CLOSED session | identify/bind/close again | rejected | no extra lifecycle event on reject | CLOSED terminal |
+| HM3-013-T7 | tenant mismatch rejected | wrong_tenant | mismatched tenant context | open | reject | no lifecycle event | tenant isolation |
+| HM3-013-T8 | station mismatch rejected | wrong_scope | actor not scoped to station | open | reject | no lifecycle event | station scope isolation |
+| HM3-013-T9 | claim regressions green | regression | existing claim baseline | run subset | pass | n/a | claim compatibility preserved |
+| HM3-013-T10 | full suite no unintended behavior drift | regression | slice merged | run full suite | pass | n/a | no execution behavior change |
+
+### Event naming status
+CANONICAL_FOR_P0_C_STATION_SESSION
+
 ## Slice HM3-008
 Name: Execution reopen/resume failure triage (`STATE_STATION_BUSY`)
 
@@ -743,3 +800,177 @@ No canonical transition changes in P0-C-03. Only projection derivation/read dete
 
 ### Event naming status
 none_required — P0-C-03 introduced no new domain events.
+
+## Slice HM3-015
+Name: P0-C-04C Diagnostic Session Context Bridge
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/design/02_domain/execution/station-session-ownership-contract.md | P0-C-04C = diagnostic bridge only; missing session must NOT reject execution command | Bridge is non-blocking; command allow/deny unchanged |
+| docs/design/02_domain/execution/station-execution-state-matrix-v4.md | Execution commands require valid station session context (target); claim is compatibility debt | Diagnostic is readiness-only in this slice |
+| docs/design/02_registry/station-session-event-registry.md | Events frozen at CANONICAL_FOR_P0_C_STATION_SESSION v1.1 | No new events from diagnostic bridge |
+| docs/implementation/p0-c-execution-entry-audit.md | Commands do not currently require a valid claim/session guard | Diagnostic adds read-only signal; no injection into command path |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| get_station_session_diagnostic | none | none_required | N/A | n/a | no event emitted | diagnostic is read-only |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---|---|---|
+| Diagnostic bridge must NOT change command allow/deny | behavior_contract | no injection into command path | no | YES — BRIDGE-T1/T2 | ownership contract |
+| Missing session = diagnostic signal only, not rejection | behavior_contract | diagnostic function does not raise | no | YES — BRIDGE-T1/T4 | ownership contract |
+| Tenant isolation mandatory | tenant | every lookup filters by tenant_id | no | YES — BRIDGE-T6 | CODING_RULES §TEN-001 |
+| CLOSED session ignored | state_machine | repository returns OPEN-only records | no | YES — BRIDGE-T5 | session model partial index |
+| No new domain events | event_append_only | no event emission in diagnostic | no | YES — scope guard | command/event contracts |
+| Claim behavior unchanged | session | no claim model/service/test changes | no | existing | ENGINEERING_DECISIONS §10 |
+
+### State Transition Map
+No state transitions. P0-C-04C is read-only — the diagnostic function performs a single SELECT query and returns a frozen dataclass. No state mutations, no event emission.
+
+### Test Matrix
+| Test ID | Scenario | Type | Given | When | Then | Event Assertion | Invariant Assertion |
+|---|---|---|---|---|---|---|---|
+| BRIDGE-T1 | start_operation proceeds with no session | behavior_unchanged | PLANNED operation, no active session | start_operation called | succeeds, IN_PROGRESS | no diagnostic event | command allow/deny unchanged |
+| BRIDGE-T2 | start_operation proceeds with open session | behavior_unchanged | PLANNED operation, OPEN session present | start_operation called | succeeds, IN_PROGRESS | no diagnostic event | command allow/deny unchanged |
+| BRIDGE-T3 | diagnostic detects open session | diagnostic_detect | OPEN session exists | get_station_session_diagnostic | readiness=OPEN, session_id set | none | backend-derived |
+| BRIDGE-T4 | diagnostic detects missing session | diagnostic_detect | no session | get_station_session_diagnostic | readiness=NO_ACTIVE_SESSION | none | backend-derived |
+| BRIDGE-T5 | diagnostic ignores closed session | diagnostic_detect | only CLOSED session | get_station_session_diagnostic | readiness=NO_ACTIVE_SESSION | none | CLOSED terminal |
+| BRIDGE-T6 | tenant mismatch no false positive | security | session exists for other tenant | get_station_session_diagnostic for different tenant | readiness=NO_ACTIVE_SESSION | none | tenant isolation |
+| BRIDGE-T7 | operator context returned when identified | diagnostic_detail | OPEN session with identified operator | get_station_session_diagnostic | operator_user_id set | none | operator context fidelity |
+
+### Final verification result
+- Diagnostic bridge tests: 7 passed
+- Station session lifecycle regression: 9 passed
+- Claim regression subset: 45 passed
+- Full backend suite: 175 passed, 1 skipped, exit 0
+
+### Scope guard confirmation
+- No claim model/service/test changes.
+- No execution command behavior change.
+- No schema migration.
+- No new domain events.
+- No FE/UI changes.
+- Diagnostic function is pure read; never raises; never rejects a command.
+
+### Event naming status
+none_required — P0-C-04C is a read-only diagnostic slice; no new domain events introduced.
+
+## Slice HM3-016
+## Slice HM3-017
+Name: P0-C-04E Claim Compatibility / Deprecation Lock
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/design/02_domain/execution/station-session-ownership-contract.md §8 | Claim is migration debt — must not be expanded in any subsequent slice without explicit contract revision and ADR | Boundary lock enforced by this slice |
+| docs/design/02_domain/execution/station-execution-command-event-contracts-v4.md | Claim deprecated as execution context; removal is future slice requiring explicit migration plan | Claim source map frozen |
+| docs/implementation/p0-c-execution-entry-audit.md | `ensure_operation_claim_owned_by_identity` is the sole execution guard at 8 route sites | Compatibility boundary codified |
+| docs/governance/ENGINEERING_DECISIONS.md §10 | No claim removal without ADR | Removal deferred; register created |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| (none) | none | none_required | N/A | n/a | none | DOC-ONLY slice |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---|---|---|
+| Claim must not be expanded without explicit ADR | migration_debt | doc contract | no | existing 45 claim tests | ownership contract §8 |
+| Claim must not be removed in P0-C-04E | migration_debt | doc contract | no | N/A — removal is future slice | ownership contract |
+| `ensure_operation_claim_owned_by_identity` remains sole route-layer guard | behavior_contract | unchanged at 8 sites | no | existing | entry audit |
+| Diagnostic bridge must not interfere with claim lifecycle | non_interference | `_session_ctx` never touches claim | no | existing 9 CMD tests | P0-C-04D |
+| No new domain events | event_append_only | no emission in this slice | no | existing | command/event contracts |
+| Tenant isolation preserved | tenant | unchanged | no | existing | CODING_RULES §TEN-001 |
+
+### State Transition Map
+No state transitions. DOC-ONLY slice. No production code changes.
+
+### Test Matrix
+| Test ID | Scenario | Type | Source File | Lock Coverage |
+|---|---|---|---|---|
+| Claim-T1..T36 | Claim lifecycle, queue, auth, continuity | compatibility_lock | test_claim_single_active_per_operator.py, test_release_claim_active_states.py, test_station_queue_active_states.py, test_reopen_resumability_claim_continuity.py, test_close_operation_auth.py, test_start_downtime_auth.py, test_close_reopen_operation_foundation.py, test_operation_detail_allowed_actions.py | claim boundary |
+| Bridge-T1..T7 | Diagnostic bridge non-interference | compatibility_lock | test_station_session_diagnostic_bridge.py | non-interference |
+| Session-T1..T9 | Session lifecycle | compatibility_lock | test_station_session_lifecycle.py | session boundary |
+| CMD-T1..T9 | Command context diagnostic | compatibility_lock | test_station_session_command_context_diagnostic.py | command boundary |
+
+### Final verification result
+- Claim suite (isolation run): 36 passed, exit code 0
+- Full backend suite: 184 passed, 1 skipped, exit code 0
+
+### Scope guard confirmation
+- No claim model/service/test changes.
+- No execution command behavior change.
+- No API response schema change.
+- No schema migration.
+- No new domain events.
+- No FE/UI changes.
+- Migration debt register created and boundary locked.
+
+### Event naming status
+none_required — P0-C-04E introduced no new domain events.
+
+---
+
+## Slice HM3-016
+Name: P0-C-04D Command Context Diagnostic Integration / Guard Readiness
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/design/02_domain/execution/station-session-ownership-contract.md §7.3 | P0-C-04D = command context guard alignment; not hard enforcement | Non-blocking wiring; no rejection |
+| docs/design/02_domain/execution/station-session-ownership-contract.md §5 INV-009 | No command rejection behavior change until explicitly implemented in later slice | Diagnostic result must not gate any command |
+| docs/implementation/p0-c-execution-entry-audit.md | Commands do not require claim/session guard today | Safe to add read-only observation |
+| docs/design/02_domain/execution/station-execution-command-event-contracts-v4.md | No new events in diagnostic integration slice | Event set unchanged |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| All 9 execution commands | none new | none_required | N/A | n/a | no change | diagnostic is read-only |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---|---|---|
+| Diagnostic integration must not change command allow/deny | behavior_contract | no conditional on `_session_ctx` | no | YES — CMD-T1 through T9 | ownership contract §5 INV-009 |
+| Missing session must not reject command | behavior_contract | `_session_ctx` never used for rejection | no | YES — CMD-T1/T3 | ownership contract |
+| Tenant isolation mandatory | tenant | diagnostic call uses verified tenant_id | no | YES — CMD-T8 | CODING_RULES §TEN-001 |
+| CLOSED session ignored | state_machine | repository partial index, session returns OPEN only | no | YES — CMD-T7 | session model |
+| OperationDetail API response shape unchanged | api_contract | no schema change | no | YES — all CMD-Tn check detail.status only | governance |
+| No new domain events | event_append_only | no event emission in diagnostic | no | existing | command/event contracts |
+| Claim behavior unchanged | session | no claim model/service/test changes | no | existing | ENGINEERING_DECISIONS §10 |
+
+### State Transition Map
+No state transitions introduced. P0-C-04D adds a read-only diagnostic observation point inside each service function, after the tenant guard, before any state machine guard. The local variable `_session_ctx` is never used in any conditional.
+
+### Test Matrix
+| Test ID | Scenario | Type | Command | Given | When | Then | Invariant |
+|---|---|---|---|---|---|---|---|
+| CMD-T1 | start_operation unchanged, no session | behavior_unchanged | start_operation | PLANNED op, no session | command called | IN_PROGRESS, no error | allow/deny unchanged |
+| CMD-T2 | start_operation unchanged, with OPEN session | behavior_unchanged | start_operation | PLANNED op, OPEN session | command called | IN_PROGRESS, no error | allow/deny unchanged |
+| CMD-T3 | pause_operation unchanged, no session | behavior_unchanged | pause_operation | IN_PROGRESS op, no session | command called | PAUSED, no error | allow/deny unchanged |
+| CMD-T4 | pause_operation unchanged, with OPEN session | behavior_unchanged | pause_operation | IN_PROGRESS op, OPEN session | command called | PAUSED, no error | allow/deny unchanged |
+| CMD-T5 | start rejection unchanged | rejection_unchanged | start_operation | IN_PROGRESS op, no session | start_operation called | StartOperationConflictError | rejection code unchanged |
+| CMD-T6 | diagnostic accessible from command context | diagnostic_accessible | manual diagnostic | OPEN session | get_station_session_diagnostic with op context | readiness=OPEN | backend-derived |
+| CMD-T7 | CLOSED session not active from command context | invalid_session | manual diagnostic | only CLOSED session | command + diagnostic | NO_ACTIVE_SESSION; command succeeds | terminal state |
+| CMD-T8 | cross-tenant session no false positive | security | manual diagnostic | session for other tenant | diagnostic for this tenant | NO_ACTIVE_SESSION | tenant isolation |
+| CMD-T9 | pause rejection unchanged | rejection_unchanged | pause_operation | PLANNED op, no session | pause_operation called | PauseExecutionConflictError | rejection code unchanged |
+
+### Final verification result
+- Command context diagnostic tests: 9 passed
+- Diagnostic bridge tests (P0-C-04C): 7 passed (unchanged)
+- Session lifecycle + claim regression subset: 86 passed
+- Full backend suite: 184 passed, 1 skipped, exit 0
+
+### Scope guard confirmation
+- No claim model/service/test changes.
+- No execution command rejection behavior change.
+- No API response schema change (OperationDetail unchanged).
+- No schema migration.
+- No new domain events.
+- No FE/UI changes.
+- `_compute_session_diagnostic` and `_session_ctx` are internal to the service layer.
+
+### Event naming status
+none_required — P0-C-04D introduced no new domain events.
