@@ -1,394 +1,497 @@
-# DESIGN.md — FleziBCG Design System
+# DESIGN.md — FleziBCG Manufacturing Operations Platform
 
-## Purpose
+## History
 
-This file defines the visual and interaction style for FleziBCG.
+| Date | Version | Change |
+|---|---:|---|
+| 2026-04-30 | v2.0 | Upgraded to DESIGN.md-style design-system guide for AI UI generation, aligned with FleziBCG MOM boundaries. |
 
-Use it when creating:
+## Status
 
-- frontend screens
-- reusable components
-- dashboard pages
-- operator/shopfloor UI
-- admin/governance UI
-- design mockups
-- Figma Make prompts
-- React/Tailwind implementation
+Authoritative AI-readable design-system guide for FleziBCG frontend, Figma Make, and UI implementation agents.
 
-FleziBCG UI must feel:
-
-- operational
-- trustworthy
-- calm
-- precise
-- industrial but modern
-- information-dense without being noisy
-
-Do not copy another brand's design system.
+This file defines how FleziBCG should look and behave at the UI level. It does **not** define backend truth, business rules, API contracts, authorization, or execution state transitions.
 
 ---
 
-# 1. Product UI Personality
+# 1. Visual Theme & Atmosphere
 
-FleziBCG is a MOM / manufacturing operations platform.
+FleziBCG is a **Manufacturing Operations Platform** for industrial execution, governance, visibility, and operational intelligence.
 
-The UI should communicate:
+The UI should feel:
 
-- execution truth
-- operational confidence
-- governed action
-- real-time awareness
-- cross-domain visibility
-- enterprise readiness
+- operational;
+- trustworthy;
+- precise;
+- calm under pressure;
+- enterprise-ready;
+- manufacturing-aware;
+- information-dense but not noisy.
+
+The UI must **not** feel:
+
+- playful consumer SaaS;
+- generic admin template;
+- speculative sci-fi dashboard;
+- over-animated;
+- decorative without operational consequence;
+- AI-first before execution truth is stable.
+
+Design language:
+
+- industrial clarity;
+- neutral base surfaces;
+- strong semantic status language;
+- clear hierarchy between current state, next action, and supporting context;
+- minimum visual drama, maximum operational readability.
+
+---
+
+# 2. Color Palette & Roles
+
+Use semantic color roles rather than arbitrary decorative colors.
+
+| Token | Role | Usage |
+|---|---|---|
+| `surface.app` | App background | Main application shell background |
+| `surface.panel` | Cards/panels | Primary content panels |
+| `surface.raised` | Elevated panels | Modals, popovers, active detail panes |
+| `border.subtle` | Structure | Card, table, section borders |
+| `text.primary` | Primary text | Titles, key labels, operational state |
+| `text.secondary` | Secondary text | Descriptions, metadata, helper text |
+| `text.muted` | Low-emphasis text | Timestamps, inactive hints |
+| `action.primary` | Primary action | Main command, selected nav, active CTA |
+| `status.success` | Healthy / completed / passed | Completed operation, passed inspection, available resource |
+| `status.info` | Running / informational | Running operation, advisory context |
+| `status.warning` | Attention / delayed / pending | Paused, pending review, near breach |
+| `status.danger` | Blocked / failed / critical | Blocked, failed, rejected, unsafe |
+| `status.neutral` | Draft / unknown / inactive | Pending, planned, disabled, unknown |
+
+Status mapping guidance:
+
+| Operational Meaning | Recommended Semantic Role |
+|---|---|
+| `RUNNING` | `status.info` |
+| `PAUSED` | `status.warning` |
+| `BLOCKED` | `status.danger` |
+| `COMPLETED` | `status.success` |
+| `CLOSED` | `status.neutral` + locked treatment |
+| `QC_PASSED` | `status.success` |
+| `QC_FAILED` | `status.danger` |
+| `QC_HOLD` | `status.warning` or `status.danger` depending severity |
+| `ERP_POSTING_PENDING` | `status.warning` |
+| `ERP_POSTING_FAILED` | `status.danger` |
+| `AI_ADVISORY` | `status.info` with advisory label |
+
+Rules:
+
+- Never rely on color only. Pair status color with text, icon, or badge label.
+- Do not invent new status colors in individual screens.
+- Do not use red/orange/green decoratively; reserve them for operational meaning.
+
+---
+
+# 3. Typography Rules
+
+Use modern sans-serif typography:
+
+```text
+font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif
+```
+
+Type hierarchy:
+
+| Role | Usage |
+|---|---|
+| Display | Operator current state, major KPI, critical station number |
+| H1 | Page title |
+| H2 | Section title |
+| H3 | Card title / panel title |
+| Body | Normal operational text |
+| Body small | Metadata, timestamps, helper text |
+| Mono | IDs, lot numbers, event codes, technical references |
+
+Operator/station screens:
+
+- Current state should be readable at distance.
+- Primary action label should be large and unambiguous.
+- Key quantities and timers should use large numeric treatment.
+- Avoid tiny dense metadata in the primary operator cockpit.
+
+Admin/supervisory screens:
+
+- Use tighter density but preserve scannability.
+- Tables should have clear headers and meaningful status badges.
+- Do not bury risk/blockage status in low-contrast text.
+
+---
+
+# 4. Component Stylings
+
+## 4.1 App Shell
+
+Use:
+
+- left sidebar for primary navigation;
+- top header for tenant, plant, user/session, and global context;
+- main content area for the active work screen;
+- optional right detail panel for contextual drill-down.
+
+The app shell must support domain grouping:
+
+- Manufacturing Operations;
+- Master Data;
+- Quality;
+- Material / Traceability;
+- Supervisory;
+- Integration;
+- Reporting;
+- Administration;
+- Future / Advisory modules.
+
+Navigation exposure is UX only. It is not authorization truth.
+
+## 4.2 Page Header
+
+Each page should include:
+
+- title;
+- domain/subtitle;
+- phase/status badge where useful;
+- primary action if active;
+- contextual selectors only when needed.
+
+## 4.3 Cards and Panels
+
+Cards should be structured, not decorative.
+
+Use cards for:
+
+- operational context summary;
+- KPI strip;
+- current state;
+- blocker panel;
+- event summary;
+- detail panel.
 
 Avoid:
 
-- playful SaaS gimmicks
-- consumer-app softness
-- over-rounded toy-like cards
-- colorful gradients everywhere
-- fake futuristic AI visuals
-- excessive glassmorphism
-- excessive animation
-- dashboard clutter
+- too many equal-weight cards;
+- dashboard clutter;
+- cards that do not drive action or understanding.
 
----
+## 4.4 Buttons
 
-# 2. Layout Principles
+Rules:
 
-## Global app shell
+- One dominant primary action per work area where possible.
+- Destructive/governed actions require confirmation or clear contextual warning.
+- Operator primary actions should be 48–56px+ high.
+- Do not show enabled actions unless backend `allowed_actions` or connected contract supports them.
+- Disabled actions should explain why when operationally important.
 
-Use:
-
-- left sidebar for primary navigation
-- top header for tenant/plant/user/session/global status
-- main content area for working screens
-- optional right panel for contextual details
-- stable page header with title, subtitle, primary action, status
-
-## Page structure
-
-Each page should use:
-
-1. Page header
-2. Context summary / KPI strip
-3. Main work area
-4. Detail or side panel if needed
-5. Clear empty/loading/error states
-
-## Density
-
-- Admin/supervisory pages: medium density
-- Operator/station pages: touch-friendly density
-
----
-
-# 3. Visual Style
+## 4.5 Tables / Data Grids
 
 Use:
 
-- neutral app background
-- white panels/cards
-- subtle borders
-- minimal shadows
-- high readability
-- semantic colors only
+- sticky headers for long operational lists;
+- filters above table;
+- status/phase badges;
+- row click for detail;
+- empty/loading/error states;
+- clear timestamp and ID display.
 
-Avoid heavy decorative visuals.
+Do not:
 
----
+- place critical actions in tiny icon-only cells;
+- mix mock rows with real rows without clear isolation;
+- hide blocked/held/delayed status in secondary columns.
 
-# 4. Semantic Colors
+## 4.6 Status Badges
 
-| Meaning | Usage |
-|---|---|
-| Primary | main action, selected nav, active command |
-| Success | completed, passed, available, healthy |
-| Warning | delayed, pending, attention required |
-| Danger | blocked, failed, rejected, critical |
-| Info | running, informational, advisory |
-| Neutral | draft, inactive, disabled, unknown |
+Every status badge must map to a stable status code or explicitly declared placeholder state.
 
-Status examples:
+Badge types:
 
-- RUNNING → info/blue
-- PAUSED → warning/amber
-- BLOCKED → danger/red
-- COMPLETED → success/green
-- PENDING → neutral/gray
-- HOLD → warning or danger depending severity
+- runtime status;
+- quality status;
+- closure status;
+- integration status;
+- phase marker;
+- future/placeholder marker;
+- AI advisory marker.
 
----
+## 4.7 Forms
 
-# 5. Typography
+Forms must show:
 
-Use modern sans-serif:
+- required fields;
+- validation errors;
+- backend error code when returned;
+- clear submit/cancel actions;
+- confirmation for governed/destructive commands.
 
-- Inter
-- system-ui
-- Segoe UI fallback
+Forms must not:
 
-Operator screens may use larger type:
+- calculate authoritative business results client-side;
+- decide pass/fail/approval/disposition client-side;
+- submit hidden fake values to satisfy UI flow.
 
-- status: very large
-- primary action: large
-- key numbers: readable at distance
+## 4.8 Modals / Dialogs
 
----
+Use modals for:
 
-# 6. Components
+- confirmation;
+- bounded operator entry;
+- reason capture;
+- details that should not navigate away.
 
-## Buttons
+Avoid nested modal stacks.
 
-- One primary action per work area where possible.
-- Danger button only for destructive/blocking actions.
-- Operator primary action must be large, high contrast, and touch-friendly.
+## 4.9 Timeline / Event History
 
-## Tables
+Event timeline must show:
 
-- sticky header for long tables
-- clear status badges
-- row click opens detail
-- filters above table
-- empty state explains what to do
-
-## Badges
-
-Badges are semantic:
-
-- status
-- phase
-- risk
-- role
-- scope
-- source
-
-## Timeline / events
-
-Event timelines show:
-
-- timestamp
-- actor
-- event type
-- entity/context
-- payload summary
-- source
+- timestamp;
+- actor;
+- event type;
+- entity context;
+- payload summary;
+- correlation/reference where relevant.
 
 Do not make event history look like chat.
 
 ---
 
-# 7. Shopfloor / Operator UI Rules
+# 5. Layout Principles
 
-Operator UI must show at most:
+## 5.1 Global Layout
 
-1. Current operation / station context
+Default page structure:
+
+1. Page header
+2. Context summary / KPI strip
+3. Main work area
+4. Detail or side panel if useful
+5. Empty/loading/error states
+
+## 5.2 Density Modes
+
+| Screen Type | Density |
+|---|---|
+| Operator / station execution | Touch-first, low clutter |
+| Supervisor monitor | Dense but structured |
+| Admin / governance | Medium density |
+| Reporting | Data-dense with clear filters |
+| Future AI/Twin | Clearly marked advisory/future |
+
+## 5.3 Operator Cockpit Layout
+
+Operator cockpit should show at most:
+
+1. Current station / operation context
 2. Current state
-3. Key quantities / timer
+3. Key quantities / elapsed time / target
 4. Primary action zone
-5. Blocking/warning message if needed
+5. Blocker or warning panel
 
 Avoid:
 
-- dense tables
-- hidden dropdowns for critical actions
-- small click targets
-- ambiguous icons
-- multiple competing primary buttons
+- multi-table cockpit;
+- tiny dropdowns for critical actions;
+- hidden hover-only controls;
+- multiple competing primary actions;
+- fake progress indicators not backed by backend truth.
 
-Touch target:
+## 5.4 Supervisor Layout
 
-- normal UI: 40–44px
-- operator UI: 48–56px+
+Supervisor screens should emphasize:
 
----
-
-# 8. AI UI Rules
-
-AI is advisory.
-
-AI components must show:
-
-- confidence/uncertainty where relevant
-- source context
-- clear advisory label
-- no hidden mutation
-
-Avoid:
-
-- “AI decided”
-- “AI approved”
-- “AI completed”
+- current line/station state;
+- blocked/delayed operations;
+- work-in-progress;
+- downtime and reason context;
+- escalation/action need;
+- drill-down to operation detail.
 
 ---
 
-# 9. Implementation Rules
+# 6. Depth & Elevation
 
-When implementing in React/Tailwind:
+Use elevation sparingly.
 
-- use shared components
-- centralize semantic status styles
-- avoid one-off styling
-- keep business logic out of UI
-- do not hardcode permission truth
-- do not derive execution truth in frontend
-- use backend-provided allowed actions where available
-- isolate mocks clearly
+| Level | Usage |
+|---|---|
+| Base | App background |
+| Panel | Cards and work areas |
+| Raised | Active detail panel, popover |
+| Modal | Dialog/confirmation |
+| Critical overlay | Rare blocking warnings only |
 
----
+Rules:
 
-# 10. Do Not Fake Rules
-
-Do not fake:
-
-- backend truth
-- authorization
-- execution transitions
-- quality pass/fail
-- ERP posting
-- backflush
-- AI deterministic decisions
-- digital twin accuracy
+- Prefer border + spacing over heavy shadows.
+- Avoid glassmorphism and neon glow.
+- Critical warnings should be visually clear without overwhelming normal operation.
 
 ---
 
-# 12. FleziBCG UI Design System — AI Agent Rules
+# 7. Do's and Don'ts
 
-## Status
+## Do
 
-Authoritative UI design-system guide for AI-assisted frontend generation.
+- Preserve backend truth boundary.
+- Use backend `allowed_actions` when connected.
+- Mark mock, shell, disabled, and future screens explicitly.
+- Use semantic status badges.
+- Use i18n keys for user-facing text.
+- Keep operator screens readable and touch-friendly.
+- Include loading, error, and empty states.
+- Design by domain pack, not all screens at once.
+- Keep future modules visually present but disabled where useful.
 
-## Purpose
+## Don't
 
-This section gives AI agents a stable UI/UX reference so generated frontend code remains visually consistent, operationally safe, and aligned with FleziBCG MOM principles.
+- Do not fake authorization.
+- Do not fake execution transitions.
+- Do not fake quality pass/fail.
+- Do not fake acceptance gate approval.
+- Do not fake ERP posting success.
+- Do not fake backflush completion.
+- Do not present AI output as deterministic truth.
+- Do not make Digital Twin look like real-time truth unless it is actually connected.
+- Do not copy public brand design systems into FleziBCG.
+- Do not redesign the whole app shell without explicit scope.
 
-## Product Feel
+---
 
-FleziBCG UI should feel:
+# 8. Responsive Behavior
 
-- industrial
-- clean
-- operational
-- trustworthy
-- calm under pressure
-- data-dense only where useful
-- action-oriented for shopfloor users
-- overview-oriented for supervisors
+## Breakpoint behavior
 
-## Visual Direction
+| Viewport | Expected Behavior |
+|---|---|
+| Desktop wide | Sidebar + main + optional right panel |
+| Desktop standard | Sidebar + main; right panel collapsible |
+| Tablet landscape | Sidebar may collapse; station actions remain touch-friendly |
+| Tablet portrait | Navigation collapses; primary operator context remains visible |
+| Mobile | Mostly supervisor/admin quick review only; not default for station operation unless explicitly designed |
 
-Use a modern industrial SaaS style:
+## Touch targets
 
-- light neutral background
-- strong hierarchy
-- restrained color palette
-- clear status chips
-- cards for operational groupings
-- tables for operational lists
-- large state indicators for station/operator screens
-- compact but readable supervisory dashboards
+- Normal UI: 40–44px minimum.
+- Operator / station UI: 48–56px+ minimum.
+- Dangerous/governed actions need separation from routine actions.
 
-## Semantic UI Rules
+## Responsive rules
 
-### Status must be explicit
+- Do not hide critical execution state on smaller screens.
+- Do not push primary operator action below dense secondary content.
+- Do not make table-only layouts mandatory on tablet/operator screens.
+- Prefer stacked cards for operator context on constrained widths.
 
-Do not rely on color alone.
+---
 
-Always pair color with text labels such as:
+# 9. Agent Prompt Guide
 
-- `RUNNING`
-- `PAUSED`
-- `BLOCKED`
-- `COMPLETED`
-- `QC_HOLD`
-- `RELEASED`
-- `RETIRED`
-- `DRAFT`
+When generating UI, the agent must read:
 
-### Operational actions must be clear
+1. `DESIGN.md`
+2. `docs/design/DESIGN.md` if present
+3. `docs/audit/frontend-source-alignment-snapshot.md` if present
+4. relevant screen/domain docs
+5. `.github/copilot-instructions.md`
+6. `docs/ai-skills/design-md-ui-governor/SKILL.md`
+7. `docs/ai-skills/hard-mode-mom-v3/SKILL.md` when touching execution/governance/quality/material truth
 
-Primary action should be visually dominant.
+Prompt pattern:
 
-Dangerous or governed actions require confirmation.
+```text
+Use DESIGN.md as the UI design-system authority.
+Do not invent backend truth, permission truth, execution transitions, quality results, ERP posting, backflush, AI deterministic decisions, or Digital Twin accuracy.
+Preserve current source patterns where verified.
+Label screens as ACTIVE / PARTIAL / MOCK / SHELL / FUTURE / DISABLED.
+Implement only the requested UI slice.
+```
 
-### Future scope must be labelled
+Required output for UI work:
 
-Screens for future phases must show one of:
+```markdown
+# UI/UX Implementation Report
+## Selected Skill
+## Source Inputs Read
+## Design System Alignment
+## Files Changed
+## Screens Affected
+## Components Added / Updated
+## Data Source Status
+## MOM Safety Check
+## Responsive / Accessibility Check
+## Tests / Build Run
+## Known Limitations
+## Next Recommended FE Slice
+```
 
+---
+
+# 10. FleziBCG-Specific UI Contracts
+
+## Backend truth boundary
+
+Frontend owns:
+
+- layout;
+- navigation;
+- interaction state;
+- visualization;
+- display formatting.
+
+Backend owns:
+
+- execution truth;
+- status truth;
+- authorization truth;
+- approval truth;
+- audit truth;
+- quality evaluation truth;
+- integration/posting result truth.
+
+## Mock / Future rules
+
+Mock or future screens must be visibly classified in code/docs and must not look production-connected.
+
+Accepted labels:
+
+- `ACTIVE`
+- `PARTIAL`
+- `MOCK`
+- `SHELL`
 - `FUTURE`
-- `NOT ACTIVE`
-- `PLACEHOLDER`
-- `REQUIRES BACKEND`
+- `DISABLED`
 
-They must not appear production-ready.
+## Manufacturing Operations naming
 
-## Component Patterns
+Use:
 
-### Page shell
+- Brand: `FleziBCG`
+- Category: `MOM`
+- Full name: `FleziBCG Manufacturing Operations Platform`
+- UI phrase: `Manufacturing Operations`
 
-Every page should include:
+Do not use `MES Lite` in UI.
 
-- page title
-- short context subtitle
-- domain/status badge if relevant
-- primary action area
-- content region
-- empty/loading/error state
+---
 
-### Data table
+# 11. Review Checklist
 
-Tables should include:
+Before approving UI output, check:
 
-- search/filter where useful
-- status badge
-- clear row action
-- empty state
-- pagination or limit indication if needed
-
-### Operator cockpit
-
-Operator cockpit should include:
-
-- current station/session context
-- current operation
-- current state
-- target vs actual where relevant
-- blockers
-- one primary next action
-- event/history panel if useful
-
-### Supervisor dashboard
-
-Supervisor dashboard should include:
-
-- plant/line/station filters
-- current state summary
-- exceptions first
-- bottlenecks/blockers
-- operational list
-- timeline/event view where relevant
-
-## Do-not-fake Rules
-
-Frontend must not fake:
-
-- authorization
-- allowed actions
-- execution state
-- station ownership
-- quality result
-- acceptance decision
-- backflush posting
-- ERP posting
-- AI deterministic decision
-- digital twin accuracy
-
-## Stitch / Figma Make Usage
-
-When importing or generating from Google Stitch or Figma Make:
-
-- preserve this `DESIGN.md` as the style authority
-- preserve current source alignment from `docs/audit/frontend-source-alignment-snapshot.md`
-- generate by domain pack, not the full product at once
-- clearly mark connected, mock, shell, future, and disabled screens
-- do not redesign the whole app shell without explicit approval
+- Does it follow DESIGN.md?
+- Does it preserve source alignment?
+- Does it avoid frontend truth leakage?
+- Are future screens marked as future/disabled?
+- Are loading/error/empty states present where data-driven?
+- Are operator actions touch-friendly?
+- Are status colors semantic and consistent?
+- Are user-facing strings i18n-ready?
+- Does the report declare build/test results?
