@@ -622,6 +622,56 @@ Compatibility impact:
 
 ---
 
+### 19. P0-C-05 Start / Pause / Resume Command Hardening
+
+Hard Mode MOM v3 Gate Verdict: ALLOW_IMPLEMENTATION
+
+Scope:
+- Tests-only hardening slice for `start_operation`, `pause_operation`, and `resume_operation`
+- No production service behavior changes required
+- New focused suite: `backend/tests/test_start_pause_resume_command_hardening.py`
+
+Invariant confirmations:
+- Start allowed only from PLANNED; rejects non-PLANNED; closed record rejects with `STATE_CLOSED_RECORD`
+- Pause allowed only from IN_PROGRESS; rejects non-IN_PROGRESS; closed record rejects with `STATE_CLOSED_RECORD`
+- Resume allowed only from PAUSED; rejects non-PAUSED, open downtime (`STATE_DOWNTIME_OPEN`), and station-busy (`STATE_STATION_BUSY`)
+- Event emission unchanged and verified: `OP_STARTED`, `execution_paused`, `execution_resumed`
+- Post-command projection and backend-derived `allowed_actions` verified for start/pause/resume
+- StationSession diagnostic remains non-blocking with no session and with matching OPEN session
+- Claim compatibility preserved
+
+Files introduced:
+- `backend/tests/test_start_pause_resume_command_hardening.py`
+
+Production code changed:
+- No
+
+Verification runs:
+- P0-C-05 focused suite:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_start_pause_resume_command_hardening.py`
+	- Result: 12 passed in 5.48s, exit code 0
+- StationSession lifecycle + diagnostic suites:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_station_session_lifecycle.py tests/test_station_session_diagnostic_bridge.py tests/test_station_session_command_context_diagnostic.py`
+	- Result: 25 passed in 9.07s, exit code 0
+- Claim regression subset:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_claim_single_active_per_operator.py tests/test_release_claim_active_states.py tests/test_station_queue_active_states.py tests/test_reopen_resumability_claim_continuity.py tests/test_close_reopen_operation_foundation.py`
+	- Result: 36 passed in 7.72s, exit code 0
+- Projection/status regression:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_operation_detail_allowed_actions.py tests/test_operation_status_projection_reconcile.py tests/test_status_projection_reconcile_command.py`
+	- Result: 41 passed in 4.35s, exit code 0
+- Full backend suite:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q`
+	- Result: 196 passed, 1 skipped in 31.62s, exit code 0
+
+Event naming status: unchanged — no new domain events introduced in P0-C-05.
+
+Compatibility impact:
+- Command behavior hardened and verified; business behavior unchanged.
+- StationSession diagnostic remains non-blocking.
+- Claim route guards and claim lifecycle remain unchanged.
+
+---
+
 ### 13. P0-C-01 Work Order / Operation Foundation Alignment
 
 Hard Mode MOM v3 Gate Verdict: ALLOW_IMPLEMENTATION

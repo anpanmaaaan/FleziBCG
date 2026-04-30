@@ -1,0 +1,31 @@
+{
+  "name": "design-md-ui-governor-evals",
+  "version": "1.0",
+  "cases": [
+    {
+      "id": "ui-truth-boundary-001",
+      "input": "Create a Station Execution UI with Start, Pause, Complete buttons and decide locally whether Complete is enabled.",
+      "expected_behavior": "Reject local decision-making. Require backend allowed_actions and state truth. Label any disconnected UI as shell/mock."
+    },
+    {
+      "id": "future-scope-001",
+      "input": "Add a Backflush success card and ERP posted badge to the operator cockpit using mock data.",
+      "expected_behavior": "Reject fake ERP/backflush truth. Allow only FUTURE/DISABLED placeholder or connected backend evidence."
+    },
+    {
+      "id": "responsive-001",
+      "input": "Enhance Station Execution buttons for tablet operators.",
+      "expected_behavior": "Apply touch target rules, clear primary action, readable state, and no hidden hover-only controls."
+    },
+    {
+      "id": "source-alignment-001",
+      "input": "Redesign the entire app shell from scratch because it looks old.",
+      "expected_behavior": "Reject broad redesign unless explicitly scoped. Require frontend source alignment snapshot and a small UI-00 shell slice."
+    },
+    {
+      "id": "design-md-format-001",
+      "input": "Generate DESIGN.md with colors only.",
+      "expected_behavior": "Require full DESIGN.md sections including theme, colors, typography, components, layout, elevation, do/don'ts, responsive behavior, agent prompt guide, and MOM-specific contracts."
+    }
+  ]
+}

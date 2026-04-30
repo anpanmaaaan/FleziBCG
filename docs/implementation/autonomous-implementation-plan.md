@@ -50,7 +50,7 @@ Blocked / deferred slices:
 
 ### P0-C Station Execution Baseline
 
-Status: In progress. Entry audit complete. Slices P0-C-01 through P0-C-04E complete.
+Status: In progress. Entry audit complete. Slices P0-C-01 through P0-C-05 complete.
 
 Completed slices:
 - P0-C-01 Work Order / Operation Foundation Alignment
@@ -92,18 +92,17 @@ Completed slices:
   - 9 test-first tests in test_station_session_command_context_diagnostic.py, all passing
   - API response shape (OperationDetail) unchanged
   - Backend suite: 184 passed, 1 skipped, exit 0
+- P0-C-05 Start / Pause / Resume Command Hardening
+  - New focused hardening suite: `backend/tests/test_start_pause_resume_command_hardening.py` (12 tests)
+  - Guard legality verified for PLANNED/IN_PROGRESS/PAUSED and CLOSED-record rejection
+  - Event emission verified: `OP_STARTED`, `execution_paused`, `execution_resumed`
+  - Projection and `allowed_actions` verified after start/pause/resume transitions
+  - StationSession diagnostic non-blocking behavior re-verified (session and no-session paths)
+  - Backend suite: 196 passed, 1 skipped, exit 0
 
 Pending slices (in recommended order):
-  - Backend suite: 184 passed, 1 skipped, exit 0
-- P0-C-04E Claim Compatibility / Deprecation Lock
-  - Compatibility lock document created; 8 non-negotiable boundary invariants codified
-  - Claim source map: `ensure_operation_claim_owned_by_identity` at 8 route-layer guard sites
-  - Migration debt register and next-slice pre-conditions documented
-  - Test compatibility lock: 45 claim + 16 session/diagnostic + 9 command context tests
-  - Backend suite: 184 passed, 1 skipped, exit 0
 - P0-C-06 Production Reporting + Downtime Commands
 - P0-C-07 Complete / Close / Reopen Guard Alignment
-- P0-C-05 Start / Pause / Resume Command Hardening
 
 ## Current Slice Ledger
 
@@ -378,3 +377,35 @@ Verification summary:
 - Diagnostic bridge tests: 7 passed (unchanged)
 - Session lifecycle + claim regression subset: 86 passed
 - Full backend suite: 184 passed, 1 skipped, exit 0
+
+### 19. P0-C-05 Start / Pause / Resume Command Hardening
+
+Status: Complete.
+
+Hard Mode MOM v3 verdict: ALLOW_IMPLEMENTATION
+
+Scope implemented:
+- Focused start/pause/resume hardening suite added: `backend/tests/test_start_pause_resume_command_hardening.py`
+- 12 tests added to verify legal transitions, illegal transitions, closed-record rejection, event emission, projection status, and allowed-actions derivation
+- StationSession non-blocking contract re-verified for start/pause/resume with and without OPEN session
+- Claim compatibility regression re-verified unchanged
+
+Non-scope preserved:
+- No StationSession hard enforcement
+- No claim removal or claim behavior change
+- No event name changes
+- No schema migration
+- No FE/UI changes
+
+Files introduced for this slice:
+- backend/tests/test_start_pause_resume_command_hardening.py
+
+Production code changes:
+- none (tests-only hardening slice)
+
+Verification summary:
+- P0-C-05 focused tests: 12 passed
+- Station session lifecycle/diagnostic suites: 25 passed
+- Claim regression subset: 36 passed
+- Projection/status regression: 41 passed
+- Full backend suite: 196 passed, 1 skipped, exit 0

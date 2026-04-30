@@ -859,6 +859,72 @@ No state transitions. P0-C-04C is read-only — the diagnostic function performs
 none_required — P0-C-04C is a read-only diagnostic slice; no new domain events introduced.
 
 ## Slice HM3-016
+## Slice HM3-018
+Name: P0-C-05 Start / Pause / Resume Command Hardening
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/design/02_domain/execution/station-execution-state-matrix-v4.md | START-001, PAUSE-001, RESUME-001 define legal state transitions and reject conditions | Guard legality tests required |
+| docs/design/02_domain/execution/station-execution-command-event-contracts-v4.md | Canonical command/event intent; no rename in this slice | Event names preserved |
+| docs/design/02_domain/execution/execution-state-machine.md | No transition without event; CLOSED blocks writes except reopen | Event + closed-write assertions required |
+| docs/implementation/p0-c-04-claim-compatibility-deprecation-lock.md | Claim remains compatibility guard; no claim mutation/removal | Claim regression subset required |
+| docs/implementation/p0-c-04-contract-finalization-report.md | Session diagnostic currently non-blocking | No-session/open-session parity required |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| start_operation | OP_STARTED | domain_event | unchanged | operator_id, started_at | derive IN_PROGRESS | operation_service.py |
+| pause_operation | execution_paused | domain_event | unchanged | actor_user_id, paused_at | derive PAUSED | operation_service.py |
+| resume_operation | execution_resumed | domain_event | unchanged | actor_user_id, resumed_at | derive IN_PROGRESS | operation_service.py |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---|---|---|
+| start only from PLANNED | state_machine | service guard | no | YES | state matrix START-001 |
+| pause only from IN_PROGRESS | state_machine | service guard | no | YES | state matrix PAUSE-001 |
+| resume only from PAUSED | state_machine | service guard | no | YES | state matrix RESUME-001 |
+| resume rejects open downtime | state_machine | service guard from event counts | no | YES | INV-003 |
+| resume rejects station busy | station | service guard (`get_in_progress_operations_by_station`) | no | YES | INV-002 |
+| closed record rejects writes | state_machine | `_ensure_operation_open_for_write` | no | YES | INV-001 |
+| tenant mismatch rejected | tenant | service guard | no | YES | CODING_RULES TEN-001 |
+| session diagnostic non-blocking | session | `_session_ctx` informational only | no | YES | P0-C-04D contract |
+| claim compatibility preserved | migration_debt | route-layer claim guard unchanged | no | YES | P0-C-04E lock |
+| projection and actions backend-derived | projection_consistency | derive_operation_detail + _derive_allowed_actions | no | YES | execution-state-machine |
+
+### State Transition Map
+| Entity | Current State | Command | Allowed? | Event | Next Projection State | Invalid Case Test | Source |
+|---|---|---|---|---|---|---|---|
+| Operation | PLANNED + OPEN | start_operation | Yes | OP_STARTED | IN_PROGRESS | non-PLANNED reject | START-001 |
+| Operation | IN_PROGRESS + OPEN | pause_operation | Yes | execution_paused | PAUSED | non-IN_PROGRESS reject | PAUSE-001 |
+| Operation | PAUSED + OPEN + no downtime + no competing running op | resume_operation | Yes | execution_resumed | IN_PROGRESS | non-PAUSED / downtime-open / station-busy reject | RESUME-001 |
+
+### Test Matrix
+| Test ID | Scenario | Type | Source File | Invariant |
+|---|---|---|---|---|
+| P0C05-T1..T3 | start happy + illegal + closed | command_guard | test_start_pause_resume_command_hardening.py | START-001 + INV-001 |
+| P0C05-T4..T6 | pause happy + illegal + closed | command_guard | test_start_pause_resume_command_hardening.py | PAUSE-001 + INV-001 |
+| P0C05-T7..T10 | resume happy + illegal + downtime-open + station-busy | command_guard | test_start_pause_resume_command_hardening.py | RESUME-001 + INV-002/003 |
+| P0C05-T11..T12 | missing/open StationSession parity | regression | test_start_pause_resume_command_hardening.py | non-blocking diagnostic |
+
+### Final verification result
+- Focused P0-C-05 suite: 12 passed
+- Station session lifecycle + diagnostic suites: 25 passed
+- Claim regression subset: 36 passed
+- Projection/status regression: 41 passed
+- Full backend suite: 196 passed, 1 skipped, exit 0
+
+### Scope guard confirmation
+- No production code changes.
+- No claim behavior changes.
+- No StationSession hard enforcement.
+- No event-name changes.
+- No schema migration.
+- No FE/UI changes.
+
+### Event naming status
+unchanged — P0-C-05 introduced no new domain events.
+
 ## Slice HM3-017
 Name: P0-C-04E Claim Compatibility / Deprecation Lock
 
