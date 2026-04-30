@@ -82,6 +82,7 @@ export function RouteDetail() {
     <div className="h-full flex flex-col bg-white">
       <PageHeader
         title={t("routeDetail.title")}
+        subtitle={t("routeDetail.notice.backendRequired")}
         showBackButton
         actions={(
           <div className="flex items-center gap-2">
@@ -101,7 +102,7 @@ export function RouteDetail() {
         <BackendRequiredNotice message={t("routeDetail.notice.backendRequired")} tone="blue" />
 
         {loading && (
-          <div className="rounded-lg border bg-white px-4 py-10 text-center text-sm text-gray-500">
+          <div className="rounded-lg border border-gray-200 bg-white px-4 py-10 text-center text-sm text-gray-500 shadow-sm">
             {t("routeDetail.loading")}
           </div>
         )}
@@ -119,12 +120,12 @@ export function RouteDetail() {
         )}
 
         {!loading && !missingRouteId && !notFound && errorMessage && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-800">
-            <p className="mb-3">{errorMessage}</p>
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-800 shadow-sm">
+            <p>{errorMessage}</p>
             <button
               type="button"
               onClick={() => void loadRouting()}
-              className="px-3 py-1.5 rounded border border-red-300 bg-white hover:bg-red-100"
+              className="mt-3 inline-flex rounded border border-red-300 bg-white px-3 py-1.5 hover:bg-red-100"
             >
               {t("routeDetail.action.retry")}
             </button>
@@ -133,7 +134,7 @@ export function RouteDetail() {
 
         {!loading && !missingRouteId && !notFound && !errorMessage && routing && (
           <>
-            <div className="rounded-lg border bg-white p-4">
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center gap-3 mb-3">
                 <h2 className="text-base font-semibold text-gray-900">{routing.routing_name}</h2>
                 <RoutingLifecycleBadge status={routing.lifecycle_status} />
@@ -156,7 +157,7 @@ export function RouteDetail() {
               </div>
             </div>
 
-            <div className="rounded-lg border bg-white p-4">
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
               <h2 className="text-base font-semibold text-gray-900 mb-3">{t("routeDetail.operations.title")}</h2>
               <div className="overflow-x-auto">
                 <table className="w-full">

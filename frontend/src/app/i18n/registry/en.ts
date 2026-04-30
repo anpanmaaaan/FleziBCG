@@ -2,7 +2,7 @@ import type { I18nRegistry } from "@/app/i18n/keys";
 
 export const enRegistry: I18nRegistry = {
   // ── app ──
-  "app.name": "MES Lite",
+  "app.name": "FleziBCG",
 
   // ── common ──
   "common.loading": "Loading",
@@ -54,7 +54,7 @@ export const enRegistry: I18nRegistry = {
   "navigation.stationExecution": "Station Execution",
 
   // ── login ──
-  "login.heading": "Sign in to MES Lite",
+  "login.heading": "Sign in to FleziBCG",
   "login.username.label": "Username",
   "login.password.label": "Password",
   "login.username.placeholder": "Enter username",
@@ -383,7 +383,9 @@ export const enRegistry: I18nRegistry = {
 
   // ── poList ──
   "poList.title": "Production Order List",
+  "poList.subtitle.readOnly": "Read-only production order visibility from backend source data.",
   "poList.loading": "Loading production orders...",
+  "poList.notice.backendRead": "Production orders are loaded from backend APIs. State transitions and execution actions are not performed on this screen.",
   "poList.columns.button": "Columns ({count})",
   "poList.search.placeholder": "Search",
   "poList.col.productionOrder": "Production Order",
@@ -405,10 +407,32 @@ export const enRegistry: I18nRegistry = {
   "poList.col.status": "Status",
   "poList.col.progress": "Progress",
   "poList.col.materialCode": "Material Code",
+  "poList.empty": "No production orders found.",
+  "poList.action.retry": "Retry",
+  "poList.error.loadFailed": "Unable to load production orders.",
+  "poList.error.unauthorized": "Your session is not authorized to read production orders. Please sign in again.",
+  "poList.error.forbidden": "You do not have permission to read production orders.",
+  "poList.results.summary": "Showing {start} - {end} of {total} results",
   "poList.pagination.perPage30": "30 / page",
   "poList.pagination.perPage50": "50 / page",
   "poList.pagination.perPage100": "100 / page",
   "poList.toast.columnsSaved": "Column settings saved",
+  "poList.columns.dialog.title": "Manage visible columns",
+  "poList.columns.dialog.description": "Choose which columns are shown and reorder them for this table.",
+  "poList.columns.dialog.summary.visible": "visible",
+  "poList.columns.dialog.summary.hidden": "hidden",
+  "poList.columns.dialog.summary.total": "columns currently displayed",
+  "poList.columns.dialog.action.reset": "Reset to defaults",
+  "poList.columns.dialog.meta.id": "ID: {id}",
+  "poList.columns.dialog.meta.position": "Position #{position}",
+  "poList.columns.dialog.state.visible": "Visible",
+  "poList.columns.dialog.state.hidden": "Hidden",
+  "poList.columns.dialog.tip.title": "Tip:",
+  "poList.columns.dialog.tip.body": "Drag and drop to reorder columns. Use the eye icon to show or hide each column.",
+  "poList.columns.dialog.action.cancel": "Cancel",
+  "poList.columns.dialog.action.done": "Done",
+  "poList.columns.dialog.aria.hide": "Hide column {label}",
+  "poList.columns.dialog.aria.show": "Show column {label}",
 
   // ── woList ──
   "woList.title": "Execution – Work Orders",
@@ -912,7 +936,7 @@ export const enRegistry: I18nRegistry = {
 
   // ── accessDenied ──
   "accessDenied.title": "Access Denied",
-  "accessDenied.message": "User role is not configured. Please contact MES Administrator.",
+  "accessDenied.message": "User role is not configured. Please contact your FleziBCG Administrator.",
 
   // ── impersonation ──
   "impersonation.trigger": "Act as...",

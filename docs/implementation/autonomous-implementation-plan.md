@@ -50,7 +50,7 @@ Blocked / deferred slices:
 
 ### P0-C Station Execution Baseline
 
-Status: In progress. Entry audit complete. Slices P0-C-01 through P0-C-03 complete.
+Status: In progress. Entry audit complete. Slices P0-C-01 through P0-C-04E complete.
 
 Completed slices:
 - P0-C-01 Work Order / Operation Foundation Alignment
@@ -72,12 +72,38 @@ Completed slices:
   - Hardened event repository ordering for operation detail projection: `created_at, id` deterministic ordering
   - No event contract change, no command expansion, no schema migration, no claim/session migration
   - Backend suite: 159 passed, 1 skipped, exit 0
+- P0-C-04A Station Session Ownership Contract (DOC-ONLY)
+- P0-C-04B StationSession Model + Lifecycle Foundation
+  - StationSession ORM model, SQL migration 0017, repository, service, API routes
+  - 9 lifecycle tests (test-first), all passing
+  - Station session event registry (v1.1 CANONICAL)
+  - Backend suite: 168 passed, 1 skipped, exit 0
+- P0-C-04B Hardening: Event registry canonicalization
+  - `_CANDIDATE_EVENT_STATUS` renamed to `_CANONICAL_EVENT_STATUS`
+  - All 4 station session events at `CANONICAL_FOR_P0_C_STATION_SESSION`
+- P0-C-04C Diagnostic Session Context Bridge
+  - Pure read-only `get_station_session_diagnostic()` helper; `StationSessionDiagnostic` + `SessionReadiness` enum
+  - Non-blocking: missing session is a diagnostic signal only, not a command rejection
+  - 7 test-first tests (BRIDGE-T1 through BRIDGE-T7 class), all passing
+  - Backend suite: 175 passed, 1 skipped, exit 0
+- P0-C-04D Command Context Diagnostic Integration / Guard Readiness
+  - `_compute_session_diagnostic()` private helper wired into all 9 execution commands after tenant check
+  - Diagnostic result stored as local `_session_ctx` — informational only, never used for rejection
+  - 9 test-first tests in test_station_session_command_context_diagnostic.py, all passing
+  - API response shape (OperationDetail) unchanged
+  - Backend suite: 184 passed, 1 skipped, exit 0
 
 Pending slices (in recommended order):
-- P0-C-04 Station Session Ownership Alignment
-- P0-C-05 Start / Pause / Resume Command Hardening
+  - Backend suite: 184 passed, 1 skipped, exit 0
+- P0-C-04E Claim Compatibility / Deprecation Lock
+  - Compatibility lock document created; 8 non-negotiable boundary invariants codified
+  - Claim source map: `ensure_operation_claim_owned_by_identity` at 8 route-layer guard sites
+  - Migration debt register and next-slice pre-conditions documented
+  - Test compatibility lock: 45 claim + 16 session/diagnostic + 9 command context tests
+  - Backend suite: 184 passed, 1 skipped, exit 0
 - P0-C-06 Production Reporting + Downtime Commands
 - P0-C-07 Complete / Close / Reopen Guard Alignment
+- P0-C-05 Start / Pause / Resume Command Hardening
 
 ## Current Slice Ledger
 
@@ -227,3 +253,128 @@ Entry hypothesis:
 
 Stop conditions before implementation:
 - STOP triggered by user request to stop after this slice
+
+### 15. P0-C-04B StationSession Model + Lifecycle Foundation
+
+Status: Complete.
+
+Scope implemented:
+- StationSession persistence model and SQL migration foundation
+- StationSession schemas, repository, service, and API routes under `/station/sessions`
+- Candidate station-session lifecycle events emitted through transitional security-event infrastructure
+- Lifecycle tests added (test-first) and executed
+
+Non-scope preserved:
+- No claim removal/refactor
+- No execution command behavior change
+- No dual-mode queue
+- No FE/UI changes
+
+Files introduced for this slice:
+- backend/app/models/station_session.py
+- backend/app/schemas/station_session.py
+- backend/app/repositories/station_session_repository.py
+- backend/app/services/station_session_service.py
+- backend/app/api/v1/station_sessions.py
+- backend/scripts/migrations/0017_station_sessions.sql
+- backend/tests/test_station_session_lifecycle.py
+- docs/design/02_registry/station-session-event-registry.md
+
+Verification target for this slice:
+- Focused lifecycle tests
+- Claim regression subset
+- Full backend suite
+
+### 16. P0-C-04C Diagnostic Session Context Bridge
+
+Status: Complete.
+
+Hard Mode MOM v3 verdict: ALLOW_IMPLEMENTATION
+
+Scope implemented:
+- `station_session_diagnostic.py` — pure read-only service helper returning `StationSessionDiagnostic`
+- `SessionReadiness` enum: `OPEN` / `NO_ACTIVE_SESSION`
+- 7 test-first tests covering: detection of open session, detection of missing session, ignoring closed session, tenant isolation (no false positive), command-unchanged with no session (BRIDGE-T1), command-unchanged with open session (BRIDGE-T2), operator context when identified
+- Behavior contract: missing session is a diagnostic signal only — not a command rejection
+
+Non-scope preserved:
+- No claim removal/refactor
+- No execution command behavior change (`start_operation` / any command guard unchanged)
+- No new domain events
+- No schema migration
+- No FE/UI changes
+
+Files introduced for this slice:
+- backend/app/services/station_session_diagnostic.py
+- backend/tests/test_station_session_diagnostic_bridge.py
+
+Verification summary:
+- Diagnostic bridge tests: 7 passed
+- Station session lifecycle regression: 9 passed
+- Claim regression subset: 45 passed
+- Full backend suite: 175 passed, 1 skipped, exit 0
+
+### 17. P0-C-04D Command Context Diagnostic Integration / Guard Readiness
+### 18. P0-C-04E Claim Compatibility / Deprecation Lock
+
+Status: Complete.
+
+Hard Mode MOM v3 verdict: ALLOW_IMPLEMENTATION
+
+Scope implemented:
+- Compatibility lock document: `docs/implementation/p0-c-04-claim-compatibility-deprecation-lock.md`
+- 8 non-negotiable compatibility boundary invariants codified
+- Claim source map documented (8 guard call-sites via `ensure_operation_claim_owned_by_identity`)
+- Diagnostic bridge non-interference contract documented
+- Test compatibility lock: 45 claim tests + 16 session/diagnostic bridge tests + 9 command context tests
+- Migration debt register and next-slice pre-conditions documented
+
+Non-scope preserved:
+- No claim model/service/test changes
+- No execution command behavior change
+- No API response change
+- No schema migration
+- No new domain events
+- No FE/UI changes
+
+Files introduced:
+- docs/implementation/p0-c-04-claim-compatibility-deprecation-lock.md
+
+Verification summary:
+- Claim suite (isolation run): 36 passed, exit 0
+- Full backend suite: 184 passed, 1 skipped, exit 0
+
+---
+
+### 17. P0-C-04D Command Context Diagnostic Integration / Guard Readiness
+
+Status: Complete.
+
+Hard Mode MOM v3 verdict: ALLOW_IMPLEMENTATION
+
+Scope implemented:
+- `_compute_session_diagnostic(db, operation, tenant_id)` private helper in `operation_service.py`
+- Wired into all 9 execution commands: start_operation, report_quantity, complete_operation, pause_operation, resume_operation, start_downtime, end_downtime, close_operation, reopen_operation
+- Each command calls helper AFTER the tenant_id guard, BEFORE existing state machine guards
+- Result stored as local `_session_ctx` — informational only, never used for rejection or any conditional
+- Integration point is now in place for P0-C-04E hard enforcement
+
+Non-scope preserved:
+- No command rejection behavior change
+- No API response change (OperationDetail schema unchanged)
+- No claim removal/refactor
+- No new domain events
+- No schema migration
+- No FE/UI changes
+
+Files changed for this slice:
+- backend/app/services/operation_service.py (import + helper + 9 invocations)
+
+Files introduced for this slice:
+- backend/tests/test_station_session_command_context_diagnostic.py
+
+Verification summary:
+- Command context diagnostic tests: 9 passed
+- Diagnostic bridge tests: 7 passed (unchanged)
+- Session lifecycle + claim regression subset: 86 passed
+- Full backend suite: 184 passed, 1 skipped, exit 0

@@ -22,6 +22,13 @@
 | 2026-04-29 | v1.15 | FE-5.1 Docker-Based Verification completed. Used Docker Node container to verify FE-5.1: npm install PASS, build PASS (1m 4s), lint PASS, route smoke check PASS (24/24). Verdict: PASS. |
 | 2026-04-29 | v1.16 | FE-GOV-03 Ignore Rules Hardening applied: root .gitignore and frontend/.dockerignore hardened for local/generated FE artifacts; tracked frontend/dist finding documented with de-track decision deferred to human cleanup PR. |
 | 2026-04-29 | v1.17 | FE-GOV-03.1 Tracked Artifact Cleanup applied: `frontend/dist` de-tracked from Git index (kept local and ignored), `frontend/package-lock.json` churn reverted, and tracking/ignore state re-verified. |
+| 2026-04-29 | v1.18 | FE-UI-01 General UI/UX Consistency Polish applied on Product/Routing read pages and shared header/notice components with no backend/API/route behavior changes; build/lint/route smoke PASS. |
+| 2026-04-29 | v1.19 | FE-UI-02A Production Order List UX / Read-State Polish applied on active `/production-orders` screen with consistent header/notice/read-state treatment and no route/API/domain behavior changes; build/lint/route smoke PASS. |
+| 2026-04-29 | v1.20 | FE-UI-02A.1 Column Visibility Popup Polish applied to the Production Order List column manager dialog and trigger styling with EN/JA localization and no data/route/backend behavior changes; build/lint/route smoke PASS. |
+| 2026-04-30 | v1.21 | FE-UI-02B App Header + Sidebar Icon Polish applied to the global shell with normalized sidebar icon treatment, clearer active nav styling, and tighter header/status-strip spacing; build/lint/route smoke PASS. |
+| 2026-04-30 | v1.22 | FE-UI-02C Product Naming Consistency Cleanup applied across i18n registries, shell components, and login page; all MES Lite / MES branded UI strings replaced with FleziBCG naming policy; build/lint/route smoke PASS. |
+| 2026-04-30 | v1.23 | FE-UI-03A Station Execution Visual / Operator Cockpit Polish applied to execution screen: compatibility path banner added to Mode B (was missing), guidance message upgraded to styled callout; build/lint/route smoke PASS. |
+| 2026-04-30 | v1.24 | FE-UI-03B Station Execution Mode B Header / Control Button Touch Polish applied: header control buttons enlarged to h-10/h-11, icons to w-4/h-4, text-xs → text-sm, visual separator before Release, active:scale-95 feedback; build/lint/route smoke PASS. |
 
 **Track:** PARALLEL LIGHT FE — source audit + FE-1/FE-2/FE-3/FE-4A/FE-4A.1/FE-4A.2/FE-5 + route-access governance hardening + FE-GOV-02/02.1 automation.
 **Auditor:** AI Brain auto-execution.
@@ -1453,4 +1460,451 @@ Track: PARALLEL LIGHT FE
 2. FE feature/source slices (routing/product/UI) in separate commits.
 3. Backend/domain slices in separate commits.
 
-*End of Frontend Source Alignment Snapshot v1.17 — 2026-04-29*
+## FE-UI-01 General UI/UX Consistency Polish
+
+Date: 2026-04-29  
+Track: PARALLEL LIGHT FE
+
+### Files Changed
+
+- `frontend/src/app/components/PageHeader.tsx`
+- `frontend/src/app/components/RoutingDisplay.tsx`
+- `frontend/src/app/pages/ProductList.tsx`
+- `frontend/src/app/pages/ProductDetail.tsx`
+- `frontend/src/app/pages/RouteList.tsx`
+- `frontend/src/app/pages/RouteDetail.tsx`
+- `docs/audit/frontend-source-alignment-snapshot.md`
+
+### Visual Consistency Improvements
+
+- Standardized page-header spacing and action alignment across read screens via shared `PageHeader` updates.
+- Replaced hardcoded header back-label text with existing i18n common action key to keep bilingual consistency.
+- Unified loading/error panel visuals (border, radius, shadow, retry placement) on Product/Routing read pages.
+- Unified table/panel card styling for Product/Routing list/detail sections.
+- Standardized backend-required notice presentation with icon + role note semantics while preserving existing message truth.
+- Preserved text-based status labels and badges (no color-only status meaning introduced).
+
+### Screens Touched
+
+- Product List (`/products`)
+- Product Detail (`/products/:productId`)
+- Route List (`/routes`)
+- Route Detail (`/routes/:routeId`)
+
+### Route Accessibility Impact
+
+- Routes changed: **No**.
+- Router registration/layout nesting: unchanged.
+- Persona/menu policy: unchanged.
+- `screenStatus` alignment: unchanged.
+
+### Backend Truth Impact
+
+- Backend/API behavior changed: **No**.
+- Authorization truth changed: **No**.
+- Execution truth/state logic changed: **No**.
+- Product/Routing lifecycle write actions enabled: **No** (remains read-only/disabled).
+- MOCK/PARTIAL/FUTURE visibility and warning surfaces: preserved.
+
+### Verification Results
+
+- `cd frontend && npm.cmd run build` -> **PASS**
+- `cd frontend && npm.cmd run lint` -> **PASS**
+- `cd frontend && npm.cmd run check:routes` -> **PASS** (24 pass / 0 fail)
+
+### Remaining Risks
+
+- Dashboard/Home and other legacy MOCK pages still contain older visual patterns outside FE-UI-01 touch scope.
+- Route smoke remains non-blocking in CI until governance promotion.
+
+### Recommended Commit Split
+
+1. FE-UI-01 visual polish only:
+    - `frontend/src/app/components/PageHeader.tsx`
+    - `frontend/src/app/components/RoutingDisplay.tsx`
+    - `frontend/src/app/pages/ProductList.tsx`
+    - `frontend/src/app/pages/ProductDetail.tsx`
+    - `frontend/src/app/pages/RouteList.tsx`
+    - `frontend/src/app/pages/RouteDetail.tsx`
+    - `docs/audit/frontend-source-alignment-snapshot.md`
+2. Keep unrelated backend/domain and other FE feature slices separate.
+
+## FE-UI-02A Production Order List UX / Read-State Polish
+
+Date: 2026-04-29  
+Track: PARALLEL LIGHT FE
+
+### Route / Screen Identification
+
+- Active routed screen confirmed: `/production-orders` -> `ProductionOrderList`.
+- Orphan page files confirmed (not router-registered): `Production.tsx`, `ProductionTracking.tsx`.
+- Screen status remains read-connected (`CONNECTED` / backend API source for this screen).
+
+### Files Changed
+
+- `frontend/src/app/pages/ProductionOrderList.tsx`
+- `frontend/src/app/i18n/registry/en.ts`
+- `frontend/src/app/i18n/registry/ja.ts`
+- `docs/audit/frontend-source-alignment-snapshot.md`
+
+### UX / Read-State Improvements
+
+- Adopted shared `PageHeader` with subtitle and consistent top action layout.
+- Added explicit backend-read notice via shared `BackendRequiredNotice` (truth-preserving copy).
+- Normalized loading panel, error panel, and retry action placement/style.
+- Added explicit empty-result state inside the table body.
+- Standardized status pill rendering via shared `StatusBadge` variants.
+- Added HTTP-status-aware read-error messaging (401/403 specific, fallback for generic load failures).
+- Localized newly introduced read-state strings and summary text in EN/JA registries.
+
+### Scope / Safety Guardrails
+
+- Backend/API contracts changed: **No**.
+- Route registration/layout nesting changed: **No**.
+- Persona/menu access policy changed: **No**.
+- Execution transitions, authorization truth, and lifecycle behavior changed: **No**.
+
+### Verification Results
+
+- `cd frontend && npm.cmd run build` -> **PASS**
+- `cd frontend && npm.cmd run lint` -> **PASS**
+- `cd frontend && npm.cmd run check:routes` -> **PASS** (24 pass / 0 fail)
+
+### Remaining Risks
+
+- `Production.tsx` and `ProductionTracking.tsx` remain orphaned legacy files and can cause future confusion if not explicitly retired or documented.
+- FE-UI-02A intentionally excludes write/mutation affordances; this screen remains read-focused.
+
+## FE-UI-02A.1 Column Visibility Popup Polish
+
+Date: 2026-04-29  
+Track: PARALLEL LIGHT FE
+
+### Active Implementation Found
+
+- Popup component: `frontend/src/app/components/ColumnManagerDialog.tsx`
+- Trigger usage: `frontend/src/app/pages/ProductionOrderList.tsx`
+- Popup type: modal dialog (Radix-based `Dialog`)
+- Open/close state: `columnManagerOpen` managed in `ProductionOrderList` and passed via `open` / `onOpenChange`
+
+### Files Changed
+
+- `frontend/src/app/components/ColumnManagerDialog.tsx`
+- `frontend/src/app/pages/ProductionOrderList.tsx`
+- `frontend/src/app/i18n/registry/en.ts`
+- `frontend/src/app/i18n/registry/ja.ts`
+- `docs/audit/frontend-source-alignment-snapshot.md`
+
+### Popup / Trigger Improvements
+
+- Replaced hardcoded Vietnamese popup copy with i18n-backed EN/JA strings.
+- Polished dialog shell with clearer header/body/footer separation, border/radius/shadow consistency, and balanced spacing.
+- Improved row readability with visible/hidden badges, stronger row alignment, and clearer position/id metadata.
+- Added summary chips for visible vs hidden columns and preserved existing drag/reorder + visibility toggle behavior.
+- Improved action clarity with explicit reset, cancel, and done button hierarchy.
+- Upgraded trigger button styling and added dialog accessibility attributes (`aria-haspopup`, `aria-expanded`).
+
+### Business Logic Impact
+
+- Column visibility behavior changed: **No** (same toggle/save/reset semantics).
+- Table data/read logic changed: **No**.
+- Backend/API contracts changed: **No**.
+- Route/persona/screenStatus changed: **No**.
+- Execution or status truth logic changed: **No**.
+
+### Verification Results
+
+- `cd frontend && npm.cmd run build` -> **PASS**
+- `cd frontend && npm.cmd run lint` -> **PASS**
+- `cd frontend && npm.cmd run check:routes` -> **PASS** (24 pass / 0 fail)
+
+### Remaining Risks
+
+- Column labels still originate from page-defined defaults; popup now localizes by key with fallback, but broader column-label consistency can be further centralized later.
+- Drag-and-drop ordering UX remains pointer-focused; keyboard reordering is not introduced in this slice.
+
+## FE-UI-02B App Header + Sidebar Icon Polish
+
+Date: 2026-04-30  
+Track: PARALLEL LIGHT FE
+
+### Files Changed
+
+- `frontend/src/app/components/Layout.tsx`
+- `frontend/src/app/components/TopBar.tsx`
+- `frontend/src/app/components/RouteStatusBanner.tsx`
+- `docs/audit/frontend-source-alignment-snapshot.md`
+
+### Header Changes
+
+- Increased visual structure in the app header with clearer title stacking and more consistent right-side control sizing.
+- Normalized plant/language/user controls to shared border/radius/height patterns.
+- Tightened spacing so header controls align more cleanly with the shell and page content.
+- Reused existing top-bar i18n keys for touched menu/notification copy instead of introducing new hardcoded strings.
+
+### Sidebar / Icon Changes
+
+- Replaced generic one-size-fits-all icon treatment with route-specific icon mapping for major menu sections.
+- Wrapped nav icons in consistent icon containers to normalize size, stroke presence, and alignment.
+- Improved active-state contrast and hover clarity without changing menu items or route targets.
+- Kept persona-driven menu selection logic unchanged; updates are visual only.
+
+### Route / Persona Impact
+
+- Routes changed: **No**.
+- Persona allowlist / enforcement changed: **No**.
+- Sidebar/menu entries changed: **No** (visual styling only).
+- `screenStatus` registry changed: **No**.
+
+### Verification Results
+
+- `cd frontend && npm.cmd run build` -> **PASS**
+- `cd frontend && npm.cmd run lint` -> **PASS**
+- `cd frontend && npm.cmd run check:routes` -> **PASS** (24 pass / 0 fail)
+
+### Remaining Risks
+
+- Some shell strings outside the touched top-bar menu/notification labels remain hardcoded legacy copy and may need a dedicated localization cleanup slice.
+- The sidebar is still implemented inline inside `Layout.tsx`; if shell complexity grows further, a later extraction may help maintainability.
+
+*End of Frontend Source Alignment Snapshot v1.21 — 2026-04-30*
+
+---
+
+## FE-UI-02C Product Naming Consistency Cleanup
+
+Date: 2026-04-30  
+Track: PARALLEL LIGHT FE
+
+### Naming Policy Applied
+
+| Slot | Value |
+|---|---|
+| Brand | FleziBCG |
+| Category | MOM |
+| Full name | FleziBCG Manufacturing Operations Platform |
+| UI user-facing phrase | Manufacturing Operations |
+| Banned in UI | MES Lite, MES (as product name) |
+| Legacy/docs-only allowance | MES only where explaining MES vs MOM boundary in documentation |
+
+### Files Changed
+
+- `frontend/src/app/i18n/registry/en.ts`
+- `frontend/src/app/i18n/registry/ja.ts`
+- `frontend/src/app/components/TopBar.tsx`
+- `frontend/src/app/components/Layout.tsx`
+- `frontend/src/app/pages/LoginPage.tsx`
+- `docs/audit/frontend-source-alignment-snapshot.md`
+
+### Replacements Made
+
+| File | Location | Before | After |
+|---|---|---|---|
+| `en.ts` | `app.name` key | `"MES Lite"` | `"FleziBCG"` |
+| `en.ts` | `login.heading` key | `"Sign in to MES Lite"` | `"Sign in to FleziBCG"` |
+| `en.ts` | `accessDenied.message` key | `"...Please contact MES Administrator."` | `"...Please contact your FleziBCG Administrator."` |
+| `ja.ts` | `app.name` key | `"MES Lite"` | `"FleziBCG"` |
+| `ja.ts` | `login.heading` key | `"MES Liteにサインイン"` | `"FleziBCGにサインイン"` |
+| `ja.ts` | `accessDenied.message` key | `"...MES管理者にお問い合わせください。"` | `"...FleziBCG管理者にお問い合わせください。"` |
+| `TopBar.tsx` | Subtitle `<p>` element | `MES Lite` | `Manufacturing Operations` |
+| `Layout.tsx` | `currentPageTitle` fallback | `return "MES Lite"` | `return "FleziBCG"` |
+| `LoginPage.tsx` | `<h1>` heading (hardcoded) | `Sign in to MES Lite` | `Sign in to FleziBCG` |
+
+### Terms Intentionally Preserved
+
+| Location | Term | Reason |
+|---|---|---|
+| `frontend/src/app/auth/AuthContext.tsx` | `"mes.auth.token"` (localStorage key) | Internal technical key, not UI-visible; changing breaks active auth sessions — not a naming concern |
+| `frontend/src/app/data/mockData.ts` | `routeId: 'DMES-R11'` etc. | Mock data identifiers using `DMES-` prefix — these are demo route code values, not product brand strings |
+| `frontend/src/app/components/AddProductionOrderDialog.tsx` | `routeId: "DMES-R1"` | Mock data identifier, same as above |
+| `frontend/src/types/database.ts` | `// Database Types for MES Lite Universal Manufacturing` | Code file comment, not UI-visible; can be cleaned in a future docs-hygiene pass |
+
+### MOM Safety Check
+
+- Backend truth respected: **Yes** — no API contracts, schemas, or response handling changed
+- Permission truth respected: **Yes** — no auth, role, or persona logic changed
+- Persona remains UX only: **Yes** — no route/persona allowlist changes
+- No route/auth/API behavior changed: **Yes** — string-only replacements in UI layer
+
+### Verification Results
+
+- `npm.cmd run build` → **PASS** (7.80s — chunk size warning only, pre-existing)
+- `npm.cmd run lint` → **PASS** (no errors)
+- `npm.cmd run check:routes` → **PASS** (24 pass / 0 fail)
+
+### Remaining Risks
+
+- `frontend/src/types/database.ts` line 1 comment still references "MES Lite Universal Manufacturing" — cosmetic docs hygiene, no UI impact.
+- `mes.auth.token` localStorage key retained; if a full token key migration is ever needed it requires coordinated session invalidation.
+- `LoginPage.tsx` uses a hardcoded heading string rather than the `login.heading` i18n key — functional duplicate; a future i18n completeness pass should wire it to the key.
+
+*End of Frontend Source Alignment Snapshot v1.22 — 2026-04-30*
+
+---
+
+## FE-UI-03A Station Execution Visual / Operator Cockpit Polish
+
+Date: 2026-04-30  
+Track: PARALLEL LIGHT FE
+
+### Active Screen
+
+- **File:** `frontend/src/app/pages/StationExecution.tsx`
+- **Route:** `/station` (alias: `/station-execution`)
+- **Data / status maturity:** PARTIAL / BACKEND\_API — execution actions fully connected to real API; claim-model compatibility path active; no session-owned model yet
+
+### Execution UI Safety Gate
+
+| Item | Assessment |
+|---|---|
+| Execution state truth source | Backend — `operation.status` + `operation.allowed_actions` from API response |
+| Allowed action truth source | Backend — `canDo()` reads `operation.allowed_actions`; never locally derived |
+| Command success truth source | Backend — every handler awaits real API call before toast |
+| Claim compatibility areas | `stationApi.claim()` / `release()`, `claimState`, `isExecutionMode`, `canExecuteByClaim` |
+| Session-owned target gaps | No session open/close, no operator/equipment binding — correctly absent |
+| Responsive-critical areas | Mode B execution body overflow-y-auto; action buttons already `min-h-14..md:min-h-18`; header wraps at `lg:` |
+| UI-only surfaces polished | Deprecation banner in Mode B, guidance message visual treatment |
+| Areas NOT touched | canDo(), all API calls, enable/disable logic, routing, persona, screenStatus |
+
+**Verdict: ALLOW\_UI\_POLISH\_ONLY**
+
+### Files Changed
+
+- `frontend/src/app/pages/StationExecution.tsx`
+- `docs/audit/frontend-source-alignment-snapshot.md`
+
+### UI/UX Improvements
+
+| Change | Before | After |
+|---|---|---|
+| Compatibility path warning in Mode B | Missing — warning only shown in Mode A (selection); disappeared on entering execution mode | `MockWarningBanner phase="PARTIAL"` with deprecation note added between queue overlay and execution body in Mode B |
+| Guidance message treatment | Plain unstyled inline `<div>` text after input section | Styled callout box: blue border/bg, `Info` icon, `station.block.guidance` section heading, conditionally rendered only when message is non-empty |
+
+### Responsive / Shopfloor UX Check
+
+- Desktop layout: Deprecation banner is dismissible; guidance callout uses `sm:px-5` and `md:text-xl` scaling — fits widescreen
+- Tablet/kiosk layout: Callout uses `rounded-2xl` and touch-safe padding; banner is `shrink-0` to avoid layout compression
+- Small screen fallback: Callout stacks icon above text gracefully; banner text wraps without overflow
+- Touch target safety: No touch targets changed in this slice; existing `min-h-14..18` action buttons preserved
+- Critical warnings preserved: `MockWarningBanner` now visible in **both** Mode A and Mode B; cannot be hidden by entering execution mode
+- No action semantics changed: Correct — zero changes to any command, enable/disable, or order logic
+
+### Action/Command Safety Check
+
+- Existing command calls preserved: **Yes** — zero API call changes
+- Existing enable/disable logic preserved: **Yes** — zero condition changes
+- No fake command success: **Yes** — no fake toasts added
+- No session-owned behavior invented: **Yes** — no session model changes
+
+### Route Accessibility Verification
+
+- Route registered: **Yes** — `/station` and `/station-execution` unchanged
+- Layout nesting: **Yes** — under Layout with auth guard unchanged
+- Auth guard: **Yes** — unchanged
+- Persona/menu: **Yes** — unchanged
+- screenStatus: **Yes** — `stationExecution` entry unchanged
+- Route smoke: **PASS** 24/24
+
+### Verification Results
+
+- `npm.cmd run build` → **PASS** (8.03s — chunk size warning only, pre-existing)
+- `npm.cmd run lint` → **PASS** (no errors)
+- `npm.cmd run check:routes` → **PASS** (24 pass / 0 fail)
+
+### Remaining Risks
+
+- `MockWarningBanner` in Mode B is dismissible; after first dismiss it will not reappear in the same session. This is acceptable behaviour — the warning is structural and visible on every session open.
+- The guidance callout uses `station.block.guidance` ("Guidance / Blockers") as heading — this is a general label; a more contextual heading (e.g. per-state) could be a future improvement.
+- Mode B does not use `PageHeader` component — it has its own compact inline header. This is pre-existing and not changed in this slice.
+
+*End of Frontend Source Alignment Snapshot v1.23 — 2026-04-30*
+
+---
+
+## FE-UI-03B Station Execution Mode B Header / Control Button Touch Polish
+
+Date: 2026-04-30  
+Track: PARALLEL LIGHT FE
+
+### Active Screen
+
+- **File:** `frontend/src/app/pages/StationExecution.tsx`
+- **Route:** `/station` (alias: `/station-execution`)
+- **Mode:** Mode B — Execution Cockpit (operator has claimed the operation)
+
+### Execution UI Safety Gate
+
+| Item | Assessment |
+|---|---|
+| Execution state truth source | Backend — unchanged |
+| Allowed action truth source | Backend `canDo()` — unchanged |
+| Command success truth source | Backend API responses — unchanged |
+| Command-bearing controls | **Release only** — `stationApi.release()`, disabled via `claimLoading \|\| !canReleaseClaim` |
+| View/navigation controls | Back to Selection (local state), Refresh (queue API), Queue toggle (local overlay state) |
+| Claim compatibility areas | `canReleaseClaim` disable condition unchanged; `releaseClaim()` handler unchanged |
+| Session-owned target gaps | None introduced |
+| Header/control areas polished | Control row button sizing, icon sizing, label text sizing, visual grouping, active feedback |
+| Areas NOT touched | All handlers, `canDo()`, all enable/disable conditions, routing, persona, screenStatus |
+
+**Verdict: ALLOW\_HEADER\_TOUCH\_POLISH\_ONLY**
+
+### Files Changed
+
+- `frontend/src/app/pages/StationExecution.tsx`
+- `docs/audit/frontend-source-alignment-snapshot.md`
+
+### Header / Control Improvements
+
+| Element | Before | After |
+|---|---|---|
+| All control buttons height | `h-9` (36px) | `h-10 sm:h-11` (40px / 44px) |
+| All button icons | `w-3 h-3` (12px) | `w-4 h-4` (16px) |
+| Button label text size | `text-xs` | `text-sm` |
+| Button icon/text gap | `gap-1` | `gap-1.5` |
+| Control row gap | `gap-2` | `gap-2 sm:gap-3` |
+| Refresh icon layout | `inline` with `mr-1` margin | `flex items-center gap-1.5` consistent with others |
+| Claim badge text | `text-xs` | `text-sm` |
+| Release disabled opacity | `disabled:opacity-50` | `disabled:opacity-40 disabled:cursor-not-allowed` (clearer disabled) |
+| Visual separator before Release | None | `h-7 w-px bg-gray-200` vertical divider to distinguish command from view controls |
+| Active touch feedback | None | `active:scale-95 transition` on all buttons |
+| Header padding | `px-3` only | `px-3 sm:px-4` |
+| Context / control sections | Unlabelled divs | Comments: "Context row" and "Control row" for maintainability |
+
+### Responsive / Shopfloor UX Check
+
+- **Desktop layout:** Controls sit on right of context info at `lg:` breakpoint via `lg:flex-row`; all buttons now visually taller and easier to click
+- **Tablet/kiosk layout:** Control row wraps cleanly with `flex-wrap gap-2 sm:gap-3`; each button is 40–44px tall — above minimum 44px recommended tap target at `sm:` breakpoint
+- **Small screen fallback:** Control row stacks below context row; context info (station, operation name, status) remains in own row; no horizontal overflow
+- **Touch target safety:** `h-10 sm:h-11` provides 40–44px vertical tap height; button labels remain visible (text-sm, not icon-only)
+- **Critical warnings preserved:** `MockWarningBanner` (added in FE-UI-03A) remains below header; unchanged
+- **No action semantics changed:** All handlers, order, grouping unchanged
+
+### Action/Command Safety Check
+
+- Existing command calls preserved: **Yes** — `releaseClaim()` call unchanged
+- Existing enable/disable logic preserved: **Yes** — `claimLoading || !canReleaseClaim` unchanged
+- No fake command success: **Yes**
+- No session-owned behavior invented: **Yes**
+- Claim compatibility preserved: **Yes** — Release button still present with same condition; visual separator only adds clarity, not behavior
+
+### Route Accessibility Verification
+
+- Route registered: **Yes** — `/station` and `/station-execution` unchanged
+- Layout nesting: **Yes** — unchanged
+- Auth guard: **Yes** — unchanged
+- Persona/menu: **Yes** — unchanged
+- screenStatus: **Yes** — `stationExecution` entry unchanged
+- Route smoke: **PASS** 24/24
+
+### Verification Results
+
+- `npm.cmd run build` → **PASS** (33.97s — chunk size warning only, pre-existing)
+- `npm.cmd run lint` → **PASS** (no errors)
+- `npm.cmd run check:routes` → **PASS** (24 pass / 0 fail)
+
+### Remaining Risks
+
+- At smallest mobile widths (`<sm`), `h-10` buttons may still be slightly short of the 44px WCAG tap target guideline; the `sm:h-11` breakpoint covers tablet/kiosk targets. Full mobile shopfloor optimization (e.g. stacked single-column header) is a larger layout change outside this slice scope.
+- The visual separator before Release uses a CSS divider; if the control row wraps to two lines (very narrow width), the separator may appear in a visually awkward position. Acceptable for current shopfloor minimum (tablet).
+
+*End of Frontend Source Alignment Snapshot v1.24 — 2026-04-30*

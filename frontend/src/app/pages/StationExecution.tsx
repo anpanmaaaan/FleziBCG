@@ -4,7 +4,7 @@ import { PageHeader } from "@/app/components";
 import { StatusBadge } from "@/app/components";
 import { MockWarningBanner } from "@/app/components";
 import { toast } from "sonner";
-import { RefreshCw, Lock, X, ChevronDown, ArrowLeft, RotateCcw } from "lucide-react";
+import { RefreshCw, Lock, X, ChevronDown, ArrowLeft, RotateCcw, Info } from "lucide-react";
 import {
   fetchDowntimeReasons,
   operationApi,
@@ -1249,7 +1249,8 @@ export function StationExecution() {
   return (
     <div className="h-full flex flex-col bg-gray-50 min-h-0 overflow-hidden">
       {/* Compact single-row header */}
-      <div className="flex flex-col gap-3 px-3 py-3 bg-white border-b shadow-sm shrink-0 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3 px-3 py-3 bg-white border-b shadow-sm shrink-0 sm:px-4 lg:flex-row lg:items-center lg:justify-between">
+        {/* Context row: station / operation name / status badges */}
         <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
           <span className="text-sm text-gray-500 shrink-0 whitespace-nowrap">
             {t("station.workstation.label")} {stationScope}
@@ -1273,36 +1274,42 @@ export function StationExecution() {
             </span>
           )}
         </div>
-        <div className="flex w-full flex-wrap items-center gap-2 shrink-0 lg:w-auto lg:flex-nowrap lg:justify-end">
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-semibold order-first sm:order-none">
+        {/* Control row: claim badge + nav/view controls + release command */}
+        <div className="flex w-full flex-wrap items-center gap-2 sm:gap-3 shrink-0 lg:w-auto lg:flex-nowrap lg:justify-end">
+          {/* Claim ownership indicator */}
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-sm font-semibold order-first sm:order-none">
             {t("station.claim.ownedBadge")}
           </span>
+          {/* Nav / view controls */}
           <button
             onClick={backToSelection}
-            className="h-9 px-3 border border-gray-300 rounded-lg text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-1"
+            className="h-10 sm:h-11 px-3 sm:px-4 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 active:scale-95 transition flex items-center gap-1.5"
           >
-            <ArrowLeft className="w-3 h-3" />
+            <ArrowLeft className="w-4 h-4 shrink-0" />
             {t("station.action.backToSelection")}
           </button>
           <button
             onClick={() => void refreshQueue()}
             disabled={queueLoading}
-            className="h-9 px-3 border border-gray-300 rounded-lg text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+            className="h-10 sm:h-11 px-3 sm:px-4 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 active:scale-95 transition disabled:opacity-50 flex items-center gap-1.5"
           >
-            <RefreshCw className="inline w-3 h-3 mr-1" />
+            <RefreshCw className="w-4 h-4 shrink-0" />
             {t("station.action.refresh")}
           </button>
           <button
             onClick={() => setQueueOverlayOpen((prev) => !prev)}
-            className="h-9 px-3 border border-gray-300 rounded-lg text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-1"
+            className="h-10 sm:h-11 px-3 sm:px-4 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 active:scale-95 transition flex items-center gap-1.5"
           >
             {t("station.tab.queue")}
-            <ChevronDown className="w-3 h-3" />
+            <ChevronDown className="w-4 h-4 shrink-0" />
           </button>
+          {/* Divider before command-bearing Release */}
+          <span className="shrink-0 h-7 w-px bg-gray-200" aria-hidden="true" />
+          {/* Release — command-bearing, destructive. Disabled logic is backend-derived. */}
           <button
             onClick={() => void releaseClaim()}
             disabled={claimLoading || !canReleaseClaim}
-            className="h-9 px-3 border border-red-200 rounded-lg text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
+            className="h-10 sm:h-11 px-3 sm:px-4 border border-red-200 rounded-lg text-sm text-red-600 hover:bg-red-50 active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {t("station.action.release")}
           </button>
@@ -1340,6 +1347,9 @@ export function StationExecution() {
           </div>
         </div>
       )}
+
+      {/* Compatibility path notice — always visible in execution mode */}
+      <MockWarningBanner phase="PARTIAL" note={t("screenStatus.banner.deprecation.body" as any)} />
 
       {/* Execution body — must not scroll on iPad landscape */}
       <div className="flex-1 min-h-0 flex flex-col p-3 sm:p-4 gap-3 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-50">
@@ -1496,10 +1506,16 @@ export function StationExecution() {
           </section>
         )}
 
-        {/* Guidance line */}
-        <div className="shrink-0 px-1 py-1 text-sm sm:text-base text-slate-700 md:text-2xl leading-snug">
-          {guidanceMessage}
-        </div>
+        {/* Guidance callout */}
+        {guidanceMessage && (
+          <div className="shrink-0 flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 sm:px-5">
+            <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-500 sm:h-6 sm:w-6" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">{t("station.block.guidance")}</p>
+              <p className="mt-1 text-sm text-blue-900 sm:text-base md:text-xl leading-snug">{guidanceMessage}</p>
+            </div>
+          </div>
+        )}
 
         {/* Primary Action Zone */}
         <section className="shrink-0 flex flex-col gap-2 pb-1">

@@ -29,7 +29,7 @@ export const jaRegistry: I18nRegistry = {
   "station.keypad.ok": "OK",
 
   // ── app ──
-  "app.name": "MES Lite",
+  "app.name": "FleziBCG",
 
   // ── common ──
   "common.loading": "読み込み中",
@@ -81,7 +81,7 @@ export const jaRegistry: I18nRegistry = {
   "navigation.stationExecution": "ステーション実行",
 
   // ── login ──
-  "login.heading": "MES Liteにサインイン",
+  "login.heading": "FleziBCGにサインイン",
   "login.username.label": "ユーザー名",
   "login.password.label": "パスワード",
   "login.username.placeholder": "ユーザー名を入力",
@@ -348,7 +348,9 @@ export const jaRegistry: I18nRegistry = {
 
   // ── poList ──
   "poList.title": "製造指図一覧",
+  "poList.subtitle.readOnly": "バックエンドのソースデータに基づく読み取り専用の製造指図表示です。",
   "poList.loading": "製造指図を読み込み中...",
+  "poList.notice.backendRead": "製造指図はバックエンドAPIから読み込まれます。この画面では状態遷移や実行アクションは行いません。",
   "poList.columns.button": "列 ({count})",
   "poList.search.placeholder": "検索",
   "poList.col.productionOrder": "製造指図",
@@ -370,10 +372,32 @@ export const jaRegistry: I18nRegistry = {
   "poList.col.status": "ステータス",
   "poList.col.progress": "進捗",
   "poList.col.materialCode": "材料コード",
+  "poList.empty": "製造指図が見つかりません。",
+  "poList.action.retry": "再試行",
+  "poList.error.loadFailed": "製造指図の読み込みに失敗しました。",
+  "poList.error.unauthorized": "製造指図を参照する認証が無効です。再ログインしてください。",
+  "poList.error.forbidden": "製造指図を参照する権限がありません。",
+  "poList.results.summary": "{start} - {end} / {total}件を表示",
   "poList.pagination.perPage30": "30 / ページ",
   "poList.pagination.perPage50": "50 / ページ",
   "poList.pagination.perPage100": "100 / ページ",
   "poList.toast.columnsSaved": "列設定を保存しました",
+  "poList.columns.dialog.title": "表示列の管理",
+  "poList.columns.dialog.description": "このテーブルで表示する列を選択し、順序を並べ替えます。",
+  "poList.columns.dialog.summary.visible": "表示中",
+  "poList.columns.dialog.summary.hidden": "非表示",
+  "poList.columns.dialog.summary.total": "列を現在表示中",
+  "poList.columns.dialog.action.reset": "既定値に戻す",
+  "poList.columns.dialog.meta.id": "ID: {id}",
+  "poList.columns.dialog.meta.position": "位置 #{position}",
+  "poList.columns.dialog.state.visible": "表示",
+  "poList.columns.dialog.state.hidden": "非表示",
+  "poList.columns.dialog.tip.title": "ヒント:",
+  "poList.columns.dialog.tip.body": "ドラッグ＆ドロップで列順を変更できます。目のアイコンで列の表示/非表示を切り替えます。",
+  "poList.columns.dialog.action.cancel": "キャンセル",
+  "poList.columns.dialog.action.done": "完了",
+  "poList.columns.dialog.aria.hide": "列 {label} を非表示",
+  "poList.columns.dialog.aria.show": "列 {label} を表示",
 
   // ── woList ──
   "woList.title": "実行 – 作業指示",
@@ -902,7 +926,7 @@ export const jaRegistry: I18nRegistry = {
 
   // ── accessDenied ──
   "accessDenied.title": "アクセス拒否",
-  "accessDenied.message": "ユーザーロールが設定されていません。MES管理者にお問い合わせください。",
+  "accessDenied.message": "ユーザーロールが設定されていません。FleziBCG管理者にお問い合わせください。",
 
   // ── impersonation ──
   "impersonation.trigger": "代理操作...",

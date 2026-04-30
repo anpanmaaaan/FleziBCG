@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { PageHeader, ProductLifecycleBadge } from "@/app/components";
+import { BackendRequiredNotice, PageHeader, ProductLifecycleBadge } from "@/app/components";
 import { HttpError, productApi, type ProductItemFromAPI } from "@/app/api";
 import { useI18n } from "@/app/i18n";
 
@@ -54,11 +54,12 @@ export function ProductList() {
     <div className="h-full flex flex-col bg-white">
       <PageHeader
         title={t("productList.title")}
+        subtitle={t("productList.notice.shell")}
         actions={(
           <button
             type="button"
             disabled
-            className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-500 bg-gray-100 cursor-not-allowed"
+            className="inline-flex items-center rounded-lg border border-gray-300 bg-gray-100 px-4 py-2 text-sm text-gray-500 cursor-not-allowed"
             title={t("productList.notice.shell")}
           >
             {t("productList.action.create")}
@@ -66,34 +67,32 @@ export function ProductList() {
         )}
       />
 
-      <div className="flex-1 overflow-auto p-6">
-        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          {t("productList.notice.shell")}
-        </div>
+      <div className="flex-1 overflow-auto p-6 space-y-4">
+        <BackendRequiredNotice message={t("productList.notice.shell")} tone="blue" />
 
         {loading && (
-          <div className="rounded-lg border bg-white px-4 py-10 text-center text-sm text-gray-500">
+          <div className="rounded-lg border border-gray-200 bg-white px-4 py-10 text-center text-sm text-gray-500 shadow-sm">
             {t("productList.loading")}
           </div>
         )}
 
         {!loading && errorMessage && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-800">
-            <p className="mb-3">{errorMessage}</p>
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-800 shadow-sm">
+            <p>{errorMessage}</p>
             <button
               type="button"
-                        onClick={() => void loadProducts()}
-              className="px-3 py-1.5 rounded border border-red-300 bg-white hover:bg-red-100"
+              onClick={() => void loadProducts()}
+              className="mt-3 inline-flex rounded border border-red-300 bg-white px-3 py-1.5 hover:bg-red-100"
             >
-                        {t("productList.action.retry")}
+              {t("productList.action.retry")}
             </button>
           </div>
         )}
 
         {!loading && !errorMessage && (
-          <div className="border rounded-lg overflow-hidden bg-white">
+          <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b">
+              <thead className="border-b bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">{t("productList.col.productCode")}</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">{t("productList.col.productName")}</th>

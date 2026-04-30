@@ -15,6 +15,7 @@ from app.api.v1 import (
     routings,
     security_events,
     station,
+    station_sessions,
     users,
 )
 
@@ -30,6 +31,7 @@ api_router.include_router(approvals.router)
 api_router.include_router(iam.router)
 api_router.include_router(users.router)
 api_router.include_router(station.router)
+api_router.include_router(station_sessions.router)
 api_router.include_router(downtime_reasons.router)
 api_router.include_router(products.router)
 api_router.include_router(routings.router)

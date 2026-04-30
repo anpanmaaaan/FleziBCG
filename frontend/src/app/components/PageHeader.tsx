@@ -1,6 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router";
 import { ReactNode } from "react";
+import { useI18n } from "@/app/i18n";
 
 interface PageHeaderProps {
   title: React.ReactNode;
@@ -22,6 +23,7 @@ export function PageHeader({
   children
 }: PageHeaderProps) {
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   const handleBack = () => {
     if (onBackClick) {
@@ -33,38 +35,36 @@ export function PageHeader({
 
   return (
     <div className="bg-white border-b border-gray-200 px-6 py-4">
-      {/* Breadcrumb if provided */}
       {breadcrumb && (
-        <div className="mb-2 text-sm text-gray-500">
+        <div className="mb-3 text-sm text-gray-500">
           {breadcrumb}
         </div>
       )}
 
-      {/* Main header content */}
-      <div className="flex items-center justify-between">
-        {/* Left: Title section */}
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3 sm:gap-4">
           {showBackButton && (
             <button
+              type="button"
               onClick={handleBack}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900"
+              aria-label={t("common.action.back")}
             >
-              <ArrowLeft className="w-5 h-5" />
-              <span className="font-medium">Back</span>
+              <ArrowLeft className="h-4 w-4" />
+              <span className="font-medium">{t("common.action.back")}</span>
             </button>
           )}
-          
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold leading-tight text-gray-900">{title}</h1>
             {subtitle && (
-              <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+              <p className="mt-1 text-sm text-gray-600">{subtitle}</p>
             )}
           </div>
         </div>
 
-        {/* Right: Actions */}
         {(actions || children) && (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 self-start sm:self-auto">
             {actions}
             {children}
           </div>

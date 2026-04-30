@@ -1,9 +1,15 @@
 import { useState, useMemo, useEffect } from "react";
-import { Search, Plus, Edit, Trash2, Eye, Filter, Download, ChevronDown, Settings, ArrowUpDown, Calendar } from "lucide-react";
-import { ColumnManagerDialog, ColumnConfig } from "@/app/components";
-import { useNavigate } from "react-router";
+import { Search, Settings, ArrowUpDown, Calendar } from "lucide-react";
+import {
+  BackendRequiredNotice,
+  ColumnManagerDialog,
+  ColumnConfig,
+  PageHeader,
+  StatusBadge,
+} from "@/app/components";
 import { toast } from "sonner";
-import { productionOrderApi } from "@/app/api";
+import { HttpError, productionOrderApi } from "@/app/api";
+import { useI18n } from "@/app/i18n";
 
 interface ProductionOrderRow {
   id: string | number;
@@ -28,16 +34,32 @@ interface ProductionOrderRow {
 }
 
 const statusLabelMap: Record<string, string> = {
-  PENDING: "Pending",
-  IN_PROGRESS: "In Progress",
-  COMPLETED: "Completed",
-  LATE: "Late",
-  BLOCKED: "Blocked",
+  PENDING: "common.status.pending",
+  IN_PROGRESS: "common.status.inProgress",
+  COMPLETED: "common.status.completed",
+  LATE: "common.status.late",
+  BLOCKED: "common.status.blocked",
 };
 
-function getStatusLabel(status?: string) {
+function getStatusLabel(status: string | undefined, t: (key: string) => string) {
   if (!status) return "-";
-  return statusLabelMap[status] ?? status;
+  const key = statusLabelMap[status];
+  return key ? t(key) : status;
+}
+
+function getStatusVariant(status?: string): "neutral" | "info" | "success" | "warning" | "error" {
+  switch (status) {
+    case "COMPLETED":
+      return "success";
+    case "IN_PROGRESS":
+      return "info";
+    case "LATE":
+      return "warning";
+    case "BLOCKED":
+      return "error";
+    default:
+      return "neutral";
+  }
 }
 
 function normalizeProductionOrder(order: ProductionOrderRow): ProductionOrderRow {
@@ -87,7 +109,7 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
 ];
 
 export function ProductionOrderList() {
-  const navigate = useNavigate();
+  const { t } = useI18n();
   const [orders, setOrders] = useState<ProductionOrderRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -101,6 +123,22 @@ export function ProductionOrderList() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(30);
+
+  const resolveErrorMessage = (err: unknown) => {
+    if (err instanceof HttpError) {
+      if (err.status === 401) {
+        return t("poList.error.unauthorized");
+      }
+      if (err.status === 403) {
+        return t("poList.error.forbidden");
+      }
+      if (typeof err.message === "string" && err.message.trim().length > 0) {
+        return err.message;
+      }
+    }
+
+    return t("poList.error.loadFailed");
+  };
 
   // Sort columns by order
   const sortedColumns = useMemo(() => {
@@ -130,7 +168,7 @@ export function ProductionOrderList() {
 
   const handleColumnSave = (newColumns: ColumnConfig[]) => {
     setColumns(newColumns);
-    toast.success('Column settings saved');
+    toast.success(t("poList.toast.columnsSaved"));
   };
 
   const getPriorityColor = (priority?: string) => {
@@ -186,16 +224,7 @@ export function ProductionOrderList() {
       case 'department':
         return order.department || '-';
       case 'status':
-        return (
-          <span className={`px-2 py-1 rounded text-xs font-medium ${
-            order.status === 'COMPLETED' ? 'bg-green-50 text-green-600' :
-            order.status === 'IN_PROGRESS' ? 'bg-blue-50 text-blue-600' :
-            order.status === 'LATE' ? 'bg-red-50 text-red-600' :
-            'bg-gray-50 text-gray-600'
-          }`}>
-            {getStatusLabel(order.status)}
-          </span>
-        );
+        return <StatusBadge variant={getStatusVariant(order.status)} size="sm">{getStatusLabel(order.status, t)}</StatusBadge>;
       case 'progress':
         return (
           <div className="flex items-center gap-2">
@@ -215,206 +244,255 @@ export function ProductionOrderList() {
     }
   };
 
-  useEffect(() => {
-    const fetchOrders = async () => {
+  const loadOrders = async (signal?: AbortSignal) => {
       setLoading(true);
       setError(null);
 
       try {
         const data = await productionOrderApi.list();
+        if (signal?.aborted) {
+          return;
+        }
         if (!Array.isArray(data)) {
           throw new Error('Unexpected response from production orders endpoint');
         }
 
         setOrders(data.map(normalizeProductionOrder));
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unable to load production orders';
+        if (signal?.aborted) {
+          return;
+        }
+        const message = resolveErrorMessage(err);
         setError(message);
         toast.error(message);
       } finally {
-        setLoading(false);
+        if (!signal?.aborted) {
+          setLoading(false);
+        }
       }
-    };
+  };
 
-    fetchOrders();
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadOrders(controller.signal);
+    return () => controller.abort();
   }, []);
 
   const visibleColumnsCount = visibleColumns.length;
 
   return (
     <div className="h-full flex flex-col bg-white">
-      {/* Content */}
-      <div className="flex-1 overflow-auto p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h2 className="text-xl">Production Order List</h2>
-            {loading && <p className="text-sm text-slate-500">Loading production orders...</p>}
-            {error && <p className="text-sm text-red-600">{error}</p>}
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setColumnManagerOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 border rounded hover:bg-gray-50"
-            >
-              <Settings className="w-4 h-4" />
-              <span>Columns ({visibleColumnsCount})</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className="border rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  {visibleColumns.map((column) => (
-                    <th key={column.id} className="px-4 py-3 text-left min-w-[180px]">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-sm uppercase font-semibold">{column.label}</span>
-                        <ArrowUpDown className="w-4 h-4 cursor-pointer hover:text-blue-600" />
-                      </div>
-                      <div className="relative">
-                        {column.id === 'plannedCompletion' || column.id === 'releasedDate' || 
-                         column.id === 'plannedStartDate' || column.id === 'actualStartDate' || 
-                         column.id === 'actualCompletion' ? (
-                          <>
-                            <input
-                              type="text"
-                              placeholder="MM/DD/YYYY"
-                              value={searchValues[column.id] || ''}
-                              onChange={(e) => setSearchValues(prev => ({ ...prev, [column.id]: e.target.value }))}
-                              className="w-full pr-9 pl-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
-                            />
-                            <Calendar className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                          </>
-                        ) : column.id === 'priority' ? (
-                          <select
-                            value={searchValues[column.id] || ''}
-                            onChange={(e) => setSearchValues(prev => ({ ...prev, [column.id]: e.target.value }))}
-                            className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
-                          >
-                            <option value="">All</option>
-                            <option value="High">High</option>
-                            <option value="Medium">Medium</option>
-                            <option value="Low">Low</option>
-                          </select>
-                        ) : column.id === 'status' ? (
-                          <select
-                            value={searchValues[column.id] || ''}
-                            onChange={(e) => setSearchValues(prev => ({ ...prev, [column.id]: e.target.value }))}
-                            className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
-                          >
-                            <option value="">All</option>
-                            <option value="PENDING">Pending</option>
-                            <option value="IN_PROGRESS">In Progress</option>
-                            <option value="COMPLETED">Completed</option>
-                            <option value="LATE">Late</option>
-                          </select>
-                        ) : column.id === 'progress' ? (
-                          <input
-                            type="number"
-                            placeholder="0-100"
-                            min="0"
-                            max="100"
-                            value={searchValues[column.id] || ''}
-                            onChange={(e) => setSearchValues(prev => ({ ...prev, [column.id]: e.target.value }))}
-                            className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
-                          />
-                        ) : (
-                          <>
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <input
-                              type="text"
-                              placeholder="Search"
-                              value={searchValues[column.id] || ''}
-                              onChange={(e) => setSearchValues(prev => ({ ...prev, [column.id]: e.target.value }))}
-                              className="w-full pl-9 pr-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
-                            />
-                          </>
-                        )}
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedOrders.map((order, index) => (
-                  <tr 
-                    key={order.id} 
-                    className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 cursor-pointer transition-colors`}
-                  >
-                    {visibleColumns.map((column) => (
-                      <td key={column.id} className="px-4 py-3">
-                        {renderCellContent(column, order)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Pagination */}
-        <div className="mt-6 flex items-center justify-center gap-2">
-          <span className="text-sm text-gray-600">
-            Showing {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredOrders.length)} of {filteredOrders.length} results
-          </span>
-          <div className="flex items-center gap-1 ml-4">
-            <button
-              onClick={() => setCurrentPage(1)}
-              disabled={currentPage === 1}
-              className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              «
-            </button>
-            <button
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              ‹
-            </button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => i + 1).map(page => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`px-3 py-1 border rounded ${
-                  currentPage === page ? 'bg-blue-500 text-white' : 'hover:bg-gray-50'
-                }`}
-              >
-                {page}
-              </button>
-            ))}
-            <button
-              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage >= totalPages}
-              className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              ›
-            </button>
-            <button
-              onClick={() => setCurrentPage(totalPages)}
-              disabled={currentPage >= totalPages}
-              className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              »
-            </button>
-          </div>
-          <select
-            value={itemsPerPage}
-            onChange={(e) => {
-              setItemsPerPage(Number(e.target.value));
-              setCurrentPage(1);
-            }}
-            className="ml-4 px-3 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-focus-ring"
+      <PageHeader
+        title={t("poList.title")}
+        subtitle={t("poList.subtitle.readOnly")}
+        actions={(
+          <button
+            type="button"
+            onClick={() => setColumnManagerOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+            aria-haspopup="dialog"
+            aria-expanded={columnManagerOpen}
           >
-            <option value={30}>30 / page</option>
-            <option value={50}>50 / page</option>
-            <option value={100}>100 / page</option>
-          </select>
-        </div>
+            <Settings className="h-4 w-4" />
+            <span>{t("poList.columns.button", { count: visibleColumnsCount })}</span>
+          </button>
+        )}
+      />
+
+      <div className="flex-1 overflow-auto p-6 space-y-4">
+        <BackendRequiredNotice message={t("poList.notice.backendRead")} tone="blue" />
+
+        {loading && (
+          <div className="rounded-lg border border-gray-200 bg-white px-4 py-10 text-center text-sm text-gray-500 shadow-sm">
+            {t("poList.loading")}
+          </div>
+        )}
+
+        {!loading && error && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-800 shadow-sm">
+            <p>{error}</p>
+            <button
+              type="button"
+              onClick={() => void loadOrders()}
+              className="mt-3 inline-flex rounded border border-red-300 bg-white px-3 py-1.5 hover:bg-red-100"
+            >
+              {t("poList.action.retry")}
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <>
+            <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm">
+              <div className="overflow-x-auto bg-white">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      {visibleColumns.map((column) => (
+                        <th key={column.id} className="px-4 py-3 text-left min-w-[180px]">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-sm uppercase font-semibold">{column.label}</span>
+                            <ArrowUpDown className="w-4 h-4 cursor-pointer hover:text-blue-600" />
+                          </div>
+                          <div className="relative">
+                            {column.id === 'plannedCompletion' || column.id === 'releasedDate' || 
+                            column.id === 'plannedStartDate' || column.id === 'actualStartDate' || 
+                            column.id === 'actualCompletion' ? (
+                              <>
+                                <input
+                                  type="text"
+                                  placeholder="MM/DD/YYYY"
+                                  value={searchValues[column.id] || ''}
+                                  onChange={(e) => setSearchValues(prev => ({ ...prev, [column.id]: e.target.value }))}
+                                  className="w-full pr-9 pl-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
+                                />
+                                <Calendar className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                              </>
+                            ) : column.id === 'priority' ? (
+                              <select
+                                value={searchValues[column.id] || ''}
+                                onChange={(e) => setSearchValues(prev => ({ ...prev, [column.id]: e.target.value }))}
+                                className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
+                              >
+                                <option value="">{t("common.filter.all")}</option>
+                                <option value="High">{t("common.priority.high")}</option>
+                                <option value="Medium">{t("common.priority.medium")}</option>
+                                <option value="Low">{t("common.priority.low")}</option>
+                              </select>
+                            ) : column.id === 'status' ? (
+                              <select
+                                value={searchValues[column.id] || ''}
+                                onChange={(e) => setSearchValues(prev => ({ ...prev, [column.id]: e.target.value }))}
+                                className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
+                              >
+                                <option value="">{t("common.filter.all")}</option>
+                                <option value="PENDING">{t("common.status.pending")}</option>
+                                <option value="IN_PROGRESS">{t("common.status.inProgress")}</option>
+                                <option value="COMPLETED">{t("common.status.completed")}</option>
+                                <option value="LATE">{t("common.status.late")}</option>
+                              </select>
+                            ) : column.id === 'progress' ? (
+                              <input
+                                type="number"
+                                placeholder="0-100"
+                                min="0"
+                                max="100"
+                                value={searchValues[column.id] || ''}
+                                onChange={(e) => setSearchValues(prev => ({ ...prev, [column.id]: e.target.value }))}
+                                className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
+                              />
+                            ) : (
+                              <>
+                                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                  type="text"
+                                  placeholder={t("poList.search.placeholder")}
+                                  value={searchValues[column.id] || ''}
+                                  onChange={(e) => setSearchValues(prev => ({ ...prev, [column.id]: e.target.value }))}
+                                  className="w-full pl-9 pr-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
+                                />
+                              </>
+                            )}
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedOrders.length === 0 && (
+                      <tr>
+                        <td colSpan={Math.max(visibleColumns.length, 1)} className="px-4 py-10 text-center text-sm text-gray-500">
+                          {t("poList.empty")}
+                        </td>
+                      </tr>
+                    )}
+
+                    {paginatedOrders.map((order, index) => (
+                      <tr
+                        key={order.id}
+                        className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors`}
+                      >
+                        {visibleColumns.map((column) => (
+                          <td key={column.id} className="px-4 py-3">
+                            {renderCellContent(column, order)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="mt-2 flex flex-col items-start gap-3 text-sm text-gray-600 md:flex-row md:items-center md:justify-between">
+              <span>
+                {t("poList.results.summary", {
+                  start: filteredOrders.length === 0 ? 0 : startIndex + 1,
+                  end: Math.min(startIndex + itemsPerPage, filteredOrders.length),
+                  total: filteredOrders.length,
+                })}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  «
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  ‹
+                </button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => i + 1).map(page => (
+                  <button
+                    type="button"
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-3 py-1 border rounded ${
+                      currentPage === page ? 'bg-blue-500 text-white' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage >= totalPages}
+                  className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  ›
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage >= totalPages}
+                  className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  »
+                </button>
+              </div>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-3 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-focus-ring"
+              >
+                <option value={30}>{t("poList.pagination.perPage30")}</option>
+                <option value={50}>{t("poList.pagination.perPage50")}</option>
+                <option value={100}>{t("poList.pagination.perPage100")}</option>
+              </select>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Dialogs */}

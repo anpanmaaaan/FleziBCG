@@ -20,7 +20,7 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [selectedPlant, setSelectedPlant] = useState('DMES');
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const { locale, setLocale } = useI18n();
+  const { locale, setLocale, t } = useI18n();
 
   const plantRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
@@ -111,14 +111,17 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
   };
 
   return (
-    <div className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 sticky top-0 z-20">
+    <div className="sticky top-0 z-20 flex min-h-[72px] items-center justify-between border-b border-gray-200 bg-white px-6">
       {/* Left: Current Page Title */}
-      <div className="flex items-center gap-4">
-        <h1 className="text-xl font-semibold text-gray-900">{currentPage}</h1>
+      <div className="flex min-w-0 items-center gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Manufacturing Operations</p>
+          <h1 className="truncate text-xl font-semibold text-gray-900">{currentPage}</h1>
+        </div>
       </div>
 
       {/* Right: Controls */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         {/* Plant/Site Selector */}
         <div className="relative" ref={plantRef}>
           <button 
@@ -128,7 +131,7 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
               setShowUserDropdown(false);
               setShowNotifications(false);
             }}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+            className="flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
           >
             <span>{selectedPlant}</span>
             <ChevronDown className="w-4 h-4 text-gray-500" />
@@ -136,7 +139,7 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
 
           {/* Plant Dropdown */}
           {showPlantDropdown && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+            <div className="absolute right-0 z-50 mt-2 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
               {plants.map((plant) => (
                 <button
                   key={plant}
@@ -156,13 +159,13 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
         </div>
 
         {/* Date Display */}
-        <div className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-gray-50 rounded-lg">
+        <div className="hidden items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 lg:flex">
           <Clock className="w-4 h-4 text-gray-500" />
           <span className="font-mono">{formatDate(currentTime)}</span>
         </div>
 
         {/* Time Display */}
-        <div className="flex items-center gap-2 px-3 py-2 text-sm text-white bg-brand-cta rounded-lg">
+        <div className="flex items-center gap-2 rounded-lg bg-brand-cta px-3 py-2 text-sm text-white shadow-sm">
           <Clock className="w-4 h-4 text-white" />
           <span className="font-mono font-semibold">{formatTime(currentTime)}</span>
         </div>
@@ -178,7 +181,7 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
               setShowLangDropdown(false);
               setShowUserDropdown(false);
             }}
-            className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+            className="relative rounded-full p-2 text-gray-600 transition-colors hover:bg-gray-100"
           >
             <Bell className="w-5 h-5" />
             {/* Notification Badge */}
@@ -189,9 +192,9 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
 
           {/* Notifications Dropdown */}
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+            <div className="absolute right-0 z-50 mt-2 w-80 rounded-lg border border-gray-200 bg-white py-2 shadow-lg">
               <div className="px-4 py-2 border-b border-gray-100">
-                <h3 className="font-semibold text-gray-900">Notifications</h3>
+                <h3 className="font-semibold text-gray-900">{t("topBar.notifications.title")}</h3>
               </div>
               <div className="max-h-96 overflow-y-auto">
                 <div className="px-4 py-3 hover:bg-gray-50 cursor-pointer">
@@ -216,8 +219,8 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
                 </div>
               </div>
               <div className="px-4 py-2 border-t border-gray-100">
-                <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                  View all notifications
+                <button className="text-sm font-medium text-blue-600 hover:text-blue-700">
+                  {t("topBar.notifications.viewAll")}
                 </button>
               </div>
             </div>
@@ -233,7 +236,7 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
               setShowUserDropdown(false);
               setShowNotifications(false);
             }}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+            className="flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 transition-colors hover:bg-gray-50"
           >
             <span className="text-lg">{selectedLanguage.flag}</span>
             <span className="font-medium">{selectedLanguage.locale.toUpperCase()}</span>
@@ -242,7 +245,7 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
 
           {/* Language Dropdown */}
           {showLangDropdown && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+            <div className="absolute right-0 z-50 mt-2 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
               {languages.map((lang) => (
                 <button
                   key={lang.locale}
@@ -271,9 +274,9 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
               setShowLangDropdown(false);
               setShowNotifications(false);
             }}
-            className="flex items-center gap-2 pl-3 pr-2 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+            className="flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white pl-2 pr-2 text-sm text-gray-700 transition-colors hover:bg-gray-50"
           >
-            <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white font-semibold">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white font-semibold shadow-sm">
               {(currentUser?.username?.[0] || 'U').toUpperCase()}
             </div>
             <span className="font-medium">{currentUser?.username || 'User'}</span>
@@ -282,34 +285,34 @@ export function TopBar({ currentPage = 'Dashboard' }: TopBarProps) {
 
           {/* User Dropdown */}
           {showUserDropdown && (
-            <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+            <div className="absolute right-0 z-50 mt-2 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
               <div className="px-4 py-3 border-b border-gray-100">
                 <p className="text-sm font-semibold text-gray-900">{currentUser?.username || 'User'}</p>
                 <p className="text-xs text-gray-500">{currentUser?.email || '-'}</p>
               </div>
-              <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                My Profile
+              <button className="w-full px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50">
+                {t("topBar.menu.profile")}
               </button>
-              <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                Settings
+              <button className="w-full px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50">
+                {t("topBar.menu.settings")}
               </button>
-              <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                Help & Support
+              <button className="w-full px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50">
+                {t("topBar.menu.helpSupport")}
               </button>
               <div className="border-t border-gray-100 my-1"></div>
               <button
                 onClick={handleLogoutAll}
                 disabled={isSigningOut}
-                className="w-full text-left px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 transition-colors disabled:opacity-50"
+                className="w-full px-4 py-2 text-left text-sm text-amber-700 transition-colors hover:bg-amber-50 disabled:opacity-50"
               >
-                Logout all sessions
+                {t("topBar.menu.logoutAll")}
               </button>
               <button
                 onClick={handleLogout}
                 disabled={isSigningOut}
-                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                className="w-full px-4 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
               >
-                {isSigningOut ? 'Signing out...' : 'Logout'}
+                {isSigningOut ? t("topBar.menu.signingOut") : t("topBar.menu.logout")}
               </button>
             </div>
           )}

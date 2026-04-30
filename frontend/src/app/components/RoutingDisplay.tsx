@@ -1,4 +1,5 @@
 import { StatusBadge } from "./StatusBadge";
+import { AlertTriangle, Info } from "lucide-react";
 
 interface RoutingLifecycleBadgeProps {
   status: string | null | undefined;
@@ -41,6 +42,12 @@ export function BackendRequiredNotice({ message, tone = "amber" }: BackendRequir
     tone === "blue"
       ? "border-blue-200 bg-blue-50 text-blue-900"
       : "border-amber-200 bg-amber-50 text-amber-900";
+  const Icon = tone === "blue" ? Info : AlertTriangle;
 
-  return <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${palette}`}>{message}</div>;
+  return (
+    <div className={`mb-4 flex items-start gap-2 rounded-lg border px-4 py-3 text-sm ${palette}`} role="note">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+      <span>{message}</span>
+    </div>
+  );
 }
