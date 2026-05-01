@@ -1,6 +1,8 @@
 import { useState, useCallback, useMemo } from "react";
-import { Search, Package, GitBranch, Download, MapPin } from "lucide-react";
+import { Search, Package, GitBranch, Download, MapPin, Lock } from "lucide-react";
 import { toast } from "sonner";
+import { MockWarningBanner, ScreenStatusBadge } from "@/app/components";
+import { useI18n } from "@/app/i18n";
 import ReactFlow, {
   Node,
   Edge,
@@ -79,6 +81,7 @@ const mockGenealogyData: GenealogyNode[] = [
 ];
 
 export function Traceability() {
+  const { t } = useI18n();
   const [searchSerial, setSearchSerial] = useState('');
   const [selectedSerial, setSelectedSerial] = useState<string | null>(null);
   const [view, setView] = useState<'list' | 'genealogy'>('list');
@@ -166,7 +169,14 @@ export function Traceability() {
 
   return (
     <div className="h-full flex flex-col bg-white">
+      <MockWarningBanner phase="MOCK" note="Material genealogy and traceability data are not yet connected to backend truth. This visualization uses mock serial data only." />
       <div className="flex-1 flex flex-col p-6">
+        {/* Page header with status badge */}
+        <div className="flex items-center gap-3 mb-6">
+          <h1 className="text-2xl font-bold">Traceability Search</h1>
+          <ScreenStatusBadge phase="MOCK" />
+        </div>
+
         {/* Search & Toggle */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -212,11 +222,13 @@ export function Traceability() {
               Genealogy Tree
             </button>
             <button
+              disabled
               onClick={() => toast.info('Export feature coming soon')}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+              className="px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed flex items-center gap-2"
+              title="This action is not available for mock data"
             >
-              <Download className="w-4 h-4" />
-              Export
+              <Lock className="w-4 h-4" />
+              Export (Future)
             </button>
           </div>
         </div>

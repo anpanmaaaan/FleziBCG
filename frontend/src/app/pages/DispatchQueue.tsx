@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
-import { ArrowUpDown, Search, Play, Pause, X } from "lucide-react";
+import { ArrowUpDown, Search, Play, Pause, X, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/app/i18n/useI18n";
+import { MockWarningBanner, ScreenStatusBadge } from "@/app/components";
 
 interface DispatchItem {
   id: string;
@@ -135,7 +136,14 @@ export function DispatchQueue() {
 
   return (
     <div className="h-full flex flex-col bg-white">
+      <MockWarningBanner phase="MOCK" note="Dispatch queue is not yet connected to real work orders. Use this for dispatch workflow visualization only." />
       <div className="flex-1 flex flex-col p-6">
+        {/* Page header with status badge */}
+        <div className="flex items-center gap-3 mb-6">
+          <h1 className="text-2xl font-bold">Dispatch Queue</h1>
+          <ScreenStatusBadge phase="MOCK" />
+        </div>
+
         {/* Filters */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -247,28 +255,31 @@ export function DispatchQueue() {
                     <div className="flex items-center gap-2">
                       {item.status === 'Waiting' && (
                         <button
+                          disabled
                           onClick={() => handleStart(item)}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded"
-                          title={t("common.action.start")}
+                          className="p-2 text-gray-400 cursor-not-allowed"
+                          title="This action is not available for mock data"
                         >
-                          <Play className="w-4 h-4" />
+                          <Lock className="w-4 h-4" />
                         </button>
                       )}
                       {item.status === 'In Progress' && (
                         <button
+                          disabled
                           onClick={() => handlePause(item)}
-                          className="p-2 text-yellow-600 hover:bg-yellow-50 rounded"
-                          title={t("common.action.pause")}
+                          className="p-2 text-gray-400 cursor-not-allowed"
+                          title="This action is not available for mock data"
                         >
-                          <Pause className="w-4 h-4" />
+                          <Lock className="w-4 h-4" />
                         </button>
                       )}
                       <button
+                        disabled
                         onClick={() => handleRemove(item)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded"
-                        title={t("common.action.remove")}
+                        className="p-2 text-gray-400 cursor-not-allowed"
+                        title="This action is not available for mock data"
                       >
-                        <X className="w-4 h-4" />
+                        <Lock className="w-4 h-4" />
                       </button>
                     </div>
                   </td>

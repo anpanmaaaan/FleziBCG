@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
-import { Play, RefreshCw, Calendar, Settings, TrendingUp, Clock } from "lucide-react";
+import { Play, RefreshCw, Calendar, Settings, TrendingUp, Clock, Lock } from "lucide-react";
 import { toast } from "sonner";
+import { MockWarningBanner, ScreenStatusBadge } from "@/app/components";
+import { useI18n } from "@/app/i18n";
 
 interface ScheduledOrder {
   id: string;
@@ -83,6 +85,7 @@ const mockMetrics: SchedulingMetrics = {
 };
 
 export function APSScheduling() {
+  const { t } = useI18n();
   const [orders, setOrders] = useState(mockScheduledOrders);
   const [metrics] = useState(mockMetrics);
   const [algorithm, setAlgorithm] = useState<'EDD' | 'SPT' | 'LPT' | 'Priority' | 'ATC'>('EDD');
@@ -138,7 +141,14 @@ export function APSScheduling() {
 
   return (
     <div className="h-full flex flex-col bg-white">
+      <MockWarningBanner phase="MOCK" note="APS scheduling optimization is not yet connected to real production orders. This visualization uses simulated schedule data only." />
       <div className="flex-1 flex flex-col p-6">
+        {/* Page header with status badge */}
+        <div className="flex items-center gap-3 mb-6">
+          <h1 className="text-2xl font-bold">APS Scheduling Optimizer</h1>
+          <ScreenStatusBadge phase="MOCK" />
+        </div>
+
         {/* Control Panel */}
         <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg">
           <div className="flex items-center justify-between">
@@ -162,28 +172,22 @@ export function APSScheduling() {
 
             <div className="flex items-center gap-3">
               <button
+                disabled
                 onClick={handleOptimize}
-                disabled={isOptimizing}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-2"
+                title="This action is not available for mock data"
               >
-                {isOptimizing ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    Optimizing...
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4" />
-                    Run Optimization
-                  </>
-                )}
+                <Lock className="w-4 h-4" />
+                Run Optimization (Future)
               </button>
               <button
+                disabled
                 onClick={() => toast.info('Apply to Dispatch Queue feature coming soon')}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+                className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-2"
+                title="This action is not available for mock data"
               >
-                <Calendar className="w-4 h-4" />
-                Apply to Queue
+                <Lock className="w-4 h-4" />
+                Apply to Queue (Future)
               </button>
             </div>
           </div>
