@@ -1498,4 +1498,46 @@ Verdict
 - `READY_FOR_P0_C_08H3_BACKEND_CLAIM_GUARD_REMOVAL_CONTRACT`
 - P0-C-08H2 is accepted as complete after verification recovery.
 
+## Addendum — P0-C-08H4 Backend Execution Route Claim Guard Removal
+
+Design Evidence Extract
+- `docs/implementation/p0-c-08h3-backend-execution-route-claim-guard-removal-contract.md`: approved seven-route subset and explicit close/reopen exclusion.
+- `docs/design/02_domain/execution/station-session-command-guard-enforcement-contract.md`: StationSession guard is authoritative ownership gate.
+- `docs/implementation/p0-c-08f-claim-api-deprecation-lock-report.md`: claim API remains compatibility-only and callable.
+
+Execution Results
+- Test-first baseline (pre-change):
+	- `tests/test_execution_route_claim_guard_removal.py`: `9 failed, 3 passed` (expected 403 claim-guard failures in approved H4 scenarios)
+- Post-change H4 route suite:
+	- `tests/test_execution_route_claim_guard_removal.py`: `12 passed`, `H4_ROUTE_TEST_EXIT:0`
+- StationSession guard regression:
+	- `tests/test_station_session_command_guard_enforcement.py`: `22 passed`, `H4_STATION_SESSION_REG_EXIT:0`
+- Claim compatibility regression:
+	- `tests/test_claim_api_deprecation_lock.py tests/test_claim_single_active_per_operator.py tests/test_release_claim_active_states.py`: `25 passed`, `H4_CLAIM_COMPAT_REG_EXIT:0`
+- Queue regression:
+	- `tests/test_station_queue_session_aware_migration.py tests/test_station_queue_active_states.py`: `10 passed`, `H4_QUEUE_REG_EXIT:0`
+- Close/reopen regression:
+	- `tests/test_reopen_resume_station_session_continuity.py tests/test_reopen_resumability_claim_continuity.py tests/test_reopen_operation_claim_continuity_hardening.py tests/test_close_reopen_operation_foundation.py tests/test_close_operation_command_hardening.py`: `36 passed`, `H4_CLOSE_REOPEN_REG_EXIT:0`
+- Command hardening regression:
+	- `tests/test_start_pause_resume_command_hardening.py tests/test_report_quantity_command_hardening.py tests/test_downtime_command_hardening.py tests/test_complete_operation_command_hardening.py`: `48 passed`, `H4_CMD_HARDEN_REG_EXIT:0`
+- Full backend suite:
+	- First attempt: `300 passed, 1 skipped, 1 error` (teardown interruption)
+	- Cleanup + rerun sequentially: `301 passed, 1 skipped`, `H4_FULL_BACKEND_EXIT:0`
+
+Optional frontend smoke
+- `npm.cmd run lint`: `H4_FRONTEND_LINT_EXIT:0`
+- `npm.cmd run build`: `H4_FRONTEND_BUILD_EXIT:0`
+
+Scope Guard Confirmation
+- Route-level claim guard removed only on approved seven commands.
+- close/reopen unchanged.
+- No claim API/service/model/table/audit removal.
+- No StationSession guard semantics change.
+- No queue behavior change.
+- No frontend change.
+- No migration.
+
+Verdict
+- `P0-C-08H4_COMPLETE_VERIFICATION_CLEAN`
+
 ### 1. Governed audit/security-event emission wiring
