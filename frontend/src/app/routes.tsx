@@ -34,6 +34,15 @@ import { BomDetail } from "./pages/BomDetail";
 import { RoutingOperationDetail } from "./pages/RoutingOperationDetail";
 import { ResourceRequirements } from "./pages/ResourceRequirements";
 import { ReasonCodes } from "./pages/ReasonCodes";
+import { OperationTimeline } from "./pages/OperationTimeline";
+import { StationSession } from "./pages/StationSession";
+import { OperatorIdentification } from "./pages/OperatorIdentification";
+import { EquipmentBinding } from "./pages/EquipmentBinding";
+import { LineMonitor } from "./pages/LineMonitor";
+import { StationMonitor } from "./pages/StationMonitor";
+import { DowntimeAnalysis } from "./pages/DowntimeAnalysis";
+import { ShiftSummary } from "./pages/ShiftSummary";
+import { SupervisoryOperationDetail } from "./pages/SupervisoryOperationDetail";
 import { PersonaLandingRedirect } from "./persona/PersonaLandingRedirect";
 import { RequireAuth } from "./auth/RequireAuth";
 
@@ -85,6 +94,17 @@ export const router = createBrowserRouter([
       { path: "work-orders/:woId/operations", Component: OperationExecutionOverview }, // WO-scoped Gantt Overview
       { path: "operations", Component: GlobalOperationList }, // Global Operation Monitoring (read-only)
       { path: "operations/:operationId/detail", Component: OperationExecutionDetail }, // Operation Detail Tabs
+      { path: "operations/:operationId/timeline", Component: OperationTimeline }, // Operation Event Timeline (shell)
+      
+      // Execution / Supervisory shells
+      { path: "station-session", Component: StationSession },
+      { path: "operator-identification", Component: OperatorIdentification },
+      { path: "equipment-binding", Component: EquipmentBinding },
+      { path: "line-monitor", Component: LineMonitor },
+      { path: "station-monitor", Component: StationMonitor },
+      { path: "downtime-analysis", Component: DowntimeAnalysis },
+      { path: "shift-summary", Component: ShiftSummary },
+      { path: "supervisory/operations/:operationId", Component: SupervisoryOperationDetail },
       
       // Station Execution
       { path: "station", Component: StationExecution },
