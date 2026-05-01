@@ -3,6 +3,7 @@
 ## History
 | Date | Version | Change |
 |---|---:|---|
+| 2026-05-02 | v1.6 | FE-COVERAGE-01F: Added 5 AI + 3 Digital Twin + 3 Compliance SHELL screens. Routes increased 67→78, SHELL phases increased 43→54. i18n keys 1509→1692 (+183). |
 | 2026-05-02 | v1.5 | FE-COVERAGE-01E: Added 8 Integration + 6 Reporting SHELL screens. Routes increased 53→67, SHELL phases increased 29→43. i18n keys 1321→1509 (+188). |
 | 2026-05-01 | v1.4 | FE-COVERAGE-01D: Added 6 Quality Lite / Material / Traceability SHELL screens. Routes increased 47→53, SHELL phases increased 23→29. |
 | 2026-05-01 | v1.3 | FE-COVERAGE-01C: Added 9 Execution/Supervisory SHELL screens. Routes increased 38→47, SHELL phases increased 14→23. |
@@ -62,25 +63,26 @@ Audit the current frontend screen/route/page coverage of FleziBCG before creatin
 
 ## 4. Executive Summary
 
-**Frontend Coverage Status (as of 2026-05-02 — after FE-COVERAGE-01E)**
+**Frontend Coverage Status (as of 2026-05-02 — after FE-COVERAGE-01F)**
 
-| Metric | Before FE-COVERAGE-01A | After FE-COVERAGE-01A | After FE-COVERAGE-01B | After FE-COVERAGE-01C | After FE-COVERAGE-01D | After FE-COVERAGE-01E |
-|---|---|---|---|---|---|---|
-| **Total Routes Defined** | 24 | 33 | 38 | 47 | 53 | 67 |
-| **Total Page Files** | 22 (21 unique) | 31 (30 unique) | 36 (35 unique) | 45 (44 unique) | 51 (50 unique) | 65 (64 unique) |
-| **CONNECTED Pages** | 13 (59%) | 13 (42%) | 13 (36%) | 13 (29%) | 13 (25%) | 13 (20%) |
-| **PARTIAL Pages** | 3 (14%) | 3 (10%) | 3 (8%) | 3 (7%) | 3 (6%) | 3 (5%) |
-| **MOCK Pages** | 7 (32%) | 7 (23%) | 7 (19%) | 7 (16%) | 7 (14%) | 7 (11%) |
-| **SHELL Pages** | 0 (0%) | 9 (29%) | 14 (39%) | 23 (51%) | 29 (57%) | 43 (67%) |
-| **PLACEHOLDER Pages** | 2 (9%) | 2 (6%) | 2 (6%) | 2 (4%) | 2 (4%) | 2 (3%) |
-| **DEV-ONLY Pages** | 1 (5%) | 1 (3%) | 1 (3%) | 1 (2%) | 1 (2%) | 1 (2%) |
-| **Domains with Any Coverage** | 9 / 15 target groups | 10 / 15 target groups | 11 / 15 | 12 / 15 | 12 / 15 | 14 / 15 |
+| Metric | Before FE-COVERAGE-01A | After FE-COVERAGE-01A | After FE-COVERAGE-01B | After FE-COVERAGE-01C | After FE-COVERAGE-01D | After FE-COVERAGE-01E | After FE-COVERAGE-01F |
+|---|---|---|---|---|---|---|---|
+| **Total Routes Defined** | 24 | 33 | 38 | 47 | 53 | 67 | **78** |
+| **Total Page Files** | 22 (21 unique) | 31 (30 unique) | 36 (35 unique) | 45 (44 unique) | 51 (50 unique) | 65 (64 unique) | **76 (75 unique)** |
+| **CONNECTED Pages** | 13 (59%) | 13 (42%) | 13 (36%) | 13 (29%) | 13 (25%) | 13 (20%) | 13 (17%) |
+| **PARTIAL Pages** | 3 (14%) | 3 (10%) | 3 (8%) | 3 (7%) | 3 (6%) | 3 (5%) | 3 (4%) |
+| **MOCK Pages** | 7 (32%) | 7 (23%) | 7 (19%) | 7 (16%) | 7 (14%) | 7 (11%) | 7 (9%) |
+| **SHELL Pages** | 0 (0%) | 9 (29%) | 14 (39%) | 23 (51%) | 29 (57%) | 43 (67%) | **54 (71%)** |
+| **PLACEHOLDER Pages** | 2 (9%) | 2 (6%) | 2 (6%) | 2 (4%) | 2 (4%) | 2 (3%) | 2 (3%) |
+| **DEV-ONLY Pages** | 1 (5%) | 1 (3%) | 1 (3%) | 1 (2%) | 1 (2%) | 1 (2%) | 1 (1%) |
+| **Domains with Any Coverage** | 9 / 15 target groups | 10 / 15 target groups | 11 / 15 | 12 / 15 | 12 / 15 | 14 / 15 | **15 / 15** |
 
 **Key Insights**:
+- **FE-COVERAGE-01F**: Added 5 AI + 3 Digital Twin + 3 Compliance SHELL screens. 11 new routes. 11 new screenStatus entries. 183 new i18n keys. AI screens labeled Advisory Only. Digital Twin screens labeled Static Demo/Not Live. Compliance screens carry red-bordered legal disclaimers (NOT A LEGALLY BINDING...). All dangerous advisory/simulation/compliance actions disabled. 15/15 target domains now have at least one coverage screen.
 - **FE-COVERAGE-01E**: Added 8 Integration + 6 Reporting SHELL screens. 14 new routes. 14 new screenStatus entries. 188 new i18n keys. All dangerous integration/ERP/reconciliation actions disabled. Reporting screens show only `—` placeholder KPIs. Integration truth boundary enforced: frontend does NOT post to ERP, reconcile, or retry messages.
 - **FE-COVERAGE-01D**: Added 6 Quality Lite / Material / Traceability SHELL screens (QualityDashboard, MeasurementEntry, QualityHolds, MaterialReadiness, StagingKitting, WipBuffers). Hard Mode MOM v3 boundaries enforced: quality disposition, material inventory position, and WIP location remain backend-only. All dangerous operations disabled. Shell pages serve as visualization documentation for upcoming backend integration.
 - **FE-COVERAGE-01C**: Added 9 Execution/Supervisory shell screens. All dangerous execution actions are disabled. All execution/supervisory truth remains in backend.
-- **Coverage Growth**: 38 → 67 routes across 3 iterations; SHELL pages now represent 67% of total page count.
+- **Coverage Growth**: 38 → 78 routes across 4 iterations; SHELL pages now represent 71% of total page count.
 
 ---
 
@@ -416,17 +418,17 @@ Comprehensive primitive set: form controls, layout (card, sidebar, scroll-area),
 
 | Target Screen | Domain | Target Phase | Existing Source File | Current Route | Current Status | Data Source | Gap | Mock Risk | Recommendation | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|
-| AI Insights Dashboard | AI | P3 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **CREATE_FUTURE_PLACEHOLDER** | Future domain; mark as placeholder only; DO NOT IMPLEMENT ACTIVE PREDICTIONS |
-| Shift Summary AI | AI | P3 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **CREATE_FUTURE_PLACEHOLDER** | Future domain; placeholder only |
-| Anomaly Detection | AI | P3 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **CREATE_FUTURE_PLACEHOLDER** | Future domain; placeholder only |
-| Bottleneck Explanation | AI | P3 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **CREATE_FUTURE_PLACEHOLDER** | Future domain; placeholder only |
-| Natural Language Insight | AI | P3 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **CREATE_FUTURE_PLACEHOLDER** | Future domain; placeholder only |
-| Operational Digital Twin Overview | Twin | P3 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **CREATE_FUTURE_PLACEHOLDER** | Future domain; placeholder only; DO NOT IMPLEMENT REAL STATE |
-| Twin State Graph | Twin | P3 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **CREATE_FUTURE_PLACEHOLDER** | Future domain; placeholder only |
-| What-if Scenario | Twin | P3 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **CREATE_FUTURE_PLACEHOLDER** | Future domain; placeholder only |
-| Compliance Record Package | Compliance | P3 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **CREATE_FUTURE_PLACEHOLDER** | Future domain; placeholder only |
-| E-signature | Compliance | P3 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **CREATE_FUTURE_PLACEHOLDER** | Future domain; placeholder only |
-| Electronic Batch Record | Compliance | P3 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **CREATE_FUTURE_PLACEHOLDER** | Future domain; placeholder only |
+| AI Insights Dashboard | AI | P3 | AIInsightsDashboard.tsx | /ai/insights | SHELL | MOCK_FIXTURE | Backend AI advisory | — | **SHELL_DELIVERED** (FE-COVERAGE-01F) | Advisory Only label; model status placeholder; Apply Recommendation disabled |
+| Shift Summary AI | AI | P3 | AIShiftSummary.tsx | /ai/shift-summary | SHELL | MOCK_FIXTURE | Backend AI narrative | — | **SHELL_DELIVERED** (FE-COVERAGE-01F) | Demo Advisory label; source checklist; Publish/Approve/Export disabled |
+| Anomaly Detection | AI | P3 | AnomalyDetection.tsx | /ai/anomaly-detection | SHELL | MOCK_FIXTURE | Backend anomaly model | — | **SHELL_DELIVERED** (FE-COVERAGE-01F) | Model-required notice; Acknowledge/Escalate disabled |
+| Bottleneck Explanation | AI | P3 | BottleneckExplanation.tsx | /ai/bottleneck-explanation | SHELL | MOCK_FIXTURE | Backend bottleneck model | — | **SHELL_DELIVERED** (FE-COVERAGE-01F) | Advisory Demo label; Apply/Dispatch disabled |
+| Natural Language Insight | AI | P3 | NaturalLanguageInsight.tsx | /ai/natural-language-insight | SHELL | MOCK_FIXTURE | Backend NL service | — | **SHELL_DELIVERED** (FE-COVERAGE-01F) | Demo label; no LLM connection; Execute/Export disabled |
+| Operational Digital Twin Overview | Twin | P3 | DigitalTwinOverview.tsx | /digital-twin | SHELL | MOCK_FIXTURE | Backend twin sync | — | **SHELL_DELIVERED** (FE-COVERAGE-01F) | Not Live / Static Demo labels; Sync/Refresh disabled |
+| Twin State Graph | Twin | P3 | TwinStateGraph.tsx | /digital-twin/state-graph | SHELL | MOCK_FIXTURE | Backend twin state | — | **SHELL_DELIVERED** (FE-COVERAGE-01F) | Static demo tree; Refresh/Validate disabled |
+| What-if Scenario | Twin | P3 | WhatIfScenario.tsx | /digital-twin/what-if | SHELL | MOCK_FIXTURE | Backend simulation engine | — | **SHELL_DELIVERED** (FE-COVERAGE-01F) | Demo Projection label; Run/Apply Scenario disabled |
+| Compliance Record Package | Compliance | P3 | ComplianceRecordPackage.tsx | /compliance/record-package | SHELL | MOCK_FIXTURE | Backend compliance service | — | **SHELL_DELIVERED** (FE-COVERAGE-01F) | NOT A LEGALLY BINDING RECORD disclaimer; Generate/Finalize/Export disabled |
+| E-signature | Compliance | P3 | ESignature.tsx | /compliance/e-signature | SHELL | MOCK_FIXTURE | Backend e-sign service | — | **SHELL_DELIVERED** (FE-COVERAGE-01F) | NOT A LEGALLY BINDING SIGNATURE disclaimer; Sign/Approve/Reject disabled |
+| Electronic Batch Record | Compliance | P3 | ElectronicBatchRecord.tsx | /compliance/electronic-batch-record | SHELL | MOCK_FIXTURE | Backend eBR service | — | **SHELL_DELIVERED** (FE-COVERAGE-01F) | NOT A REGULATED eBR disclaimer; Submit/Approve/Finalize disabled |
 
 ---
 
@@ -443,7 +445,7 @@ Comprehensive primitive set: form controls, layout (card, sidebar, scroll-area),
 | **Reporting / KPI** | 2 (KPI in Dashboard, OEE overview) | 1 (OEE Deep Dive mock) | 7 (OEE Deep Dive mock + 6 new report shells; FE-COVERAGE-01E) | 0 | 1 (OEE Deep Dive — wait for backend) | P1-P2 | **SHELL_DELIVERED** (FE-COVERAGE-01E complete) |
 | **Andon / Notification** | 0 | 0 | 1 (Notification bell mock) | 4 (Board, Raise, Center, Escalation) | 4 (all until backend) | P2-P3 | **CREATE_SHELL_NEXT** (Notification Center screen) |
 | **APS / Planning** | 0 | 0 | 2 (APSScheduling, DispatchQueue) | 4 (Planning Board, Capacity, Plan vs Actual, Replanning) | 4 (all until backend) | P2-P3 | **DEFER** (APS/Planning backend required) |
-| **AI / Digital Twin / Compliance** | 0 | 0 | 0 | 11 (all screens) | 11 (all until backend + critical safety guardrails) | P3 | **FE-COVERAGE-01F** (placeholders only; strict rules: no active predictions, no real state, no approval decisions) |
+| **AI / Digital Twin / Compliance** | 0 | 0 | 11 (5 AI + 3 Twin + 3 Compliance shells; FE-COVERAGE-01F) | 0 | 0 (shells delivered; backend required for live data) | P3 | **SHELL_DELIVERED** (FE-COVERAGE-01F complete; advisory/twin/compliance truth boundaries enforced) |
 | **TOTALS** | **20** | **6** | **26** | **44** | **36** | — | — |
 
 **Key Insights:**

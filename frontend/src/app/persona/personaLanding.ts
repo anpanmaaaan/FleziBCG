@@ -121,6 +121,18 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "Integration Status Report", to: "/reports/integration-status" },
     { label: "Shift Report", to: "/reports/shift" },
     { label: "Downtime Report", to: "/reports/downtime" },
+    // AI / Intelligence shells — FE-COVERAGE-01F
+    { label: "AI Insights Dashboard", to: "/ai/insights" },
+    { label: "AI Shift Summary", to: "/ai/shift-summary" },
+    { label: "Anomaly Detection", to: "/ai/anomaly-detection" },
+    { label: "Bottleneck Explanation", to: "/ai/bottleneck-explanation" },
+    { label: "Natural Language Insight", to: "/ai/natural-language-insight" },
+    // Digital Twin shells — FE-COVERAGE-01F
+    { label: "Digital Twin Overview", to: "/digital-twin" },
+    { label: "Twin State Graph", to: "/digital-twin/state-graph" },
+    { label: "What-if Scenario", to: "/digital-twin/what-if" },
+    // Compliance shells — FE-COVERAGE-01F (read access for PMG)
+    { label: "Compliance Record Package", to: "/compliance/record-package" },
   ],
   EXE: [
     { label: "Dashboard", to: "/dashboard" },
@@ -129,6 +141,10 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "Shift Report", to: "/reports/shift" },
     { label: "Downtime Report", to: "/reports/downtime" },
     { label: "Integration Status Report", to: "/reports/integration-status" },
+    // AI advisory shells — FE-COVERAGE-01F
+    { label: "AI Insights Dashboard", to: "/ai/insights" },
+    { label: "AI Shift Summary", to: "/ai/shift-summary" },
+    { label: "Anomaly Detection", to: "/ai/anomaly-detection" },
   ],
   ADM: [
     { label: "Dashboard", to: "/dashboard" },
@@ -144,6 +160,10 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "Security Events", to: "/security-events" },
     { label: "Tenant Settings", to: "/tenant-settings" },
     { label: "Plant Hierarchy", to: "/plant-hierarchy" },
+    // Compliance shells — FE-COVERAGE-01F
+    { label: "Compliance Record Package", to: "/compliance/record-package" },
+    { label: "E-Signature", to: "/compliance/e-signature" },
+    { label: "Electronic Batch Record", to: "/compliance/electronic-batch-record" },
   ],
 };
 
@@ -493,6 +513,24 @@ export function isRouteAllowedForPersona(persona: ResolvedPersona, pathname: str
   if (pathname.startsWith("/reports/")) {
     // SUP and EXE get reporting access too (production, quality, shift, downtime)
     return ["PMG", "ADM", "SUP", "EXE"].includes(persona);
+  }
+
+  // AI / Intelligence shells — FE-COVERAGE-01F
+  // Advisory only — no AI operational authority; accessible to PMG, EXE, ADM
+  if (pathname.startsWith("/ai/")) {
+    return ["PMG", "EXE", "ADM"].includes(persona);
+  }
+
+  // Digital Twin shells — FE-COVERAGE-01F
+  // Static demo — no live twin state; accessible to PMG, ADM
+  if (pathname === "/digital-twin" || pathname.startsWith("/digital-twin/")) {
+    return ["PMG", "ADM"].includes(persona);
+  }
+
+  // Compliance shells — FE-COVERAGE-01F
+  // Not legally binding — accessible to PMG (read) and ADM
+  if (pathname === "/compliance" || pathname.startsWith("/compliance/")) {
+    return ["PMG", "ADM"].includes(persona);
   }
 
   return false;

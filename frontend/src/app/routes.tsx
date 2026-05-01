@@ -65,6 +65,20 @@ import { MaterialWipReport } from "./pages/MaterialWipReport";
 import { IntegrationStatusReport } from "./pages/IntegrationStatusReport";
 import { ShiftReport } from "./pages/ShiftReport";
 import { DowntimeReport } from "./pages/DowntimeReport";
+// AI / Intelligence shells — FE-COVERAGE-01F
+import { AIInsightsDashboard } from "./pages/AIInsightsDashboard";
+import { AIShiftSummary } from "./pages/AIShiftSummary";
+import { AnomalyDetection } from "./pages/AnomalyDetection";
+import { BottleneckExplanation } from "./pages/BottleneckExplanation";
+import { NaturalLanguageInsight } from "./pages/NaturalLanguageInsight";
+// Digital Twin shells — FE-COVERAGE-01F
+import { DigitalTwinOverview } from "./pages/DigitalTwinOverview";
+import { TwinStateGraph } from "./pages/TwinStateGraph";
+import { WhatIfScenario } from "./pages/WhatIfScenario";
+// Compliance shells — FE-COVERAGE-01F
+import { ComplianceRecordPackage } from "./pages/ComplianceRecordPackage";
+import { ESignature } from "./pages/ESignature";
+import { ElectronicBatchRecord } from "./pages/ElectronicBatchRecord";
 import { PersonaLandingRedirect } from "./persona/PersonaLandingRedirect";
 import { RequireAuth } from "./auth/RequireAuth";
 
@@ -153,6 +167,23 @@ export const router = createBrowserRouter([
       { path: "reports/integration-status", Component: IntegrationStatusReport },
       { path: "reports/shift", Component: ShiftReport },
       { path: "reports/downtime", Component: DowntimeReport },
+
+      // AI / Intelligence shells — FE-COVERAGE-01F
+      { path: "ai/insights", Component: AIInsightsDashboard },
+      { path: "ai/shift-summary", Component: AIShiftSummary },
+      { path: "ai/anomaly-detection", Component: AnomalyDetection },
+      { path: "ai/bottleneck-explanation", Component: BottleneckExplanation },
+      { path: "ai/natural-language-insight", Component: NaturalLanguageInsight },
+
+      // Digital Twin shells — FE-COVERAGE-01F
+      { path: "digital-twin", Component: DigitalTwinOverview },
+      { path: "digital-twin/state-graph", Component: TwinStateGraph },
+      { path: "digital-twin/what-if", Component: WhatIfScenario },
+
+      // Compliance shells — FE-COVERAGE-01F
+      { path: "compliance/record-package", Component: ComplianceRecordPackage },
+      { path: "compliance/e-signature", Component: ESignature },
+      { path: "compliance/electronic-batch-record", Component: ElectronicBatchRecord },
       
       // Station Execution
       { path: "station", Component: StationExecution },

@@ -424,6 +424,78 @@ export const SCREEN_STATUS_REGISTRY: Record<string, ScreenStatusEntry> = {
     dataSource: "MOCK_FIXTURE",
     notes: "Downtime Report is a shell. Aggregated downtime analytics and official downtime reporting require backend execution and reporting modules.",
   },
+
+  // ── AI / Intelligence shells — FE-COVERAGE-01F ──
+  aiInsightsDashboard: {
+    routePattern: "/ai/insights",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "AI Insights is a shell. AI advisory outputs require validated ML models and backend AI inference service. This screen does NOT produce actionable AI decisions.",
+  },
+  aiShiftSummary: {
+    routePattern: "/ai/shift-summary",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "AI Shift Summary is a shell. Official shift summary requires backend reporting and shift management modules. AI narrative is advisory demo only.",
+  },
+  anomalyDetection: {
+    routePattern: "/ai/anomaly-detection",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Anomaly Detection is a shell. Real anomaly detection requires backend ML inference and execution event stream integration.",
+  },
+  bottleneckExplanation: {
+    routePattern: "/ai/bottleneck-explanation",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Bottleneck Explanation is a shell. Real bottleneck analysis requires backend execution projection and AI advisory service. AI may NOT influence execution directly.",
+  },
+  naturalLanguageInsight: {
+    routePattern: "/ai/natural-language-insight",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Natural Language Insight is a shell. Real NL query requires backend LLM integration and operational data API. Demo queries must not be confused with live data.",
+  },
+
+  // ── Digital Twin shells — FE-COVERAGE-01F ──
+  digitalTwinOverview: {
+    routePattern: "/digital-twin",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Digital Twin Overview is a shell. Live twin sync requires backend deterministic projection and validated twin model. This screen does NOT show live operational state.",
+  },
+  twinStateGraph: {
+    routePattern: "/digital-twin/state-graph",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Twin State Graph is a shell. Graph reflects static demo structure only. Real twin state requires backend projection and validated equipment/material binding.",
+  },
+  whatIfScenario: {
+    routePattern: "/digital-twin/what-if",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "What-if Scenario is a shell. Real scenario simulation requires backend APS/planning engine. Running scenarios does NOT alter production plans.",
+  },
+
+  // ── Compliance shells — FE-COVERAGE-01F ──
+  complianceRecordPackage: {
+    routePattern: "/compliance/record-package",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Compliance Record Package is a shell. Official compliance records require backend quality, execution, and audit modules. Do NOT use as legally binding record.",
+  },
+  eSignature: {
+    routePattern: "/compliance/e-signature",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "E-Signature is a shell. Real e-signature requires backend signature workflow and compliance service. Do NOT use as legally binding signature.",
+  },
+  electronicBatchRecord: {
+    routePattern: "/compliance/electronic-batch-record",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Electronic Batch Record is a shell. Real eBR requires backend quality, execution, and compliance record modules. Do NOT use as regulated eBR record.",
+  },
 };
 
 const SCREEN_ROUTE_ALIASES: Record<string, string> = {

@@ -121,6 +121,21 @@ export const NAV_GROUPS: NavGroup[] = [
     routePrefixes: ["/scheduling"],
   },
   {
+    id: "ai-intelligence",
+    label: "AI & Intelligence",
+    routePrefixes: ["/ai"],
+  },
+  {
+    id: "digital-twin",
+    label: "Digital Twin",
+    routePrefixes: ["/digital-twin"],
+  },
+  {
+    id: "compliance",
+    label: "Compliance",
+    routePrefixes: ["/compliance"],
+  },
+  {
     id: "governance-admin",
     label: "Governance & Admin",
     routePrefixes: [
