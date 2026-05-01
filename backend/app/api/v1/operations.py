@@ -44,7 +44,6 @@ from app.services.operation_service import (
     start_operation,
     start_downtime,
 )
-from app.services.station_claim_service import ensure_operation_claim_owned_by_identity
 
 router = APIRouter()
 
@@ -100,11 +99,6 @@ def start_operation_endpoint(
         _raise_station_session_guard_http_error(exc)
 
     try:
-        ensure_operation_claim_owned_by_identity(db, identity, operation_id)
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc))
-
-    try:
         return start_operation(
             db,
             operation,
@@ -147,11 +141,6 @@ def report_quantity_endpoint(
         _raise_station_session_guard_http_error(exc)
 
     try:
-        ensure_operation_claim_owned_by_identity(db, identity, operation_id)
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc))
-
-    try:
         return report_quantity(
             db,
             operation,
@@ -188,11 +177,6 @@ def pause_operation_endpoint(
         )
     except StationSessionGuardError as exc:
         _raise_station_session_guard_http_error(exc)
-
-    try:
-        ensure_operation_claim_owned_by_identity(db, identity, operation_id)
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc))
 
     try:
         return pause_operation(
@@ -235,11 +219,6 @@ def resume_operation_endpoint(
         _raise_station_session_guard_http_error(exc)
 
     try:
-        ensure_operation_claim_owned_by_identity(db, identity, operation_id)
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc))
-
-    try:
         return resume_operation(
             db,
             operation,
@@ -278,11 +257,6 @@ def complete_operation_endpoint(
         )
     except StationSessionGuardError as exc:
         _raise_station_session_guard_http_error(exc)
-
-    try:
-        ensure_operation_claim_owned_by_identity(db, identity, operation_id)
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc))
 
     try:
         return complete_operation(
@@ -345,11 +319,6 @@ def start_downtime_endpoint(
     except StationSessionGuardError as exc:
         _raise_station_session_guard_http_error(exc)
 
-    try:
-        ensure_operation_claim_owned_by_identity(db, identity, operation_id)
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc))
-
     from app.services.operation_service import StartDowntimeConflictError
 
     try:
@@ -391,11 +360,6 @@ def end_downtime_endpoint(
         )
     except StationSessionGuardError as exc:
         _raise_station_session_guard_http_error(exc)
-
-    try:
-        ensure_operation_claim_owned_by_identity(db, identity, operation_id)
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc))
 
     try:
         return end_downtime(

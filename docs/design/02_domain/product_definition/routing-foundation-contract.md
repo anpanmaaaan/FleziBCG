@@ -6,8 +6,9 @@
 |---|---|---|
 | 2026-04-29 | v1.0 | Initial P0-B routing foundation draft contract (doc-only, no implementation). |
 | 2026-04-29 | v1.1 | Coverage review completed; marked READY_FOR_HUMAN_REVIEW_BEFORE_IMPLEMENTATION with explicit non-implementation boundary. |
+| 2026-05-01 | v1.2 | MMD-BE-01-PRE boundary patch: extended operation sequence with 3 RoutingOperation-owned fields (`setup_time`, `run_time_per_unit`, `work_center_code`); explicitly deferred `required_skill` / `required_skill_level` to ResourceRequirement domain; explicitly rejected `qc_checkpoint_count` as RoutingOperation source-of-truth (Quality Lite owns checkpoint definition). Status moved to APPROVED for P0-B operation fields extension. |
 
-Status: READY_FOR_HUMAN_REVIEW_BEFORE_IMPLEMENTATION.
+Status: APPROVED for P0-B operation fields extension (v1.2 boundary patch). Pending An merge of branch `master-data-hardening/mmd-be-01-pre-routing-contract-v1-2-boundary-patch`.
 
 ## 1. Purpose
 
@@ -43,10 +44,26 @@ Minimum sequence structure per operation item:
 - standard_cycle_time (optional)
 - required_resource_type (optional)
 
+Extended structure per operation item (v1.2 boundary patch, all optional/nullable):
+- setup_time (optional)
+- run_time_per_unit (optional)
+- work_center_code (optional)
+
+Field intent (extended fields):
+- setup_time: time required to prepare the operation before run begins (e.g., tooling change, fixture install, machine warm-up). Numeric, in seconds. Independent of `standard_cycle_time`.
+- run_time_per_unit: time per produced unit during steady-state run. Numeric, in seconds. Used for OEE benchmarking and APS planning. Independent of `standard_cycle_time` (may equal it in simple cases; may differ when standard_cycle_time captures full cycle including setup spread).
+- work_center_code: identifier of the work center to which this operation is assigned. String code, tenant-scoped. Not yet a foreign-key reference — work_centers entity is master-data debt deferred to a future slice. For P0-B, treated as free-text code with display semantics; downstream code-to-record validation is non-blocking.
+
+Cycle time semantics clarification (v1.2):
+- `standard_cycle_time` remains the authoritative composite cycle target as today.
+- `setup_time` + `run_time_per_unit` are decomposition fields. They do not replace `standard_cycle_time`; they enrich it.
+- If both decomposition and composite are populated and inconsistent, `standard_cycle_time` is the authoritative target for OEE / planning until cycle time decomposition is governed in a future slice.
+
 P0-B sequence rules:
 - sequence_no must be unique within a routing.
 - sequence_no ordering is authoritative for operation order.
 - no parallel branch semantics in P0-B.
+- extended fields (setup_time, run_time_per_unit, work_center_code) are nullable; absence is not an error.
 
 ## 4. Allowed Commands
 
@@ -117,6 +134,13 @@ Structural fields for RELEASED immutability in P0-B:
 - product_id
 - operations sequence
 
+Extended-field invariants (v1.2, soft):
+- setup_time (when populated): expected non-negative numeric. P0-B does not enforce DB-level CHECK constraint; validation deferred to write-path slice (post MMD-BE-01).
+- run_time_per_unit (when populated): expected non-negative numeric. Same deferral as above.
+- work_center_code (when populated): expected non-empty string after trim. Reference integrity to a future work_centers entity not enforced in P0-B.
+
+Note: extended fields are read-only in MMD-BE-01. Write-path support (POST/PATCH for these fields) is a separate slice and must convert these soft invariants into enforced rules.
+
 ## 9. API Surface (P0-B Minimum)
 
 Read:
@@ -149,6 +173,25 @@ Excluded from this contract:
 - Acceptance Gate
 - plant-specific execution dispatch logic
 
+### 10.1 Boundary deferrals (v1.2)
+
+The following candidate fields were considered for RoutingOperation in MMD-BE-01 evaluation and **deferred to other domains**:
+
+- `required_skill` — operator skill requirement. **Deferred to ResourceRequirement domain.** Rationale: `resource_requirement_service.py` already supports `required_resource_type="OPERATOR_SKILL"` with `required_capability_code` and `quantity_required`. Adding a parallel inline path on RoutingOperation would create dual sources of truth for skill requirements. Routing operations needing skill governance must use ResourceRequirement records.
+- `required_skill_level` — qualification level for the required skill. **Deferred to ResourceRequirement domain.** Rationale: same as above; expressed as part of ResourceRequirement's capability semantics, not as a RoutingOperation column.
+
+### 10.2 Boundary rejections (v1.2)
+
+The following candidate field was considered for RoutingOperation in MMD-BE-01 evaluation and **rejected as RoutingOperation source-of-truth**:
+
+- `qc_checkpoint_count` — number of QC checkpoints linked to this operation. **Rejected as RoutingOperation column.** Rationale: Quality Lite domain owns checkpoint definitions and lifecycle. Storing a count on RoutingOperation creates "perceived truth" that is divorced from the canonical Quality Lite record. If a count is needed for UI summary, it should appear as a derived/read-only projection sourced from Quality Lite, not as a column on RoutingOperation.
+
+### 10.3 Future re-entry path
+
+A field deferred or rejected here may be reconsidered in a future contract revision. Re-entry requires:
+- update to this contract with the new boundary rationale, or
+- a separate domain contract (Quality Lite, ResourceRequirement) explicitly governing the new field, plus a derived projection back into the routing UI surface.
+
 ## 11. Coverage Review Verdict
 
 Coverage check against requested minimums:
@@ -169,3 +212,12 @@ Verdict: READY_FOR_HUMAN_REVIEW_BEFORE_IMPLEMENTATION.
 This file is a design draft contract only.
 
 No routing code implementation, migration, or API delivery is included by this document.
+
+## 13. Implementation Authorization (v1.2)
+
+After An merges branch `master-data-hardening/mmd-be-01-pre-routing-contract-v1-2-boundary-patch`:
+
+- Slice **MMD-BE-01 — Routing Operation Extended Schema + Read API** is authorized to implement read-side support for the 3 v1.2 extended fields (`setup_time`, `run_time_per_unit`, `work_center_code`).
+- Implementation scope: Alembic migration adding 3 nullable columns; model + schema + service projection update; extend GET `/v1/routings/{id}` response; tests.
+- Out of scope for MMD-BE-01: write-path support (POST/PATCH for new fields), `required_skill` / `required_skill_level` / `qc_checkpoint_count` (per Section 10).
+- Cross-domain note: implementations of skill or QC checkpoint UI fields on routing screens must be backed by ResourceRequirement records (skill) or Quality Lite read-model (QC checkpoint count), not by RoutingOperation columns.
