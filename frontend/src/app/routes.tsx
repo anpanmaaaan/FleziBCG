@@ -29,6 +29,11 @@ import { AuditLog } from "./pages/AuditLog";
 import { SecurityEvents } from "./pages/SecurityEvents";
 import { TenantSettings } from "./pages/TenantSettings";
 import { PlantHierarchy } from "./pages/PlantHierarchy";
+import { BomList } from "./pages/BomList";
+import { BomDetail } from "./pages/BomDetail";
+import { RoutingOperationDetail } from "./pages/RoutingOperationDetail";
+import { ResourceRequirements } from "./pages/ResourceRequirements";
+import { ReasonCodes } from "./pages/ReasonCodes";
 import { PersonaLandingRedirect } from "./persona/PersonaLandingRedirect";
 import { RequireAuth } from "./auth/RequireAuth";
 
@@ -66,6 +71,13 @@ export const router = createBrowserRouter([
       // Routes & Operations
       { path: "routes", Component: RouteList },
       { path: "routes/:routeId", Component: RouteDetail },
+      { path: "routes/:routeId/operations/:operationId", Component: RoutingOperationDetail },
+
+      // Manufacturing Master Data shells
+      { path: "bom", Component: BomList },
+      { path: "bom/:bomId", Component: BomDetail },
+      { path: "resource-requirements", Component: ResourceRequirements },
+      { path: "reason-codes", Component: ReasonCodes },
       
       // Work Order Execution Flow (3 screens)
       { path: "work-orders", Component: OperationList }, // WO Status List (all)

@@ -5,14 +5,17 @@ import {
   ChevronRight,
   ClipboardList,
   Factory,
+  FileText,
   GitBranch,
   LayoutDashboard,
   Layers,
   Package,
   PlayCircle,
   ScanSearch,
+  Server,
   Settings,
   ShieldCheck,
+  Tag,
   X,
   Lock,
   Users,
@@ -102,6 +105,15 @@ function getIconForPath(path: string) {
   }
   if (path.startsWith("/plant-hierarchy")) {
     return Layers;
+  }
+  if (path.startsWith("/bom")) {
+    return FileText;
+  }
+  if (path.startsWith("/resource-requirements")) {
+    return Server;
+  }
+  if (path.startsWith("/reason-codes")) {
+    return Tag;
   }
   if (path.startsWith("/settings")) {
     return Settings;

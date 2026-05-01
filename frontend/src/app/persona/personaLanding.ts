@@ -28,6 +28,8 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "Work Orders", to: "/work-orders" },
     { label: "Products", to: "/products" },
     { label: "Routes", to: "/routes" },
+    { label: "BOM", to: "/bom" },
+    { label: "Reason Codes", to: "/reason-codes" },
     { label: "Quality", to: "/quality" },
     { label: "Defects", to: "/defects" },
   ],
@@ -37,6 +39,9 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "Work Orders", to: "/work-orders" },
     { label: "Products", to: "/products" },
     { label: "Routes", to: "/routes" },
+    { label: "BOM", to: "/bom" },
+    { label: "Resource Requirements", to: "/resource-requirements" },
+    { label: "Reason Codes", to: "/reason-codes" },
     { label: "Traceability", to: "/traceability" },
     { label: "Quality", to: "/quality" },
   ],
@@ -58,6 +63,9 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "Work Orders", to: "/work-orders" },
     { label: "Products", to: "/products" },
     { label: "Routes", to: "/routes" },
+    { label: "BOM", to: "/bom" },
+    { label: "Resource Requirements", to: "/resource-requirements" },
+    { label: "Reason Codes", to: "/reason-codes" },
     { label: "Dispatch", to: "/dispatch" },
     { label: "Quality", to: "/quality" },
     { label: "Defects", to: "/defects" },
@@ -348,6 +356,23 @@ export function isRouteAllowedForPersona(persona: ResolvedPersona, pathname: str
 
   if (pathname === "/settings") {
     return canAccessSettings(persona);
+  }
+
+  // Manufacturing Master Data shells — viewable by IEP, SUP, PMG, ADM
+  if (pathname === "/bom" || pathname.startsWith("/bom/")) {
+    return ["IEP", "SUP", "PMG", "ADM"].includes(persona);
+  }
+
+  if (pathname === "/resource-requirements") {
+    return ["IEP", "PMG", "ADM"].includes(persona);
+  }
+
+  if (pathname === "/reason-codes") {
+    return ["IEP", "SUP", "PMG", "ADM"].includes(persona);
+  }
+
+  if (pathname.startsWith("/routes/") && pathname.includes("/operations/")) {
+    return ["IEP", "SUP", "PMG", "ADM"].includes(persona);
   }
 
   return false;
