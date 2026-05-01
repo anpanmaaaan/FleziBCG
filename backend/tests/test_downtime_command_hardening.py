@@ -585,6 +585,7 @@ def test_end_downtime_rejects_when_no_open_downtime(db_session):
 
 def test_end_downtime_rejects_closed_operation(db_session):
     db = db_session
+    _ensure_open_station_session(db)
     op = _seed_operation(
         db,
         suffix="DT-END-CLOSED",

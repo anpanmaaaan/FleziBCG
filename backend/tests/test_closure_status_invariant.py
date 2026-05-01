@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import delete, select, text
@@ -9,6 +10,7 @@ from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent, ExecutionEventType
 from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.station_session import StationSession
 from app.schemas.operation import (
     OperationAbortRequest,
     OperationCompleteRequest,
@@ -58,6 +60,7 @@ def _purge(db) -> None:
     if wo_ids:
         op_ids = list(db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids))))
         if op_ids:
+            db.execute(delete(StationSession).where(StationSession.station_id == "STATION_01"))
             db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
             db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
         db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
@@ -134,6 +137,34 @@ def _mk_operation(
     return op
 
 
+def _ensure_open_station_session(
+    db,
+    *,
+    station_id: str = "STATION_01",
+    operator_user_id: str = "opr-001",
+) -> StationSession:
+    session = db.scalar(
+        select(StationSession).where(
+            StationSession.tenant_id == _TENANT_ID,
+            StationSession.station_id == station_id,
+            StationSession.status == "OPEN",
+            StationSession.closed_at.is_(None),
+        )
+    )
+    if session is None:
+        session = StationSession(
+            session_id=uuid4().hex,
+            tenant_id=_TENANT_ID,
+            station_id=station_id,
+            operator_user_id=operator_user_id,
+            status="OPEN",
+        )
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+    return session
+
+
 def _add_open_downtime_event(db, op: Operation) -> None:
     db.add(
         ExecutionEvent(
@@ -151,6 +182,7 @@ def _add_open_downtime_event(db, op: Operation) -> None:
 def test_closed_record_rejects_all_execution_writes_with_same_code(db_session):
     db = db_session
     wo = _seed_work_order(db)
+    _ensure_open_station_session(db)
 
     op_start = _mk_operation(
         db,
@@ -276,6 +308,7 @@ def test_closed_record_rejects_all_execution_writes_with_same_code(db_session):
 def test_open_record_keeps_existing_behavior_and_not_closed_error(db_session):
     db = db_session
     wo = _seed_work_order(db)
+    _ensure_open_station_session(db)
 
     op_start = _mk_operation(
         db,
@@ -339,6 +372,7 @@ def test_open_record_keeps_existing_behavior_and_not_closed_error(db_session):
 def test_open_happy_path_report_quantity_unchanged(db_session):
     db = db_session
     wo = _seed_work_order(db)
+    _ensure_open_station_session(db)
     op = _mk_operation(
         db,
         wo,

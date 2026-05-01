@@ -8,6 +8,149 @@
 
 ## Verified Slices
 
+### P0-C-08C Controlled Batch: StationSession guard enforcement
+
+Design Evidence Extract
+- `docs/design/02_domain/execution/station-session-command-guard-enforcement-contract.md` defines the approved seven-command enforcement subset, validation order, and deferred commands.
+- `docs/design/00_platform/canonical-error-code-registry.md` approves the 08C StationSession guard error set.
+- `docs/design/00_platform/canonical-error-codes.md` defines the per-code HTTP semantics for this slice.
+
+Event Map
+- Guard rejection path: no new event
+- Successful command path: existing command events remain unchanged
+
+Invariant Map
+- Guarded execution commands require a matching OPEN StationSession for the operation station.
+- Failed StationSession guard checks emit no execution event.
+- Claim compatibility remains in place for this slice.
+- Close/reopen StationSession enforcement remains deferred.
+
+State Transition Map
+- No session -> `STATION_SESSION_REQUIRED`
+- Closed latest station session -> `STATION_SESSION_CLOSED`
+- Wrong station for operator session -> `STATION_SESSION_STATION_MISMATCH`
+- Wrong operator on station session -> `STATION_SESSION_OPERATOR_MISMATCH`
+- Tenant mismatch -> `STATION_SESSION_TENANT_MISMATCH`
+
+Test Matrix
+- `tests/test_station_session_command_guard_enforcement.py`
+- `tests/test_start_pause_resume_command_hardening.py`
+- `tests/test_report_quantity_command_hardening.py`
+- `tests/test_downtime_command_hardening.py`
+- `tests/test_complete_operation_command_hardening.py`
+- `tests/test_station_session_lifecycle.py`
+- `tests/test_station_session_diagnostic_bridge.py`
+- `tests/test_station_session_command_context_diagnostic.py`
+- `tests/test_claim_single_active_per_operator.py`
+- `tests/test_release_claim_active_states.py`
+- `tests/test_station_queue_active_states.py`
+- `tests/test_reopen_resumability_claim_continuity.py`
+- `tests/test_close_reopen_operation_foundation.py`
+- full backend `pytest -q`
+
+Execution Results
+- Focused 08C guard slice: 70 passed in 30.60s
+- Adjacent regression subset: 61 passed in 18.38s
+- Full backend suite: 277 passed, 1 skipped in 65.41s
+- Static analysis on touched files: no errors found
+
+Verdict
+- `READY_FOR_NEXT_APPROVED_SLICE`
+
+---
+
+## Addendum — P0-C-08E Reopen / Resume Continuity Replacement
+
+Design Evidence Extract
+- `docs/design/02_domain/execution/station-session-command-guard-enforcement-contract.md`: close/reopen StationSession enforcement remains deferred from 08C scope.
+- `docs/design/02_domain/execution/station-session-ownership-contract.md`: StationSession is target ownership model while compatibility boundaries are preserved.
+- `docs/implementation/p0-c-04-claim-compatibility-deprecation-lock.md`: claim must not be removed in this phase.
+
+Behavior Summary
+- Reopen remains non-StationSession-enforced in this slice.
+- Resume-after-reopen remains governed by existing StationSession command guard path.
+- Claim continuity restoration for reopen is compatibility-only and non-blocking on owner-conflict path.
+
+Execution Results (required sequential matrix)
+- `tests/test_reopen_resume_station_session_continuity.py`:
+	- `5 passed`, `EXIT_CODE:0`
+- `tests/test_reopen_resumability_claim_continuity.py tests/test_reopen_operation_claim_continuity_hardening.py tests/test_close_reopen_operation_foundation.py`:
+	- `21 passed`, `EXIT_CODE:0`
+- `tests/test_station_session_command_guard_enforcement.py`:
+	- `22 passed`, `EXIT_CODE:0`
+- `tests/test_station_queue_session_aware_migration.py tests/test_station_queue_active_states.py`:
+	- `10 passed`, `EXIT_CODE:0`
+- `tests/test_start_pause_resume_command_hardening.py tests/test_report_quantity_command_hardening.py tests/test_downtime_command_hardening.py tests/test_complete_operation_command_hardening.py tests/test_close_operation_command_hardening.py`:
+	- `58 passed`, `EXIT_CODE:0`
+- `tests/test_station_session_lifecycle.py tests/test_station_session_diagnostic_bridge.py tests/test_station_session_command_context_diagnostic.py tests/test_claim_single_active_per_operator.py tests/test_release_claim_active_states.py`:
+	- `45 passed`, `EXIT_CODE:0`
+- full backend suite `pytest -q`:
+	- `164 passed, 1 skipped, 6 errors`, interrupted with KeyboardInterrupt
+	- `EXIT_CODE:2`
+
+Scope Guard Confirmation
+- No claim removal.
+- No close_operation StationSession enforcement expansion.
+- No additional queue migration.
+- No schema migration.
+- No FE/UI change.
+
+Verdict
+- `IMPLEMENTATION_COMPLETE_VERIFICATION_NOT_FULLY_CLEAN`
+
+08E-V1 Recovery Update
+- Recovery report: `docs/implementation/p0-c-08e-fullsuite-verification-recovery-report.md`
+- Mandatory matrix rerun (steps 1-6): all passed with `EXIT_CODE:0`.
+- Latest completed full-suite recovery capture: `283 passed, 1 skipped, 3 errors`, `RECOVERY_FULL_EXIT:1`.
+- Full-suite rerun remained unstable with cross-module PostgreSQL deadlocks and transaction-aborted cascades.
+- Classification: `DB_TEARDOWN_STABILITY / TEST_ENV_LOCK_CONTENTION`.
+- Conclusion: no verified 08E functional/API regression in this recovery pass.
+
+08E-V2 Stabilization Update
+- Stabilization report: `docs/implementation/p0-c-08e-v2-db-fixture-deadlock-stabilization-report.md`
+- Infra-only patch: `backend/app/db/init_db.py` migration apply serialization/de-duplication.
+- Required matrix rerun: all six groups green.
+- Final full-suite rerun: `284 passed, 1 skipped`, `V2_FINAL_FULL_EXIT:0`.
+- Updated conclusion: 08E verification recovered to clean state after infra stabilization; no governed behavior drift detected.
+
+## Addendum — P0-C-08F Claim API Deprecation Lock
+
+Design Evidence Extract
+- `docs/design/02_domain/execution/station-session-ownership-contract.md`: StationSession target ownership, claim compatibility debt.
+- `docs/design/02_domain/execution/station-session-command-guard-enforcement-contract.md`: 08C guard boundary and claim compatibility limits.
+- `docs/implementation/p0-c-04-claim-compatibility-deprecation-lock.md`: claim non-removal and non-expansion lock.
+- `docs/implementation/p0-c-08d-station-queue-session-aware-migration-report.md`: queue session-aware additive contract remains active.
+
+Behavior Summary
+- Claim-only station APIs are now explicitly marked deprecated via response headers.
+- Claim behavior remains callable/compatible.
+- Station queue endpoint is not globally deprecated.
+- StationSession and command behavior remain unchanged.
+
+Execution Results
+- `tests/test_claim_api_deprecation_lock.py`:
+	- `5 passed`, `T08F_EXIT:0`
+- `tests/test_claim_single_active_per_operator.py tests/test_release_claim_active_states.py tests/test_station_queue_active_states.py`:
+	- `28 passed`, `T_CLAIM_REG_EXIT:0`
+- `tests/test_station_session_command_guard_enforcement.py tests/test_station_session_lifecycle.py tests/test_station_session_diagnostic_bridge.py tests/test_station_session_command_context_diagnostic.py`:
+	- `47 passed`, `T_08C_REG_EXIT:0`
+- `tests/test_station_queue_session_aware_migration.py tests/test_reopen_resume_station_session_continuity.py tests/test_reopen_resumability_claim_continuity.py tests/test_reopen_operation_claim_continuity_hardening.py tests/test_close_reopen_operation_foundation.py`:
+	- `28 passed`, `T_08D08E_REG_EXIT:0`
+- `tests/test_start_pause_resume_command_hardening.py tests/test_report_quantity_command_hardening.py tests/test_downtime_command_hardening.py tests/test_complete_operation_command_hardening.py tests/test_close_operation_command_hardening.py`:
+	- `58 passed`, `T_CMD_HARDEN_REG_EXIT:0`
+- full backend suite `pytest -q`:
+	- `289 passed, 1 skipped`, `T_FULL_EXIT:0`
+
+Scope Guard Confirmation
+- No claim removal or claim table/code removal.
+- No close/reopen enforcement expansion.
+- No queue rewrite.
+- No schema migration.
+- No FE/UI changes.
+
+Verdict
+- `IMPLEMENTATION_COMPLETE_VERIFICATION_CLEAN`
+
 ### 1. Governed audit/security-event emission wiring
 
 ## Design Evidence Extract
@@ -1206,3 +1349,78 @@ none_required — P0-C-03 introduced no new domain events.
 ALLOW_COMPLETE
 
 P0-C-03 is implemented and verified. Event-log-derived detail and bulk projections are covered for core sequences and reconcile apply mode. Deterministic event ordering is now explicit for per-operation detail projection reads. No regressions; full backend suite remains green. P0-C-04 is recommended as next slice.
+
+---
+
+## Addendum — P0-C-08C-V1 Full Suite Verification Recovery
+
+Scope:
+- Verification/failure-isolation only.
+- No runtime code changes.
+- No queue migration, no claim removal, no close/reopen enforcement expansion.
+
+Observed recovery outcomes:
+- Initial non-clean behavior reproduced as transient DB lock/transaction contamination under fixture/setup overlap.
+- Isolated first failing test passed standalone (`1 passed`, `EXIT_CODE:0`).
+- Final deterministic reruns passed:
+	- 08C guard suite: `22 passed`, `EXIT_CODE:0`
+	- hardening batch: `71 passed`, `EXIT_CODE:0`
+	- StationSession+claim+queue regression batch (re-run): `61 passed`, `EXIT_CODE:0`
+	- full backend suite: `277 passed, 1 skipped`, `EXIT_CODE:0`
+
+Classification:
+- Primary: `STALE_PROCESS_ENVIRONMENT`
+- Secondary: `DB_TEARDOWN_STABILITY`
+- Not a confirmed `REAL_08C_REGRESSION`.
+
+Readiness update:
+- P0-C-08C closeout can be upgraded to `READY_FOR_P0_C_08D_QUEUE_MIGRATION`.
+
+---
+
+## Addendum — P0-C-08D Station Queue Session-Aware Migration
+
+Design Evidence Extract
+- `docs/design/02_domain/execution/station-session-ownership-contract.md`: StationSession is target ownership model; claim remains compatibility layer.
+- `docs/implementation/p0-c-04-claim-compatibility-deprecation-lock.md`: claim cannot be removed/expanded in this slice.
+- `docs/design/02_domain/execution/station-session-command-guard-enforcement-contract.md`: queue migration is explicitly deferred from 08C and belongs to 08D.
+
+Current Source Evidence
+- `backend/app/services/station_claim_service.py`: queue projection source, previously claim-centric.
+- `backend/app/schemas/station.py`: queue response contract, previously claim-only ownership shape.
+- `backend/tests/test_station_queue_active_states.py`: claim compatibility and active-state queue behavior lock.
+
+Queue Ownership Model
+- Current (pre-08D): claim-only ownership projection (`claim.state/expires/claimed_by`).
+- 08D target (implemented): additive `ownership` block with session-aware owner metadata.
+- Compatibility: legacy `claim` object preserved without behavior change.
+
+Event Map
+- No new events required.
+- Queue migration is read-model augmentation only.
+
+Invariant Map
+- Do not remove claim compatibility in 08D.
+- Do not introduce dual authoritative allow/deny behavior.
+- Queue read model may expose session target ownership metadata.
+- Command behavior and event append semantics remain unchanged.
+
+Behavior Contract
+- Backend remains source of truth.
+- Frontend receives additive session-aware ownership context.
+- Existing claim contract remains available during migration window.
+
+Execution Results
+- Focused 08D queue tests:
+	- `tests/test_station_queue_session_aware_migration.py`
+	- `tests/test_station_queue_active_states.py`
+	- Result: `10 passed`, `EXIT_CODE=0`
+- Command hardening regression batch:
+	- Result: `70 passed`, `EXIT_CODE=0`
+- StationSession + claim + queue + reopen regression batch:
+	- Result: `63 passed`, `EXIT_CODE=0`
+- Full backend suite:
+	- Result: `279 passed, 1 skipped`, `EXIT_CODE=0`
+
+Verdict
+- `READY_FOR_NEXT_APPROVED_SLICE`

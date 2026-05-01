@@ -16,6 +16,7 @@ Non-goals:
 from __future__ import annotations
 
 from datetime import datetime
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import delete, select
@@ -23,6 +24,7 @@ from sqlalchemy import delete, select
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent
 from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.station_session import StationSession
 from app.models.station_claim import OperationClaim, OperationClaimAuditLog
 from app.schemas.operation import (
     OperationEndDowntimeRequest,
@@ -355,10 +357,41 @@ def _purge(db) -> None:
         db.execute(
             delete(ExecutionEvent).where(ExecutionEvent.work_order_id.in_(wo_ids))
         )
+        db.execute(
+            delete(StationSession).where(StationSession.station_id == "STATION_TEST_AA")
+        )
         db.execute(delete(Operation).where(Operation.work_order_id.in_(wo_ids)))
         db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
     db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
     db.commit()
+
+
+def _ensure_open_station_session(
+    db,
+    *,
+    station_id: str,
+    operator_user_id: str,
+) -> StationSession:
+    session = db.scalar(
+        select(StationSession).where(
+            StationSession.tenant_id == "default",
+            StationSession.station_id == station_id,
+            StationSession.status == "OPEN",
+            StationSession.closed_at.is_(None),
+        )
+    )
+    if session is None:
+        session = StationSession(
+            session_id=uuid4().hex,
+            tenant_id="default",
+            station_id=station_id,
+            operator_user_id=operator_user_id,
+            status="OPEN",
+        )
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+    return session
 
 
 @pytest.fixture
@@ -431,6 +464,11 @@ def running_operation():
             tenant_id="default",
         )
         db.commit()
+        _ensure_open_station_session(
+            db,
+            station_id=op.station_scope_value,
+            operator_user_id="test-actor",
+        )
         db.refresh(op)
 
         yield db, op

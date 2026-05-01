@@ -32,6 +32,11 @@ from app.services.operation_service import (
     start_operation,
 )
 from app.services.station_claim_service import get_station_queue
+from app.services.station_session_service import (
+    get_current_station_session,
+    identify_operator_at_station,
+    open_station_session,
+)
 
 _PREFIX = "TEST-QUEUE-ACTIVE-STATES"
 _STATION_SCOPE_VALUE = f"{_PREFIX}-STATION-01"
@@ -111,6 +116,20 @@ def _ensure_opr_role(db) -> Role:
     db.add(opr)
     db.flush()
     return opr
+
+
+def _ensure_open_station_session(db) -> None:
+    identity = _identity()
+    session = get_current_station_session(db, identity, station_id=_STATION_SCOPE_VALUE)
+    if session is None:
+        session = open_station_session(db, identity, station_id=_STATION_SCOPE_VALUE)
+    if session.operator_user_id != _USER_ID:
+        identify_operator_at_station(
+            db,
+            identity,
+            session_id=session.session_id,
+            operator_user_id=_USER_ID,
+        )
 
 
 @pytest.fixture
@@ -193,7 +212,7 @@ def station_queue_fixture():
 
         # Drive the three non-PLANNED ops through the real service layer so
         # the snapshot and event log both reflect the intended runtime state.
-        # operator_id=None bypasses the station-busy guard for seeding.
+        _ensure_open_station_session(db)
         start_operation(
             db,
             op_running,
@@ -207,7 +226,7 @@ def station_queue_fixture():
             db,
             op_paused,
             OperationPauseRequest(reason_code=None, note=None),
-            actor_user_id="seed",
+            actor_user_id=_USER_ID,
             tenant_id=_TENANT_ID,
         )
         start_operation(
@@ -222,7 +241,7 @@ def station_queue_fixture():
             OperationStartDowntimeRequest(
                 reason_code="BREAKDOWN_GENERIC", note="test"
             ),
-            actor_user_id="seed",
+            actor_user_id=_USER_ID,
             tenant_id=_TENANT_ID,
         )
 
@@ -300,7 +319,7 @@ def test_station_queue_downtime_open_clears_after_end_downtime(station_queue_fix
         db,
         ops["blocked"],
         OperationEndDowntimeRequest(note="test-end"),
-        actor_user_id="seed",
+        actor_user_id=_USER_ID,
         tenant_id=_TENANT_ID,
     )
     db.refresh(ops["blocked"])
@@ -402,7 +421,17 @@ def test_station_queue_claim_fields_unchanged(station_queue_fixture):
     # No claims were created in the fixture; every item must report the
     # canonical unclaimed summary.
     for op_key in ("planned", "running", "paused", "blocked"):
-        claim = by_id[ops[op_key].id]["claim"]
+        item = by_id[ops[op_key].id]
+        claim = item["claim"]
         assert claim["state"] == "none"
         assert claim["expires_at"] is None
         assert claim["claimed_by_user_id"] is None
+
+        # 08D additive migration: queue now carries session ownership metadata
+        # while preserving the legacy claim shape above.
+        ownership = item["ownership"]
+        assert ownership["target_owner_type"] == "station_session"
+        assert (
+            ownership["ownership_migration_status"]
+            == "TARGET_SESSION_OWNER_WITH_CLAIM_COMPAT"
+        )

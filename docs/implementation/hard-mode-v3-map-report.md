@@ -8,7 +8,6 @@
 
 ## Slice HM3-001
 Name: Governed audit/security-event emission for auth/admin mutations
-
 ### Design Evidence Extract
 | Doc | Evidence | Impact |
 |---|---|---|
@@ -257,6 +256,295 @@ CANONICAL
 
 ## Slice HM3-005
 Name: P0-A CI governance artifact enforcement
+
+## Slice HM3-014
+Name: P0-C-08C StationSession command guard enforcement controlled batch
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/design/02_domain/execution/station-session-command-guard-enforcement-contract.md | Approved seven-command subset, validation order, deferred close/reopen | Limits implementation scope and expected rejection behavior |
+| docs/design/00_platform/canonical-error-code-registry.md | Approved StationSession guard error registry for 08C | Error codes and semantics become authoritative for this slice |
+| docs/design/00_platform/canonical-error-codes.md | Per-code HTTP mapping for StationSession guard failures | Route translation must be explicit and stable |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| guarded command rejected by StationSession guard | none | none_required | CANONICAL | n/a | no state change, no event append | 08C enforcement contract |
+| guarded command succeeds with matching OPEN session | existing command event only | domain_event | unchanged | unchanged command payload | unchanged projection semantics | existing command contracts |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---:|---|---|
+| guarded commands require matching OPEN StationSession | ownership | service + route | no | yes | 08C enforcement contract |
+| guard rejection appends no execution event | event_append_only | service | no | yes | 08C enforcement contract |
+| claim compatibility retained in 08C | migration_boundary | route + existing service | no | yes | 08C enforcement contract |
+| close/reopen guard deferred | scope_guard | implementation boundary | no | yes | 08C enforcement contract |
+
+### State Transition Map
+| Entity | Current State | Command | Allowed? | Event | Next Projection State | Invalid Case Test | Source |
+|---|---|---|---:|---|---|---|---|
+| Operation | target command + no session | any 08C guarded command | no | none | unchanged | required-session reject | 08C enforcement contract |
+| Operation | target command + closed latest session | any 08C guarded command | no | none | unchanged | closed-session reject | 08C enforcement contract |
+| Operation | target command + matching OPEN session | any 08C guarded command | yes subject to existing command guards | existing command event | existing command projection | happy path with session | 08C enforcement contract |
+
+### Test Matrix
+| Test ID | Scenario | Type | Given | When | Then | Event Assertion | Invariant Assertion |
+|---|---|---|---|---|---|---|---|
+| HM3-014-T1 | missing session rejected | invalid_state | guarded command target op | invoke command | StationSession error | no event appended | required-session enforced |
+| HM3-014-T2 | closed session rejected | invalid_state | latest session CLOSED | invoke command | StationSession error | no event appended | open-session requirement enforced |
+| HM3-014-T3 | matching session happy path | happy_path | OPEN session with matching operator/station | invoke command | existing command behavior preserved | existing event only | compatibility preserved |
+| HM3-014-T4 | claim compatibility regression | regression | claim baseline tests | run subset | pass | n/a | claim boundary preserved |
+| HM3-014-T5 | full backend verification | regression | merged controlled batch | run full suite | pass | n/a | no unintended drift |
+
+### Final verification result
+- Focused 08C guard slice: passed (70 passed)
+- Adjacent regression subset: passed (61 passed)
+- Full backend suite: passed (277 passed, 1 skipped)
+
+### Event naming status
+CANONICAL
+
+### Verdict
+ALLOW_IMPLEMENTATION_COMPLETE
+
+## HM3-026 — P0-C-08F Claim API Deprecation Lock
+
+## Routing
+- Selected brain: docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md
+- Selected mode: Hard Mode MOM v3 (SINGLE-SLICE)
+- Hard Mode MOM: docs/ai-skills/hard-mode-mom-v3/SKILL.md
+- Reason: freeze claim API surface as compatibility-only deprecation boundary without changing execution behavior.
+
+### Design Evidence Extract
+- `docs/design/02_domain/execution/station-session-ownership-contract.md`
+- `docs/design/02_domain/execution/station-session-command-guard-enforcement-contract.md`
+- `docs/implementation/p0-c-04-claim-compatibility-deprecation-lock.md`
+- `docs/implementation/p0-c-08d-station-queue-session-aware-migration-report.md`
+- `docs/implementation/p0-c-08e-reopen-resume-continuity-replacement-report.md`
+
+### Event Map
+- No new domain events.
+- No event rename.
+- Existing claim audit events unchanged.
+- StationSession and command events unchanged.
+
+### Invariant Map
+- StationSession remains target ownership truth.
+- Claim APIs remain compatibility-only and deprecated.
+- Claim cannot override StationSession guard behavior.
+- Queue session-aware output remains unchanged.
+- Reopen/resume behavior remains unchanged.
+
+### State Transition Map
+- No execution state transition changes.
+- API metadata transition only: claim endpoints now emit deprecation headers while behavior remains callable.
+
+### Test Matrix
+- `tests/test_claim_api_deprecation_lock.py` => `5 passed` (`T08F_EXIT:0`)
+- `tests/test_claim_single_active_per_operator.py tests/test_release_claim_active_states.py tests/test_station_queue_active_states.py` => `28 passed` (`T_CLAIM_REG_EXIT:0`)
+- `tests/test_station_session_command_guard_enforcement.py tests/test_station_session_lifecycle.py tests/test_station_session_diagnostic_bridge.py tests/test_station_session_command_context_diagnostic.py` => `47 passed` (`T_08C_REG_EXIT:0`)
+- `tests/test_station_queue_session_aware_migration.py tests/test_reopen_resume_station_session_continuity.py tests/test_reopen_resumability_claim_continuity.py tests/test_reopen_operation_claim_continuity_hardening.py tests/test_close_reopen_operation_foundation.py` => `28 passed` (`T_08D08E_REG_EXIT:0`)
+- `tests/test_start_pause_resume_command_hardening.py tests/test_report_quantity_command_hardening.py tests/test_downtime_command_hardening.py tests/test_complete_operation_command_hardening.py tests/test_close_operation_command_hardening.py` => `58 passed` (`T_CMD_HARDEN_REG_EXIT:0`)
+- Full suite: `pytest -q` => `289 passed, 1 skipped` (`T_FULL_EXIT:0`)
+
+### Final verification result
+- Claim deprecation lock applied to claim-only endpoints.
+- Compatibility/regression matrix and full suite are clean.
+
+### Event naming status
+UNCHANGED_CANONICAL
+
+### Verdict
+ALLOW_IMPLEMENTATION_COMPLETE
+
+## HM3-024 — P0-C-08E Reopen / Resume Continuity Replacement
+
+## Routing
+- Selected brain: docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md
+- Selected mode: Hard Mode MOM v3
+- Hard Mode MOM: docs/ai-skills/hard-mode-mom-v3/SKILL.md
+- Reason: execution reopen/resume continuity under claim compatibility and StationSession guard boundary
+
+### Design Evidence Extract
+- `docs/design/02_domain/execution/station-session-command-guard-enforcement-contract.md`
+- `docs/design/02_domain/execution/station-session-ownership-contract.md`
+- `docs/implementation/p0-c-04-claim-compatibility-deprecation-lock.md`
+
+### Event Map
+- No event contract changes in 08E.
+- Existing reopen event flow retained.
+
+### Invariant Map
+- Reopen path must not remove or force-terminate existing claim model.
+- Reopen path must not enforce close_operation StationSession requirement in 08E.
+- Owner-conflict during claim restoration must not block reopen; restoration may be skipped.
+- Resume command guard remains StationSession-authoritative as already implemented in prior slices.
+
+### State Transition Map
+- `completed -> active` (reopen) remains valid.
+- `active (reopened) -> paused/active via resume path` remains gated by existing StationSession guard rules.
+- Claim restoration is best-effort compatibility transition only.
+
+### Test Matrix
+- `tests/test_reopen_resume_station_session_continuity.py` => `5 passed` (`EXIT_CODE:0`)
+- `tests/test_reopen_resumability_claim_continuity.py tests/test_reopen_operation_claim_continuity_hardening.py tests/test_close_reopen_operation_foundation.py` => `21 passed` (`EXIT_CODE:0`)
+- `tests/test_station_session_command_guard_enforcement.py` => `22 passed` (`EXIT_CODE:0`)
+- `tests/test_station_queue_session_aware_migration.py tests/test_station_queue_active_states.py` => `10 passed` (`EXIT_CODE:0`)
+- `tests/test_start_pause_resume_command_hardening.py tests/test_report_quantity_command_hardening.py tests/test_downtime_command_hardening.py tests/test_complete_operation_command_hardening.py tests/test_close_operation_command_hardening.py` => `58 passed` (`EXIT_CODE:0`)
+- `tests/test_station_session_lifecycle.py tests/test_station_session_diagnostic_bridge.py tests/test_station_session_command_context_diagnostic.py tests/test_claim_single_active_per_operator.py tests/test_release_claim_active_states.py` => `45 passed` (`EXIT_CODE:0`)
+- full suite `pytest -q` => `164 passed, 1 skipped, 6 errors`, interrupted with KeyboardInterrupt (`EXIT_CODE:2`)
+
+### Verdict
+- `ALLOW_IMPLEMENTATION`
+- `SLICE_IMPLEMENTATION_COMPLETE_VERIFICATION_NOT_FULLY_CLEAN`
+
+### 08E-V1 Recovery Update
+- Recovery artifact: `docs/implementation/p0-c-08e-fullsuite-verification-recovery-report.md`
+- Required sequential verification matrix (1-6): all green with `EXIT_CODE:0`.
+- Latest completed full-suite recovery capture: `283 passed, 1 skipped, 3 errors`, `RECOVERY_FULL_EXIT:1`.
+- Full-suite recovery rerun: unstable with multi-module deadlocks (`DeadlockDetected`) and transaction-aborted cascades.
+- Failure family expanded beyond close-operation hardening into report-quantity and downtime/start-pause-resume hardening files under full-suite pressure.
+- Classification: `DB_TEARDOWN_STABILITY / TEST_ENV_LOCK_CONTENTION`.
+- 08E contract regression evidence: not verified.
+
+### Scope guard confirmation
+- `close_operation` and `reopen_operation` StationSession enforcement not implemented in this slice
+- claim removal and queue migration not implemented in this slice
+
+## HM3-025 — P0-C-08E-V2 DB Fixture Deadlock / Teardown Stabilization
+
+## Routing
+- Selected brain: docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md
+- Selected mode: Hard Mode MOM v3 (SINGLE-SLICE)
+- Hard Mode MOM: docs/ai-skills/hard-mode-mom-v3/SKILL.md
+- Reason: test infrastructure deadlock stabilization for execution verification boundary without domain behavior changes.
+
+### Design Evidence Extract
+- `docs/design/02_domain/execution/station-session-command-guard-enforcement-contract.md`
+- `docs/design/02_domain/execution/station-session-ownership-contract.md`
+- `docs/implementation/p0-c-04-claim-compatibility-deprecation-lock.md`
+- `docs/implementation/p0-c-08e-fullsuite-verification-recovery-report.md`
+
+### Event Map
+- No new events.
+- No event rename/deprecation.
+
+### Invariant Map
+- No business command semantics changed.
+- No claim compatibility boundary change.
+- No close/reopen StationSession enforcement expansion.
+- Migration execution path must be serialized/de-duplicated to reduce deadlock risk under shared DB runners.
+
+### State Transition Map
+- No execution state transition changes.
+- Infra-only DB-init transition: `migration_not_applied -> migration_applied_once_per_process`.
+
+### Test Matrix
+- M1: `tests/test_reopen_resume_station_session_continuity.py` => `5 passed` (`M1_EXIT:0`)
+- M2: `tests/test_reopen_resumability_claim_continuity.py tests/test_reopen_operation_claim_continuity_hardening.py tests/test_close_reopen_operation_foundation.py` => `21 passed` (`M2_EXIT:0`)
+- M3: `tests/test_station_session_command_guard_enforcement.py` => `22 passed` (`M3_RETRY_EXIT:0`)
+- M4: `tests/test_station_queue_session_aware_migration.py tests/test_station_queue_active_states.py` => `10 passed` (`M4_RETRY_EXIT:0`)
+- M5: `tests/test_start_pause_resume_command_hardening.py tests/test_report_quantity_command_hardening.py tests/test_downtime_command_hardening.py tests/test_complete_operation_command_hardening.py tests/test_close_operation_command_hardening.py` => `58 passed` (`M5_EXIT:0`)
+- M6: `tests/test_station_session_lifecycle.py tests/test_station_session_diagnostic_bridge.py tests/test_station_session_command_context_diagnostic.py tests/test_claim_single_active_per_operator.py tests/test_release_claim_active_states.py` => `45 passed` (`M6_FINAL_EXIT:0`)
+- Full suite: `pytest -q --tb=short` => `284 passed, 1 skipped` (`V2_FINAL_FULL_EXIT:0`)
+
+### Final verification result
+- Deadlock family reproduced in pre-fix baseline and isolated.
+- Post-fix matrix and full suite are clean.
+
+### Event naming status
+UNCHANGED_CANONICAL
+
+### Verdict
+ALLOW_IMPLEMENTATION_COMPLETE
+
+*** Add File: g:\Work\FleziBCG\docs\implementation\p0-c-08c-station-session-command-guard-enforcement-report.md
+# P0-C-08C StationSession Command Guard Enforcement Report
+
+## Routing
+- Selected brain: flezibcg-ai-brain-v6-auto-execution
+- Selected mode: NON-STOP SLICE EXECUTION
+- Hard Mode MOM: v3
+- Reason: Controlled batch for StationSession error registry finalization and seven-command guard enforcement.
+
+## Scope
+
+Implemented in this batch:
+- error registry finalization for approved 08C StationSession guard errors
+- service and route enforcement for the approved seven-command subset
+- compatibility-preserving regression/test updates
+
+Implemented command subset:
+- `start_operation`
+- `pause_operation`
+- `resume_operation`
+- `report_quantity`
+- `start_downtime`
+- `end_downtime`
+- `complete_operation`
+
+Deferred explicitly:
+- `close_operation`
+- `reopen_operation`
+- claim removal
+- queue migration
+- UI or frontend changes
+
+## Implementation Summary
+
+Production changes:
+- Added StationSession repository lookup helpers for latest station and operator session resolution.
+- Added `StationSessionGuardError` and `ensure_open_station_session_for_command(...)` in the operation service.
+- Wired the seven approved commands to the new StationSession guard.
+- Added explicit route-level HTTP translation for StationSession guard failures while retaining claim compatibility checks.
+
+Documentation and registry changes:
+- Added canonical error registry artifact for the approved 08C StationSession guard codes.
+- Added canonical error code detail artifact for 08C semantics.
+- Resolved `DG-P0C08-ERROR-REGISTRY-001` in the design gap report.
+
+Verification changes:
+- Added `backend/tests/test_station_session_command_guard_enforcement.py`.
+- Updated adjacent hardening and regression suites to seed matching OPEN StationSessions when later guards are under test.
+- Updated older diagnostic-phase tests to the approved 08C guarded-command contract.
+
+## Approved Error Set
+
+- `STATION_SESSION_REQUIRED`
+- `STATION_SESSION_CLOSED`
+- `STATION_SESSION_STATION_MISMATCH`
+- `STATION_SESSION_OPERATOR_MISMATCH`
+- `STATION_SESSION_TENANT_MISMATCH`
+
+## Verification
+
+Focused slice:
+- `tests/test_station_session_command_guard_enforcement.py`
+- `tests/test_start_pause_resume_command_hardening.py`
+- `tests/test_report_quantity_command_hardening.py`
+- `tests/test_downtime_command_hardening.py`
+- `tests/test_complete_operation_command_hardening.py`
+- Result: 70 passed
+
+Adjacent regression subset:
+- StationSession lifecycle/diagnostic regression
+- claim compatibility regression
+- queue and reopen/close regression
+- Result: 61 passed
+
+Full backend suite:
+- `pytest -q`
+- Result: 277 passed, 1 skipped
+
+## Verdict
+
+`COMPLETE_FOR_CONTROLLED_BATCH`
+
+Batch stop status:
+- Implementation completed within the approved 08C scope.
+- Verification completed through full backend suite.
+- Work stops here for this controlled batch.
 
 ### Design Evidence Extract
 | Doc | Evidence | Impact |
@@ -1430,3 +1718,131 @@ No state transitions introduced. P0-C-04D adds a read-only diagnostic observatio
 
 ### Event naming status
 none_required — P0-C-04D introduced no new domain events.
+
+---
+
+## Slice HM3-018
+Name: P0-C-08C-V1 Full Suite Verification Recovery / Failure Isolation
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/implementation/p0-c-08c-enforcement-closeout-review.md | Prior closeout was blocked by non-clean full-suite evidence | Recovery/isolation required before 08D gate |
+| docs/implementation/p0-c-08c-station-session-command-guard-enforcement-report.md | 08C scope is 7 commands only; close/reopen deferred | Regression triage must not expand scope |
+| docs/design/02_domain/execution/station-session-command-guard-enforcement-contract.md | Guard ordering and defer boundaries are explicit | Verification must preserve boundaries |
+| docs/design/00_platform/canonical-error-code-registry.md | Approved 5-code runtime set for 08C | Error-contract drift excluded as cause |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| verification/failure isolation runs | none | none_required | N/A | n/a | none | review-only slice |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---|---|---|
+| No scope expansion beyond 08C | migration_boundary | review gate + test selection | no | yes | 08C contract |
+| No claim removal / queue migration in this slice | compatibility | review gate | no | yes | 08C contract + claim lock |
+| close/reopen remain deferred | state_machine | review gate + regression tests | no | yes | 08C contract |
+| Backend test evidence is release gate truth | projection_consistency | pytest sequential verification | no | yes | coding rules |
+
+### State Transition Map
+No business state transition changes. Verification-only slice.
+
+### Test Matrix
+| Test ID | Scenario | Type | Given | When | Then | Event Assertion | Invariant Assertion |
+|---|---|---|---|---|---|---|---|
+| HM3-018-T1 | full-suite retry under stale environment | regression | previous blocked closeout | rerun full suite | reproduce deadlock/transaction abort symptoms | none | classify cause |
+| HM3-018-T2 | first failing test isolated | regression | failing node id from retry | run test alone with long traceback | passes | none | no deterministic 08C regression |
+| HM3-018-T3 | mandated sequential batches after cleanup | regression | cleaned DB/process environment | run 3 required batches + full suite | all green with exit code 0 | none | gate can upgrade |
+
+### Final verification result
+- First mandatory two batches remained green.
+- One intermediate third-batch run reproduced DB deadlock/aborted-transaction contamination and failed (`54 passed, 11 errors`, `EXIT_CODE:1`).
+- Isolated first failing test passed alone (`1 passed`, `EXIT_CODE:0`).
+- Post-cleanup deterministic reruns passed:
+  - 08C guard suite: `22 passed`, `EXIT_CODE:0`
+  - hardening batch: `71 passed`, `EXIT_CODE:0`
+  - StationSession+claim+queue batch: `61 passed`, `EXIT_CODE:0`
+  - full backend suite: `277 passed, 1 skipped`, `EXIT_CODE:0`
+
+### Scope guard confirmation
+- No runtime code changes.
+- No schema migration changes.
+- No API contract changes.
+- No queue migration, claim removal, or close/reopen enforcement expansion.
+
+### Event naming status
+none_required - verification-only slice introduced no new domain events.
+
+### Verdict
+ACCEPT - failure classified as environment/DB teardown stability, not proven 08C regression.
+
+---
+
+## Slice HM3-019
+Name: P0-C-08D Station Queue Session-Aware Migration
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/design/02_domain/execution/station-session-ownership-contract.md | StationSession is target ownership model; claim is compatibility debt | Queue read model may expose session-aware ownership target |
+| docs/implementation/p0-c-04-claim-compatibility-deprecation-lock.md | Claim removal/expansion is blocked during compatibility window | 08D must preserve claim payload and behavior |
+| docs/design/02_domain/execution/station-session-command-guard-enforcement-contract.md | Queue migration explicitly separated from 08C command guard slice | 08D can be implemented as additive read-model slice |
+
+### Current Source Evidence
+| Source Area | File | Current Behavior | 08D Migration Impact |
+|---|---|---|---|
+| Queue projection | backend/app/services/station_claim_service.py | claim-shaped queue payload | add additive `ownership` metadata sourced from active StationSession |
+| Queue schema | backend/app/schemas/station.py | claim-only ownership shape | add `SessionOwnershipSummary` under `StationQueueItem.ownership` |
+| Queue regression lock | backend/tests/test_station_queue_active_states.py | active-state + claim compatibility assertions | preserve claim assertions and add ownership migration assertions |
+
+### Queue Ownership Model
+| Layer | Pre-08D | 08D (Implemented) | Compatibility Rule |
+|---|---|---|---|
+| queue ownership view | claim-only object | `ownership` session-aware object + legacy `claim` | claim remains compatibility payload |
+| ownership target marker | implicit claim state | `target_owner_type=station_session` | no command allow/deny change |
+| migration marker | none | `ownership_migration_status=TARGET_SESSION_OWNER_WITH_CLAIM_COMPAT` | additive only, no removals |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| station queue read-model migration | none | none_required | N/A | n/a | queue response shape additive fields only | ownership contract + claim lock |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---|---|---|
+| claim compatibility preserved | migration_boundary | service + schema + regression tests | no | yes | claim lock |
+| session-aware ownership exposed additively | ownership | queue service projection | no | yes | ownership contract |
+| no command-path behavior change | state_machine | scope guard + regression suite | no | yes | 08C contract |
+| no new events for read-model augmentation | event_append_only | service scope | no | yes | execution event registry |
+
+### State Transition Map
+No business state transitions changed. 08D is a read-model payload migration only.
+
+### Test Matrix
+| Test ID | Scenario | Type | Given | When | Then | Event Assertion | Invariant Assertion |
+|---|---|---|---|---|---|---|---|
+| HM3-019-T1 | additive ownership metadata present | contract | active station session | read queue | `ownership` block populated | none | session target exposed |
+| HM3-019-T2 | legacy claim shape preserved | regression | active queue items without claims | read queue | claim fields unchanged | none | compatibility preserved |
+| HM3-019-T3 | no-open-session ownership fallback | edge | closed/no open station session | read queue | ownership is nullable + `has_open_session=false` | none | additive behavior stable |
+| HM3-019-T4 | command hardening unchanged | regression | 08C command suites | run batch | all pass | none | no command drift |
+| HM3-019-T5 | full backend suite | regression | merged slice | run full suite | all pass | none | no system drift |
+
+### Final verification result
+- Focused queue migration run: `10 passed`, `EXIT_CODE=0`
+- Command hardening regression batch: `70 passed`, `EXIT_CODE=0`
+- StationSession+claim+queue+reopen regression batch: `63 passed`, `EXIT_CODE=0`
+- Full backend suite: `279 passed, 1 skipped`, `EXIT_CODE=0`
+
+### Scope guard confirmation
+- No claim removal or claim endpoint deprecation.
+- No close/reopen StationSession enforcement expansion.
+- No schema migration.
+- No new domain events.
+- No FE/UI changes.
+
+### Event naming status
+none_required - read-model migration introduced no new domain events.
+
+### Verdict
+ALLOW_IMPLEMENTATION_COMPLETE

@@ -18,6 +18,17 @@ class ClaimSummary(BaseModel):
     claimed_by_user_id: str | None = None
 
 
+class SessionOwnershipSummary(BaseModel):
+    target_owner_type: str
+    ownership_migration_status: str
+    session_id: str | None = None
+    station_id: str | None = None
+    session_status: str | None = None
+    operator_user_id: str | None = None
+    owner_state: str
+    has_open_session: bool = False
+
+
 class StationQueueItem(BaseModel):
     operation_id: int
     operation_number: str
@@ -28,6 +39,7 @@ class StationQueueItem(BaseModel):
     planned_start: datetime | None = None
     planned_end: datetime | None = None
     claim: ClaimSummary
+    ownership: SessionOwnershipSummary
     # Source of truth: append-only event log. downtime is open iff
     # DOWNTIME_STARTED count > DOWNTIME_ENDED count for the operation.
     # Projected on the list so the cockpit can flag "⛔ Downtime" without

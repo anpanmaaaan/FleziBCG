@@ -139,6 +139,35 @@ Completed slices:
 Pending slices (in recommended order):
 - P0-C-07C Reopen Operation / Claim Continuity Hardening (Complete)
 
+### P0-C-08C Controlled Batch: StationSession Guard Enforcement
+
+Status: Complete.
+
+Completed scope:
+- Canonical StationSession guard error registry finalized for the 08C subset.
+- Service-layer StationSession command guard added for exactly seven commands:
+  - `start_operation`
+  - `pause_operation`
+  - `resume_operation`
+  - `report_quantity`
+  - `start_downtime`
+  - `end_downtime`
+  - `complete_operation`
+- Route-layer explicit `StationSessionGuardError` to HTTP translation added with compatibility-preserving claim guard retention.
+- Repository lookup helpers added for latest station and operator session resolution.
+- Focused guard-enforcement suite added and adjacent regression suites updated to the approved 08C contract.
+
+Explicitly deferred from this controlled batch:
+- `close_operation` and `reopen_operation` StationSession enforcement
+- claim removal or continuity replacement
+- queue migration or read-model redesign
+- UI changes
+
+Verification summary:
+- Focused 08C slice: 70 passed
+- Adjacent regression subset: 61 passed
+- Full backend suite: 277 passed, 1 skipped
+
 ## Current Slice Ledger
 
 ### Completed Slices
@@ -229,6 +258,40 @@ Pending slices (in recommended order):
      - Backend import check passed
      - Focused product tests passed: 8 passed
      - Requested regression subset passed: 8 passed
+
+  ### P0-C-08F Claim API Deprecation Lock
+
+  Status: Complete.
+
+  Completed scope:
+  - Claim API surface inventory and compatibility boundary lock finalized.
+  - Added compatibility-only deprecation headers on claim-only routes:
+    - `POST /api/v1/station/queue/{operation_id}/claim`
+    - `POST /api/v1/station/queue/{operation_id}/release`
+    - `GET /api/v1/station/queue/{operation_id}/claim`
+  - Kept station queue endpoint non-deprecated and behavior unchanged.
+  - Kept StationSession endpoints non-deprecated.
+  - Added focused deprecation lock tests: `backend/tests/test_claim_api_deprecation_lock.py`.
+
+  Explicitly out of scope and preserved:
+  - claim removal/table removal/code removal
+  - command guard behavior changes
+  - close/reopen StationSession enforcement expansion
+  - queue rewrite
+  - schema migration
+  - FE/UI changes
+
+  Verification summary:
+  - Focused 08F tests: `5 passed` (`T08F_EXIT:0`)
+  - Claim regression subset: `28 passed` (`T_CLAIM_REG_EXIT:0`)
+  - StationSession/08C guard regression: `47 passed` (`T_08C_REG_EXIT:0`)
+  - 08D/08E regression: `28 passed` (`T_08D08E_REG_EXIT:0`)
+  - Command hardening regression: `58 passed` (`T_CMD_HARDEN_REG_EXIT:0`)
+  - Full backend suite: `289 passed, 1 skipped` (`T_FULL_EXIT:0`)
+
+  Verdict:
+  - `ALLOW_IMPLEMENTATION_COMPLETE`
+  - P0-C-08F complete and clean.
 
 7. P0-B-02 Routing Foundation backend implementation
    - Scope:
@@ -489,6 +552,45 @@ Status: Complete.
 Hard Mode MOM v3 verdict: ALLOW_IMPLEMENTATION
 
 Scope implemented:
+
+### P0-C-08D Station Queue Session-Aware Migration
+
+Status: Complete.
+
+Hard Mode MOM v3 verdict: ALLOW_IMPLEMENTATION_COMPLETE
+
+Scope implemented:
+- Additive queue payload migration in backend read model only.
+- Added `ownership` object on each station queue item with session-aware ownership metadata:
+  - `target_owner_type=station_session`
+  - `ownership_migration_status=TARGET_SESSION_OWNER_WITH_CLAIM_COMPAT`
+  - `session_id`, `station_id`, `session_status`, `operator_user_id`, `owner_state`, `has_open_session`
+- Existing `claim` payload shape and claim behavior preserved as compatibility contract.
+- No execution command-path behavior changes.
+
+Files changed:
+- `backend/app/services/station_claim_service.py`
+- `backend/app/schemas/station.py`
+- `backend/tests/test_station_queue_active_states.py`
+- `backend/tests/test_station_queue_session_aware_migration.py`
+
+Verification summary:
+- Focused queue migration regression:
+  - `test_station_queue_session_aware_migration.py` + `test_station_queue_active_states.py`
+  - Result: `10 passed`, `exit 0`
+- Command hardening regression batch:
+  - Result: `70 passed`, `exit 0`
+- StationSession/claim/queue/reopen regression batch:
+  - Result: `63 passed`, `exit 0`
+- Full backend suite:
+  - Result: `279 passed, 1 skipped`, `exit 0`
+
+Scope guard confirmation:
+- No claim removal or claim endpoint deprecation.
+- No close/reopen StationSession guard expansion.
+- No new domain events.
+- No schema migration.
+- No FE/UI changes.
 - Focused `start_downtime`/`end_downtime` hardening suite added: `backend/tests/test_downtime_command_hardening.py`
 - 14 tests added to verify: state guards, event-count-based open-downtime guard, duplicate rejection, invalid reason code rejection, closed-record rejection, snapshot/projection transitions (IN_PROGRESS→BLOCKED, BLOCKED→PAUSED), no-auto-resume invariant, resume-blocked-while-open, no-session and open-session parity
 - `downtime_started` / `downtime_ended` event emission verified
@@ -630,3 +732,39 @@ Verification summary:
 - Claim regression subset (includes close/reopen baseline): 36 passed
 - Projection/status regression: 41 passed
 - Full backend suite: 255 passed, 1 skipped, exit 0
+
+### 25. P0-C-08E Reopen / Resume Continuity Replacement
+
+Status: Implementation complete; verification recorded with full-suite instability.
+
+Hard Mode MOM v3 verdict: ALLOW_IMPLEMENTATION
+
+Scope implemented:
+- Narrow production change in `backend/app/services/operation_service.py`:
+  - `_restore_claim_continuity_for_reopen(...)` now skips restoration (non-blocking) when historical owner already has another active claim in same station scope.
+- Reopen flow remains non-StationSession-enforced in 08E.
+- Resume-after-reopen remains governed by existing StationSession command guard behavior.
+- Added focused 08E continuity suite:
+  - `backend/tests/test_reopen_resume_station_session_continuity.py`
+- Updated claim-continuity expectation:
+  - `backend/tests/test_reopen_resumability_claim_continuity.py`
+
+Non-scope preserved:
+- No claim removal.
+- No close_operation StationSession enforcement.
+- No additional queue migration.
+- No new domain events.
+- No schema migration.
+
+Verification summary (sequential, required matrix):
+- `test_reopen_resume_station_session_continuity.py`: `5 passed`, exit `0`
+- `test_reopen_resumability_claim_continuity.py` + `test_reopen_operation_claim_continuity_hardening.py` + `test_close_reopen_operation_foundation.py`: `21 passed`, exit `0`
+- `test_station_session_command_guard_enforcement.py`: `22 passed`, exit `0`
+- `test_station_queue_session_aware_migration.py` + `test_station_queue_active_states.py`: `10 passed`, exit `0`
+- command hardening batch (`start/pause/resume`, `report_quantity`, `downtime`, `complete`, `close`): `58 passed`, exit `0`
+- StationSession/diagnostic/claim batch: `45 passed`, exit `0`
+- full backend suite: `164 passed, 1 skipped, 6 errors`, interrupted (KeyboardInterrupt), exit `2`
+
+Slice closure note:
+- 08E implementation scope is complete.
+- Full-suite verification in this run is not clean due DB deadlock/transaction contamination under teardown overlap.
