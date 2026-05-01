@@ -30,6 +30,10 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "Routes", to: "/routes" },
     { label: "BOM", to: "/bom" },
     { label: "Reason Codes", to: "/reason-codes" },
+    { label: "Line Monitor", to: "/line-monitor" },
+    { label: "Station Monitor", to: "/station-monitor" },
+    { label: "Downtime Analysis", to: "/downtime-analysis" },
+    { label: "Shift Summary", to: "/shift-summary" },
     { label: "Quality", to: "/quality" },
     { label: "Defects", to: "/defects" },
   ],
@@ -42,6 +46,8 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "BOM", to: "/bom" },
     { label: "Resource Requirements", to: "/resource-requirements" },
     { label: "Reason Codes", to: "/reason-codes" },
+    { label: "Line Monitor", to: "/line-monitor" },
+    { label: "Downtime Analysis", to: "/downtime-analysis" },
     { label: "Traceability", to: "/traceability" },
     { label: "Quality", to: "/quality" },
   ],
@@ -67,6 +73,10 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "Resource Requirements", to: "/resource-requirements" },
     { label: "Reason Codes", to: "/reason-codes" },
     { label: "Dispatch", to: "/dispatch" },
+    { label: "Line Monitor", to: "/line-monitor" },
+    { label: "Station Monitor", to: "/station-monitor" },
+    { label: "Downtime Analysis", to: "/downtime-analysis" },
+    { label: "Shift Summary", to: "/shift-summary" },
     { label: "Quality", to: "/quality" },
     { label: "Defects", to: "/defects" },
     { label: "Traceability", to: "/traceability" },
@@ -373,6 +383,36 @@ export function isRouteAllowedForPersona(persona: ResolvedPersona, pathname: str
 
   if (pathname.startsWith("/routes/") && pathname.includes("/operations/")) {
     return ["IEP", "SUP", "PMG", "ADM"].includes(persona);
+  }
+
+  // Execution / Supervisory shells — viewable by SUP, IEP, PMG, ADM
+  if (pathname === "/line-monitor") {
+    return ["SUP", "IEP", "PMG", "ADM"].includes(persona);
+  }
+  if (pathname === "/station-monitor") {
+    return ["SUP", "PMG", "ADM"].includes(persona);
+  }
+  if (pathname === "/downtime-analysis") {
+    return ["SUP", "IEP", "PMG", "ADM"].includes(persona);
+  }
+  if (pathname === "/shift-summary") {
+    return ["SUP", "PMG", "ADM"].includes(persona);
+  }
+  // Execution detail routes (not in sidebar menu)
+  if (pathname === "/station-session") {
+    return ["SUP", "IEP", "PMG", "ADM", "OPR"].includes(persona);
+  }
+  if (pathname === "/operator-identification") {
+    return ["SUP", "IEP", "PMG", "ADM", "OPR"].includes(persona);
+  }
+  if (pathname === "/equipment-binding") {
+    return ["SUP", "IEP", "PMG", "ADM"].includes(persona);
+  }
+  if (pathname.startsWith("/operations/") && pathname.endsWith("/timeline")) {
+    return getAllowedOperationLenses(persona).length > 0;
+  }
+  if (pathname.startsWith("/supervisory/operations/")) {
+    return ["SUP", "PMG", "ADM"].includes(persona);
   }
 
   return false;

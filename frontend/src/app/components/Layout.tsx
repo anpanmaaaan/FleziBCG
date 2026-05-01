@@ -1,14 +1,17 @@
 import { Link, Navigate, Outlet, useLocation } from "react-router";
 import {
   AlertTriangle,
+  BarChart3,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  Cpu,
   Factory,
   FileText,
   GitBranch,
   LayoutDashboard,
   Layers,
+  Monitor,
   Package,
   PlayCircle,
   ScanSearch,
@@ -16,6 +19,7 @@ import {
   Settings,
   ShieldCheck,
   Tag,
+  UserCheck,
   X,
   Lock,
   Users,
@@ -23,6 +27,8 @@ import {
   LogOut,
   Database,
   Building2,
+  CalendarClock,
+  Eye,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -114,6 +120,30 @@ function getIconForPath(path: string) {
   }
   if (path.startsWith("/reason-codes")) {
     return Tag;
+  }
+  if (path.startsWith("/line-monitor")) {
+    return Monitor;
+  }
+  if (path.startsWith("/station-monitor")) {
+    return Monitor;
+  }
+  if (path.startsWith("/downtime-analysis")) {
+    return BarChart3;
+  }
+  if (path.startsWith("/shift-summary")) {
+    return CalendarClock;
+  }
+  if (path.startsWith("/operator-identification")) {
+    return UserCheck;
+  }
+  if (path.startsWith("/equipment-binding")) {
+    return Cpu;
+  }
+  if (path.startsWith("/station-session")) {
+    return Layers;
+  }
+  if (path.startsWith("/supervisory")) {
+    return Eye;
   }
   if (path.startsWith("/settings")) {
     return Settings;

@@ -34,6 +34,20 @@ export const I18N_NAMESPACES = {
   gantt: "gantt",
   app: "app",
   screenStatus: "screenStatus",
+  bomList: "bomList",
+  bomDetail: "bomDetail",
+  routingOpDetail: "routingOpDetail",
+  resourceReqs: "resourceReqs",
+  reasonCodes: "reasonCodes",
+  operationTimeline: "operationTimeline",
+  stationSession: "stationSession",
+  operatorId: "operatorId",
+  equipmentBinding: "equipmentBinding",
+  lineMonitor: "lineMonitor",
+  stationMonitor: "stationMonitor",
+  downtimeAnalysis: "downtimeAnalysis",
+  shiftSummary: "shiftSummary",
+  supervisoryOpDetail: "supervisoryOpDetail",
 } as const;
 
 export type I18nNamespace = (typeof I18N_NAMESPACES)[keyof typeof I18N_NAMESPACES];
