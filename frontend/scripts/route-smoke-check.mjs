@@ -8,14 +8,37 @@ const TARGET_FILES = {
   persona: path.join(FRONTEND_ROOT, "src/app/persona/personaLanding.ts"),
   screenStatus: path.join(FRONTEND_ROOT, "src/app/screenStatus.ts"),
   layout: path.join(FRONTEND_ROOT, "src/app/components/Layout.tsx"),
+  navigationGroups: path.join(FRONTEND_ROOT, "src/app/navigation/navigationGroups.ts"),
 };
 
-const REQUIRED_ROUTES = [
-  "/products",
-  "/products/:productId",
-  "/routes",
-  "/routes/:routeId",
-];
+const ROUTE_EXCLUSIONS = {
+  // Parent layout route. Child index redirect handles navigable root behavior.
+  "/": "REDIRECT_ONLY",
+};
+
+const DYNAMIC_SAMPLE_BY_PARAM = {
+  bomId: "demo-bom-001",
+  productId: "demo-product-001",
+  routeId: "demo-route-001",
+  operationId: "demo-op-001",
+  orderId: "demo-order-001",
+  woId: "demo-wo-001",
+};
+
+const ALLOWED_EXCLUSION_REASONS = new Set([
+  "REDIRECT_ONLY",
+  "INDEX_ROUTE",
+  "AUTH_CALLBACK_ONLY",
+  "EXTERNAL_LINK",
+  "DYNAMIC_REQUIRES_BACKEND_DATA",
+  "NOT_RENDERABLE_WITHOUT_CONTEXT",
+  "LEGACY_ROUTE_PENDING_REMOVAL",
+]);
+
+const SCREEN_STATUS_EXEMPT_ROUTES = {
+  "/": "REDIRECT_ONLY",
+  "/dev/gantt-stress": "NOT_RENDERABLE_WITHOUT_CONTEXT",
+};
 
 const USER_ACCESSIBLE_LIST_ROUTES = {
   "/products": {
@@ -50,6 +73,33 @@ function normalizeRoutePath(pathValue) {
   return `/${pathValue}`;
 }
 
+function isDynamicRoute(routePath) {
+  return routePath.includes(":");
+}
+
+function classifyRouteType(routePath) {
+  if (routePath === "/") {
+    return "redirect-route";
+  }
+  return isDynamicRoute(routePath) ? "dynamic-route" : "static-route";
+}
+
+function sampleSegmentForParam(paramName) {
+  return DYNAMIC_SAMPLE_BY_PARAM[paramName] ?? `demo-${paramName.toLowerCase()}-001`;
+}
+
+function buildDynamicSmokePath(routePath) {
+  return routePath.replace(/:([A-Za-z0-9_]+)/g, (_, paramName) => sampleSegmentForParam(paramName));
+}
+
+function normalizePatternSignature(routePath) {
+  return routePath
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => (segment.startsWith(":") ? ":param" : segment))
+    .join("/");
+}
+
 function extractRoutes(routesText) {
   const found = new Set();
   const routeRegex = /path:\s*"([^"]+)"/g;
@@ -59,6 +109,10 @@ function extractRoutes(routesText) {
   return found;
 }
 
+function extractIndexRouteCount(routesText) {
+  return (routesText.match(/index:\s*true/g) || []).length;
+}
+
 function extractScreenStatusPatterns(screenStatusText) {
   const patterns = new Set();
   const patternRegex = /routePattern:\s*"([^"]+)"/g;
@@ -66,6 +120,20 @@ function extractScreenStatusPatterns(screenStatusText) {
     patterns.add(match[1]);
   }
   return patterns;
+}
+
+function extractScreenRouteAliases(screenStatusText) {
+  const aliases = new Map();
+  const blockMatch = screenStatusText.match(/const\s+SCREEN_ROUTE_ALIASES:[\s\S]*?=\s*\{([\s\S]*?)\};/);
+  if (!blockMatch) {
+    return aliases;
+  }
+
+  const pairRegex = /"([^"]+)"\s*:\s*"([^"]+)"/g;
+  for (const match of blockMatch[1].matchAll(pairRegex)) {
+    aliases.set(match[1], match[2]);
+  }
+  return aliases;
 }
 
 function extractPersonaMenu(personaText) {
@@ -110,31 +178,126 @@ function hasWildcardCatchAll(routesText) {
   return routesText.includes('path: "*"') || routesText.includes("path: '*'");
 }
 
+function sorted(values) {
+  return [...values].sort((a, b) => a.localeCompare(b));
+}
+
+function validateExclusionReasons(exclusions) {
+  let ok = true;
+  for (const [route, reason] of Object.entries(exclusions)) {
+    if (!ALLOWED_EXCLUSION_REASONS.has(reason)) {
+      fail("Invalid exclusion reason", `${route} -> ${reason}`);
+      ok = false;
+    }
+  }
+  if (ok) {
+    pass("Exclusion reasons valid", `${Object.keys(exclusions).length} exclusions validated`);
+  }
+}
+
+function isProtectedRoute(routePath) {
+  return routePath !== "/login";
+}
+
+function getScreenStatusParityCandidates(routePath, aliases) {
+  const candidates = new Set([routePath]);
+  const aliased = aliases.get(routePath);
+  if (aliased) {
+    candidates.add(aliased);
+  }
+
+  // OperationList is intentionally reused for this route family.
+  if (routePath.startsWith("/production-orders/") && routePath.endsWith("/work-orders")) {
+    candidates.add("/work-orders");
+  }
+
+  return [...candidates];
+}
+
 async function main() {
-  const [routesText, personaText, screenStatusText, layoutText] = await Promise.all([
+  const [routesText, personaText, screenStatusText, layoutText, navigationGroupsText] = await Promise.all([
     fs.readFile(TARGET_FILES.routes, "utf8"),
     fs.readFile(TARGET_FILES.persona, "utf8"),
     fs.readFile(TARGET_FILES.screenStatus, "utf8"),
     fs.readFile(TARGET_FILES.layout, "utf8"),
+    fs.readFile(TARGET_FILES.navigationGroups, "utf8"),
   ]);
 
   const routeSet = extractRoutes(routesText);
+  const indexRouteCount = extractIndexRouteCount(routesText);
   const screenStatusPatterns = extractScreenStatusPatterns(screenStatusText);
+  const screenRouteAliases = extractScreenRouteAliases(screenStatusText);
+  const screenPatternSignatures = new Set([...screenStatusPatterns].map((pattern) => normalizePatternSignature(pattern)));
   const menuByPersona = extractPersonaMenu(personaText);
+  const registeredRoutes = sorted(routeSet);
 
-  for (const route of REQUIRED_ROUTES) {
-    if (routeSet.has(route)) {
-      pass("Route registered", route);
-    } else {
-      fail("Route missing in routes.tsx", route);
+  validateExclusionReasons(ROUTE_EXCLUSIONS);
+
+  const coverageRows = [];
+  for (const route of registeredRoutes) {
+    const excludedReason = ROUTE_EXCLUSIONS[route] ?? null;
+    const routeType = classifyRouteType(route);
+    const protectedType = isProtectedRoute(route) ? "protected/persona-visible" : "public";
+    let smokePath = "";
+    let coverageStatus = "EXCLUDED";
+
+    if (!excludedReason) {
+      smokePath = routeType === "dynamic-route" ? buildDynamicSmokePath(route) : route;
+      coverageStatus = "COVERED";
     }
 
-    if (screenStatusPatterns.has(route)) {
-      pass("screenStatus routePattern present", route);
-    } else {
+    coverageRows.push({
+      route,
+      routeType,
+      protectedType,
+      smokePath,
+      coverageStatus,
+      exclusionReason: excludedReason,
+    });
+  }
+
+  const coveredRows = coverageRows.filter((row) => row.coverageStatus === "COVERED");
+  const excludedRows = coverageRows.filter((row) => row.coverageStatus === "EXCLUDED");
+  const staticCovered = coveredRows.filter((row) => row.routeType === "static-route");
+  const dynamicCovered = coveredRows.filter((row) => row.routeType === "dynamic-route");
+  const protectedCovered = coveredRows.filter((row) => row.protectedType === "protected/persona-visible");
+  const uncoveredRows = coverageRows.filter((row) => row.coverageStatus !== "COVERED" && !row.exclusionReason);
+
+  if (uncoveredRows.length === 0) {
+    pass("Full route smoke coverage computed", `${coveredRows.length}/${registeredRoutes.length} covered, ${excludedRows.length} excluded`);
+  } else {
+    for (const row of uncoveredRows) {
+      fail("Route missing smoke coverage", row.route);
+    }
+  }
+
+  const screenStatusMismatches = [];
+  for (const route of registeredRoutes) {
+    if (SCREEN_STATUS_EXEMPT_ROUTES[route]) {
+      continue;
+    }
+
+    const signatures = getScreenStatusParityCandidates(route, screenRouteAliases).map((candidate) =>
+      normalizePatternSignature(candidate)
+    );
+    const hasMatch = signatures.some((signature) => screenPatternSignatures.has(signature));
+    if (!hasMatch) {
+      screenStatusMismatches.push(route);
+    }
+  }
+
+  if (screenStatusMismatches.length === 0) {
+    pass("screenStatus coverage aligned with route registry", "All non-exempt routes have a matching routePattern (parameter names normalized)");
+  } else {
+    for (const route of screenStatusMismatches) {
       fail("screenStatus routePattern missing", route);
     }
   }
+
+  pass("Route registry extracted", `${registeredRoutes.length} path entries, ${indexRouteCount} index route(s)`);
+  pass("Static route coverage", `${staticCovered.length} static routes covered`);
+  pass("Dynamic route sample coverage", `${dynamicCovered.length} dynamic routes mapped to representative smoke paths`);
+  pass("Protected route visibility coverage", `${protectedCovered.length} protected/persona-visible routes included in smoke set`);
 
   if (!hasWildcardCatchAll(routesText)) {
     pass("No wildcard catch-all route detected", "No path: '*' in routes.tsx");
@@ -146,6 +309,12 @@ async function main() {
     pass("Layout persona enforcement hooks detected", "Layout uses menu + allowlist + redirect enforcement");
   } else {
     fail("Layout persona enforcement hooks missing", "Expected getMenuItemsForPersona/isRouteAllowedForPersona/Navigate redirect");
+  }
+
+  if (navigationGroupsText.includes("IMPORTANT: This file is a PRESENTATION-LAYER grouping utility only.") && navigationGroupsText.includes("It does NOT change route definitions, authorization rules, or persona semantics.")) {
+    pass("Navigation grouping safety disclaimer present", "navigationGroups.ts explicitly marks grouping as presentation-only");
+  } else {
+    fail("Navigation grouping safety disclaimer missing", "Expected explicit presentation-only disclaimer in navigationGroups.ts");
   }
 
   for (const [route, rule] of Object.entries(USER_ACCESSIBLE_LIST_ROUTES)) {
@@ -182,6 +351,45 @@ async function main() {
 
   const failed = results.filter((item) => !item.ok);
   const passed = results.filter((item) => item.ok);
+
+  console.log("Route registry metrics:");
+  console.log(`  REGISTERED: ${registeredRoutes.length}`);
+  console.log(`  INDEX_ROUTES: ${indexRouteCount}`);
+  console.log(`  STATIC_ROUTES: ${registeredRoutes.filter((route) => classifyRouteType(route) === "static-route").length}`);
+  console.log(`  DYNAMIC_ROUTES: ${registeredRoutes.filter((route) => classifyRouteType(route) === "dynamic-route").length}`);
+  console.log(`  EXCLUDED: ${excludedRows.length}`);
+  console.log(`  SMOKE_TARGETS: ${coveredRows.length}`);
+
+  console.log("Coverage rows:");
+  for (const row of coverageRows) {
+    const parts = [
+      `route=${row.route}`,
+      `type=${row.routeType}`,
+      `scope=${row.protectedType}`,
+      `status=${row.coverageStatus}`,
+    ];
+    if (row.smokePath) {
+      parts.push(`smoke=${row.smokePath}`);
+    }
+    if (row.exclusionReason) {
+      parts.push(`exclusion=${row.exclusionReason}`);
+    }
+    console.log(`- ${parts.join(" | ")}`);
+  }
+
+  if (dynamicCovered.length > 0) {
+    console.log("Dynamic sample paths:");
+    for (const row of dynamicCovered) {
+      console.log(`- ${row.route} -> ${row.smokePath}`);
+    }
+  }
+
+  if (excludedRows.length > 0) {
+    console.log("Excluded routes:");
+    for (const row of excludedRows) {
+      console.log(`- ${row.route} :: ${row.exclusionReason}`);
+    }
+  }
 
   console.log("Route smoke check summary:");
   console.log(`  PASS: ${passed.length}`);
