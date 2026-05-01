@@ -1599,4 +1599,105 @@ Scope Guard Confirmation
 Verdict
 - `P0_C_08H6_COMPLETE_VERIFICATION_CLEAN`
 
+## Addendum — P0-C-08H7 Queue Claim Payload Retirement Contract / Review
+
+Date: 2026-05-01
+Type: Contract-Only / Review. No implementation.
+
+Design Evidence Sources Read
+- `docs/implementation/p0-c-08h6-v1-claim-derived-affordance-removal-report.md`
+- `docs/implementation/p0-c-08h5-claim-retirement-sequencing-contract.md`
+- `docs/implementation/p0-c-08h6-frontend-api-consumer-cutover-report.md`
+- `docs/design/02_domain/execution/station-session-ownership-contract.md`
+- `docs/design/02_domain/execution/station-session-command-guard-enforcement-contract.md`
+- All required source files and tests per H7 prompt.
+
+Source Inspected
+- `backend/app/schemas/station.py`: `ClaimSummary` + `StationQueueItem.claim` field confirmed present.
+- `backend/app/services/station_claim_service.py`: `get_station_queue` builds dual-shape payload (claim + ownership blocks).
+- `frontend/src/app/components/station-execution/StationQueuePanel.tsx`: reads `item.claim.state` for filter + summary fallback.
+- `frontend/src/app/components/station-execution/QueueOperationCard.tsx`: reads `item.claim.state` for lock/display fallback.
+- `frontend/src/app/pages/StationExecution.tsx`: no `claim.*` reads; `canExecute` is ownership-only (H6-V1 clean).
+- `frontend/src/app/api/stationApi.ts`: `ClaimSummary`, `QueueClaimState` types + deprecated `claim()`/`release()`/`getClaim()` retained.
+
+Contract Determination
+- No FE claim data reaches `canExecute` or any execution affordance: confirmed clean.
+- Frontend queue fallback claim reads are display/compatibility only.
+- Recommended path: H8 FE-only fallback removal → H9 backend null-only payload → H10+ progressive retirement.
+- Direct backend claim block deletion deferred to H9 minimum; H8 is FE-only.
+
+Execution Results
+- `pytest -q tests/test_execution_route_claim_guard_removal.py tests/test_claim_api_deprecation_lock.py tests/test_station_queue_session_aware_migration.py tests/test_reopen_resume_station_session_continuity.py`: `24 passed`, `H7_BACKEND_SMOKE_EXIT:0`
+- `npm.cmd run lint`: `H7_FRONTEND_LINT_EXIT:0`
+- `npm.cmd run check:routes`: `H7_FRONTEND_ROUTE_SMOKE_EXIT:0` (77/78 covered, 24 checks PASS)
+
+Scope Guard Confirmation
+- No code changes.
+- No backend API shape change.
+- No claim API/service/model/table/audit removal.
+- No queue payload shape change.
+- No reopen or close/reopen behavior change.
+- No migration.
+
+Verdict
+- `READY_FOR_P0_C_08H8_FRONTEND_QUEUE_CLAIM_FALLBACK_RETIREMENT`
+
+## Addendum — P0-C-08H8 Frontend Queue Claim Fallback Retirement
+
+Date: 2026-05-01
+Type: Single-Slice Frontend Implementation.
+
+Source Changes
+- `frontend/src/app/components/station-execution/StationQueuePanel.tsx`: Removed `item.claim.state === "mine"` from `matchesQueueFilter`, `hasMineClaim`, and `summary.mine` accumulator.
+- `frontend/src/app/components/station-execution/QueueOperationCard.tsx`: Removed `item.claim.state` fallback from `lockedByOther`, `isMine`, `ownershipHint`, `ownershipHintTone`.
+- `frontend/src/app/api/stationApi.ts`: Added compatibility deprecation JSDoc to `ClaimSummary` interface + `StationQueueItem.claim` field.
+- `frontend/src/app/components/station-execution/StationExecutionHeader.tsx`: Updated stale `canReleaseClaim` JSDoc reference.
+
+Backend Changes
+- None. Backend payload unchanged. Claim block still sent by server.
+
+Scope Guard Confirmation
+- No `canExecute` / action readiness change (already clean H6-V1).
+- No backend API shape change.
+- No `ClaimSummary` / `QueueClaimState` TypeScript type removal (H9).
+- No claim API/service/model/table removal.
+- No reopen compatibility change.
+- No migration.
+
+Execution Results
+- `npm run lint`: H8_FRONTEND_LINT_EXIT:0
+- `npm run build`: H8_FRONTEND_BUILD_EXIT:0
+- `npm run check:routes`: H8_FRONTEND_ROUTE_SMOKE_EXIT:0 (77/78 covered, 24 checks PASS)
+- `pytest -q tests/test_execution_route_claim_guard_removal.py tests/test_claim_api_deprecation_lock.py tests/test_station_queue_session_aware_migration.py tests/test_reopen_resume_station_session_continuity.py`: 24 passed, H8_BACKEND_SMOKE_EXIT:0
+
+Verdict
+- `P0_C_08H8_COMPLETE_VERIFICATION_CLEAN`
+
+## Addendum — P0-C-08H9 Backend Queue Claim Payload Null-Only Contract
+
+Date: 2026-05-01
+Type: Contract-Only Review.
+
+Source Review
+- Backend schemas: `schemas/station.py` confirmed ClaimSummary + StationQueueItem.claim present
+- Backend service: `station_claim_service.py` confirmed get_station_queue builds dual-shape payload
+- Frontend types: `stationApi.ts` confirmed StationQueueItem.claim: ClaimSummary (not yet nullable)
+- Backend tests: `test_station_queue_claim_fields_unchanged` asserts claim.state/expires_at/claimed_by_user_id
+
+Scope Guard Confirmation
+- No backend queue payload change yet.
+- No frontend code change.
+- No claim API/service/model/table removal.
+- No reopen compatibility change.
+- No migration/schema changes.
+
+Execution Results
+- `pytest -q tests/test_execution_route_claim_guard_removal.py tests/test_claim_api_deprecation_lock.py tests/test_station_queue_session_aware_migration.py tests/test_reopen_resume_station_session_continuity.py`: 24 passed, H9_BACKEND_SMOKE_EXIT:0
+- `npm run lint`: H9_FRONTEND_LINT_EXIT:0
+- `npm run build`: H9_FRONTEND_BUILD_EXIT:0
+- `npm run check:routes`: H9_FRONTEND_ROUTE_SMOKE_EXIT:0 (77/78 covered, 24 checks PASS)
+
+Verdict
+- `READY_FOR_P0_C_08H10_BACKEND_QUEUE_CLAIM_PAYLOAD_NULL_ONLY_IMPLEMENTATION`
+
 ### 1. Governed audit/security-event emission wiring

@@ -19,10 +19,8 @@ export const isBackendClaimableQueueStatus = (status: StationQueueItem["status"]
 const matchesQueueFilter = (item: StationQueueItem, filter: QueueFilter): boolean => {
   switch (filter) {
     case "mine":
-      // H2+: Ownership-first logic; claim fallback for compatibility
-      return item.ownership?.owner_state === "mine" && item.ownership?.has_open_session
-        ? true
-        : item.claim.state === "mine";
+      // H8: Ownership-only; claim fallback retired
+      return item.ownership?.owner_state === "mine" && item.ownership?.has_open_session === true;
     case "ready":
       return isBackendClaimableQueueStatus(item.status) && !item.downtime_open;
     case "paused":
@@ -46,10 +44,9 @@ export function StationQueuePanel({
   onSelect,
 }: StationQueuePanelProps) {
   const { t } = useI18n();
-  // H2+: Ownership-first logic; claim fallback for compatibility
+  // H8: Ownership-only; claim fallback retired
   const hasMineClaim = items.some(
-    (item) => (item.ownership?.owner_state === "mine" && item.ownership?.has_open_session)
-      || item.claim.state === "mine",
+    (item) => item.ownership?.owner_state === "mine" && item.ownership?.has_open_session === true,
   );
 
   const summary = useMemo(() => {
@@ -67,8 +64,8 @@ export function StationQueuePanel({
         if (item.downtime_open) {
           acc.downtime += 1;
         }
-        // H2+: Ownership-first logic; claim fallback for compatibility
-        if ((item.ownership?.owner_state === "mine" && item.ownership?.has_open_session) || item.claim.state === "mine") {
+        // H8: Ownership-only; claim fallback retired
+        if (item.ownership?.owner_state === "mine" && item.ownership?.has_open_session === true) {
           acc.mine += 1;
         }
         return acc;

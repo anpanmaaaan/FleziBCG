@@ -16,13 +16,6 @@ export interface StationExecutionHeaderProps {
   operationStatus: OperationExecutionStatus;
   closureStatus: OperationClosureStatus;
   downtimeOpen: boolean;
-  /** True while the claim-release API call is in-flight. Disables release button. */
-  claimLoading: boolean;
-  /**
-   * Backend-derived: claim is "mine" AND operation status is PLANNED.
-   * Release button is only enabled when this is true.
-   */
-  canReleaseClaim: boolean;
   /** True while the queue refresh API call is in-flight. Disables refresh button. */
   queueLoading: boolean;
   /** Navigate back to Mode A (operation selection). */
@@ -31,8 +24,6 @@ export interface StationExecutionHeaderProps {
   onRefresh: () => void;
   /** Toggle the queue overlay open/closed. */
   onToggleQueue: () => void;
-  /** Trigger the claim release action. */
-  onReleaseClaim: () => void;
 }
 
 /**
@@ -40,8 +31,8 @@ export interface StationExecutionHeaderProps {
  *
  * Renders station scope, operation identity, status badges, and navigation /
  * control buttons. All data is passed as props — no data fetching inside this
- * component. Action legality (canReleaseClaim) must be backend-derived by the
- * parent and passed in.
+ * component. Execution action legality is backend-derived by the parent and
+ * passed in as `canExecute` (ownership/session-derived, not claim-derived).
  */
 export function StationExecutionHeader({
   stationScope,
@@ -49,13 +40,10 @@ export function StationExecutionHeader({
   operationStatus,
   closureStatus,
   downtimeOpen,
-  claimLoading,
-  canReleaseClaim,
   queueLoading,
   onBackToSelection,
   onRefresh,
   onToggleQueue,
-  onReleaseClaim,
 }: StationExecutionHeaderProps) {
   const { t } = useI18n();
 
@@ -115,17 +103,6 @@ export function StationExecutionHeader({
           <ChevronDown className="w-4 h-4 shrink-0" />
         </button>
 
-        {/* Divider before command-bearing Release */}
-        <span className="shrink-0 h-7 w-px bg-gray-200" aria-hidden="true" />
-
-        {/* Release — command-bearing, destructive. Disabled logic is backend-derived. */}
-        <button
-          onClick={onReleaseClaim}
-          disabled={claimLoading || !canReleaseClaim}
-          className="h-10 sm:h-11 px-3 sm:px-4 border border-red-200 rounded-lg text-sm text-red-600 hover:bg-red-50 active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {t("station.action.release")}
-        </button>
       </div>
     </div>
   );

@@ -5,8 +5,8 @@ export interface AllowedActionZoneProps {
   operation: OperationDetail;
   actionLoading: boolean;
   downtimeLoading: boolean;
-  /** H2+: Driven by ownership/session context (backward-compat prop name: canExecuteByClaim) */
-  canExecuteByClaim: boolean;
+  /** H2+/H6+: Driven by ownership/session context with compatibility fallback. */
+  canExecute: boolean;
   canPauseExecution: boolean;
   canStartDowntime: boolean;
   canCompleteExecution: boolean;
@@ -25,7 +25,7 @@ export function AllowedActionZone({
   operation,
   actionLoading,
   downtimeLoading,
-  canExecuteByClaim,
+  canExecute,
   canPauseExecution,
   canStartDowntime,
   canCompleteExecution,
@@ -46,7 +46,7 @@ export function AllowedActionZone({
       {operation.status === "PLANNED" && (
         <button
           onClick={onStartOperation}
-          disabled={actionLoading || operation.closure_status === "CLOSED" || !canExecuteByClaim || !canDo("start_execution")}
+          disabled={actionLoading || operation.closure_status === "CLOSED" || !canExecute || !canDo("start_execution")}
           className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold tracking-wide bg-green-600 text-white hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl"
         >
           {t("station.action.clockOn")}

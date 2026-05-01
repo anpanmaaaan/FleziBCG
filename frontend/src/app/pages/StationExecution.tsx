@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { PageHeader } from "@/app/components";
-import { StatusBadge } from "@/app/components";
 import { MockWarningBanner } from "@/app/components";
 import { toast } from "sonner";
 import { RefreshCw, Lock, X, RotateCcw, Info } from "lucide-react";
 import { StationExecutionHeader } from "@/app/components/station-execution/StationExecutionHeader";
-import { StationQueuePanel, isBackendClaimableQueueStatus } from "@/app/components/station-execution/StationQueuePanel";
+import { StationQueuePanel } from "@/app/components/station-execution/StationQueuePanel";
 import { ExecutionStateHero } from "@/app/components/station-execution/ExecutionStateHero";
 import { AllowedActionZone } from "@/app/components/station-execution/AllowedActionZone";
 import { ClosureStatePanel } from "@/app/components/station-execution/ClosureStatePanel";
@@ -23,7 +22,6 @@ import { stationApi, type StationQueueItem } from "@/app/api";
 import { HttpError } from "@/app/api";
 import { useAuth } from "@/app/auth";
 import {
-  mapExecutionStatusBadgeVariant,
   mapExecutionStatusText,
 } from "@/app/api";
 import { useI18n } from "@/app/i18n";
@@ -237,7 +235,6 @@ export function StationExecution() {
   const [loading, setLoading] = useState(false);
   const [queueLoading, setQueueLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [claimLoading, setClaimLoading] = useState(false);
   const [goodQty, setGoodQty] = useState<number>(0);
   const [scrapQty, setScrapQty] = useState<number>(0);
   const [stationScope, setStationScope] = useState<string>("-");
@@ -282,25 +279,18 @@ export function StationExecution() {
   const ownershipState = selectedQueueItem?.ownership;
   const ownerState = ownershipState?.owner_state ?? "none";
   const hasOpenSession = ownershipState?.has_open_session ?? false;
-  // Compatibility fallback: use claim if ownership unavailable
-  const claimState = selectedQueueItem?.claim.state ?? "none";
   
   // Detect if current user owns a session (H2+: ownership block primary)
   const ownedSessionOperationId =
     queueItems.find((item) => item.ownership?.owner_state === "mine" && item.ownership?.has_open_session)?.operation_id ?? null;
   const ownsAnotherSession =
     ownedSessionOperationId !== null && ownedSessionOperationId !== operation?.id;
+
   
-  const canClaimByStatus = operation
-    ? isBackendClaimableQueueStatus(operation.status)
-    : false;
-  const canClaimCurrentOperation = canClaimByStatus && !ownsAnotherSession;
-  
-  // H2+: Ownership-first execution readiness gate
+  // H6-V1: execution readiness is ownership/session-only; claim remains
+  // compatibility display data elsewhere.
   const canExecuteByOwnership = ownerState === "mine" && hasOpenSession;
-  // Compatibility fallback if ownership unavailable
-  const canExecuteByClaim = !canExecuteByOwnership && claimState === "mine";
-  const canExecute = canExecuteByOwnership || canExecuteByClaim;
+  const canExecute = canExecuteByOwnership;
   
   const canReportProduction = canExecute && canDo("report_production");
   const canPauseExecution = canExecute && canDo("pause_execution");
@@ -310,12 +300,6 @@ export function StationExecution() {
   const canEndDowntimeAction = canExecute && canDo("end_downtime");
   const canCloseOperation = canDo("close_operation") && operation?.closure_status === "OPEN";
   const canReopenOperation = canDo("reopen_operation") && operation?.closure_status === "CLOSED";
-  // Release is only safe on PLANNED. On IN_PROGRESS / PAUSED / BLOCKED the
-  // operation has active execution context and the operator cannot reclaim after
-  // releasing, creating an unrecoverable dead-end. Backend enforces the same
-  // rule; the frontend guard removes the affordance proactively.
-  const canReleaseClaim = canExecute && operation?.status === "PLANNED";
-
   // Mode B = operator is assigned to this operation (H2+: ownership-based), unless user explicitly
   // navigates back to the full selection surface.
   const isExecutionMode = canExecute && !forceSelectionMode;
@@ -379,7 +363,7 @@ export function StationExecution() {
     if (operation?.closure_status === "CLOSED") {
       return t("station.closed.guidance");
     }
-    if (!canExecuteByClaim) return t("station.claim.required");
+    if (!canExecute) return t("station.claim.required");
     if (operation?.status === "BLOCKED" && operation.downtime_open) {
       return t("station.hint.nextAction.endDowntime");
     }
@@ -401,7 +385,7 @@ export function StationExecution() {
       return t("station.status.abortedHeading");
     }
     return "";
-  }, [canExecuteByClaim, operation?.downtime_open, operation?.status, t]);
+  }, [canExecute, operation?.downtime_open, operation?.status, t]);
 
   const reportingHint = useMemo(() => {
     if (operation?.closure_status === "CLOSED") {
@@ -491,36 +475,6 @@ export function StationExecution() {
     setOperationId(String(item.operation_id));
     setSearchParams({ operationId: String(item.operation_id) });
     await fetchOperation(String(item.operation_id));
-  };
-
-  const claimOperation = async () => {
-    if (!operation) return;
-    setClaimLoading(true);
-    try {
-      await stationApi.claim(operation.id, {});
-      setForceSelectionMode(false);
-      toast.success(t("station.toast.claimed"));
-      await refreshQueue();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("station.toast.claimFailed"));
-    } finally {
-      setClaimLoading(false);
-    }
-  };
-
-  const releaseClaim = async () => {
-    if (!operation) return;
-    setClaimLoading(true);
-    try {
-      await stationApi.release(operation.id, { reason: "operator_release" });
-      toast.success(t("station.toast.released"));
-      setQueueOverlayOpen(false);
-      await refreshQueue();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("station.toast.releaseFailed"));
-    } finally {
-      setClaimLoading(false);
-    }
   };
 
   const backToSelection = () => {
@@ -768,32 +722,9 @@ export function StationExecution() {
         <MockWarningBanner phase="PARTIAL" note={t("screenStatus.banner.deprecation.body" as any)} />
 
         <div className="flex-1 overflow-auto p-4 max-w-2xl mx-auto w-full">
-          {/* Selected operation — awaiting claim */}
-          {operation && claimState === "none" && canClaimByStatus && (
-            <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between gap-4">
-              <div className="min-w-0">
-                <p className="font-semibold text-gray-900 truncate">{operation.name}</p>
-                <div className="mt-1">
-                  <StatusBadge
-                    variant={mapExecutionStatusBadgeVariant(operation.status)}
-                    size="sm"
-                  >
-                    {getStatusLabel(operation.status)}
-                  </StatusBadge>
-                </div>
-                {ownsAnotherSession && (
-                  <p className="mt-2 text-xs text-amber-700">
-                    {t("station.claim.singleActiveHint")}
-                  </p>
-                )}
-              </div>
-              <button
-                onClick={() => void claimOperation()}
-                disabled={claimLoading || !canClaimCurrentOperation}
-                className="shrink-0 min-h-14 px-6 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 active:scale-[0.98] transition disabled:opacity-50"
-              >
-                {claimLoading ? t("station.action.claiming") : t("station.action.claim")}
-              </button>
+          {operation && ownsAnotherSession && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-xs text-amber-700">{t("station.claim.singleActiveHint")}</p>
             </div>
           )}
 
@@ -864,13 +795,10 @@ export function StationExecution() {
         operationStatus={operation.status}
         closureStatus={operation.closure_status}
         downtimeOpen={operation.downtime_open}
-        claimLoading={claimLoading}
-        canReleaseClaim={canReleaseClaim}
         queueLoading={queueLoading}
         onBackToSelection={backToSelection}
         onRefresh={() => void refreshQueue()}
         onToggleQueue={() => setQueueOverlayOpen((prev) => !prev)}
-        onReleaseClaim={() => void releaseClaim()}
       />
 
       {/* Queue overlay */}
@@ -985,7 +913,7 @@ export function StationExecution() {
           operation={operation}
           actionLoading={actionLoading}
           downtimeLoading={downtimeLoading}
-          canExecuteByClaim={canExecuteByClaim}
+          canExecute={canExecute}
           canPauseExecution={canPauseExecution}
           canStartDowntime={canStartDowntime}
           canCompleteExecution={canCompleteExecution}

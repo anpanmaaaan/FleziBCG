@@ -308,6 +308,205 @@ CANONICAL
 ### Verdict
 ALLOW_IMPLEMENTATION_COMPLETE
 
+## HM3-032 — P0-C-08H9 Backend Queue Claim Payload Null-Only Contract
+
+## Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Contract-Only Review
+- Hard Mode MOM: v3
+- Reason: Task touches backend station queue read model projection, ownership/claim payload boundary, frontend consumer compatibility, and backend test impact — all v3 trigger zones.
+
+### Design Evidence Extract
+- StationSession is target ownership truth (station-session-ownership-contract.md)
+- Claim is deprecated compatibility-only (H5 sequencing contract; H8 JSDoc)
+- H8 removed frontend claim fallback (confirmed in p0-c-08h8)
+- Backend queue still returns dual-shape payload
+- Frontend tolerates claim: null without code changes
+- Test asserts current claim shape; requires update for null-only
+- H9 is contract-only; no runtime change yet
+
+### Event Map
+
+| Area | Current Event Impact | H9 Change? | Notes |
+|---|---|---|---|
+| Claim audit events | Backend only — unchanged | No | Claim service remains active |
+| Queue ownership read model | From StationSession (target) | No | Already authoritative post-H8 |
+| Queue claim read model | From OperationClaim (compat) | N/A — contract-only | Will become null-only in H10 |
+| `canExecute` / command auth | Ownership-only (H6-V1) | No | Never reads claim |
+
+### Invariant Map
+
+| Invariant | Status | Evidence |
+|---|---|---|
+| Queue ownership must be StationSession-derived | ✅ ENFORCED | Ownership block populated post-H8 |
+| Claim fields must not drive command authorization | ✅ ENFORCED | H6-V1; `canExecute` never reads claim |
+| Claim fields must not drive queue display | ✅ ENFORCED | H8: all claim fallback logic removed |
+| Null-only claim must not affect command authorization | ✅ WILL BE ENFORCED | No code path reads claim for affordance |
+| Frontend must tolerate claim: null | ⚠️ MUST VERIFY in H10 | H8 proved no claim reads; types need nullable |
+| Backend claim APIs remain active/deprecated | ✅ RETAINED | Deprecation headers present |
+| No DB migration in H9 | ✅ SATISFIED | Schema/table unchanged; projection only |
+
+### State / Read Model Impact Map
+
+| Queue / Read Model Concern | Current State | Target H10 | Contract Decision |
+|---|---|---|---|
+| `claim.state` | `"none"` / `"mine"` / `"other"` | null | Send null; update tests |
+| `claim.expires_at` | Populated from claim | null | Send null; update tests |
+| `claim.claimed_by_user_id` | Populated from claim | null | Send null; update tests |
+| `ownership.*` | From StationSession | Unchanged | No H9 change |
+| `canExecute` | Ownership-only (H6-V1) | Unchanged | No H9 change |
+| Backend claim payload | Sent (populated dict) | Sent (null) | Option B preferred |
+
+### Test Matrix
+
+| Test Area | Existing Test | Required for H10? | Purpose |
+|---|---|---|---|
+| Queue claim shape lock | `test_station_queue_claim_fields_unchanged` | UPDATE — assert claim is None | Transition from detail to null |
+| Queue session migration | `test_station_queue_session_aware_migration` | STAY GREEN | Ownership block unchanged |
+| Claim API deprecation | `test_claim_api_deprecation_lock` | STAY GREEN | Deprecation headers locked |
+| Route claim guard removal | `test_execution_route_claim_guard_removal` | STAY GREEN | H4 guards unchanged |
+| Reopen resume continuity | `test_reopen_resume_station_session_continuity` | STAY GREEN | Reopen logic unchanged |
+| Frontend lint | `npm run lint` | STAY GREEN | No claim reads post-H8 |
+| Frontend build | `npm run build` | STAY GREEN | Types become nullable |
+| Frontend route smoke | `npm run check:routes` | STAY GREEN | No logic change |
+
+### Verdict
+ALLOW_CONTRACT_REVIEW — H9 contract approved; H10 ready for implementation
+
+---
+
+## HM3-031 — P0-C-08H8 Frontend Queue Claim Fallback Retirement
+
+## Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Single-Slice Implementation
+- Hard Mode MOM: v3
+- Reason: Task touches station queue ownership display, claim compatibility boundary, frontend execution-readiness interpretation, and read-model consumer cutover — all v3 trigger zones.
+
+### Design Evidence Extract
+- StationSession is target ownership truth (station-session-ownership-contract.md)
+- Claim is deprecated compatibility-only (H5 sequencing contract + stationApi.ts)
+- H6-V1 removed claim-derived `canExecute` (confirmed in StationExecution.tsx)
+- H7 approved FE fallback retirement first (p0-c-08h7 §8)
+- Backend queue payload unchanged in H8 (H7 §8 Out of Scope)
+- Frontend must not infer ownership/affordance from claim fields (copilot-instructions.md)
+- Backend is source of queue/read-model truth (H7 §5)
+
+### Event Map
+
+| Area | Event Impact | Change? |
+|---|---|---|
+| Claim audit events (CREATED/RELEASED/EXPIRED) | Backend only — unchanged | No |
+| CLAIM_RESTORED_ON_REOPEN | Reopen compat bridge — unchanged | No |
+| Queue ownership read model | FE display derived from `ownership.*` only after H8 | FE display only |
+| `canExecute` / action buttons | Already ownership-only (H6-V1) | No |
+| Backend queue response shape | Unchanged — claim block still sent | No |
+
+### Invariant Map
+
+| Invariant | Status |
+|---|---|
+| Queue ownership display must be StationSession-derived | ✅ ENFORCED after H8 |
+| Claim fields must not drive queue filter/summary | ✅ ENFORCED after H8 |
+| Claim fields must not drive lock/hint display | ✅ ENFORCED after H8 |
+| `canExecute` must not use claim fields | ✅ ALREADY ENFORCED (H6-V1) |
+| Backend payload unchanged | ✅ ENFORCED |
+| Claim APIs remain deprecated/active | ✅ RETAINED |
+| `ClaimSummary` / TS types kept | ✅ RETAINED (H9) |
+| No DB migration | ✅ SATISFIED |
+
+### State / Read Model Impact Map
+
+| UI / Read Model Concern | Before H8 | After H8 | Source of Truth |
+|---|---|---|---|
+| Queue filter "mine" | ownership OR claim fallback | ownership only | StationSession |
+| Queue summary "mine" count | ownership OR claim fallback | ownership only | StationSession |
+| `lockedByOther` | ownership OR `claim.state === "other"` | ownership only | StationSession |
+| `isMine` | ownership OR `claim.state === "mine"` | ownership only | StationSession |
+| `ownershipHint` | ownership → claim → ready → null | ownership → ready → null | StationSession |
+| `ownershipHintTone` | ownership → claim → default | ownership → default | StationSession |
+| `canExecute` | ownership-only (H6-V1) | unchanged | Backend command guard |
+| Backend claim payload | sent by backend | still sent (unchanged) | Backend OperationClaim |
+
+### Test Matrix
+
+| Test / Check | ID | Purpose | Run? | Result |
+|---|---|---|---|---|
+| Frontend lint | HM3-031-T1 | No TS/lint errors | Yes | PASS (exit 0) |
+| Frontend build | HM3-031-T2 | Full build succeeds | Yes | PASS (exit 0) |
+| Frontend route smoke | HM3-031-T3 | All routes covered | Yes | PASS (77/78, 24 checks) |
+| BE: route guard | HM3-031-T4 | H4 guards still correct | Yes | PASS (24 passed) |
+| BE: claim deprecation | HM3-031-T5 | Deprecation headers present | Yes | PASS (24 passed) |
+| BE: queue session migration | HM3-031-T6 | Ownership block correct | Yes | PASS (24 passed) |
+| BE: reopen continuity | HM3-031-T7 | Reopen continuity intact | Yes | PASS (24 passed) |
+
+### Verdict
+ALLOW_IMPLEMENTATION_COMPLETE — P0_C_08H8_COMPLETE_VERIFICATION_CLEAN
+
+---
+
+## HM3-030 — P0-C-08H7 Queue Claim Payload Retirement Contract / Review
+
+## Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Contract-Only
+- Hard Mode MOM: v3
+- Reason: Task touches station queue read-model contract, StationSession ownership truth, claim compatibility payload boundary, and audit retention — all v3 trigger zones. Contract-only; no implementation.
+
+### Design Evidence Extract
+- `docs/implementation/p0-c-08h6-v1-claim-derived-affordance-removal-report.md`
+- `docs/implementation/p0-c-08h5-claim-retirement-sequencing-contract.md`
+- `docs/implementation/p0-c-08h6-frontend-api-consumer-cutover-report.md`
+- `docs/design/02_domain/execution/station-session-ownership-contract.md`
+- `docs/design/02_domain/execution/station-session-command-guard-enforcement-contract.md`
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| queue claim payload review | none | none_required | UNCHANGED_CANONICAL | n/a | none | H7 scope = contract only |
+| no new events, no renames | — | — | — | — | — | — |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---|---|---|
+| queue ownership truth must be StationSession-derived | ownership | backend service | no | yes | station-session-ownership-contract |
+| claim compatibility payload must not drive execution affordance | authorization_boundary | frontend gate | no | yes | H6-V1 + this contract |
+| queue response consumers must not break silently if claim removed | migration_boundary | frontend test required before removal | no | yes | H7 consumer review |
+| backend queue service remains source of queue truth | execution_truth | backend | no | yes | coding rules |
+| claim APIs remain deprecated/active | compatibility | backend route | no | yes | H5 + H6 contracts |
+| no DB migration in H7 | migration_safety | slice boundary | no | no | task constraints |
+
+### State / Read Model Impact Map
+| Queue / UI State | Current Source | Target Source | H7 Decision |
+|---|---|---|---|
+| `owner_state` | StationSession → `get_station_queue` | Same | No change |
+| `has_open_session` | StationSession active lookup | Same | No change |
+| `compatibility_claim.state` | `OperationClaim` table | Remove FE fallback in H8 | H8 |
+| `claimed_by_user_id` | `OperationClaim` table | Remove FE display in H8 | H8 |
+| `ownership_migration_status` | Hardcoded string | Update to `"TARGET_SESSION_OWNER"` | H9 |
+
+### Test Matrix
+| Test ID | Scenario | Type | Given | When | Then | Event Assertion | Invariant Assertion |
+|---|---|---|---|---|---|---|---|
+| HM3-030-T1 | backend smoke: queue session migration | regression | existing tests | pytest subset | pass | unchanged | ownership block shape locked |
+| HM3-030-T2 | backend smoke: claim deprecation lock | regression | existing tests | pytest subset | pass | unchanged | deprecation headers locked |
+| HM3-030-T3 | backend smoke: route guard removal | regression | existing tests | pytest subset | pass | unchanged | H4 guards locked |
+| HM3-030-T4 | backend smoke: reopen resume | regression | existing tests | pytest subset | pass | unchanged | reopen continuity locked |
+| HM3-030-T5 | frontend lint | regression | unchanged FE | run lint | pass | n/a | no regression |
+| HM3-030-T6 | frontend route smoke | regression | unchanged FE | run check:routes | pass | n/a | route coverage locked |
+
+### Final verification result
+- `pytest -q tests/test_execution_route_claim_guard_removal.py tests/test_claim_api_deprecation_lock.py tests/test_station_queue_session_aware_migration.py tests/test_reopen_resume_station_session_continuity.py`: `24 passed`, `H7_BACKEND_SMOKE_EXIT:0`
+- `npm.cmd run lint`: `H7_FRONTEND_LINT_EXIT:0`
+- `npm.cmd run check:routes`: `H7_FRONTEND_ROUTE_SMOKE_EXIT:0` (77/78 covered, 24 checks PASS)
+
+### Event naming status
+UNCHANGED_CANONICAL
+
+### Verdict
+ALLOW_CONTRACT_REVIEW
+CONTRACT_RECOMMENDATION: READY_FOR_P0_C_08H8_FRONTEND_QUEUE_CLAIM_FALLBACK_RETIREMENT
+
 ## HM3-029 — P0-C-08H6-V1 Claim-Derived Execution Affordance Removal + Verification Gap Closure
 
 ## Routing
