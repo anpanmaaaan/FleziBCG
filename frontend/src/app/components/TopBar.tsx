@@ -42,6 +42,14 @@ export function TopBar({
     return () => clearInterval(timer);
   }, []);
 
+  const closeMenus = () => {
+    setShowPlantDropdown(false);
+    setShowLangDropdown(false);
+    setShowUserDropdown(false);
+    setShowNotifications(false);
+    setShowUtilityOverflow(false);
+  };
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -64,6 +72,17 @@ export function TopBar({
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        closeMenus();
+      }
+    }
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
   }, []);
 
   const formatTime = (date: Date) => {
@@ -98,14 +117,6 @@ export function TopBar({
     { locale: 'ja', name: '日本語', flag: '🇯🇵' },
   ];
   const selectedLanguage = languages.find((l) => l.locale === locale) ?? languages[0];
-
-  const closeMenus = () => {
-    setShowPlantDropdown(false);
-    setShowLangDropdown(false);
-    setShowUserDropdown(false);
-    setShowNotifications(false);
-    setShowUtilityOverflow(false);
-  };
 
   const handleLogout = async () => {
     if (isSigningOut) {
@@ -145,7 +156,10 @@ export function TopBar({
           <button
             type="button"
             aria-label="Open navigation drawer"
-            onClick={onOpenSidebar}
+            onClick={() => {
+              closeMenus();
+              onOpenSidebar?.();
+            }}
             className="rounded-lg border border-gray-200 p-2 text-gray-700 transition-colors hover:bg-gray-50 lg:hidden"
           >
             <Menu className="h-5 w-5" />
@@ -162,6 +176,7 @@ export function TopBar({
         {/* Plant/Site Selector */}
         <div className="relative hidden lg:block" ref={plantRef}>
           <button 
+            type="button"
             onClick={() => {
               setShowPlantDropdown(!showPlantDropdown);
               setShowLangDropdown(false);
@@ -216,6 +231,8 @@ export function TopBar({
         {/* Notifications */}
         <div className="relative" ref={notifRef}>
           <button 
+            type="button"
+            aria-label="Open notifications"
             onClick={() => {
               setShowNotifications(!showNotifications);
               setShowPlantDropdown(false);
@@ -234,12 +251,12 @@ export function TopBar({
 
           {/* Notifications Dropdown */}
           {showNotifications && (
-            <div className="absolute right-0 z-50 mt-2 w-80 rounded-lg border border-gray-200 bg-white py-2 shadow-lg">
+            <div className="absolute right-0 z-50 mt-2 w-[min(20rem,calc(100vw-1rem))] rounded-lg border border-gray-200 bg-white py-2 shadow-lg">
               <div className="px-4 py-2 border-b border-gray-100">
                 <h3 className="font-semibold text-gray-900">{t("topBar.notifications.title")}</h3>
               </div>
               <div className="max-h-96 overflow-y-auto">
-                <div className="px-4 py-3 hover:bg-gray-50 cursor-pointer">
+                <button type="button" className="w-full px-4 py-3 text-left hover:bg-gray-50 cursor-pointer">
                   <div className="flex items-start gap-3">
                     <div className="w-2 h-2 bg-red-500 rounded-full mt-2"></div>
                     <div>
@@ -248,8 +265,8 @@ export function TopBar({
                       <p className="text-xs text-gray-400 mt-1">5 mins ago</p>
                     </div>
                   </div>
-                </div>
-                <div className="px-4 py-3 hover:bg-gray-50 cursor-pointer">
+                </button>
+                <button type="button" className="w-full px-4 py-3 text-left hover:bg-gray-50 cursor-pointer">
                   <div className="flex items-start gap-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
                     <div>
@@ -258,10 +275,10 @@ export function TopBar({
                       <p className="text-xs text-gray-400 mt-1">15 mins ago</p>
                     </div>
                   </div>
-                </div>
+                </button>
               </div>
               <div className="px-4 py-2 border-t border-gray-100">
-                <button className="text-sm font-medium text-blue-600 hover:text-blue-700">
+                <button type="button" className="text-sm font-medium text-blue-600 hover:text-blue-700">
                   {t("topBar.notifications.viewAll")}
                 </button>
               </div>
@@ -342,6 +359,7 @@ export function TopBar({
         {/* Language Selector */}
         <div className="relative hidden lg:block" ref={langRef}>
           <button 
+            type="button"
             onClick={() => {
               setShowLangDropdown(!showLangDropdown);
               setShowPlantDropdown(false);
@@ -381,6 +399,8 @@ export function TopBar({
         {/* User Profile */}
         <div className="relative" ref={userRef}>
           <button 
+            type="button"
+            aria-label="Open user menu"
             onClick={() => {
               setShowUserDropdown(!showUserDropdown);
               setShowPlantDropdown(false);
@@ -399,22 +419,23 @@ export function TopBar({
 
           {/* User Dropdown */}
           {showUserDropdown && (
-            <div className="absolute right-0 z-50 mt-2 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+            <div className="absolute right-0 z-50 mt-2 w-[min(14rem,calc(100vw-1rem))] rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
               <div className="px-4 py-3 border-b border-gray-100">
                 <p className="text-sm font-semibold text-gray-900">{currentUser?.username || 'User'}</p>
                 <p className="text-xs text-gray-500">{currentUser?.email || '-'}</p>
               </div>
-              <button className="w-full px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50">
+              <button type="button" className="w-full px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50">
                 {t("topBar.menu.profile")}
               </button>
-              <button className="w-full px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50">
+              <button type="button" className="w-full px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50">
                 {t("topBar.menu.settings")}
               </button>
-              <button className="w-full px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50">
+              <button type="button" className="w-full px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50">
                 {t("topBar.menu.helpSupport")}
               </button>
               <div className="border-t border-gray-100 my-1"></div>
               <button
+                type="button"
                 onClick={handleLogoutAll}
                 disabled={isSigningOut}
                 className="w-full px-4 py-2 text-left text-sm text-amber-700 transition-colors hover:bg-amber-50 disabled:opacity-50"
@@ -422,6 +443,7 @@ export function TopBar({
                 {t("topBar.menu.logoutAll")}
               </button>
               <button
+                type="button"
                 onClick={handleLogout}
                 disabled={isSigningOut}
                 className="w-full px-4 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"

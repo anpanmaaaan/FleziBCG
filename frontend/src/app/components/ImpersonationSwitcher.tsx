@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/app/auth";
+import { useI18n } from "@/app/i18n";
 import { useImpersonation } from "@/app/impersonation";
 
 const ALLOWED_ACTING_ROLES = ["OPR", "SUP", "IEP", "QCI", "QAL", "PMG", "EXE"];
@@ -16,6 +17,7 @@ function normalizeRole(roleCode?: string | null): string {
 export function ImpersonationSwitcher({ roleCode }: { roleCode?: string | null }) {
   const { isAuthenticated, currentUser } = useAuth();
   const { startImpersonation, isImpersonating, isLoading } = useImpersonation();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [actingRoleCode, setActingRoleCode] = useState("OPR");
   const [scopeHint, setScopeHint] = useState("");
@@ -42,6 +44,21 @@ export function ImpersonationSwitcher({ roleCode }: { roleCode?: string | null }
     }
   }, [open, isAuthenticated, canOpen]);
 
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [open]);
+
   const submitDisabled = useMemo(() => {
     return submitting || isLoading || reason.trim().length === 0;
   }, [submitting, isLoading, reason]);
@@ -63,13 +80,13 @@ export function ImpersonationSwitcher({ roleCode }: { roleCode?: string | null }
         reason: `${scopePrefix}${reason.trim()}`,
         duration_minutes: durationMinutes,
       });
-      toast.success("Impersonation started.");
+      toast.success(t("impersonation.toast.started"));
       if (isMountedRef.current) {
         setOpen(false);
         setReason("");
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to start impersonation.";
+      const message = error instanceof Error ? error.message : t("impersonation.toast.startFailed");
       toast.error(message);
     } finally {
       if (isMountedRef.current) {
@@ -81,29 +98,32 @@ export function ImpersonationSwitcher({ roleCode }: { roleCode?: string | null }
   return (
     <>
       <button
+        type="button"
         onClick={() => setOpen(true)}
         disabled={submitting}
         className="px-3 py-2 text-sm font-medium text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50 disabled:opacity-50"
       >
-        {isImpersonating ? "Switch Acting Role" : "Act as..."}
+        {isImpersonating ? t("impersonation.dialog.title") : t("impersonation.trigger")}
       </button>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-lg rounded-xl bg-white shadow-xl border border-gray-200">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Start Impersonation</h3>
+              <h3 className="text-lg font-semibold text-gray-900">{t("impersonation.dialog.subtitle")}</h3>
               <button
+                type="button"
+                aria-label={t("common.action.close")}
                 onClick={() => setOpen(false)}
                 className="text-gray-500 hover:text-gray-700"
               >
-                Close
+                {t("common.action.close")}
               </button>
             </div>
 
             <div className="px-5 py-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Acting role</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("impersonation.form.role")}</label>
                 <select
                   value={actingRoleCode}
                   onChange={(event) => setActingRoleCode(event.target.value)}
@@ -118,17 +138,17 @@ export function ImpersonationSwitcher({ roleCode }: { roleCode?: string | null }
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Scope hint (optional)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("impersonation.form.scope")}</label>
                 <input
                   value={scopeHint}
                   onChange={(event) => setScopeHint(event.target.value)}
-                  placeholder="e.g. STATION_01"
+                  placeholder={t("impersonation.form.scopePlaceholder")}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("impersonation.form.duration")}</label>
                 <input
                   type="number"
                   min={1}
@@ -140,12 +160,12 @@ export function ImpersonationSwitcher({ roleCode }: { roleCode?: string | null }
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("impersonation.form.reason")}</label>
                 <textarea
                   value={reason}
                   onChange={(event) => setReason(event.target.value)}
                   rows={3}
-                  placeholder="Required for audit trail"
+                  placeholder={t("impersonation.form.reasonHelp")}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                 />
               </div>
@@ -153,17 +173,19 @@ export function ImpersonationSwitcher({ roleCode }: { roleCode?: string | null }
 
             <div className="px-5 py-4 border-t border-gray-100 flex justify-end gap-2">
               <button
+                type="button"
                 onClick={() => setOpen(false)}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
               >
-                Cancel
+                {t("common.action.cancel")}
               </button>
               <button
+                type="button"
                 onClick={onStart}
                 disabled={submitDisabled}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
               >
-                {submitting ? "Starting..." : "Start"}
+                {submitting ? t("impersonation.action.starting") : t("impersonation.action.start")}
               </button>
             </div>
           </div>
