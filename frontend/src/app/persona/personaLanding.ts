@@ -68,6 +68,15 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
   ADM: [
     { label: "Dashboard", to: "/dashboard" },
     { label: "Settings", to: "/settings" },
+    { label: "Users", to: "/users" },
+    { label: "Roles", to: "/roles" },
+    { label: "Actions", to: "/action-registry" },
+    { label: "Scope Assignments", to: "/scope-assignments" },
+    { label: "Sessions", to: "/sessions" },
+    { label: "Audit Log", to: "/audit-log" },
+    { label: "Security Events", to: "/security-events" },
+    { label: "Tenant Settings", to: "/tenant-settings" },
+    { label: "Plant Hierarchy", to: "/plant-hierarchy" },
   ],
 };
 

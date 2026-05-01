@@ -14,6 +14,12 @@ import {
   Settings,
   ShieldCheck,
   X,
+  Lock,
+  Users,
+  Shield,
+  LogOut,
+  Database,
+  Building2,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -69,6 +75,33 @@ function getIconForPath(path: string) {
   }
   if (path.startsWith("/traceability")) {
     return ScanSearch;
+  }
+  if (path.startsWith("/users")) {
+    return Users;
+  }
+  if (path.startsWith("/roles")) {
+    return Shield;
+  }
+  if (path.startsWith("/action-registry")) {
+    return Lock;
+  }
+  if (path.startsWith("/scope-assignments")) {
+    return Database;
+  }
+  if (path.startsWith("/sessions")) {
+    return LogOut;
+  }
+  if (path.startsWith("/audit-log")) {
+    return ClipboardList;
+  }
+  if (path.startsWith("/security-events")) {
+    return AlertTriangle;
+  }
+  if (path.startsWith("/tenant-settings")) {
+    return Building2;
+  }
+  if (path.startsWith("/plant-hierarchy")) {
+    return Layers;
   }
   if (path.startsWith("/settings")) {
     return Settings;

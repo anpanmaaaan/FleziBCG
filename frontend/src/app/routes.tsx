@@ -20,6 +20,15 @@ import { APSScheduling } from "./pages/APSScheduling";
 import { StationExecution } from "./pages/StationExecution";
 import { OEEDeepDive } from "./pages/OEEDeepDive";
 import { GanttStressTestPage } from "./pages/GanttStressTestPage";
+import { UserManagement } from "./pages/UserManagement";
+import { RoleManagement } from "./pages/RoleManagement";
+import { ActionRegistry } from "./pages/ActionRegistry";
+import { ScopeAssignments } from "./pages/ScopeAssignments";
+import { SessionManagement } from "./pages/SessionManagement";
+import { AuditLog } from "./pages/AuditLog";
+import { SecurityEvents } from "./pages/SecurityEvents";
+import { TenantSettings } from "./pages/TenantSettings";
+import { PlantHierarchy } from "./pages/PlantHierarchy";
 import { PersonaLandingRedirect } from "./persona/PersonaLandingRedirect";
 import { RequireAuth } from "./auth/RequireAuth";
 
@@ -78,6 +87,17 @@ export const router = createBrowserRouter([
       
       // APS Scheduling
       { path: "scheduling", Component: APSScheduling },
+
+      // Foundation & Governance (Admin)
+      { path: "users", Component: UserManagement },
+      { path: "roles", Component: RoleManagement },
+      { path: "action-registry", Component: ActionRegistry },
+      { path: "scope-assignments", Component: ScopeAssignments },
+      { path: "sessions", Component: SessionManagement },
+      { path: "audit-log", Component: AuditLog },
+      { path: "security-events", Component: SecurityEvents },
+      { path: "tenant-settings", Component: TenantSettings },
+      { path: "plant-hierarchy", Component: PlantHierarchy },
 
       // Dev-only stress harness for virtualized Gantt rows
       ...(import.meta.env.DEV ? [{ path: "dev/gantt-stress", Component: GanttStressTestPage }] : []),
