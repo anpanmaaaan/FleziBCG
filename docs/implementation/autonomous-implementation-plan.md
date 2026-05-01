@@ -872,3 +872,124 @@ Verification summary:
 Verdict:
 - `P0-C-08H6_COMPLETE_VERIFICATION_CLEAN`
 - Stop after this single slice.
+
+### P0-C-08H6-V1 Claim-Derived Execution Affordance Removal + Verification Gap Closure
+
+Status: Complete.
+
+Completed scope:
+- Removed `|| claimState === "mine"` from `canExecute` in `StationExecution.tsx`.
+- `canExecute` is now exclusively `canExecuteByOwnership` (StationSession/ownership-derived).
+- Verified no `claimState` references remain in StationExecution.tsx.
+- Verified no direct `stationApi.claim` / `stationApi.release` calls in StationExecution or station-execution components.
+- Queue claim fallback retained in `StationQueuePanel` and `QueueOperationCard` (display/debug only).
+
+Out-of-scope preserved:
+- No backend code changes.
+- No claim API/service/model/table removal.
+- No queue payload/API shape changes.
+- No migration/schema changes.
+
+Verification summary:
+- Frontend lint: `H6V1_FRONTEND_LINT_EXIT:0`
+- Frontend build: `H6V1_FRONTEND_BUILD_EXIT:0`
+- Frontend route smoke: `H6V1_FRONTEND_ROUTE_SMOKE_EXIT:0` (77/78 covered)
+- Backend smoke (4 files, 24 tests): `H6V1_BACKEND_SMOKE_EXIT:0`
+
+Verdict:
+- `P0_C_08H6_COMPLETE_VERIFICATION_CLEAN`
+- Stop after this single slice.
+
+### P0-C-08H7 Queue Claim Payload Retirement Contract / Review
+
+Status: Complete (contract-only, no implementation).
+
+Completed scope:
+- Full queue claim payload inventory: backend schema + frontend consumers.
+- Backend queue contract review: `get_station_queue` builds dual-shape payload; claim block fully present.
+- Frontend consumer review: 3 components (`StationQueuePanel`, `QueueOperationCard`, `StationExecutionHeader`) still read `claim.*` for display/fallback; no claim data reaches `canExecute`.
+- API compatibility / versioning decision made: Option D (FE-only fallback removal first) for H8, Option B (null-only backend) for H9.
+- Staged retirement roadmap proposed: H8–H13.
+- No code changes.
+
+Out-of-scope preserved:
+- No backend claim block removal.
+- No frontend type removal.
+- No claim API/service/model/table removal.
+- No reopen compatibility removal.
+- No migration/schema changes.
+
+Verification summary:
+- Backend smoke: `H7_BACKEND_SMOKE_EXIT:0` (24 passed)
+- Frontend lint: `H7_FRONTEND_LINT_EXIT:0`
+- Frontend route smoke: `H7_FRONTEND_ROUTE_SMOKE_EXIT:0` (77/78 covered, 24 checks PASS)
+
+Verdict:
+- `READY_FOR_P0_C_08H8_FRONTEND_QUEUE_CLAIM_FALLBACK_RETIREMENT`
+- Stop after this single contract slice.
+
+### P0-C-08H8 Frontend Queue Claim Fallback Retirement
+
+Status: Complete (frontend implementation only).
+
+Completed scope:
+- Removed `item.claim.state === "mine"` fallback from `matchesQueueFilter` case "mine" (StationQueuePanel).
+- Removed `item.claim.state === "mine"` fallback from `hasMineClaim` (StationQueuePanel).
+- Removed `item.claim.state === "mine"` fallback from `summary.mine` accumulator (StationQueuePanel).
+- Removed `item.claim.state === "other"` fallback from `lockedByOther` (QueueOperationCard).
+- Removed `item.claim.state === "mine"` fallback from `isMine` (QueueOperationCard).
+- Removed claim state fallback branches from `ownershipHint` (QueueOperationCard).
+- Removed claim state fallback branches from `ownershipHintTone` (QueueOperationCard).
+- Added compatibility deprecation comment to `ClaimSummary` interface + `StationQueueItem.claim` field (stationApi.ts).
+- Updated stale `canReleaseClaim` JSDoc reference in StationExecutionHeader.tsx.
+
+Out-of-scope preserved:
+- Backend queue payload unchanged; claim block still sent by server.
+- `ClaimSummary` / `QueueClaimState` TypeScript types retained until H9.
+- `StationQueueItem.claim` frontend type field retained until H9.
+- Deprecated `claim()` / `release()` / `getClaim()` client methods retained until H11.
+- Backend claim APIs remain active/deprecated.
+- No reopen compatibility removal.
+- No claim service/model/table removal.
+- No migration/schema changes.
+
+Verification summary:
+- Frontend lint: `H8_FRONTEND_LINT_EXIT:0`
+- Frontend build: `H8_FRONTEND_BUILD_EXIT:0`
+- Frontend route smoke: `H8_FRONTEND_ROUTE_SMOKE_EXIT:0` (77/78 covered, 24 checks PASS)
+- Backend smoke (4 files, 24 tests): `H8_BACKEND_SMOKE_EXIT:0`
+
+Verdict:
+- `P0_C_08H8_COMPLETE_VERIFICATION_CLEAN`
+- Stop after this single implementation slice.
+
+### P0-C-08H9 Backend Queue Claim Payload Null-Only Contract
+
+Status: Complete (contract-only, no implementation).
+
+Completed scope:
+- Backend queue claim payload null-only downgrade path reviewed after H8 frontend fallback removal.
+- Backend queue service contract review: `get_station_queue` builds dual-shape payload; both ownership (target) and claim (compat) blocks present.
+- Frontend consumer compatibility review: Frontend tolerates claim: null without code changes.
+- Backend test impact review: One test (`test_station_queue_claim_fields_unchanged`) requires update to assert claim is None.
+- API compatibility / versioning decision: Option B (keep claim field but send null-only) recommended as safest transition.
+- H10 implementation scope proposed: Return claim: null from queue; update ownership_migration_status; update FE type to nullable; update test.
+- No code changes in H9 (contract-only).
+
+Out-of-scope preserved:
+- No backend queue payload change.
+- No frontend code change.
+- No claim API/service/model/table removal.
+- No reopen compatibility removal.
+- No audit retention decision.
+- No migration/schema changes.
+
+Verification summary:
+- Backend smoke: `H9_BACKEND_SMOKE_EXIT:0` (24 passed)
+- Frontend lint: `H9_FRONTEND_LINT_EXIT:0`
+- Frontend build: `H9_FRONTEND_BUILD_EXIT:0`
+- Frontend route smoke: `H9_FRONTEND_ROUTE_SMOKE_EXIT:0` (77/78 covered, 24 checks PASS)
+
+Verdict:
+- `READY_FOR_P0_C_08H10_BACKEND_QUEUE_CLAIM_PAYLOAD_NULL_ONLY_IMPLEMENTATION`
+- Stop after this single contract slice.

@@ -17,11 +17,9 @@ interface QueueOperationCardProps {
 export function QueueOperationCard({ item, active, hasMineClaim, onSelect }: QueueOperationCardProps) {
   const { t } = useI18n();
 
-  // H2+: Ownership-first logic; claim fallback for compatibility
-  const lockedByOther = (item.ownership?.owner_state === "other" && item.ownership?.has_open_session)
-    || item.claim.state === "other";
-  const isMine = (item.ownership?.owner_state === "mine" && item.ownership?.has_open_session)
-    || item.claim.state === "mine";
+  // H8: Ownership-only; claim fallback retired
+  const lockedByOther = item.ownership?.owner_state === "other" && item.ownership?.has_open_session === true;
+  const isMine = item.ownership?.owner_state === "mine" && item.ownership?.has_open_session === true;
   const isClaimableByStatus = isBackendClaimableQueueStatus(item.status);
 
   const rowTone =
@@ -31,15 +29,11 @@ export function QueueOperationCard({ item, active, hasMineClaim, onSelect }: Que
       ? "border-amber-200 bg-amber-50"
       : "border-gray-200 bg-white";
 
-  // H2+: Ownership-first hint text; claim fallback for compatibility
+  // H8: Ownership-only; claim fallback retired
   const ownershipHint =
     item.ownership?.owner_state === "mine" && item.ownership?.has_open_session
       ? t("station.claim.ownedBadge")
       : item.ownership?.owner_state === "other" && item.ownership?.has_open_session
-      ? t("station.queue.claimedByOther")
-      : item.claim.state === "mine"
-      ? t("station.claim.ownedBadge")
-      : item.claim.state === "other"
       ? t("station.queue.claimedByOther")
       : isClaimableByStatus && !hasMineClaim
       ? t("station.queue.readyToClaim")
@@ -49,10 +43,6 @@ export function QueueOperationCard({ item, active, hasMineClaim, onSelect }: Que
     item.ownership?.owner_state === "mine" && item.ownership?.has_open_session
       ? "text-blue-700"
       : item.ownership?.owner_state === "other" && item.ownership?.has_open_session
-      ? "text-orange-700"
-      : item.claim.state === "mine"
-      ? "text-blue-700"
-      : item.claim.state === "other"
       ? "text-orange-700"
       : "text-emerald-700";
 

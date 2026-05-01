@@ -3,6 +3,12 @@ import type { OperationDetail, OperationExecutionStatus } from "./operationApi";
 
 export type QueueClaimState = "none" | "mine" | "other";
 
+/**
+ * Compatibility payload from legacy claim model.
+ * Do not use for primary queue ownership or execution affordance.
+ * Target ownership is StationSession-derived `ownership`.
+ * Types retained until H9 backend payload null-only contract.
+ */
 export interface ClaimSummary {
   state: QueueClaimState;
   expires_at: string | null;
@@ -34,6 +40,11 @@ export interface StationQueueItem {
   status: OperationExecutionStatus;
   planned_start: string | null;
   planned_end: string | null;
+  /**
+   * Compatibility payload from legacy claim model (H8+: not consumed by queue UI).
+   * Do not use for queue ownership display, lock, filter, summary, or execution affordance.
+   * Will be null-only after H9 backend payload contract update.
+   */
   claim: ClaimSummary;
   /** Target ownership truth (H2+): ownership block from StationSession context */
   ownership: SessionOwnershipSummary;
