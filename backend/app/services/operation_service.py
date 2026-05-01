@@ -9,6 +9,11 @@ from app.config.settings import settings
 from app.models.execution import ExecutionEvent, ExecutionEventType
 from app.models.master import ClosureStatusEnum, Operation, StatusEnum
 from app.models.station_claim import OperationClaim, OperationClaimAuditLog
+from app.repositories.station_session_repository import (
+    get_latest_open_station_session_for_operator,
+    get_latest_station_session_for_station,
+    get_latest_station_session_for_station_any_tenant,
+)
 from app.repositories.downtime_reason_repository import get_downtime_reason_by_code
 from app.repositories.execution_event_repository import (
     create_execution_event,
@@ -82,6 +87,13 @@ def end_downtime(
     """
     if operation.tenant_id != tenant_id:
         raise EndDowntimeConflictError("TENANT_MISMATCH")
+    ensure_open_station_session_for_command(
+        db,
+        tenant_id=tenant_id,
+        station_id=operation.station_scope_value,
+        operator_user_id=actor_user_id,
+        command_name="end_downtime",
+    )
     _session_ctx = _compute_session_diagnostic(db, operation, tenant_id)  # P0-C-04D
     _ensure_operation_open_for_write(operation)
 
@@ -151,6 +163,13 @@ def start_downtime(
     """
     if operation.tenant_id != tenant_id:
         raise StartDowntimeConflictError("TENANT_MISMATCH")
+    ensure_open_station_session_for_command(
+        db,
+        tenant_id=tenant_id,
+        station_id=operation.station_scope_value,
+        operator_user_id=actor_user_id,
+        command_name="start_downtime",
+    )
     _session_ctx = _compute_session_diagnostic(db, operation, tenant_id)  # P0-C-04D
     _ensure_operation_open_for_write(operation)
     if operation.status not in (StatusEnum.in_progress.value, StatusEnum.paused.value):
@@ -259,6 +278,102 @@ class CloseOperationConflictError(ValueError):
 
 class ReopenOperationConflictError(ValueError):
     pass
+
+
+class StationSessionGuardError(ValueError):
+    def __init__(self, error_code: str, *, status_code: int) -> None:
+        super().__init__(error_code)
+        self.error_code = error_code
+        self.status_code = status_code
+
+
+def _normalize_command_operator(value: str | None) -> str | None:
+    normalized = (value or "").strip()
+    return normalized or None
+
+
+def ensure_open_station_session_for_command(
+    db: Session,
+    *,
+    tenant_id: str,
+    station_id: str,
+    operator_user_id: str | None,
+    command_name: str,
+):
+    normalized_operator = _normalize_command_operator(operator_user_id)
+    latest_station_session = get_latest_station_session_for_station(
+        db,
+        tenant_id=tenant_id,
+        station_id=station_id,
+    )
+
+    if latest_station_session is None:
+        if normalized_operator is not None:
+            operator_session = get_latest_open_station_session_for_operator(
+                db,
+                tenant_id=tenant_id,
+                operator_user_id=normalized_operator,
+            )
+            if operator_session is not None and operator_session.station_id != station_id:
+                raise StationSessionGuardError(
+                    "STATION_SESSION_STATION_MISMATCH",
+                    status_code=409,
+                )
+
+        cross_tenant_session = get_latest_station_session_for_station_any_tenant(
+            db,
+            station_id=station_id,
+        )
+        if cross_tenant_session is not None and cross_tenant_session.tenant_id != tenant_id:
+            raise StationSessionGuardError(
+                "STATION_SESSION_TENANT_MISMATCH",
+                status_code=404,
+            )
+
+        raise StationSessionGuardError(
+            "STATION_SESSION_REQUIRED",
+            status_code=409,
+        )
+
+    if latest_station_session.tenant_id != tenant_id:
+        raise StationSessionGuardError(
+            "STATION_SESSION_TENANT_MISMATCH",
+            status_code=404,
+        )
+
+    if latest_station_session.status != "OPEN" or latest_station_session.closed_at is not None:
+        raise StationSessionGuardError(
+            "STATION_SESSION_CLOSED",
+            status_code=409,
+        )
+
+    if latest_station_session.station_id != station_id:
+        raise StationSessionGuardError(
+            "STATION_SESSION_STATION_MISMATCH",
+            status_code=409,
+        )
+
+    if normalized_operator is None:
+        return latest_station_session
+
+    if latest_station_session.operator_user_id == normalized_operator:
+        return latest_station_session
+
+    operator_session = get_latest_open_station_session_for_operator(
+        db,
+        tenant_id=tenant_id,
+        operator_user_id=normalized_operator,
+    )
+    if operator_session is not None and operator_session.station_id != station_id:
+        raise StationSessionGuardError(
+            "STATION_SESSION_STATION_MISMATCH",
+            status_code=409,
+        )
+
+    raise StationSessionGuardError(
+        "STATION_SESSION_OPERATOR_MISMATCH",
+        status_code=403,
+    )
 
 
 def _ensure_operation_open_for_write(operation) -> None:
@@ -965,10 +1080,22 @@ def reopen_operation(
 
 
 def start_operation(
-    db: Session, operation, request: OperationStartRequest, tenant_id: str = "default"
+    db: Session,
+    operation,
+    request: OperationStartRequest,
+    *,
+    actor_user_id: str | None = None,
+    tenant_id: str = "default",
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
+    ensure_open_station_session_for_command(
+        db,
+        tenant_id=tenant_id,
+        station_id=operation.station_scope_value,
+        operator_user_id=_normalize_command_operator(request.operator_id) or actor_user_id,
+        command_name="start_operation",
+    )
     _session_ctx = _compute_session_diagnostic(db, operation, tenant_id)  # P0-C-04D
     _ensure_operation_open_for_write(operation)
     if operation.status != StatusEnum.planned.value:
@@ -1030,10 +1157,19 @@ def report_quantity(
     db: Session,
     operation,
     request: OperationReportQuantityRequest,
+    *,
+    actor_user_id: str | None = None,
     tenant_id: str = "default",
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
+    ensure_open_station_session_for_command(
+        db,
+        tenant_id=tenant_id,
+        station_id=operation.station_scope_value,
+        operator_user_id=_normalize_command_operator(request.operator_id) or actor_user_id,
+        command_name="report_quantity",
+    )
     _session_ctx = _compute_session_diagnostic(db, operation, tenant_id)  # P0-C-04D
     _ensure_operation_open_for_write(operation)
     if operation.status != StatusEnum.in_progress.value:
@@ -1079,10 +1215,19 @@ def complete_operation(
     db: Session,
     operation,
     request: OperationCompleteRequest,
+    *,
+    actor_user_id: str | None = None,
     tenant_id: str = "default",
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
+    ensure_open_station_session_for_command(
+        db,
+        tenant_id=tenant_id,
+        station_id=operation.station_scope_value,
+        operator_user_id=_normalize_command_operator(request.operator_id) or actor_user_id,
+        command_name="complete_operation",
+    )
     _session_ctx = _compute_session_diagnostic(db, operation, tenant_id)  # P0-C-04D
     _ensure_operation_open_for_write(operation)
     # EDGE: Two-step status check gives distinct error messages — a COMPLETED
@@ -1134,6 +1279,13 @@ def pause_operation(
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
+    ensure_open_station_session_for_command(
+        db,
+        tenant_id=tenant_id,
+        station_id=operation.station_scope_value,
+        operator_user_id=actor_user_id,
+        command_name="pause_operation",
+    )
     _session_ctx = _compute_session_diagnostic(db, operation, tenant_id)  # P0-C-04D
     _ensure_operation_open_for_write(operation)
 
@@ -1188,6 +1340,13 @@ def resume_operation(
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
+    ensure_open_station_session_for_command(
+        db,
+        tenant_id=tenant_id,
+        station_id=operation.station_scope_value,
+        operator_user_id=actor_user_id,
+        command_name="resume_operation",
+    )
     _session_ctx = _compute_session_diagnostic(db, operation, tenant_id)  # P0-C-04D
     _ensure_operation_open_for_write(operation)
 

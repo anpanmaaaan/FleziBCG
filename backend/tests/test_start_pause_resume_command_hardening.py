@@ -21,12 +21,18 @@ from app.services.operation_service import (
     ClosedRecordConflictError,
     PauseExecutionConflictError,
     ResumeExecutionConflictError,
+    StationSessionGuardError,
     StartOperationConflictError,
     pause_operation,
     resume_operation,
     start_operation,
 )
-from app.services.station_session_service import open_station_session
+from app.services.station_session_service import (
+    close_station_session,
+    get_current_station_session,
+    identify_operator_at_station,
+    open_station_session,
+)
 
 _PREFIX = "TEST-P0C05"
 _TENANT_ID = "default"
@@ -69,23 +75,61 @@ def _ensure_opr_role(db) -> Role:
 
 def _seed_station_scope(db, *, user_id: str, station_id: str = _STATION) -> None:
     role = _ensure_opr_role(db)
-    scope = Scope(
-        tenant_id=_TENANT_ID,
-        scope_type="station",
-        scope_value=station_id,
-    )
-    db.add(scope)
-    db.flush()
-    db.add(
-        UserRoleAssignment(
-            user_id=user_id,
-            role_id=role.id,
-            scope_id=scope.id,
-            is_primary=True,
-            is_active=True,
+    scope = db.scalar(
+        select(Scope).where(
+            Scope.tenant_id == _TENANT_ID,
+            Scope.scope_type == "station",
+            Scope.scope_value == station_id,
         )
     )
+    if scope is None:
+        scope = Scope(
+            tenant_id=_TENANT_ID,
+            scope_type="station",
+            scope_value=station_id,
+        )
+        db.add(scope)
+        db.flush()
+
+    assignment = db.scalar(
+        select(UserRoleAssignment).where(
+            UserRoleAssignment.user_id == user_id,
+            UserRoleAssignment.role_id == role.id,
+            UserRoleAssignment.scope_id == scope.id,
+        )
+    )
+    if assignment is None:
+        db.add(
+            UserRoleAssignment(
+                user_id=user_id,
+                role_id=role.id,
+                scope_id=scope.id,
+                is_primary=True,
+                is_active=True,
+            )
+        )
     db.commit()
+
+
+def _ensure_open_station_session(
+    db,
+    *,
+    user_id: str = _ACTOR,
+    station_id: str = _STATION,
+) -> StationSession:
+    _seed_station_scope(db, user_id=user_id, station_id=station_id)
+    identity = _identity(user_id=user_id)
+    session = get_current_station_session(db, identity, station_id=station_id)
+    if session is None:
+        session = open_station_session(db, identity, station_id=station_id)
+    if session.operator_user_id != user_id:
+        session = identify_operator_at_station(
+            db,
+            identity,
+            session_id=session.session_id,
+            operator_user_id=user_id,
+        )
+    return session
 
 
 def _purge(db) -> None:
@@ -198,6 +242,7 @@ def _latest_event_type(db, operation_id: int) -> str | None:
 
 
 def _seed_paused_operation(db, *, suffix: str, station_scope_value: str = _STATION) -> Operation:
+    _ensure_open_station_session(db, station_id=station_scope_value)
     op = _seed_operation(
         db,
         suffix=suffix,
@@ -228,6 +273,7 @@ def _seed_paused_operation(db, *, suffix: str, station_scope_value: str = _STATI
 
 def test_start_operation_happy_path_planned_emits_event_and_derives_actions(db_session):
     db = db_session
+    _ensure_open_station_session(db)
     op = _seed_operation(db, suffix="START-OK", status=StatusEnum.planned.value)
 
     detail = start_operation(
@@ -244,6 +290,7 @@ def test_start_operation_happy_path_planned_emits_event_and_derives_actions(db_s
 
 def test_start_operation_rejects_non_planned(db_session):
     db = db_session
+    _ensure_open_station_session(db)
     op = _seed_operation(db, suffix="START-NOT-PLANNED", status=StatusEnum.in_progress.value)
 
     with pytest.raises(StartOperationConflictError):
@@ -257,6 +304,7 @@ def test_start_operation_rejects_non_planned(db_session):
 
 def test_start_operation_rejects_closed_operation(db_session):
     db = db_session
+    _ensure_open_station_session(db)
     op = _seed_operation(
         db,
         suffix="START-CLOSED",
@@ -275,6 +323,7 @@ def test_start_operation_rejects_closed_operation(db_session):
 
 def test_pause_operation_happy_path_in_progress_emits_event_and_derives_actions(db_session):
     db = db_session
+    _ensure_open_station_session(db)
     op = _seed_operation(db, suffix="PAUSE-OK", status=StatusEnum.planned.value)
     started = start_operation(db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID)
     assert started.status == StatusEnum.in_progress.value
@@ -297,6 +346,7 @@ def test_pause_operation_happy_path_in_progress_emits_event_and_derives_actions(
 
 def test_pause_operation_rejects_non_in_progress(db_session):
     db = db_session
+    _ensure_open_station_session(db)
     op = _seed_operation(db, suffix="PAUSE-NON-RUNNING", status=StatusEnum.planned.value)
 
     with pytest.raises(PauseExecutionConflictError, match="STATE_NOT_RUNNING"):
@@ -311,6 +361,7 @@ def test_pause_operation_rejects_non_in_progress(db_session):
 
 def test_pause_operation_rejects_closed_operation(db_session):
     db = db_session
+    _ensure_open_station_session(db)
     op = _seed_operation(
         db,
         suffix="PAUSE-CLOSED",
@@ -347,6 +398,7 @@ def test_resume_operation_happy_path_paused_emits_event_and_derives_actions(db_s
 
 def test_resume_operation_rejects_non_paused(db_session):
     db = db_session
+    _ensure_open_station_session(db)
     op = _seed_operation(db, suffix="RESUME-NOT-PAUSED", status=StatusEnum.in_progress.value)
 
     with pytest.raises(ResumeExecutionConflictError, match="STATE_NOT_PAUSED"):
@@ -413,46 +465,24 @@ def test_resume_operation_station_busy_guard_unchanged(db_session):
         )
 
 
-def test_missing_station_session_does_not_change_start_pause_resume_outcome(db_session):
+def test_missing_station_session_rejects_start_operation(db_session):
     db = db_session
     op = _seed_operation(db, suffix="NO-SESSION", status=StatusEnum.planned.value)
 
-    started = start_operation(
-        db,
-        op,
-        OperationStartRequest(operator_id=_ACTOR),
-        tenant_id=_TENANT_ID,
-    )
-    assert started.status == StatusEnum.in_progress.value
-
-    db_op = db.scalar(select(Operation).where(Operation.id == op.id))
-    assert db_op is not None
-    paused = pause_operation(
-        db,
-        db_op,
-        OperationPauseRequest(reason_code="BREAK", note="pause"),
-        actor_user_id=_ACTOR,
-        tenant_id=_TENANT_ID,
-    )
-    assert paused.status == StatusEnum.paused.value
-
-    db_op = db.scalar(select(Operation).where(Operation.id == op.id))
-    assert db_op is not None
-    resumed = resume_operation(
-        db,
-        db_op,
-        OperationResumeRequest(note="resume"),
-        actor_user_id=_ACTOR,
-        tenant_id=_TENANT_ID,
-    )
-    assert resumed.status == StatusEnum.in_progress.value
+    with pytest.raises(StationSessionGuardError, match="STATION_SESSION_REQUIRED"):
+        start_operation(
+            db,
+            op,
+            OperationStartRequest(operator_id=_ACTOR),
+            actor_user_id=_ACTOR,
+            tenant_id=_TENANT_ID,
+        )
 
 
 def test_open_station_session_does_not_change_start_pause_resume_outcome(db_session):
     db = db_session
     station_id = f"{_PREFIX}-OPEN-SESSION-STATION"
-    _seed_station_scope(db, user_id=_ACTOR, station_id=station_id)
-    open_station_session(db, _identity(), station_id=station_id)
+    _ensure_open_station_session(db, station_id=station_id)
 
     op = _seed_operation(
         db,
@@ -465,6 +495,7 @@ def test_open_station_session_does_not_change_start_pause_resume_outcome(db_sess
         db,
         op,
         OperationStartRequest(operator_id=_ACTOR),
+        actor_user_id=_ACTOR,
         tenant_id=_TENANT_ID,
     )
     assert started.status == StatusEnum.in_progress.value

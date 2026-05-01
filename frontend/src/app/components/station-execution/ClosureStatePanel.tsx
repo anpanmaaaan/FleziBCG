@@ -37,7 +37,7 @@ export function ClosureStatePanel({
           <button
             onClick={onCloseOperation}
             disabled={actionLoading || !canCloseOperation}
-            className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl border-2 border-slate-400 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl border-2 border-slate-400 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {t("station.action.closeOperation")}
           </button>
@@ -46,7 +46,7 @@ export function ClosureStatePanel({
           <button
             onClick={onOpenReopenModal}
             disabled={actionLoading || !canReopenOperation}
-            className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+            className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {t("station.action.reopen")}
           </button>

@@ -50,7 +50,7 @@ Blocked / deferred slices:
 
 ### P0-C Station Execution Baseline
 
-Status: In progress. Entry audit complete. Slices P0-C-01 through P0-C-05 complete.
+Status: In progress. Entry audit complete. Slices P0-C-01 through P0-C-07C complete.
 
 Completed slices:
 - P0-C-01 Work Order / Operation Foundation Alignment
@@ -99,10 +99,45 @@ Completed slices:
   - Projection and `allowed_actions` verified after start/pause/resume transitions
   - StationSession diagnostic non-blocking behavior re-verified (session and no-session paths)
   - Backend suite: 196 passed, 1 skipped, exit 0
+- P0-C-06A Production Reporting Command Hardening
+  - New focused hardening suite: `backend/tests/test_report_quantity_command_hardening.py` (12 tests)
+  - State guard, quantity invariants, closed-record rejection, event emission verified
+  - Projection accumulation across multiple `QTY_REPORTED` events verified
+  - `allowed_actions` after report verified: `["report_production", "pause_execution", "complete_execution", "start_downtime"]`
+  - StationSession diagnostic non-blocking behavior re-verified (no-session and open-session paths)
+  - Backend suite: 208 passed, 1 skipped, exit 0
+- P0-C-06B Downtime Start / End Command Hardening
+  - New focused hardening suite: `backend/tests/test_downtime_command_hardening.py` (14 tests)
+  - State guards verified: `start_downtime` from IN_PROGRESS/PAUSED only; PLANNED rejected
+  - Duplicate open downtime rejection (DOWNTIME_ALREADY_OPEN) verified via event-count guard
+  - Invalid/inactive reason code rejection verified
+  - Closed-record rejection verified for both commands
+  - Event emission verified: `downtime_started`, `downtime_ended`
+  - IN_PROGRESS→BLOCKED transition after `start_downtime` verified (event-derived projection)
+  - BLOCKED→PAUSED transition after `end_downtime` verified; no auto-resume confirmed
+  - `resume_operation` blocked while downtime open (STATE_DOWNTIME_OPEN)
+  - StationSession diagnostic non-blocking behavior re-verified
+  - Backend suite: 222 passed, 1 skipped, exit 0
+- P0-C-07A Complete Operation Command Hardening
+  - New focused hardening suite: `backend/tests/test_complete_operation_command_hardening.py` (10 tests)
+  - State legality verified for `complete_operation` from IN_PROGRESS and invalid-state rejection paths
+  - Closed-record and tenant-mismatch rejection verified
+  - Completion event emission verified: `OP_COMPLETED`
+  - Projection and `allowed_actions` after complete verified (`status=completed`, `allowed_actions=["close_operation"]`)
+  - StationSession diagnostic non-blocking behavior re-verified (no-session and matching OPEN-session parity)
+  - Backend suite: 232 passed, 1 skipped, exit 0
+- P0-C-07B Close Operation Guard Hardening
+  - New focused hardening suite: `backend/tests/test_close_operation_command_hardening.py` (10 tests)
+  - State legality verified for `close_operation` from completed states and invalid-state rejection paths
+  - Already-closed and tenant-mismatch rejection verified
+  - Close event emission verified: `operation_closed_at_station`
+  - `closure_status` after close verified (`OPEN -> CLOSED`)
+  - Projection/detail and `allowed_actions` after close verified (`["reopen_operation"]`)
+  - StationSession diagnostic non-blocking behavior re-verified (no-session and matching OPEN-session parity)
+  - Backend suite: 242 passed, 1 skipped, exit 0
 
 Pending slices (in recommended order):
-- P0-C-06 Production Reporting + Downtime Commands
-- P0-C-07 Complete / Close / Reopen Guard Alignment
+- P0-C-07C Reopen Operation / Claim Continuity Hardening (Complete)
 
 ## Current Slice Ledger
 
@@ -409,3 +444,189 @@ Verification summary:
 - Claim regression subset: 36 passed
 - Projection/status regression: 41 passed
 - Full backend suite: 196 passed, 1 skipped, exit 0
+
+### 20. P0-C-06A Production Reporting Command Hardening
+
+Status: Complete.
+
+Hard Mode MOM v3 verdict: ALLOW_IMPLEMENTATION
+
+Scope implemented:
+- Focused `report_quantity` hardening suite added: `backend/tests/test_report_quantity_command_hardening.py`
+- 12 tests added to verify: happy path (good-qty-only, mixed qty), state guards (PLANNED reject, PAUSED reject), closed-record rejection, negative qty rejection, zero-sum rejection, cumulative projection across two reports, allowed-actions after report, no-session parity, open-session parity
+- `QTY_REPORTED` event emission verified
+- Projection accumulation across multiple `QTY_REPORTED` events verified (good_qty and scrap_qty cumulate)
+- StationSession diagnostic non-blocking contract re-verified for report_quantity
+- Claim compatibility regression re-verified unchanged
+
+Non-scope preserved:
+- No StationSession hard enforcement
+- No claim removal or claim behavior change
+- No event name changes
+- No schema migration
+- No downtime command hardening
+- No complete/close/reopen hardening
+- No FE/UI changes
+
+Files introduced for this slice:
+- backend/tests/test_report_quantity_command_hardening.py
+
+Production code changes:
+- none (tests-only hardening slice)
+
+Verification summary:
+- P0-C-06A focused tests: 12 passed
+- P0-C-05 regression: 12 passed
+- Station session lifecycle/diagnostic suites: 25 passed
+- Claim regression subset: 36 passed
+- Projection/status regression: 41 passed
+- Full backend suite: 208 passed, 1 skipped, exit 0
+
+### 21. P0-C-06B Downtime Start / End Command Hardening
+
+Status: Complete.
+
+Hard Mode MOM v3 verdict: ALLOW_IMPLEMENTATION
+
+Scope implemented:
+- Focused `start_downtime`/`end_downtime` hardening suite added: `backend/tests/test_downtime_command_hardening.py`
+- 14 tests added to verify: state guards, event-count-based open-downtime guard, duplicate rejection, invalid reason code rejection, closed-record rejection, snapshot/projection transitions (IN_PROGRESS→BLOCKED, BLOCKED→PAUSED), no-auto-resume invariant, resume-blocked-while-open, no-session and open-session parity
+- `downtime_started` / `downtime_ended` event emission verified
+- BLOCKED→PAUSED transition after `end_downtime` verified; no auto-resume confirmed
+- `resume_operation` blocked while downtime open confirmed (STATE_DOWNTIME_OPEN)
+- Design clarification noted: `_derive_status` returns BLOCKED when downtime_started > downtime_ended, even when snapshot is PAUSED — event-derived projection is authoritative
+- StationSession diagnostic non-blocking contract re-verified
+- Claim compatibility regression re-verified unchanged
+
+Non-scope preserved:
+- No StationSession hard enforcement
+- No claim removal or claim behavior change
+- No event name changes
+- No schema migration
+- No complete/close/reopen hardening
+- No FE/UI changes
+
+Files introduced for this slice:
+- backend/tests/test_downtime_command_hardening.py
+
+Production code changes:
+- none (tests-only hardening slice)
+
+Verification summary:
+- P0-C-06B focused tests: 14 passed
+- P0-C-06A + P0-C-05 regression: 24 passed
+- Station session lifecycle/diagnostic suites: 25 passed
+- Claim regression subset: 36 passed
+- Projection/status regression: 41 passed
+- Full backend suite: 222 passed, 1 skipped, exit 0
+
+### 22. P0-C-07A Complete Operation Command Hardening
+
+Status: Complete.
+
+Hard Mode MOM v3 verdict: ALLOW_IMPLEMENTATION
+
+Scope implemented:
+- Focused `complete_operation` hardening suite added: `backend/tests/test_complete_operation_command_hardening.py`
+- 10 tests added to verify: happy path from IN_PROGRESS, invalid runtime state rejection, already-completed rejection, CLOSED-record rejection, tenant mismatch rejection, completion event emission, projection status after complete, allowed-actions after complete, no-session parity, matching OPEN-session parity
+- `OP_COMPLETED` event emission verified
+- Projection after complete verified as event-derived `completed`
+- `allowed_actions` after complete verified as backend-derived `["close_operation"]`
+- StationSession diagnostic non-blocking contract re-verified for `complete_operation`
+- Claim compatibility regression re-verified unchanged
+
+Non-scope preserved:
+- No StationSession hard enforcement
+- No claim removal or claim behavior change
+- No event name changes
+- No schema migration
+- No close/reopen hardening changes
+- No FE/UI changes
+
+Files introduced for this slice:
+- backend/tests/test_complete_operation_command_hardening.py
+
+Production code changes:
+- none (tests-only hardening slice)
+
+Verification summary:
+- P0-C-07A focused tests: 10 passed
+- Recent command hardening regression: 38 passed
+- Station session lifecycle/diagnostic suites: 25 passed
+- Claim regression subset: 36 passed
+- Projection/status regression: 41 passed
+- Full backend suite: 232 passed, 1 skipped, exit 0
+
+### 23. P0-C-07B Close Operation Guard Hardening
+
+Status: Complete.
+
+Hard Mode MOM v3 verdict: ALLOW_IMPLEMENTATION
+
+Scope implemented:
+- Focused `close_operation` hardening suite added: `backend/tests/test_close_operation_command_hardening.py`
+- 10 tests added to verify: happy path from COMPLETED, invalid runtime state rejection, already-closed rejection, tenant mismatch rejection, close event emission, closure_status transition to CLOSED, projection/detail consistency after close, allowed-actions after close, no-session parity, matching OPEN-session parity
+- `operation_closed_at_station` event emission verified
+- Post-close detail projection verified: `closure_status=closed`, `allowed_actions=["reopen_operation"]`
+- StationSession diagnostic non-blocking contract re-verified for `close_operation`
+- Claim compatibility regression and close/reopen baseline regression re-verified unchanged
+
+Non-scope preserved:
+- No StationSession hard enforcement
+- No claim removal or claim behavior change
+- No event name changes
+- No schema migration
+- No reopen hardening changes
+- No FE/UI changes
+
+Files introduced for this slice:
+- backend/tests/test_close_operation_command_hardening.py
+
+Production code changes:
+- none (tests-only hardening slice)
+
+Verification summary:
+- P0-C-07B focused tests: 10 passed
+- Recent command hardening regression: 48 passed
+- Station session lifecycle/diagnostic suites: 25 passed
+- Claim regression subset (includes close/reopen baseline): 36 passed
+- Projection/status regression: 41 passed
+- Full backend suite: 242 passed, 1 skipped, exit 0
+
+### 24. P0-C-07C Reopen Operation / Claim Continuity Hardening
+
+Classification: Tests-only hardening slice
+
+Production code changed: No
+
+Scope:
+- New focused hardening test suite: `backend/tests/test_reopen_operation_claim_continuity_hardening.py`
+- 13 tests covering reopen guards, event emission, projection/detail, allowed_actions,
+  claim continuity, and StationSession diagnostic non-interference
+- Verified T4 (None reason) is schema-level Pydantic guard (documented correctly)
+- All prior claim/reopen/close regression suites remain green
+- StationSession diagnostic confirmed non-blocking for reopen path (T10, T11)
+- `_restore_claim_continuity_for_reopen` preserved and confirmed compatible
+- Claim compatibility lock baseline unchanged
+
+Out of scope preserved:
+- No claim removal
+- No StationSession hard enforcement
+- No close_operation changes
+- No schema migration
+- No FE/UI changes
+
+Files introduced for this slice:
+- backend/tests/test_reopen_operation_claim_continuity_hardening.py
+
+Production code changes:
+- none (tests-only hardening slice)
+
+Verification summary:
+- P0-C-07C focused tests: 13 passed
+- Close/complete hardening regression: 20 passed
+- Recent command hardening regression: 38 passed
+- StationSession lifecycle/diagnostic suites: 25 passed
+- Claim regression subset (includes close/reopen baseline): 36 passed
+- Projection/status regression: 41 passed
+- Full backend suite: 255 passed, 1 skipped, exit 0

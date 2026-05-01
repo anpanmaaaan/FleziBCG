@@ -858,7 +858,397 @@ No state transitions. P0-C-04C is read-only — the diagnostic function performs
 ### Event naming status
 none_required — P0-C-04C is a read-only diagnostic slice; no new domain events introduced.
 
-## Slice HM3-016
+## Slice HM3-022
+Name: P0-C-07B Close Operation Guard Hardening
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/design/02_domain/execution/station-execution-state-matrix-v4.md | CLOSE-001: close only from completed and OPEN; rejects already closed/not completed | guard legality and rejection assertions required |
+| docs/design/02_domain/execution/station-execution-command-event-contracts-v4.md | close_operation canonical event intent is operation_closed_at_station | event-name preservation required |
+| docs/design/02_domain/execution/execution-state-machine.md | CLOSED blocks execution writes except authorized reopen | closure transition and post-close actions must align |
+| docs/implementation/p0-c-04-contract-finalization-report.md | session diagnostic bridge remains non-blocking | no-session/open-session parity required |
+| docs/implementation/p0-c-04-claim-compatibility-deprecation-lock.md | claim remains compatibility guard | claim regression required |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| close_operation | OPERATION_CLOSED_AT_STATION | domain_event | unchanged | actor_user_id, note, closed_at | closure_status→CLOSED, allowed_actions→reopen_operation | operation_service.py |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---|---|---|
+| close_operation valid from completed runtime states | state_machine | service guard | no | YES | source + state matrix |
+| already-closed rejects close | state_machine | service guard | no | YES | source |
+| tenant mismatch rejected | tenant | service guard | no | YES | CODING_RULES TEN-001 |
+| close event emitted append-only | event_append_only | execution_event_repository | no | YES | source |
+| closure_status becomes CLOSED | projection_consistency | service snapshot + detail | no | YES | source |
+| post-close detail/projection backend-derived | projection_consistency | derive_operation_detail + _derive_status | no | YES | source |
+| allowed_actions after close backend-derived | projection_consistency | _derive_allowed_actions | no | YES | source |
+| StationSession diagnostic non-blocking | session | `_session_ctx` informational only | no | YES | P0-C-04D contract |
+| claim compatibility preserved | migration_debt | route-layer unchanged | no | YES | P0-C-04E lock |
+| no reopen behavior changes | scope | slice boundary | no | YES | controlled slice scope |
+
+### State Transition Map
+| Entity | Current State | Command | Allowed? | Event | Next Projection State | Invalid Case Test | Source |
+|---|---|---|---|---|---|---|---|
+| Operation | COMPLETED/COMPLETED_LATE + OPEN | close_operation | Yes | OPERATION_CLOSED_AT_STATION | closure_status=CLOSED, runtime status completed | n/a | source |
+| Operation | non-completed + OPEN | close_operation | No | none | unchanged | STATE_NOT_COMPLETED | source |
+| Operation | any + CLOSED | close_operation | No | none | unchanged | STATE_ALREADY_CLOSED | source |
+| Operation | tenant mismatch | close_operation | No | none | unchanged | tenant mismatch error | source |
+
+### Test Matrix
+| Test ID | Scenario | Type | Source File | Invariant |
+|---|---|---|---|---|
+| P0C07B-T1 | close_operation happy path from completed | command_guard | test_close_operation_command_hardening.py | state transition + event |
+| P0C07B-T2 | close_operation rejects invalid runtime state | command_guard | test_close_operation_command_hardening.py | STATE_NOT_COMPLETED |
+| P0C07B-T3 | close_operation rejects already closed | command_guard | test_close_operation_command_hardening.py | STATE_ALREADY_CLOSED |
+| P0C07B-T4 | close_operation rejects tenant mismatch | tenant | test_close_operation_command_hardening.py | tenant isolation |
+| P0C07B-T5 | emits OPERATION_CLOSED_AT_STATION | event_payload | test_close_operation_command_hardening.py | append-only event |
+| P0C07B-T6 | closure_status becomes CLOSED | projection | test_close_operation_command_hardening.py | closure transition |
+| P0C07B-T7 | post-close detail consistency | projection | test_close_operation_command_hardening.py | backend-derived detail |
+| P0C07B-T8 | allowed_actions after close | projection | test_close_operation_command_hardening.py | backend-derived actions |
+| P0C07B-T9 | no-session parity | regression | test_close_operation_command_hardening.py | non-blocking diagnostic |
+| P0C07B-T10 | open-session parity | regression | test_close_operation_command_hardening.py | non-blocking diagnostic |
+
+### Final verification result
+- Focused P0-C-07B suite: 10 passed
+- Recent command hardening regression: 48 passed
+- Station session lifecycle + diagnostic suites: 25 passed
+- Claim regression subset: 36 passed
+- Projection/status regression: 41 passed
+- Full backend suite: 242 passed, 1 skipped, exit 0
+
+### Scope guard confirmation
+- No production code changes.
+- No claim behavior changes.
+- No StationSession hard enforcement.
+- No event-name changes.
+- No schema migration.
+- No reopen behavior changes.
+- No FE/UI changes.
+
+### Event naming status
+unchanged — `operation_closed_at_station` remains canonical for close in current source; no new domain events introduced in P0-C-07B.
+
+## Slice HM3-023
+Name: P0-C-07C Reopen Operation / Claim Continuity Hardening
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/design/02_domain/execution/station-execution-state-matrix-v4.md | REOPEN-001: reopen only from CLOSED; emits operation_reopened; projects PAUSED | guard legality, event, and projection assertions required |
+| docs/design/02_domain/execution/station-execution-command-event-contracts-v4.md | reopen_operation canonical event is operation_reopened; body requires reason | event-name preservation and reason guard required |
+| docs/implementation/p0-c-04-claim-compatibility-deprecation-lock.md | _restore_claim_continuity_for_reopen must not be removed; claim = migration debt | claim continuity preserved; no removal |
+| docs/implementation/p0-c-04-contract-finalization-report.md | session diagnostic bridge remains non-blocking | no-session/open-session parity required |
+
+### Source Evidence
+| Function | Location | Key behavior |
+|---|---|---|
+| `reopen_operation` | operation_service.py:918 | tenant guard → session diagnostic → STATE_NOT_CLOSED guard → REOPEN_REASON_REQUIRED guard → claim continuity → OPERATION_REOPENED event → mark_operation_reopened |
+| `_restore_claim_continuity_for_reopen` | operation_service.py:269 | extend active claim TTL; or restore last claim; or conflict → STATE_REOPEN_OWNER_HAS_OTHER_ACTIVE_CLAIM; or no-op |
+| `_derive_status_from_runtime_facts` | operation_service.py:423 | OPERATION_REOPENED as last_runtime_event + has_completed=True → PAUSED |
+| `_derive_allowed_actions` | operation_service.py:732 | closure_status=OPEN + status=PAUSED + downtime_open=False → ["resume_execution", "start_downtime"] |
+| `mark_operation_reopened` | operation_repository.py:182 | sets closure_status=OPEN, status=PAUSED, reopen_count+=1 |
+
+### Event Map
+| Command | Source Event Enum | Event Name | Status |
+|---|---|---|---|
+| `reopen_operation` | `ExecutionEventType.OPERATION_REOPENED` | `"operation_reopened"` | CANONICAL — matches design |
+
+### Invariant Map
+| Invariant | Enforcement | Test |
+|---|---|---|
+| Reopen only valid for CLOSED operation | closure_status guard → STATE_NOT_CLOSED | T2, T12 |
+| Non-CLOSED operation rejects reopen | same | T2 |
+| Blank reason rejected | reason.strip() empty → REOPEN_REASON_REQUIRED | T3 |
+| None reason rejected at schema level | Pydantic ValidationError | T4 |
+| Tenant mismatch rejected | operation.tenant_id guard | T5 |
+| Reopen event emitted with payload | create_execution_event(OPERATION_REOPENED) | T6 |
+| closure_status becomes OPEN | mark_operation_reopened | T7 |
+| Runtime projection becomes PAUSED | _derive_status_from_runtime_facts | T8 |
+| allowed_actions = [resume_execution, start_downtime] | _derive_allowed_actions | T9 |
+| Missing StationSession does not reject reopen | _compute_session_diagnostic non-blocking | T10 |
+| Matching OPEN StationSession does not change outcome | same | T11 |
+| reopen_count increments | mark_operation_reopened | T13 |
+| Claim continuity preserved | _restore_claim_continuity_for_reopen unchanged | regression suite |
+| Single-active-claim constraint | conflict guard | regression suite |
+
+### State Transition Map
+```
+closure_status=CLOSED (completed operation)
+→ reopen_operation(reason="...")
+→ [_restore_claim_continuity_for_reopen]
+→ OPERATION_REOPENED event appended
+→ mark_operation_reopened → closure_status=OPEN, status=PAUSED, reopen_count+=1
+→ _derive_status: PAUSED (OPERATION_REOPENED last_runtime_event, has_completed=True)
+→ _derive_allowed_actions: ["resume_execution", "start_downtime"]
+```
+
+### Test Matrix Executed
+| Test | Scenario | Result |
+|---|---|---|
+| T1 | reopen happy path from CLOSED completed | PASS |
+| T2 | rejects non-CLOSED OPEN operation | PASS |
+| T3 | rejects blank reason | PASS |
+| T4 | schema rejects None reason (Pydantic) | PASS |
+| T5 | rejects tenant mismatch | PASS |
+| T6 | emits OPERATION_REOPENED with payload | PASS |
+| T7 | closure_status becomes OPEN | PASS |
+| T8 | projection/detail consistent (PAUSED+OPEN) | PASS |
+| T9 | allowed_actions backend-derived | PASS |
+| T10 | missing StationSession does not affect reopen | PASS |
+| T11 | matching OPEN StationSession does not affect reopen | PASS |
+| T12 | PAUSED non-closed rejects reopen | PASS |
+| T13 | reopen_count increments | PASS |
+
+Verification summary:
+- Focused P0-C-07C: 13 passed in 5.30s, exit 0
+- Close/complete regression: 20 passed in 7.84s, exit 0
+- Recent command hardening regression: 38 passed in 15.42s, exit 0
+- StationSession lifecycle/diagnostic: 25 passed in 9.85s, exit 0
+- Claim regression subset: 36 passed in 7.90s, exit 0
+- Projection/status regression: 41 passed in 2.47s, exit 0
+- Full backend suite: 255 passed, 1 skipped in 53.29s, exit 0
+
+### Scope guard confirmation
+- No production code changes.
+- No claim behavior changes.
+- No StationSession hard enforcement.
+- No event-name changes.
+- No schema migration.
+- No close_operation behavior changes.
+- No FE/UI changes.
+
+### Event naming status
+unchanged — `operation_reopened` remains canonical for reopen in current source; no new domain events introduced in P0-C-07C.
+
+## Slice HM3-022
+Name: P0-C-07B Close Operation Guard Hardening
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/design/02_domain/execution/station-execution-state-matrix-v4.md | COMPLETE-001 requires IN_PROGRESS + OPEN and emits completion event | Guard legality and transition assertions required |
+| docs/design/02_domain/execution/station-execution-command-event-contracts-v4.md | complete_execution canonical intent emits execution-completed signal | Event-name preservation required |
+| docs/design/02_domain/execution/execution-state-machine.md | no transition without event; completed is terminal runtime truth for complete path | event-derived projection consistency required |
+| docs/implementation/p0-c-04-contract-finalization-report.md | session diagnostic bridge remains non-blocking | no-session/open-session parity required |
+| docs/implementation/p0-c-04-claim-compatibility-deprecation-lock.md | claim remains compatibility guard | claim regression required |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| complete_operation | OP_COMPLETED | domain_event | unchanged | operator_id, completed_at | status→COMPLETED, allowed_actions→close_operation | operation_service.py |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---|---|---|
+| complete_operation only from IN_PROGRESS | state_machine | service guard | no | YES | source + state matrix |
+| closed record rejects complete | state_machine | `_ensure_operation_open_for_write` | no | YES | INV-001 |
+| tenant mismatch rejected | tenant | service guard | no | YES | CODING_RULES TEN-001 |
+| completion event emitted append-only | event_append_only | execution_event_repository | no | YES | source |
+| projection after complete is event-derived | projection_consistency | `derive_operation_detail` + `_derive_status` | no | YES | source |
+| allowed_actions after complete are backend-derived | projection_consistency | `_derive_allowed_actions` | no | YES | source |
+| StationSession diagnostic non-blocking | session | `_session_ctx` informational only | no | YES | P0-C-04D contract |
+| claim compatibility preserved | migration_debt | route-layer unchanged | no | YES | P0-C-04E lock |
+| no close/reopen behavior changes | scope | slice boundary | no | YES | controlled batch scope |
+
+### State Transition Map
+| Entity | Current State | Command | Allowed? | Event | Next Projection State | Invalid Case Test | Source |
+|---|---|---|---|---|---|---|---|
+| Operation | IN_PROGRESS + OPEN | complete_operation | Yes | OP_COMPLETED | COMPLETED + OPEN | n/a | source |
+| Operation | PLANNED/PAUSED/BLOCKED/ABORTED + OPEN | complete_operation | No | none | unchanged | IN_PROGRESS guard rejection | source |
+| Operation | any + CLOSED | complete_operation | No | none | unchanged | STATE_CLOSED_RECORD | source |
+
+### Test Matrix
+| Test ID | Scenario | Type | Source File | Invariant |
+|---|---|---|---|---|
+| P0C07A-T1 | complete_operation happy path from IN_PROGRESS | command_guard | test_complete_operation_command_hardening.py | state transition + event |
+| P0C07A-T2 | rejects invalid runtime state | command_guard | test_complete_operation_command_hardening.py | IN_PROGRESS-only legality |
+| P0C07A-T3 | rejects already completed | command_guard | test_complete_operation_command_hardening.py | duplicate completion reject |
+| P0C07A-T4 | rejects CLOSED record | command_guard | test_complete_operation_command_hardening.py | INV-001 |
+| P0C07A-T5 | rejects tenant mismatch | tenant | test_complete_operation_command_hardening.py | tenant isolation |
+| P0C07A-T6 | emits OP_COMPLETED with payload | event_payload | test_complete_operation_command_hardening.py | event append-only |
+| P0C07A-T7 | projection resolves completed after command | projection | test_complete_operation_command_hardening.py | event-derived status |
+| P0C07A-T8 | allowed_actions after complete | projection | test_complete_operation_command_hardening.py | backend-derived actions |
+| P0C07A-T9 | no-session parity | regression | test_complete_operation_command_hardening.py | non-blocking diagnostic |
+| P0C07A-T10 | open-session parity | regression | test_complete_operation_command_hardening.py | non-blocking diagnostic |
+
+### Final verification result
+- Focused P0-C-07A suite: 10 passed
+- Recent command hardening regression: 38 passed
+- Station session lifecycle + diagnostic suites: 25 passed
+- Claim regression subset: 36 passed
+- Projection/status regression: 41 passed
+- Full backend suite: 232 passed, 1 skipped, exit 0
+
+### Scope guard confirmation
+- No production code changes.
+- No claim behavior changes.
+- No StationSession hard enforcement.
+- No event-name changes.
+- No schema migration.
+- No close/reopen behavior changes.
+- No FE/UI changes.
+
+### Event naming status
+unchanged — `OP_COMPLETED` remains canonical in current source for completion; no new domain events introduced in P0-C-07A.
+
+## Slice HM3-020
+Name: P0-C-06B Downtime Start / End Command Hardening
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/design/02_domain/execution/station-execution-state-matrix-v4.md | `start_downtime` valid from IN_PROGRESS or PAUSED; `end_downtime` requires open downtime | State guard tests required |
+| docs/design/02_domain/execution/station-execution-command-event-contracts-v4.md | `start_downtime → downtime_started`; `end_downtime → downtime_ended`; canonical names | Event names must not change |
+| docs/design/02_domain/execution/execution-state-machine.md | DOWNTIME_STARTED → RUNNING→BLOCKED snapshot; DOWNTIME_ENDED → BLOCKED→PAUSED; no auto-resume | Transition + no-auto-resume assertions required |
+| docs/implementation/p0-c-04-claim-compatibility-deprecation-lock.md | Claim remains compatibility guard | Claim regression required |
+| docs/implementation/p0-c-04-contract-finalization-report.md | Session diagnostic currently non-blocking | No-session/open-session parity required |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| start_downtime | DOWNTIME_STARTED | domain_event | unchanged | actor_user_id, reason_code, reason_name, reason_group, planned_flag, note, started_at | status→BLOCKED (event-derived); downtime_open=True | operation_service.py |
+| end_downtime | DOWNTIME_ENDED | domain_event | unchanged | actor_user_id, note, ended_at | status→PAUSED (event-derived); downtime_open=False | operation_service.py |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---|---|---|
+| start_downtime only from IN_PROGRESS or PAUSED | state_machine | service guard | no | YES | state matrix |
+| end_downtime requires open downtime | open_downtime_guard | service event-count check | no | YES | source |
+| duplicate open downtime rejected | state_guard | service event-count check | no | YES | source |
+| closed record rejects both commands | state_machine | `_ensure_operation_open_for_write` | no | YES | INV-001 |
+| tenant mismatch rejected | tenant | service guard | no | YES | CODING_RULES TEN-001 |
+| invalid/inactive reason code rejected | reason_validation | service + repo | no | YES | source |
+| start_downtime from IN_PROGRESS → snapshot+derived=BLOCKED | state_transition | service + _derive_status | no | YES | source |
+| start_downtime from PAUSED → snapshot=PAUSED, derived=BLOCKED | state_transition | _derive_status event-count | no | YES | source clarified in T2 |
+| end_downtime BLOCKED→PAUSED on snapshot when no remaining open downtime | state_transition | service mark_operation_paused | no | YES | source |
+| end_downtime does not auto-resume | no_auto_resume | service (no EXECUTION_RESUMED emitted) | no | YES | source |
+| resume_operation blocked while downtime open | blocking_guard | resume_operation STATE_DOWNTIME_OPEN | no | YES | source |
+| session diagnostic non-blocking | session | `_session_ctx` informational only | no | YES | P0-C-04D contract |
+| claim compatibility preserved | migration_debt | route-layer unchanged | no | YES | P0-C-04E lock |
+
+### State Transition Map
+| Entity | Current State | Command | Allowed? | Event | Next Projection State | Invalid Case Test | Source |
+|---|---|---|---|---|---|---|---|
+| Operation | IN_PROGRESS + OPEN | start_downtime (valid reason) | Yes | DOWNTIME_STARTED | BLOCKED + downtime_open=True | PLANNED reject | state matrix |
+| Operation | PAUSED + OPEN | start_downtime (valid reason) | Yes | DOWNTIME_STARTED | BLOCKED (event-derived) + downtime_open=True | CLOSED reject | source T2 clarification |
+| Operation | BLOCKED + OPEN + downtime_open | end_downtime | Yes | DOWNTIME_ENDED | PAUSED + downtime_open=False | no-open-downtime reject | source |
+| Operation | IN_PROGRESS + OPEN | end_downtime (no open downtime) | No | none | — | YES | source |
+| Operation | BLOCKED + downtime_open | resume_operation | No | none | — | YES | STATE_DOWNTIME_OPEN |
+
+### Test Matrix
+| Test ID | Scenario | Type | Source File | Invariant |
+|---|---|---|---|---|
+| P0C06B-T1 | start_downtime happy from IN_PROGRESS | command_guard | test_downtime_command_hardening.py | state_guard + transition + event |
+| P0C06B-T2 | start_downtime happy from PAUSED (derived=BLOCKED) | command_guard | test_downtime_command_hardening.py | state_guard + event-derived clarification |
+| P0C06B-T3 | start_downtime rejects PLANNED | command_guard | test_downtime_command_hardening.py | STATE_NOT_RUNNING_OR_PAUSED |
+| P0C06B-T4 | start_downtime rejects CLOSED | command_guard | test_downtime_command_hardening.py | INV-001 |
+| P0C06B-T5 | start_downtime rejects duplicate (snapshot-BLOCKED) | command_guard | test_downtime_command_hardening.py | state_guard |
+| P0C06B-T5b | start_downtime rejects DOWNTIME_ALREADY_OPEN (event-count guard) | command_guard | test_downtime_command_hardening.py | DOWNTIME_ALREADY_OPEN |
+| P0C06B-T6 | start_downtime rejects invalid reason code | reason_validation | test_downtime_command_hardening.py | INVALID_REASON_CODE |
+| P0C06B-T7 | end_downtime happy path BLOCKED→PAUSED | command_guard | test_downtime_command_hardening.py | transition + event |
+| P0C06B-T8 | end_downtime no auto-resume | regression | test_downtime_command_hardening.py | no_auto_resume |
+| P0C06B-T9 | end_downtime rejects no-open-downtime | command_guard | test_downtime_command_hardening.py | STATE_NO_OPEN_DOWNTIME |
+| P0C06B-T10 | end_downtime rejects CLOSED | command_guard | test_downtime_command_hardening.py | INV-001 |
+| P0C06B-T11 | resume blocked while downtime open | regression | test_downtime_command_hardening.py | STATE_DOWNTIME_OPEN |
+| P0C06B-T12 | no-session parity | regression | test_downtime_command_hardening.py | non-blocking diagnostic |
+| P0C06B-T13 | open-session parity | regression | test_downtime_command_hardening.py | non-blocking diagnostic |
+
+### Final verification result
+- Focused P0-C-06B suite: 14 passed
+- P0-C-06A + P0-C-05 regression: 24 passed
+- Station session lifecycle + diagnostic suites: 25 passed
+- Claim regression subset: 36 passed
+- Projection/status regression: 41 passed
+- Full backend suite: 222 passed, 1 skipped, exit 0
+
+### Scope guard confirmation
+- No production code changes.
+- No claim behavior changes.
+- No StationSession hard enforcement.
+- No event-name changes.
+- No schema migration.
+- No FE/UI changes.
+
+### Event naming status
+unchanged — `downtime_started` and `downtime_ended` are canonical events; P0-C-06B introduced no new domain events.
+
+## Slice HM3-019
+Name: P0-C-06A Production Reporting Command Hardening
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/design/02_domain/execution/station-execution-state-matrix-v4.md | `report_quantity` valid only when status == IN_PROGRESS | State guard test required |
+| docs/design/02_domain/execution/station-execution-command-event-contracts-v4.md | `report_quantity → QTY_REPORTED`; payload: good_qty, scrap_qty, operator_id | Event name canonical, must not change |
+| docs/design/02_domain/execution/execution-state-machine.md | `QTY_REPORTED` does not transition status; operation remains IN_PROGRESS | Projection status immutability test required |
+| docs/implementation/p0-c-04-claim-compatibility-deprecation-lock.md | Claim remains compatibility guard; no claim mutation/removal | Claim regression subset required |
+| docs/implementation/p0-c-04-contract-finalization-report.md | Session diagnostic currently non-blocking | No-session/open-session parity required |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| report_quantity | QTY_REPORTED | domain_event | unchanged | good_qty, scrap_qty, operator_id | accumulates good_qty + scrap_qty; status stays IN_PROGRESS | operation_service.py |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---|---|---|
+| report_quantity only from IN_PROGRESS | state_machine | service guard | no | YES | state matrix |
+| good_qty >= 0 AND scrap_qty >= 0 | quantity_validation | service guard | no | YES | source line 1042 |
+| good_qty + scrap_qty > 0 | quantity_validation | service guard | no | YES | source line 1045 |
+| closed record rejects writes | state_machine | `_ensure_operation_open_for_write` | no | YES | INV-001 |
+| tenant mismatch rejected | tenant | service guard | no | YES | CODING_RULES TEN-001 |
+| session diagnostic non-blocking | session | `_session_ctx` informational only | no | YES | P0-C-04D contract |
+| QTY_REPORTED does not change status | projection_consistency | `_derive_status` ignores QTY_REPORTED | no | YES | execution-state-machine |
+| good_qty/scrap_qty cumulate across reports | projection_integrity | `derive_operation_detail` accumulation loop | no | YES | derive_operation_detail |
+| claim compatibility preserved | migration_debt | route-layer claim guard unchanged | no | YES | P0-C-04E lock |
+| allowed_actions backend-derived after report | action_derivation | `_derive_allowed_actions` with IN_PROGRESS | no | YES | execution-state-machine |
+
+### State Transition Map
+| Entity | Current State | Command | Allowed? | Event | Next Projection State | Invalid Case Test | Source |
+|---|---|---|---|---|---|---|---|
+| Operation | IN_PROGRESS + OPEN | report_quantity (valid qty) | Yes | QTY_REPORTED | IN_PROGRESS (unchanged) | non-IN_PROGRESS reject | state matrix |
+| Operation | PLANNED + OPEN | report_quantity | No | none | — | YES | state guard |
+| Operation | PAUSED + OPEN | report_quantity | No | none | — | YES | state guard |
+| Operation | any + CLOSED | report_quantity | No | none | — | YES | INV-001 |
+
+### Test Matrix
+| Test ID | Scenario | Type | Source File | Invariant |
+|---|---|---|---|---|
+| P0C06A-T1 | happy path good_qty only | command_guard | test_report_quantity_command_hardening.py | state_guard + event |
+| P0C06A-T2 | happy path mixed qty accumulates | command_guard | test_report_quantity_command_hardening.py | projection_integrity |
+| P0C06A-T3 | rejects PLANNED | command_guard | test_report_quantity_command_hardening.py | state_guard |
+| P0C06A-T4 | rejects PAUSED | command_guard | test_report_quantity_command_hardening.py | state_guard |
+| P0C06A-T5 | rejects CLOSED record | command_guard | test_report_quantity_command_hardening.py | INV-001 |
+| P0C06A-T6 | rejects negative good_qty | quantity_validation | test_report_quantity_command_hardening.py | quantity_validation |
+| P0C06A-T7 | rejects negative scrap_qty | quantity_validation | test_report_quantity_command_hardening.py | quantity_validation |
+| P0C06A-T8 | rejects zero-sum | quantity_validation | test_report_quantity_command_hardening.py | quantity_validation |
+| P0C06A-T9 | cumulative across two reports | projection | test_report_quantity_command_hardening.py | projection_integrity |
+| P0C06A-T10 | allowed_actions after report | projection | test_report_quantity_command_hardening.py | action_derivation |
+| P0C06A-T11 | no-session parity | regression | test_report_quantity_command_hardening.py | non-blocking diagnostic |
+| P0C06A-T12 | open-session parity | regression | test_report_quantity_command_hardening.py | non-blocking diagnostic |
+
+### Final verification result
+- Focused P0-C-06A suite: 12 passed
+- P0-C-05 regression: 12 passed
+- Station session lifecycle + diagnostic suites: 25 passed
+- Claim regression subset: 36 passed
+- Projection/status regression: 41 passed
+- Full backend suite: 208 passed, 1 skipped, exit 0
+
+### Scope guard confirmation
+- No production code changes.
+- No claim behavior changes.
+- No StationSession hard enforcement.
+- No event-name changes.
+- No schema migration.
+- No FE/UI changes.
+
+### Event naming status
+unchanged — `QTY_REPORTED` is the canonical event; P0-C-06A introduced no new domain events.
+
 ## Slice HM3-018
 Name: P0-C-05 Start / Pause / Resume Command Hardening
 

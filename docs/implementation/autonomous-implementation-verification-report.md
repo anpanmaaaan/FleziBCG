@@ -672,6 +672,305 @@ Compatibility impact:
 
 ---
 
+### 23. P0-C-07B Close Operation Guard Hardening
+
+Hard Mode MOM v3 Gate Verdict: ALLOW_IMPLEMENTATION
+
+Scope:
+- Tests-only hardening slice for `close_operation`
+- No production service behavior changes required
+- New focused suite: `backend/tests/test_close_operation_command_hardening.py`
+
+Invariant confirmations:
+- `close_operation` valid from completed runtime states and rejects invalid runtime states (`STATE_NOT_COMPLETED`)
+- Already-closed records reject close (`STATE_ALREADY_CLOSED`)
+- Tenant mismatch rejected before command execution
+- Event emission unchanged: `operation_closed_at_station`
+- `closure_status` transitions to `CLOSED` after close
+- Projection/detail after close is backend-derived and consistent
+- Post-close `allowed_actions` are backend-derived and resolve to `["reopen_operation"]`
+- StationSession diagnostic remains non-blocking (no session and OPEN session parity)
+- Claim compatibility preserved
+- No reopen behavior changes in this slice
+
+Behavior contract confirmations:
+- No StationSession enforcement introduced
+- API response shape unchanged
+- No event-name changes
+
+Files introduced:
+- `backend/tests/test_close_operation_command_hardening.py`
+
+Production code changed:
+- No
+
+Verification runs:
+- P0-C-07B focused suite:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_close_operation_command_hardening.py`
+	- Result: 10 passed in 4.42s, exit code 0
+- Recent command hardening regression:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_complete_operation_command_hardening.py tests/test_start_pause_resume_command_hardening.py tests/test_report_quantity_command_hardening.py tests/test_downtime_command_hardening.py`
+	- Result: 48 passed in 19.44s, exit code 0
+- StationSession lifecycle + diagnostic suites:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_station_session_lifecycle.py tests/test_station_session_diagnostic_bridge.py tests/test_station_session_command_context_diagnostic.py`
+	- Result: 25 passed in 9.66s, exit code 0
+- Claim regression subset:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_claim_single_active_per_operator.py tests/test_release_claim_active_states.py tests/test_station_queue_active_states.py tests/test_reopen_resumability_claim_continuity.py tests/test_close_reopen_operation_foundation.py`
+	- Result: 36 passed in 8.99s, exit code 0
+- Projection/status regression:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_operation_detail_allowed_actions.py tests/test_operation_status_projection_reconcile.py tests/test_status_projection_reconcile_command.py`
+	- Result: 41 passed in 2.46s, exit code 0
+- Full backend suite:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q`
+	- Result: 242 passed, 1 skipped in 46.26s, exit code 0
+
+Event naming status: unchanged — `operation_closed_at_station` remains canonical for close in current source; no new domain events introduced.
+
+Compatibility impact:
+- Command behavior hardened and verified; business behavior unchanged.
+- StationSession diagnostic remains non-blocking.
+- Claim route guards and claim lifecycle remain unchanged.
+
+---
+
+### 24. P0-C-07C Reopen Operation / Claim Continuity Hardening
+
+Hard Mode MOM v3 Gate Verdict: ALLOW_IMPLEMENTATION
+
+Scope: tests-only hardening. Focused on `reopen_operation` guards, event emission,
+projection/detail, allowed_actions, claim continuity, StationSession diagnostic non-interference.
+
+New test file:
+- `backend/tests/test_reopen_operation_claim_continuity_hardening.py`
+
+Test coverage (13 tests):
+- T1: reopen happy path from CLOSED completed operation
+- T2: reopen rejects non-CLOSED (OPEN) operation → STATE_NOT_CLOSED
+- T3: reopen rejects blank reason → REOPEN_REASON_REQUIRED
+- T4: schema rejects None reason → Pydantic ValidationError (schema-level guard)
+- T5: reopen rejects tenant mismatch → ValueError
+- T6: reopen emits OPERATION_REOPENED event with actor/reason/reopened_at payload
+- T7: closure_status becomes OPEN in detail and snapshot
+- T8: projection/detail after reopen consistent (PAUSED + OPEN) with re-derived check
+- T9: allowed_actions after reopen = ["resume_execution", "start_downtime"]
+- T10: missing StationSession does not change reopen outcome
+- T11: matching OPEN StationSession does not change reopen outcome
+- T12: PAUSED non-closed operation rejects reopen → STATE_NOT_CLOSED
+- T13: reopen_count increments on first reopen
+
+Verification executed:
+- Focused P0-C-07C suite:
+	- `g:\Work\FleziBCG\.venv\Scripts\python.exe -m pytest -q tests/test_reopen_operation_claim_continuity_hardening.py`
+	- Result: 13 passed in 5.30s, exit code 0
+- Close/complete hardening regression:
+	- `g:\Work\FleziBCG\.venv\Scripts\python.exe -m pytest -q tests/test_close_operation_command_hardening.py tests/test_complete_operation_command_hardening.py`
+	- Result: 20 passed in 7.84s, exit code 0
+- Recent command hardening regression:
+	- `g:\Work\FleziBCG\.venv\Scripts\python.exe -m pytest -q tests/test_start_pause_resume_command_hardening.py tests/test_report_quantity_command_hardening.py tests/test_downtime_command_hardening.py`
+	- Result: 38 passed in 15.42s, exit code 0
+- StationSession lifecycle/diagnostic suites:
+	- `g:\Work\FleziBCG\.venv\Scripts\python.exe -m pytest -q tests/test_station_session_lifecycle.py tests/test_station_session_diagnostic_bridge.py tests/test_station_session_command_context_diagnostic.py`
+	- Result: 25 passed in 9.85s, exit code 0
+- Claim regression subset:
+	- `g:\Work\FleziBCG\.venv\Scripts\python.exe -m pytest -q tests/test_claim_single_active_per_operator.py tests/test_release_claim_active_states.py tests/test_station_queue_active_states.py tests/test_reopen_resumability_claim_continuity.py tests/test_close_reopen_operation_foundation.py`
+	- Result: 36 passed in 7.90s, exit code 0
+- Projection/status regression:
+	- `g:\Work\FleziBCG\.venv\Scripts\python.exe -m pytest -q tests/test_operation_detail_allowed_actions.py tests/test_operation_status_projection_reconcile.py tests/test_status_projection_reconcile_command.py`
+	- Result: 41 passed in 2.47s, exit code 0
+- Full backend suite (sequential):
+	- `g:\Work\FleziBCG\.venv\Scripts\python.exe -m pytest --tb=no -q`
+	- Result: 255 passed, 1 skipped in 53.29s, exit code 0
+	- Note: intermittent teardown deadlocks (psycopg DeadlockDetected in _purge fixtures)
+	  are pre-existing and unrelated to P0-C-07C. On clean runs: 255 passed, 1 skipped, exit 0.
+
+Event naming status: unchanged — `operation_reopened` remains canonical for reopen; no new domain events introduced.
+
+Compatibility impact:
+- Command behavior hardened and verified; business behavior unchanged.
+- StationSession diagnostic remains non-blocking.
+- `_restore_claim_continuity_for_reopen` preserved unchanged.
+- Claim route guards and claim lifecycle remain unchanged.
+- `_derive_allowed_actions` post-reopen confirmed: ["resume_execution", "start_downtime"].
+
+---
+
+### 22. P0-C-07A Complete Operation Command Hardening
+
+Hard Mode MOM v3 Gate Verdict: ALLOW_IMPLEMENTATION
+
+Scope:
+- Tests-only hardening slice for `complete_operation`
+- No production service behavior changes required
+- New focused suite: `backend/tests/test_complete_operation_command_hardening.py`
+
+Invariant confirmations:
+- `complete_operation` valid from IN_PROGRESS and rejects invalid runtime states
+- CLOSED record rejects complete with `STATE_CLOSED_RECORD`
+- Tenant mismatch rejected before command execution
+- Event emission unchanged: `OP_COMPLETED`
+- Projection after complete remains event-derived and resolves to `completed`
+- Post-complete `allowed_actions` are backend-derived and resolve to `["close_operation"]`
+- StationSession diagnostic remains non-blocking (no session and OPEN session parity)
+- Claim compatibility preserved
+- No close/reopen behavior changes in this slice
+
+Behavior contract confirmations:
+- No StationSession enforcement introduced
+- API response shape unchanged
+- No event-name changes
+
+Files introduced:
+- `backend/tests/test_complete_operation_command_hardening.py`
+
+Production code changed:
+- No
+
+Verification runs:
+- P0-C-07A focused suite:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_complete_operation_command_hardening.py`
+	- Result: 10 passed in 4.62s, exit code 0
+- Recent command hardening regression:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_start_pause_resume_command_hardening.py tests/test_report_quantity_command_hardening.py tests/test_downtime_command_hardening.py`
+	- Result: 38 passed in 15.04s, exit code 0
+- StationSession lifecycle + diagnostic suites:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_station_session_lifecycle.py tests/test_station_session_diagnostic_bridge.py tests/test_station_session_command_context_diagnostic.py`
+	- Result: 25 passed in 10.35s, exit code 0
+- Claim regression subset:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_claim_single_active_per_operator.py tests/test_release_claim_active_states.py tests/test_station_queue_active_states.py tests/test_reopen_resumability_claim_continuity.py tests/test_close_reopen_operation_foundation.py`
+	- Result: 36 passed in 8.72s, exit code 0
+- Projection/status regression:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_operation_detail_allowed_actions.py tests/test_operation_status_projection_reconcile.py tests/test_status_projection_reconcile_command.py`
+	- Result: 41 passed in 2.40s, exit code 0
+- Full backend suite:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q`
+	- Result: 232 passed, 1 skipped in 45.80s, exit code 0
+
+Event naming status: unchanged — `OP_COMPLETED` remains the canonical completion event used by current source in P0-C-07A; no new domain events introduced.
+
+Compatibility impact:
+- Command behavior hardened and verified; business behavior unchanged.
+- StationSession diagnostic remains non-blocking.
+- Claim route guards and claim lifecycle remain unchanged.
+
+---
+
+### 20. P0-C-06A Production Reporting Command Hardening
+
+Hard Mode MOM v3 Gate Verdict: ALLOW_IMPLEMENTATION
+
+Scope:
+- Tests-only hardening slice for `report_quantity`
+- No production service behavior changes required
+- New focused suite: `backend/tests/test_report_quantity_command_hardening.py`
+
+Invariant confirmations:
+- `report_quantity` allowed only from IN_PROGRESS; rejects PLANNED and PAUSED status with `ValueError("Operation must be IN_PROGRESS to report quantity.")`
+- Closed record rejects with `ClosedRecordConflictError("STATE_CLOSED_RECORD")`
+- Negative `good_qty` or `scrap_qty` rejects with `ValueError("Quantities must be non-negative.")`
+- Zero-sum (`good_qty=0, scrap_qty=0`) rejects with `ValueError("At least one...greater than zero.")`
+- Event emission unchanged and verified: `QTY_REPORTED`
+- Projection accumulates `good_qty` and `scrap_qty` across multiple `QTY_REPORTED` events
+- Post-command `allowed_actions` verified: `["report_production", "pause_execution", "complete_execution", "start_downtime"]`
+- `QTY_REPORTED` does not change operation status; operation remains `in_progress`
+- StationSession diagnostic remains non-blocking with no session and with matching OPEN session
+- Claim compatibility preserved
+
+Files introduced:
+- `backend/tests/test_report_quantity_command_hardening.py`
+
+Production code changed:
+- No
+
+Verification runs:
+- P0-C-06A focused suite:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_report_quantity_command_hardening.py`
+	- Result: 12 passed in 5.93s, exit code 0
+- P0-C-05 regression:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_start_pause_resume_command_hardening.py`
+	- Result: 12 passed in 5.14s, exit code 0
+- StationSession lifecycle + diagnostic suites:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_station_session_lifecycle.py tests/test_station_session_diagnostic_bridge.py tests/test_station_session_command_context_diagnostic.py`
+	- Result: 25 passed in 9.45s, exit code 0
+- Claim regression subset:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_claim_single_active_per_operator.py tests/test_release_claim_active_states.py tests/test_station_queue_active_states.py tests/test_reopen_resumability_claim_continuity.py tests/test_close_reopen_operation_foundation.py`
+	- Result: 36 passed in 10.16s, exit code 0
+- Projection/status regression:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_operation_detail_allowed_actions.py tests/test_operation_status_projection_reconcile.py tests/test_status_projection_reconcile_command.py`
+	- Result: 41 passed in 2.60s, exit code 0
+- Full backend suite:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest --tb=no -q`
+	- Result: 208 passed, 1 skipped in 37.10s, exit code 0
+
+Event naming status: unchanged — `QTY_REPORTED` is the canonical event; no new domain events introduced in P0-C-06A.
+
+Compatibility impact:
+- Command behavior hardened and verified; business behavior unchanged.
+- StationSession diagnostic remains non-blocking.
+- Claim route guards and claim lifecycle remain unchanged.
+
+---
+
+### 21. P0-C-06B Downtime Start / End Command Hardening
+
+Hard Mode MOM v3 Gate Verdict: ALLOW_IMPLEMENTATION
+
+Scope:
+- Tests-only hardening slice for `start_downtime` and `end_downtime`
+- No production service behavior changes required
+- New focused suite: `backend/tests/test_downtime_command_hardening.py`
+
+Invariant confirmations:
+- `start_downtime` allowed only from IN_PROGRESS or PAUSED; PLANNED/CLOSED rejected
+- Duplicate open downtime rejected (DOWNTIME_ALREADY_OPEN) via event-count guard
+- Invalid/unknown reason code rejected (INVALID_REASON_CODE)
+- Closed record rejects both commands with `STATE_CLOSED_RECORD`
+- `end_downtime` requires open downtime; rejects with `STATE_NO_OPEN_DOWNTIME` when none
+- Event emission unchanged: `downtime_started`, `downtime_ended`
+- `start_downtime` from IN_PROGRESS: snapshot→BLOCKED, event-derived status=BLOCKED
+- `start_downtime` from PAUSED: snapshot stays PAUSED, but event-derived status=BLOCKED (downtime_started_count > downtime_ended_count)
+- `end_downtime`: BLOCKED→PAUSED (snapshot + event-derived), no EXECUTION_RESUMED emitted
+- `resume_operation` blocked while downtime open (STATE_DOWNTIME_OPEN)
+- StationSession diagnostic remains non-blocking
+- Claim compatibility preserved
+
+Design clarification (no gap — source is correct):
+- `_derive_status` returns BLOCKED whenever `downtime_started_count > downtime_ended_count`, independent of snapshot. The service comment "If PAUSED, stay PAUSED" in `start_downtime` refers to the snapshot column only. Event-derived projection is authoritative.
+
+Files introduced:
+- `backend/tests/test_downtime_command_hardening.py`
+
+Production code changed:
+- No
+
+Verification runs:
+- P0-C-06B focused suite:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_downtime_command_hardening.py`
+	- Result: 14 passed in 6.20s, exit code 0
+- P0-C-06A + P0-C-05 regression:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_report_quantity_command_hardening.py tests/test_start_pause_resume_command_hardening.py`
+	- Result: 24 passed in 9.71s, exit code 0
+- StationSession lifecycle + diagnostic suites:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_station_session_lifecycle.py tests/test_station_session_diagnostic_bridge.py tests/test_station_session_command_context_diagnostic.py`
+	- Result: 25 passed in 9.34s, exit code 0
+- Claim regression subset:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_claim_single_active_per_operator.py tests/test_release_claim_active_states.py tests/test_station_queue_active_states.py tests/test_reopen_resumability_claim_continuity.py tests/test_close_reopen_operation_foundation.py`
+	- Result: 36 passed in 8.06s, exit code 0
+- Projection/status regression:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest -q tests/test_operation_detail_allowed_actions.py tests/test_operation_status_projection_reconcile.py tests/test_status_projection_reconcile_command.py`
+	- Result: 41 passed in 2.48s, exit code 0
+- Full backend suite:
+	- `g:\\Work\\FleziBCG\\.venv\\Scripts\\python.exe -m pytest --tb=no -q`
+	- Result: 222 passed, 1 skipped in 39.83s, exit code 0
+
+Event naming status: unchanged — `downtime_started` and `downtime_ended` are the canonical events; no new domain events introduced in P0-C-06B.
+
+Compatibility impact:
+- Command behavior hardened and verified; business behavior unchanged.
+- StationSession diagnostic remains non-blocking.
+- Claim route guards and claim lifecycle remain unchanged.
+
+---
+
 ### 13. P0-C-01 Work Order / Operation Foundation Alignment
 
 Hard Mode MOM v3 Gate Verdict: ALLOW_IMPLEMENTATION

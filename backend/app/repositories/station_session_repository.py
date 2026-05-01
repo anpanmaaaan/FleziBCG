@@ -38,6 +38,67 @@ def get_active_station_session_for_station(
     return db.scalar(statement)
 
 
+def get_latest_station_session_for_station(
+    db: Session,
+    *,
+    tenant_id: str,
+    station_id: str,
+) -> StationSession | None:
+    return db.scalar(
+        select(StationSession)
+        .where(
+            StationSession.tenant_id == tenant_id,
+            StationSession.station_id == station_id,
+        )
+        .order_by(
+            StationSession.opened_at.desc(),
+            StationSession.created_at.desc(),
+            StationSession.session_id.desc(),
+        )
+        .limit(1)
+    )
+
+
+def get_latest_station_session_for_station_any_tenant(
+    db: Session,
+    *,
+    station_id: str,
+) -> StationSession | None:
+    return db.scalar(
+        select(StationSession)
+        .where(StationSession.station_id == station_id)
+        .order_by(
+            StationSession.opened_at.desc(),
+            StationSession.created_at.desc(),
+            StationSession.session_id.desc(),
+        )
+        .limit(1)
+    )
+
+
+def get_latest_open_station_session_for_operator(
+    db: Session,
+    *,
+    tenant_id: str,
+    operator_user_id: str,
+) -> StationSession | None:
+    return db.scalar(
+        select(StationSession)
+        .where(
+            StationSession.tenant_id == tenant_id,
+            StationSession.operator_user_id == operator_user_id,
+            StationSession.status == "OPEN",
+            StationSession.closed_at.is_(None),
+        )
+        .order_by(
+            StationSession.opened_at.desc(),
+            StationSession.created_at.desc(),
+            StationSession.session_id.desc(),
+        )
+        .limit(1)
+    )
+
+
 def create_station_session(db: Session, *, row: StationSession) -> StationSession:
     db.add(row)
     db.commit()

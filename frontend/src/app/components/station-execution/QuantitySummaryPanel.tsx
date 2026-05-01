@@ -70,7 +70,7 @@ export function QuantitySummaryPanel({
 
   return (
     <>
-      <div className="grid gap-3 md:gap-4 lg:grid-cols-[1fr_1fr_1fr_minmax(280px,360px)]">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-[1fr_1fr_1fr_minmax(280px,360px)]">
         <KpiCard label={t("station.qty.target")} value={quantity} />
         <KpiCard label={t("station.qty.completed")} value={completedQty} />
         <KpiCard label={t("station.qty.remaining")} value={remainingQty} highlight />

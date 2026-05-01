@@ -52,6 +52,50 @@ APPROVED_FOR_P0_B_IMPLEMENTATION
 ---
 
 ## Gap ID
+DG-P0C08-ERROR-REGISTRY-001
+
+## Blocked slice
+P0-C-08C Execution Command Guard Migration (documentation gate)
+
+## Missing contract
+Resolved in P0-C-08C controlled batch by creating the approved StationSession command-guard registry artifacts:
+- docs/design/00_platform/canonical-error-code-registry.md
+- docs/design/00_platform/canonical-error-codes.md
+
+Candidate error set defined by contract:
+- STATION_SESSION_REQUIRED
+- STATION_SESSION_CLOSED
+- STATION_SESSION_STATION_MISMATCH
+- STATION_SESSION_OPERATOR_MISMATCH
+- STATION_SESSION_TENANT_MISMATCH
+- STATION_SESSION_NOT_AUTHORIZED
+
+## Why it mattered
+P0-C-08C required deterministic and stable backend error semantics for session-guard failures so tests and API consumers could lock behavior without inventing ad-hoc codes.
+
+## Risk classification
+MEDIUM governance debt.
+
+## Resolution applied
+- Approved the 08C StationSession guard error set in the new canonical error registry artifacts.
+- Kept existing command success payloads unchanged.
+- Preserved cross-tenant non-leak behavior by approving `STATION_SESSION_TENANT_MISMATCH` with 404 mapping for this slice.
+
+## Impacted modules
+- docs/design/02_domain/execution/station-session-command-guard-enforcement-contract.md
+- backend/app/api/v1/operations.py (future P0-C-08C)
+- backend/app/services/operation_service.py (future P0-C-08C)
+- backend/tests/test_*command_hardening.py (future P0-C-08C updates)
+
+## Status
+RESOLVED_FOR_P0_C_08C_IMPLEMENTATION
+
+## Resolution status
+APPROVED_FOR_P0_C_08_STATION_SESSION_GUARD
+
+---
+
+## Gap ID
 DG-P0B-RESOURCE-REQUIREMENT-001
 
 ## Blocked slice

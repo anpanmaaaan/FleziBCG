@@ -41,12 +41,12 @@ export function AllowedActionZone({
   const { t } = useI18n();
 
   return (
-    <section className="shrink-0 flex flex-col gap-2 pb-1">
+    <section className="shrink-0 flex flex-col gap-3 sm:gap-4 pb-1">
       {operation.status === "PLANNED" && (
         <button
           onClick={onStartOperation}
           disabled={actionLoading || operation.closure_status === "CLOSED" || !canExecuteByClaim || !canDo("start_execution")}
-          className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold tracking-wide bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl"
+          className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold tracking-wide bg-green-600 text-white hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl"
         >
           {t("station.action.clockOn")}
         </button>
@@ -58,14 +58,14 @@ export function AllowedActionZone({
             <button
               onClick={onPauseOperation}
               disabled={actionLoading || operation.closure_status === "CLOSED" || !canPauseExecution}
-              className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-amber-400 text-slate-900 hover:bg-amber-500 disabled:opacity-50"
+              className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-amber-400 text-slate-900 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {t("station.action.pause")}
             </button>
             <button
               onClick={onOpenDowntimeModal}
               disabled={downtimeLoading || operation.closure_status === "CLOSED" || !canStartDowntime}
-              className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-slate-600 text-white hover:bg-slate-700 disabled:opacity-50"
+              className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-slate-600 text-white hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {t("station.action.startDowntime")}
             </button>
@@ -74,7 +74,7 @@ export function AllowedActionZone({
             <button
               onClick={onCompleteOperation}
               disabled={actionLoading || operation.closure_status === "CLOSED" || !canCompleteExecution}
-              className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl border-2 border-amber-500 bg-white text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+              className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl border-2 border-amber-500 bg-white text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {t("station.action.completeOperation")}
             </button>
@@ -89,14 +89,14 @@ export function AllowedActionZone({
               <button
                 onClick={onResumeOperation}
                 disabled={actionLoading || operation.closure_status === "CLOSED" || !canResumeExecution}
-                className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {t("station.action.resume")}
               </button>
               <button
                 onClick={onOpenDowntimeModal}
                 disabled={downtimeLoading || operation.closure_status === "CLOSED" || !canStartDowntime}
-                className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-slate-600 text-white hover:bg-slate-700 disabled:opacity-50"
+                className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-slate-600 text-white hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {t("station.action.startDowntime")}
               </button>
@@ -105,7 +105,7 @@ export function AllowedActionZone({
             <button
               onClick={onEndDowntime}
               disabled={downtimeLoading || operation.closure_status === "CLOSED" || !canEndDowntimeAction}
-              className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+              className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {t("station.action.endDowntime")}
             </button>
@@ -117,7 +117,7 @@ export function AllowedActionZone({
         <button
           onClick={onEndDowntime}
           disabled={downtimeLoading || operation.closure_status === "CLOSED" || !canEndDowntimeAction}
-          className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {t("station.action.endDowntime")}
         </button>
