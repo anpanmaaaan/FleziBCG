@@ -10,6 +10,11 @@ from app.db.session import SessionLocal
 # INVARIANT: Every model file must be imported here so that SQLAlchemy
 # registers the table with Base.metadata before optional local bootstrap
 # create_all() runs. Forgetting an import causes a silent missing-table bug.
+#
+# WHY: alembic env.py also imports this module (import app.db.init_db as
+# _models) so that all ORM classes are registered with Base.metadata before
+# autogenerate/upgrade runs. This import must remain side-effect-only — no
+# DB mutation at import time.
 from app.models.master import ProductionOrder, WorkOrder, Operation  # noqa: F401
 from app.models.execution import ExecutionEvent  # noqa: F401
 from app.models.downtime_reason import DowntimeReason  # noqa: F401
@@ -41,6 +46,49 @@ from app.security.rbac import seed_rbac_core
 from app.services.approval_service import seed_approval_rules
 from app.services.user_service import seed_demo_users
 
+# ---------------------------------------------------------------------------
+# Alembic live migration driver
+# ---------------------------------------------------------------------------
+
+_BACKEND_DIR = Path(__file__).resolve().parents[2]
+_ALEMBIC_INI = _BACKEND_DIR / "alembic.ini"
+
+_ALEMBIC_UPGRADE_RAN = False
+_ALEMBIC_UPGRADE_LOCK = Lock()
+
+
+def run_alembic_upgrade() -> None:
+    """Run ``alembic upgrade head`` programmatically.
+
+    INVARIANT: This is the canonical production startup migration path.
+    It is idempotent — running it against an already-current schema is a no-op.
+    It respects the migration history recorded in ``alembic_version``.
+
+    SAFETY: Guarded by a module-level lock and a flag so that multiple
+    threads/workers on the same process only run it once per process lifetime.
+    Cross-process serialization is handled by Alembic's own locking if
+    the DB supports advisory locks (PostgreSQL).
+    """
+    global _ALEMBIC_UPGRADE_RAN
+
+    if _ALEMBIC_UPGRADE_RAN:
+        return
+
+    with _ALEMBIC_UPGRADE_LOCK:
+        if _ALEMBIC_UPGRADE_RAN:
+            return
+
+        from alembic import command
+        from alembic.config import Config
+
+        cfg = Config(str(_ALEMBIC_INI))
+        command.upgrade(cfg, "head")
+        _ALEMBIC_UPGRADE_RAN = True
+
+
+# ---------------------------------------------------------------------------
+# Legacy / dev-bootstrap SQL runner  (NOT called on production startup)
+# ---------------------------------------------------------------------------
 
 _MIGRATIONS_APPLIED = False
 _MIGRATION_APPLY_LOCK = Lock()
@@ -48,6 +96,14 @@ _MIGRATION_ADVISORY_LOCK_KEY = 84082026
 
 
 def _apply_sql_migrations() -> None:
+    """Apply raw SQL migration files from ``backend/scripts/migrations/``.
+
+    DEPRECATED PRODUCTION PATH — do not call from production startup.
+    This function is retained as a dev/test/CLI bootstrap utility only.
+    The canonical migration path is ``run_alembic_upgrade()``.
+
+    Calling this from production code is a governance violation.
+    """
     global _MIGRATIONS_APPLIED
 
     if _MIGRATIONS_APPLIED:
@@ -96,13 +152,38 @@ def _apply_sql_migrations() -> None:
         _MIGRATIONS_APPLIED = True
 
 
-def init_db(*, bootstrap_schema: bool = False) -> None:
-    # SAFETY: Production startup must not call create_all() implicitly.
-    # bootstrap_schema=True is for explicit local bootstrap workflows only.
+def init_db(*, bootstrap_schema: bool = False, _use_sql_runner: bool = False) -> None:
+    """Initialize the database for production or dev/test startup.
+
+    Production path (default):
+        1. ``run_alembic_upgrade()`` — brings schema to Alembic head (idempotent).
+        2. Seed RBAC, approval rules, demo users.
+        ``create_all()`` and the legacy SQL runner are NOT invoked.
+
+    Dev/local bootstrap path (explicit only):
+        Pass ``bootstrap_schema=True`` to call ``Base.metadata.create_all()``
+        before running seeds.  Intended for local dev when no Alembic-managed
+        DB exists yet.
+
+        Pass ``_use_sql_runner=True`` (dev/test CLI only) to additionally run
+        the legacy SQL migration files.  This flag must never be enabled in
+        production or CI test runs.
+
+    INVARIANT: The default call ``init_db()`` must never call ``create_all()``
+    or ``_apply_sql_migrations()``.
+    """
+    # SAFETY: create_all() is for explicit local bootstrap only.
     if bootstrap_schema:
         Base.metadata.create_all(bind=engine)
 
-    _apply_sql_migrations()
+    # INVARIANT: Legacy SQL runner is dev/test only — never called in default
+    # production startup.
+    if _use_sql_runner:
+        _apply_sql_migrations()
+    else:
+        # CANONICAL PRODUCTION PATH: Alembic manages all schema changes.
+        run_alembic_upgrade()
+
     # INTENT: Seed order matters — RBAC roles/permissions first, then approval
     # rules (which reference role codes), then demo users (which reference roles).
     with SessionLocal() as db:

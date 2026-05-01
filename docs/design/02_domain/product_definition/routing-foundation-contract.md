@@ -8,7 +8,7 @@
 | 2026-04-29 | v1.1 | Coverage review completed; marked READY_FOR_HUMAN_REVIEW_BEFORE_IMPLEMENTATION with explicit non-implementation boundary. |
 | 2026-05-01 | v1.2 | MMD-BE-01-PRE boundary patch: extended operation sequence with 3 RoutingOperation-owned fields (`setup_time`, `run_time_per_unit`, `work_center_code`); explicitly deferred `required_skill` / `required_skill_level` to ResourceRequirement domain; explicitly rejected `qc_checkpoint_count` as RoutingOperation source-of-truth (Quality Lite owns checkpoint definition). Status moved to APPROVED for P0-B operation fields extension. |
 
-Status: APPROVED for P0-B operation fields extension (v1.2 boundary patch). Pending An merge of branch `master-data-hardening/mmd-be-01-pre-routing-contract-v1-2-boundary-patch`.
+Status: APPROVED for P0-B operation fields extension (v1.2 boundary patch) — merged into autocode 2026-05-01.
 
 ## 1. Purpose
 
