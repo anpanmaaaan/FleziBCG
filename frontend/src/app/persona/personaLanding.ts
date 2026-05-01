@@ -42,6 +42,12 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "Quality Holds", to: "/quality-holds" },
     { label: "Quality", to: "/quality" },
     { label: "Defects", to: "/defects" },
+    // Reporting shells — FE-COVERAGE-01E
+    { label: "Production Report", to: "/reports/production-performance" },
+    { label: "Quality Report", to: "/reports/quality-performance" },
+    { label: "Material / WIP Report", to: "/reports/material-wip" },
+    { label: "Shift Report", to: "/reports/shift" },
+    { label: "Downtime Report", to: "/reports/downtime" },
   ],
   IEP: [
     { label: "Global Operations", to: "/operations?lens=ie" },
@@ -99,11 +105,36 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "Defects", to: "/defects" },
     { label: "Traceability", to: "/traceability" },
     { label: "Scheduling", to: "/scheduling" },
+    // Integration shells — FE-COVERAGE-01E
+    { label: "Integration Dashboard", to: "/integration" },
+    { label: "External Systems", to: "/integration/systems" },
+    { label: "ERP Mapping", to: "/integration/erp-mapping" },
+    { label: "Inbound Messages", to: "/integration/inbound" },
+    { label: "Outbound Messages", to: "/integration/outbound" },
+    { label: "Posting Requests", to: "/integration/posting-requests" },
+    { label: "Reconciliation", to: "/integration/reconciliation" },
+    { label: "Retry Queue", to: "/integration/retry-queue" },
+    // Reporting shells — FE-COVERAGE-01E
+    { label: "Production Report", to: "/reports/production-performance" },
+    { label: "Quality Report", to: "/reports/quality-performance" },
+    { label: "Material / WIP Report", to: "/reports/material-wip" },
+    { label: "Integration Status Report", to: "/reports/integration-status" },
+    { label: "Shift Report", to: "/reports/shift" },
+    { label: "Downtime Report", to: "/reports/downtime" },
   ],
-  EXE: [{ label: "Dashboard", to: "/dashboard" }],
+  EXE: [
+    { label: "Dashboard", to: "/dashboard" },
+    { label: "Production Report", to: "/reports/production-performance" },
+    { label: "Quality Report", to: "/reports/quality-performance" },
+    { label: "Shift Report", to: "/reports/shift" },
+    { label: "Downtime Report", to: "/reports/downtime" },
+    { label: "Integration Status Report", to: "/reports/integration-status" },
+  ],
   ADM: [
     { label: "Dashboard", to: "/dashboard" },
     { label: "Settings", to: "/settings" },
+    { label: "Integration Dashboard", to: "/integration" },
+    { label: "External Systems", to: "/integration/systems" },
     { label: "Users", to: "/users" },
     { label: "Roles", to: "/roles" },
     { label: "Actions", to: "/action-registry" },
@@ -451,6 +482,17 @@ export function isRouteAllowedForPersona(persona: ResolvedPersona, pathname: str
   }
   if (pathname === "/wip-buffers") {
     return ["SUP", "IEP", "PMG", "ADM"].includes(persona);
+  }
+
+  // Integration shells — FE-COVERAGE-01E
+  if (pathname.startsWith("/integration")) {
+    return ["PMG", "ADM"].includes(persona);
+  }
+
+  // Reporting shells — FE-COVERAGE-01E
+  if (pathname.startsWith("/reports/")) {
+    // SUP and EXE get reporting access too (production, quality, shift, downtime)
+    return ["PMG", "ADM", "SUP", "EXE"].includes(persona);
   }
 
   return false;

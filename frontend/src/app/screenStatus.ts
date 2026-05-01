@@ -336,6 +336,94 @@ export const SCREEN_STATUS_REGISTRY: Record<string, ScreenStatusEntry> = {
     dataSource: "MOCK_FIXTURE",
     notes: "WIP queue and buffers shell for production planning. WIP position and flow are managed by backend inventory/material system.",
   },
+
+  // ── Integration shells — FE-COVERAGE-01E ──
+  integrationDashboard: {
+    routePattern: "/integration",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Integration Dashboard is a shell. Integration state, posting status, and reconciliation truth are managed by backend integration and ERP systems.",
+  },
+  externalSystems: {
+    routePattern: "/integration/systems",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "External Systems Registry is a shell. Real system registration, configuration, and connection management require backend integration module.",
+  },
+  erpMapping: {
+    routePattern: "/integration/erp-mapping",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "ERP Mapping is a shell. Real ERP field mapping, validation, and publishing require backend integration and ERP adapter modules.",
+  },
+  inboundMessages: {
+    routePattern: "/integration/inbound",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Inbound Messages is a shell. Real message processing, acceptance, and replay are managed by backend integration event bus.",
+  },
+  outboundMessages: {
+    routePattern: "/integration/outbound",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Outbound Messages is a shell. Real message sending and delivery confirmation are managed by backend integration event bus.",
+  },
+  postingRequests: {
+    routePattern: "/integration/posting-requests",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Posting Requests is a shell. ERP posting truth, retry, and cancel operations are managed by backend integration and ERP adapter modules. Do not use as source of ERP posting truth.",
+  },
+  reconciliation: {
+    routePattern: "/integration/reconciliation",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Reconciliation is a shell. MOM vs ERP/WMS reconciliation truth, discrepancy resolution, and approval are managed by backend integration and ERP reconciliation modules.",
+  },
+  retryQueue: {
+    routePattern: "/integration/retry-queue",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Retry / Failure Queue is a shell. Real retry execution, skip, and dead-letter operations are managed by backend integration fault-tolerance module.",
+  },
+
+  // ── Reporting shells — FE-COVERAGE-01E ──
+  productionPerfReport: {
+    routePattern: "/reports/production-performance",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Production Performance Report is a shell. Deterministic production KPIs, plan vs actual calculations, and report exports require backend reporting module.",
+  },
+  qualityPerfReport: {
+    routePattern: "/reports/quality-performance",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Quality Performance Report is a shell. Official quality metrics, defect rates, and NCR counts require backend quality and reporting modules.",
+  },
+  materialWipReport: {
+    routePattern: "/reports/material-wip",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Material / WIP Report is a shell. WIP position, inventory truth, and material consumption reports require backend inventory and material modules.",
+  },
+  integrationStatusReport: {
+    routePattern: "/reports/integration-status",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Integration Status Report is a shell. Real integration monitoring, failure rates, and message throughput require backend integration and observability modules.",
+  },
+  shiftReport: {
+    routePattern: "/reports/shift",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Shift Report is a shell. Official shift close reports require backend reporting and shift management modules.",
+  },
+  downtimeReport: {
+    routePattern: "/reports/downtime",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Downtime Report is a shell. Aggregated downtime analytics and official downtime reporting require backend execution and reporting modules.",
+  },
 };
 
 const SCREEN_ROUTE_ALIASES: Record<string, string> = {

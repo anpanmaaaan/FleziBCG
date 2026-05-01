@@ -49,6 +49,22 @@ import { QualityHolds } from "./pages/QualityHolds";
 import { MaterialReadiness } from "./pages/MaterialReadiness";
 import { StagingKitting } from "./pages/StagingKitting";
 import { WipBuffers } from "./pages/WipBuffers";
+// Integration shells — FE-COVERAGE-01E
+import { IntegrationDashboard } from "./pages/IntegrationDashboard";
+import { ExternalSystems } from "./pages/ExternalSystems";
+import { ErpMapping } from "./pages/ErpMapping";
+import { InboundMessages } from "./pages/InboundMessages";
+import { OutboundMessages } from "./pages/OutboundMessages";
+import { PostingRequests } from "./pages/PostingRequests";
+import { Reconciliation } from "./pages/Reconciliation";
+import { RetryQueue } from "./pages/RetryQueue";
+// Reporting shells — FE-COVERAGE-01E
+import { ProductionPerformanceReport } from "./pages/ProductionPerformanceReport";
+import { QualityPerformanceReport } from "./pages/QualityPerformanceReport";
+import { MaterialWipReport } from "./pages/MaterialWipReport";
+import { IntegrationStatusReport } from "./pages/IntegrationStatusReport";
+import { ShiftReport } from "./pages/ShiftReport";
+import { DowntimeReport } from "./pages/DowntimeReport";
 import { PersonaLandingRedirect } from "./persona/PersonaLandingRedirect";
 import { RequireAuth } from "./auth/RequireAuth";
 
@@ -119,6 +135,24 @@ export const router = createBrowserRouter([
       { path: "material-readiness", Component: MaterialReadiness },
       { path: "staging-kitting", Component: StagingKitting },
       { path: "wip-buffers", Component: WipBuffers },
+
+      // Integration shells — FE-COVERAGE-01E
+      { path: "integration", Component: IntegrationDashboard },
+      { path: "integration/systems", Component: ExternalSystems },
+      { path: "integration/erp-mapping", Component: ErpMapping },
+      { path: "integration/inbound", Component: InboundMessages },
+      { path: "integration/outbound", Component: OutboundMessages },
+      { path: "integration/posting-requests", Component: PostingRequests },
+      { path: "integration/reconciliation", Component: Reconciliation },
+      { path: "integration/retry-queue", Component: RetryQueue },
+
+      // Reporting shells — FE-COVERAGE-01E
+      { path: "reports/production-performance", Component: ProductionPerformanceReport },
+      { path: "reports/quality-performance", Component: QualityPerformanceReport },
+      { path: "reports/material-wip", Component: MaterialWipReport },
+      { path: "reports/integration-status", Component: IntegrationStatusReport },
+      { path: "reports/shift", Component: ShiftReport },
+      { path: "reports/downtime", Component: DowntimeReport },
       
       // Station Execution
       { path: "station", Component: StationExecution },
