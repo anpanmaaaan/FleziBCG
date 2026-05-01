@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Lock, Search } from "lucide-react";
-import { MockWarningBanner, ScreenStatusBadge } from "@/app/components";
+import { GovernancePageShell } from "@/app/components";
 import { useI18n } from "@/app/i18n";
 
 interface Action {
@@ -69,36 +69,30 @@ export function ActionRegistry() {
   );
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      <MockWarningBanner
-        phase="SHELL"
-        note="Action and permission registry is read-only visualization. Backend authorization system remains source of truth for allowed actions."
-      />
-      <div className="flex-1 flex flex-col p-6">
-        {/* Page header */}
-        <div className="flex items-center gap-3 mb-6">
-          <h1 className="text-2xl font-bold">Action / Permission Registry</h1>
-          <ScreenStatusBadge phase="SHELL" />
+    <GovernancePageShell
+      title="Action / Permission Registry"
+      subtitle="System actions and their allowed personas"
+      phase="SHELL"
+      bannerNote="Action and permission registry is read-only visualization. Backend authorization system remains source of truth for allowed actions."
+    >
+      {/* Search */}
+      <div className="mb-6">
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search actions..."
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring w-full"
+          />
         </div>
+      </div>
 
-        {/* Search */}
-        <div className="mb-6">
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search actions..."
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring w-full"
-            />
-          </div>
-        </div>
-
-        {/* Actions Table */}
-        <div className="flex-1 overflow-auto border border-gray-200 rounded-lg">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
+      {/* Actions Table */}
+      <div className="flex-1 overflow-auto border border-gray-200 rounded-lg">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b sticky top-0">
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Action Code</th>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Domain</th>
@@ -123,12 +117,11 @@ export function ActionRegistry() {
           </table>
         </div>
 
-        {/* Note */}
-        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
-          <Lock className="inline w-4 h-4 mr-2" />
-          This is a read-only registry. Backend IAM system defines actual action availability.
-        </div>
+      {/* Note */}
+      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
+        <Lock className="inline w-4 h-4 mr-2" />
+        This is a read-only registry. Backend IAM system defines actual action availability.
       </div>
-    </div>
+    </GovernancePageShell>
   );
 }

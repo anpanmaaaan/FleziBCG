@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Lock, Building2 } from "lucide-react";
-import { MockWarningBanner, ScreenStatusBadge } from "@/app/components";
+import { GovernancePageShell } from "@/app/components";
 import { useI18n } from "@/app/i18n";
 
 interface TenantInfo {
@@ -27,20 +27,15 @@ export function TenantSettings() {
   const { t } = useI18n();
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      <MockWarningBanner
-        phase="SHELL"
-        note="Tenant settings and configuration are managed by backend system. Frontend settings panel is visualization only."
-      />
-      <div className="flex-1 flex flex-col p-6">
-        {/* Page header */}
-        <div className="flex items-center gap-3 mb-6">
-          <h1 className="text-2xl font-bold">Tenant Settings</h1>
-          <ScreenStatusBadge phase="SHELL" />
-        </div>
+    <GovernancePageShell
+      title="Tenant Settings"
+      subtitle="Tenant configuration and organization metadata"
+      phase="SHELL"
+      bannerNote="Tenant settings and configuration are managed by backend system. Frontend settings panel is visualization only."
+    >
 
-        {/* Tenant Profile Card */}
-        <div className="max-w-2xl mb-6">
+      {/* Tenant Profile Card */}
+      <div className="max-w-2xl mb-6">
           <div className="border border-gray-200 rounded-lg p-6">
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -125,16 +120,15 @@ export function TenantSettings() {
           </div>
         </div>
 
-        {/* Integration Info */}
-        <div className="max-w-2xl p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h3 className="font-semibold text-blue-900 mb-2">Tenant Integrations</h3>
-          <ul className="text-sm text-blue-800 space-y-1">
-            <li>• ERP System: SAP (not yet connected)</li>
-            <li>• Message Queue: RabbitMQ (not yet configured)</li>
-            <li>• Data Warehouse: PostgreSQL (not yet connected)</li>
-          </ul>
-        </div>
+      {/* Integration Info */}
+      <div className="max-w-2xl p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <h3 className="font-semibold text-blue-900 mb-2">Tenant Integrations</h3>
+        <ul className="text-sm text-blue-800 space-y-1">
+          <li>• ERP System: SAP (not yet connected)</li>
+          <li>• Message Queue: RabbitMQ (not yet configured)</li>
+          <li>• Data Warehouse: PostgreSQL (not yet connected)</li>
+        </ul>
       </div>
-    </div>
+    </GovernancePageShell>
   );
 }

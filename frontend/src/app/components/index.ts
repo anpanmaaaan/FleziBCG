@@ -18,3 +18,4 @@ export { MockWarningBanner } from "./MockWarningBanner";
 export { RouteStatusBanner } from "./RouteStatusBanner";
 export { ProductLifecycleBadge, ProductTypeBadge } from "./ProductBadges";
 export { RoutingLifecycleBadge, RoutingOperationSequenceBadge, BackendRequiredNotice } from "./RoutingDisplay";
+export { GovernancePageShell } from "./GovernancePageShell";

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Lock, Plus, Layers } from "lucide-react";
-import { MockWarningBanner, ScreenStatusBadge } from "@/app/components";
+import { GovernancePageShell } from "@/app/components";
 import { useI18n } from "@/app/i18n";
 
 interface HierarchyNode {
@@ -112,40 +112,34 @@ export function PlantHierarchy() {
   const [nodes] = useState(mockHierarchy);
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      <MockWarningBanner
-        phase="SHELL"
-        note="Plant hierarchy structure is managed by backend master data system. Frontend hierarchy visualization is read-only."
-      />
-      <div className="flex-1 flex flex-col p-6">
-        {/* Page header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">Plant Hierarchy</h1>
-            <ScreenStatusBadge phase="SHELL" />
-          </div>
-          <button
-            disabled
-            className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-2"
-            title="Backend master data system manages hierarchy"
-          >
-            <Lock className="w-4 h-4" />
-            Add Node (Future)
-          </button>
+    <GovernancePageShell
+      title="Plant Hierarchy"
+      subtitle="Organizational structure and asset hierarchy"
+      phase="SHELL"
+      bannerNote="Plant hierarchy structure is managed by backend master data system. Frontend hierarchy visualization is read-only."
+      actions={
+        <button
+          disabled
+          className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-2"
+          title="Backend master data system manages hierarchy"
+        >
+          <Lock className="w-4 h-4" />
+          Add Node (Future)
+        </button>
+      }
+    >
+      {/* Hierarchy info */}
+      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded flex items-start gap-3">
+        <Layers className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+        <div className="text-sm text-blue-700">
+          <strong>Hierarchy Structure:</strong> Tenant → Plant → Area → Line → Station → Equipment
         </div>
+      </div>
 
-        {/* Hierarchy info */}
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded flex items-start gap-3">
-          <Layers className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-          <div className="text-sm text-blue-700">
-            <strong>Hierarchy Structure:</strong> Tenant → Plant → Area → Line → Station → Equipment
-          </div>
-        </div>
-
-        {/* Hierarchy Table */}
-        <div className="flex-1 overflow-auto border border-gray-200 rounded-lg">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b sticky top-0">
+      {/* Hierarchy Table */}
+      <div className="flex-1 overflow-auto border border-gray-200 rounded-lg">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b sticky top-0">
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Name</th>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Code</th>
@@ -185,12 +179,11 @@ export function PlantHierarchy() {
           </table>
         </div>
 
-        {/* Backend notice */}
-        <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded text-sm text-slate-700 flex items-start gap-2">
-          <Lock className="w-4 h-4 mt-0.5 flex-shrink-0" />
-          <span>Hierarchy structure is defined and managed exclusively by backend master data system.</span>
-        </div>
+      {/* Backend notice */}
+      <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded text-sm text-slate-700 flex items-start gap-2">
+        <Lock className="w-4 h-4 mt-0.5 flex-shrink-0" />
+        <span>Hierarchy structure is defined and managed exclusively by backend master data system.</span>
       </div>
-    </div>
+    </GovernancePageShell>
   );
 }

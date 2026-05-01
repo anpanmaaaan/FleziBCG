@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Lock, LogOut, Globe } from "lucide-react";
-import { MockWarningBanner, ScreenStatusBadge } from "@/app/components";
+import { GovernancePageShell } from "@/app/components";
 import { useI18n } from "@/app/i18n";
 
 interface Session {
@@ -48,32 +48,27 @@ export function SessionManagement() {
   const [sessions] = useState(mockSessions);
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      <MockWarningBanner
-        phase="SHELL"
-        note="Session management is not yet connected to backend. Backend authentication system remains source of truth for active sessions and revocation."
-      />
-      <div className="flex-1 flex flex-col p-6">
-        {/* Page header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">Session Management</h1>
-            <ScreenStatusBadge phase="SHELL" />
-          </div>
-          <button
-            disabled
-            className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-2"
-            title="This action requires backend session management"
-          >
-            <Lock className="w-4 h-4" />
-            Revoke All Sessions (Future)
-          </button>
-        </div>
+    <GovernancePageShell
+      title="Session Management"
+      subtitle="Active user sessions and revocation controls"
+      phase="SHELL"
+      bannerNote="Session management is not yet connected to backend. Backend authentication system remains source of truth for active sessions and revocation."
+      actions={
+        <button
+          disabled
+          className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-2"
+          title="This action requires backend session management"
+        >
+          <Lock className="w-4 h-4" />
+          Revoke All Sessions (Future)
+        </button>
+      }
+    >
 
-        {/* Sessions Table */}
-        <div className="flex-1 overflow-auto border border-gray-200 rounded-lg">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
+      {/* Sessions Table */}
+      <div className="flex-1 overflow-auto border border-gray-200 rounded-lg">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b sticky top-0">
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">User</th>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Device</th>
@@ -119,10 +114,9 @@ export function SessionManagement() {
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
-        </div>
+          </tbody>
+        </table>
       </div>
-    </div>
+    </GovernancePageShell>
   );
 }
