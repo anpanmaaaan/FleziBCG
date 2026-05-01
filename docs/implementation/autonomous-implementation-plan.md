@@ -845,3 +845,30 @@ Slice closure note:
   Verdict:
   - `P0-C-08H4_COMPLETE_VERIFICATION_CLEAN`
   - Stop after this single slice.
+
+### P0-C-08H6 Frontend/API Consumer Cutover from Claim/Release Calls
+
+Status: Complete.
+
+Completed scope:
+- Removed StationExecution claim/release API consumer calls from primary UI flow.
+- Removed Mode A claim acquire action panel.
+- Removed Mode B header release action and related props/wiring.
+- Normalized action affordance gate to ownership/session-capable `canExecute`.
+- Preserved claim compatibility typing and fallback read behavior.
+
+Out-of-scope preserved:
+- No backend code changes.
+- No claim API/service/model/table removal.
+- No queue payload/API shape changes.
+- No migration/schema changes.
+
+Verification summary:
+- Frontend lint: `H6_FRONTEND_LINT_EXIT:0`
+- Frontend build: `H6_FRONTEND_BUILD_EXIT:0`
+- Frontend route smoke: `H6_FRONTEND_ROUTE_SMOKE_EXIT:0`
+- Backend smoke: `29 passed`, `H6_BACKEND_SMOKE_EXIT:0`
+
+Verdict:
+- `P0-C-08H6_COMPLETE_VERIFICATION_CLEAN`
+- Stop after this single slice.

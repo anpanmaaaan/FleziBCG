@@ -1540,4 +1540,63 @@ Scope Guard Confirmation
 Verdict
 - `P0-C-08H4_COMPLETE_VERIFICATION_CLEAN`
 
+## Addendum — P0-C-08H6 Frontend/API Consumer Cutover
+
+Design Evidence Extract
+- `docs/implementation/p0-c-08h5-claim-retirement-sequencing-contract.md`: H6 is consumer cutover first while claim compatibility remains.
+- `docs/implementation/p0-c-08h2-frontend-queue-consumer-cutover-report.md`: ownership-first frontend baseline.
+- `docs/implementation/p0-c-08f-claim-api-deprecation-lock-report.md`: claim APIs remain deprecated and callable.
+- `docs/design/02_domain/execution/station-session-ownership-contract.md`: StationSession is target ownership truth.
+
+Behavior Summary
+- StationExecution no longer invokes `stationApi.claim` or `stationApi.release`.
+- Claim/release UI affordances removed from StationExecution path.
+- Command action gating now uses ownership/session-capable `canExecute` gate.
+- Backend ownership/auth truth remains unchanged.
+
+Execution Results
+- `npm.cmd run lint`: `H6_FRONTEND_LINT_EXIT:0`
+- `npm.cmd run build`: `H6_FRONTEND_BUILD_EXIT:0`
+- `npm.cmd run check:routes`: `H6_FRONTEND_ROUTE_SMOKE_EXIT:0`
+- `pytest -q tests/test_claim_api_deprecation_lock.py tests/test_station_queue_session_aware_migration.py tests/test_station_session_command_guard_enforcement.py`: `29 passed`, `H6_BACKEND_SMOKE_EXIT:0`
+
+Scope Guard Confirmation
+- No backend code change.
+- No claim API or claim persistence removal.
+- No queue response contract change.
+- No migration/schema change.
+
+Verdict
+- `P0-C-08H6_COMPLETE_VERIFICATION_CLEAN`
+
+## Addendum — P0-C-08H6-V1 Claim-Derived Affordance Removal + Verification Recovery
+
+Design Evidence Extract
+- `docs/implementation/p0-c-08h6-frontend-api-consumer-cutover-report.md`: H6 baseline and remaining affordance risk.
+- `docs/implementation/p0-c-08h5-claim-retirement-sequencing-contract.md`: claim compatibility must remain while frontend stops using claim for execution truth.
+- `docs/design/02_domain/execution/station-session-ownership-contract.md`: StationSession is target ownership truth.
+- `docs/design/02_domain/execution/station-session-command-guard-enforcement-contract.md`: backend command guard remains authoritative.
+
+Behavior Summary
+- Removed claim-derived enablement in StationExecution (`canExecute` is now ownership/session-only).
+- Verified no direct claim/release API calls in StationExecution primary flow.
+- Preserved queue claim fallback compatibility and backend claim compatibility surfaces.
+
+Execution Results
+- `npm.cmd run lint`: `H6V1_FRONTEND_LINT_EXIT:0`
+- `npm.cmd run build`: `H6V1_FRONTEND_BUILD_EXIT:0`
+- `npm.cmd run check:routes`: `H6V1_FRONTEND_ROUTE_SMOKE_EXIT:0`
+- `pytest -q tests/test_execution_route_claim_guard_removal.py tests/test_claim_api_deprecation_lock.py tests/test_station_queue_session_aware_migration.py tests/test_reopen_resume_station_session_continuity.py`: `24 passed`, `H6V1_BACKEND_SMOKE_EXIT:0`
+
+Scope Guard Confirmation
+- No backend code change.
+- No backend API shape change.
+- No claim API/service/model/table/audit removal.
+- No queue payload shape change.
+- No reopen helper or close/reopen behavior change.
+- No migration.
+
+Verdict
+- `P0_C_08H6_COMPLETE_VERIFICATION_CLEAN`
+
 ### 1. Governed audit/security-event emission wiring

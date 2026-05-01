@@ -308,6 +308,116 @@ CANONICAL
 ### Verdict
 ALLOW_IMPLEMENTATION_COMPLETE
 
+## HM3-029 — P0-C-08H6-V1 Claim-Derived Execution Affordance Removal + Verification Gap Closure
+
+## Routing
+- Selected brain: docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md
+- Selected mode: Hard Mode MOM v3 (SINGLE-SLICE)
+- Hard Mode MOM: docs/ai-skills/hard-mode-mom-v3/SKILL.md
+- Reason: frontend execution affordance still had claim-derived enablement after H6 and required invariant-safe correction.
+
+### Design Evidence Extract
+- `docs/implementation/p0-c-08h6-frontend-api-consumer-cutover-report.md`
+- `docs/implementation/p0-c-08h5-claim-retirement-sequencing-contract.md`
+- `docs/implementation/p0-c-08h2-frontend-queue-consumer-cutover-report.md`
+- `docs/design/02_domain/execution/station-session-ownership-contract.md`
+- `docs/design/02_domain/execution/station-session-command-guard-enforcement-contract.md`
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| remove claim-derived canExecute fallback in StationExecution | none | none_required | unchanged | n/a | none | H6-V1 scope |
+| command invocation through backend operation API | existing backend events only on success | domain_event | unchanged | unchanged | unchanged | execution contracts |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---|---|---|
+| claim state must not enable execution affordance | authorization_boundary | frontend gating + backend response | no | yes | H6/H6-V1 contract |
+| frontend sends intent only | execution_truth_boundary | backend command handlers | no | yes | coding rules |
+| claim compatibility surfaces remain | migration_boundary | backend unchanged | no | yes | H5 sequencing contract |
+| queue claim fallback remains display/debug only | compatibility_boundary | queue components only | no | yes | H2 contract |
+
+### State Transition Map
+| Entity | Current State | Command | Allowed? | Event | Next Projection State | Invalid Case Test | Source |
+|---|---|---|---:|---|---|---|---|
+| StationExecution UI | ownership open + mine | command affordance check | yes | none | canExecute true | grep + FE gates | H6-V1 fix |
+| StationExecution UI | ownership missing/not mine | command affordance check | no | none | canExecute false | grep + FE gates | H6-V1 fix |
+
+### Test Matrix
+| Test ID | Scenario | Type | Given | When | Then | Event Assertion | Invariant Assertion |
+|---|---|---|---|---|---|---|---|
+| HM3-029-T1 | frontend lint | regression | H6-V1 edit | run lint | pass | n/a | no frontend quality regression |
+| HM3-029-T2 | frontend build | regression | H6-V1 edit | run build | pass | n/a | no compile regression |
+| HM3-029-T3 | route smoke | regression | active route set | run check:routes | pass | n/a | route gate intact |
+| HM3-029-T4 | backend required smoke | regression | claim/session compatibility tests | run required pytest set | pass | unchanged backend event behavior | compatibility and guard contracts preserved |
+| HM3-029-T5 | affordance grep audit | verification | StationExecution and station-execution components | search claimState/canExecute/claim/release usage | no claim-derived enablement | n/a | claim not used as execution truth |
+
+### Final verification result
+- `npm.cmd run lint`: `H6V1_FRONTEND_LINT_EXIT:0`
+- `npm.cmd run build`: `H6V1_FRONTEND_BUILD_EXIT:0`
+- `npm.cmd run check:routes`: `H6V1_FRONTEND_ROUTE_SMOKE_EXIT:0`
+- `pytest -q tests/test_execution_route_claim_guard_removal.py tests/test_claim_api_deprecation_lock.py tests/test_station_queue_session_aware_migration.py tests/test_reopen_resume_station_session_continuity.py`: `24 passed`, `H6V1_BACKEND_SMOKE_EXIT:0`
+
+### Event naming status
+UNCHANGED_CANONICAL
+
+### Verdict
+ALLOW_IMPLEMENTATION_COMPLETE
+
+## HM3-028 — P0-C-08H6 Frontend/API Consumer Cutover from Claim/Release Calls
+
+## Routing
+- Selected brain: docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md
+- Selected mode: Hard Mode MOM v3 (SINGLE-SLICE)
+- Hard Mode MOM: docs/ai-skills/hard-mode-mom-v3/SKILL.md
+- Reason: Station Execution frontend flow touches execution ownership affordance and must preserve backend authorization truth.
+
+### Design Evidence Extract
+- `docs/implementation/p0-c-08h5-claim-retirement-sequencing-contract.md`
+- `docs/implementation/p0-c-08h2-frontend-queue-consumer-cutover-report.md`
+- `docs/implementation/p0-c-08f-claim-api-deprecation-lock-report.md`
+- `docs/design/02_domain/execution/station-session-ownership-contract.md`
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| remove StationExecution claim/release consumer calls | none | none_required | unchanged | n/a | none | H5/H6 scope |
+| execute command via operation API | existing command events only on backend success | domain_event | unchanged | unchanged | unchanged | execution contracts |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---|---|---|
+| backend remains execution truth | execution_truth | backend service/routes | no | yes | product truth + ownership contract |
+| frontend does not authorize commands | authorization | allowed_actions + backend response | no | yes | coding rules |
+| claim compatibility preserved | migration_boundary | backend unchanged | no | yes | 08F lock |
+| no backend/schema drift in H6 | scope_guard | slice boundary | no | yes | H5 sequencing contract |
+
+### State Transition Map
+| Entity | Current State | Command | Allowed? | Event | Next Projection State | Invalid Case Test | Source |
+|---|---|---|---:|---|---|---|---|
+| StationExecution UI | claim/release controls present | H6 cutover | yes | none | controls removed | lint/build/type | H6 implementation |
+| Command affordance gate | mixed claim/session dependency | ownership/session-capable `canExecute` | yes | none | ownership-driven UI gating | runtime interaction checks | H2/H6 contract |
+
+### Test Matrix
+| Test ID | Scenario | Type | Given | When | Then | Event Assertion | Invariant Assertion |
+|---|---|---|---|---|---|---|---|
+| HM3-028-T1 | frontend lint | regression | H6 frontend edits | run lint | pass | n/a | no FE code-quality regression |
+| HM3-028-T2 | frontend build | regression | H6 frontend edits | run build | pass | n/a | no FE compile/runtime bundling regression |
+| HM3-028-T3 | route smoke | regression | active route registry | run check:routes | pass | n/a | route accessibility gate preserved |
+| HM3-028-T4 | backend smoke | regression | compatibility backend | run 3-test smoke batch | pass | existing backend events unchanged | claim/session compatibility preserved |
+
+### Final verification result
+- `npm.cmd run lint`: `H6_FRONTEND_LINT_EXIT:0`
+- `npm.cmd run build`: `H6_FRONTEND_BUILD_EXIT:0`
+- `npm.cmd run check:routes`: `H6_FRONTEND_ROUTE_SMOKE_EXIT:0`
+- `pytest -q tests/test_claim_api_deprecation_lock.py tests/test_station_queue_session_aware_migration.py tests/test_station_session_command_guard_enforcement.py`: `29 passed`, `H6_BACKEND_SMOKE_EXIT:0`
+
+### Event naming status
+UNCHANGED_CANONICAL
+
+### Verdict
+ALLOW_IMPLEMENTATION_COMPLETE
+
 ## HM3-027 — P0-C-08H4 Backend Execution Route Claim Guard Removal
 
 ## Routing
