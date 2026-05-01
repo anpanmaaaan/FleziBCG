@@ -79,6 +79,10 @@ export const jaRegistry: I18nRegistry = {
   "navigation.operations_global": "工程（全体）",
   "navigation.globalOperations": "全体工程管理",
   "navigation.stationExecution": "ステーション実行",
+  "navigation.search.placeholder": "画面を検索…",
+  "navigation.search.ariaLabel": "ナビゲーション画面を検索",
+  "navigation.search.noResults": "該当する画面はありません",
+  "navigation.search.clear": "検索をクリア",
 
   // ── login ──
   "login.heading": "FleziBCGにサインイン",

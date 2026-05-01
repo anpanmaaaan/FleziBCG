@@ -52,6 +52,10 @@ export const enRegistry: I18nRegistry = {
   "navigation.operations_global": "Global Operations",
   "navigation.globalOperations": "Global Operations Management",
   "navigation.stationExecution": "Station Execution",
+  "navigation.search.placeholder": "Search screens…",
+  "navigation.search.ariaLabel": "Search navigation screens",
+  "navigation.search.noResults": "No screens match",
+  "navigation.search.clear": "Clear search",
 
   // ── login ──
   "login.heading": "Sign in to FleziBCG",
