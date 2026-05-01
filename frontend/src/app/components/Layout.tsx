@@ -35,14 +35,16 @@ import {
   Building2,
   CalendarClock,
   Eye,
+  Search,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/app/auth";
-import { groupMenuItems, getGroupIdForPath } from "@/app/navigation/navigationGroups";
+import { groupMenuItems, getGroupIdForPath, filterNavigationGroups } from "@/app/navigation/navigationGroups";
 import type { GroupedMenuSection } from "@/app/navigation/navigationGroups";
 import { SCREEN_STATUS_REGISTRY } from "@/app/screenStatus";
 import type { ScreenPhase } from "@/app/screenStatus";
+import { SidebarSearch } from "./SidebarSearch";
 
 function getFocusableElements(container: HTMLElement | null) {
   return Array.from(
@@ -63,6 +65,7 @@ import { ActiveImpersonationBanner } from "./ActiveImpersonationBanner";
 import { RouteStatusBanner } from "./RouteStatusBanner";
 import { TopBar } from "./TopBar";
 import { useImpersonation } from "@/app/impersonation";
+import { useI18n } from "@/app/i18n";
 
 function getIconForPath(path: string) {
   if (path.startsWith("/dashboard")) {
@@ -226,8 +229,10 @@ export function Layout() {
   const location = useLocation();
   const { currentUser } = useAuth();
   const { effectiveRoleCode } = useImpersonation();
+  const { t } = useI18n();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [navSearch, setNavSearch] = useState("");
 
   // Collapsible group state — auto-open the group containing the active route
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
@@ -277,6 +282,7 @@ export function Layout() {
 
   useEffect(() => {
     setMobileSidebarOpen(false);
+    setNavSearch("");
     // Auto-open the group for the new route (without closing others)
     const groupId = getGroupIdForPath(location.pathname);
     if (groupId) {
@@ -353,10 +359,25 @@ export function Layout() {
 
   /** Renders grouped collapsible navigation sections for the expanded sidebar and mobile drawer. */
   const renderGroupedMenuItems = (onNavigate?: () => void) => {
-    const sections: GroupedMenuSection[] = groupMenuItems(menuItems);
+    const allSections: GroupedMenuSection[] = groupMenuItems(menuItems);
+    const isSearching = navSearch.trim().length > 0;
+    const sections = isSearching
+      ? filterNavigationGroups(allSections, navSearch)
+      : allSections;
+
+    if (isSearching && sections.length === 0) {
+      return (
+        <div className="px-3 py-6 text-center">
+          <Search className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+          <p className="text-sm text-slate-500">{t("navigation.search.noResults")}</p>
+        </div>
+      );
+    }
+
     return sections.map(({ group, items: sectionItems }) => {
       const GroupIcon = GROUP_ICONS[group.id] ?? Layers;
-      const isOpen = openGroups.has(group.id);
+      // While searching: all matching groups are expanded (ignore toggle state)
+      const isOpen = isSearching ? true : openGroups.has(group.id);
       const hasActiveItem = sectionItems.some((item) => {
         const tp = item.to.split("?")[0];
         return location.pathname === tp || (tp !== "/" && location.pathname.startsWith(`${tp}/`));
@@ -366,21 +387,23 @@ export function Layout() {
           {/* Group header button */}
           <button
             type="button"
-            onClick={() => toggleGroup(group.id)}
+            onClick={() => { if (!isSearching) toggleGroup(group.id); }}
             aria-expanded={isOpen}
             className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${
               hasActiveItem ? "text-slate-900" : "text-slate-500 hover:text-slate-700"
-            }`}
+            } ${isSearching ? "cursor-default" : ""}`}
           >
             <GroupIcon className="h-3.5 w-3.5 flex-shrink-0" />
             <span className="flex-1 text-xs font-semibold uppercase tracking-wide">
               {group.label}
             </span>
-            <ChevronDown
-              className={`h-3 w-3 flex-shrink-0 transition-transform duration-200 ${
-                isOpen ? "rotate-0" : "-rotate-90"
-              }`}
-            />
+            {!isSearching && (
+              <ChevronDown
+                className={`h-3 w-3 flex-shrink-0 transition-transform duration-200 ${
+                  isOpen ? "rotate-0" : "-rotate-90"
+                }`}
+              />
+            )}
           </button>
 
           {/* Group items */}
@@ -452,7 +475,16 @@ export function Layout() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <nav className="flex-1 overflow-y-auto px-3 py-4" role="navigation" aria-label="Mobile navigation">{renderGroupedMenuItems(() => setMobileSidebarOpen(false))}</nav>
+            <nav className="flex-1 overflow-y-auto py-4" role="navigation" aria-label="Mobile navigation">
+              <SidebarSearch
+                value={navSearch}
+                onChange={setNavSearch}
+                placeholder={t("navigation.search.placeholder")}
+                ariaLabel={t("navigation.search.ariaLabel")}
+                clearLabel={t("navigation.search.clear")}
+              />
+              <div className="px-0">{renderGroupedMenuItems(() => setMobileSidebarOpen(false))}</div>
+            </nav>
           </aside>
         </div>
       )}
@@ -471,7 +503,20 @@ export function Layout() {
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-4">{sidebarCollapsed ? renderCompactMenuItems() : renderGroupedMenuItems()}</nav>
+        <nav className="flex-1 overflow-y-auto py-4">
+          {sidebarCollapsed ? renderCompactMenuItems() : (
+            <>
+              <SidebarSearch
+                value={navSearch}
+                onChange={setNavSearch}
+                placeholder={t("navigation.search.placeholder")}
+                ariaLabel={t("navigation.search.ariaLabel")}
+                clearLabel={t("navigation.search.clear")}
+              />
+              {renderGroupedMenuItems()}
+            </>
+          )}
+        </nav>
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">

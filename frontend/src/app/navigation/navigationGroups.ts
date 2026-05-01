@@ -196,3 +196,41 @@ export function groupMenuItems(
 
   return result;
 }
+
+/**
+ * Filters grouped menu sections to only those matching the search query.
+ *
+ * Matching logic:
+ *   - Item label contains query (case-insensitive)
+ *   - Item route path contains query (case-insensitive)
+ *   - Group label contains query — all items in that group are included
+ *
+ * Returns only groups that have at least one matching item.
+ * Groups with no matches are omitted entirely.
+ *
+ * IMPORTANT: This is a DISPLAY-ONLY filter. It does not change persona
+ * permissions, route guards, or authorization behavior. It operates only
+ * on items already returned by getMenuItemsForPersona().
+ */
+export function filterNavigationGroups(
+  sections: GroupedMenuSection[],
+  query: string
+): GroupedMenuSection[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return sections;
+
+  return sections.reduce<GroupedMenuSection[]>((acc, section) => {
+    const groupMatches = section.group.label.toLowerCase().includes(q);
+    const filteredItems = groupMatches
+      ? section.items
+      : section.items.filter(
+          (item) =>
+            item.label.toLowerCase().includes(q) ||
+            item.to.toLowerCase().includes(q)
+        );
+    if (filteredItems.length > 0) {
+      acc.push({ group: section.group, items: filteredItems });
+    }
+    return acc;
+  }, []);
+}
