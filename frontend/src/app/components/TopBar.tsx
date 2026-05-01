@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type RefObject } from 'react';
 import { Clock, ChevronDown, Bell, Menu, MoreHorizontal } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
@@ -10,12 +10,16 @@ interface TopBarProps {
   currentPage?: string;
   showMobileMenuButton?: boolean;
   onOpenSidebar?: () => void;
+  mobileMenuOpen?: boolean;
+  menuButtonRef?: RefObject<HTMLButtonElement>;
 }
 
 export function TopBar({
   currentPage = 'Dashboard',
   showMobileMenuButton = false,
   onOpenSidebar,
+  mobileMenuOpen = false,
+  menuButtonRef,
 }: TopBarProps) {
   const navigate = useNavigate();
   const { currentUser, logout, logoutAll } = useAuth();
@@ -34,6 +38,11 @@ export function TopBar({
   const userRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const overflowRef = useRef<HTMLDivElement>(null);
+  const plantButtonRef = useRef<HTMLButtonElement>(null);
+  const langButtonRef = useRef<HTMLButtonElement>(null);
+  const userButtonRef = useRef<HTMLButtonElement>(null);
+  const notifButtonRef = useRef<HTMLButtonElement>(null);
+  const overflowButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -77,13 +86,18 @@ export function TopBar({
   useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
       if (event.key === 'Escape') {
+        if (showNotifications) notifButtonRef.current?.focus();
+        else if (showUserDropdown) userButtonRef.current?.focus();
+        else if (showUtilityOverflow) overflowButtonRef.current?.focus();
+        else if (showPlantDropdown) plantButtonRef.current?.focus();
+        else if (showLangDropdown) langButtonRef.current?.focus();
         closeMenus();
       }
     }
 
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, []);
+  }, [showNotifications, showUserDropdown, showUtilityOverflow, showPlantDropdown, showLangDropdown]);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', { 
@@ -154,8 +168,11 @@ export function TopBar({
       <div className="flex min-w-0 flex-1 items-center gap-3">
         {showMobileMenuButton && (
           <button
+            ref={menuButtonRef}
             type="button"
             aria-label="Open navigation drawer"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="app-mobile-navigation-drawer"
             onClick={() => {
               closeMenus();
               onOpenSidebar?.();
@@ -176,7 +193,10 @@ export function TopBar({
         {/* Plant/Site Selector */}
         <div className="relative hidden lg:block" ref={plantRef}>
           <button 
+            ref={plantButtonRef}
             type="button"
+            aria-expanded={showPlantDropdown}
+            aria-controls="topbar-plant-panel"
             onClick={() => {
               setShowPlantDropdown(!showPlantDropdown);
               setShowLangDropdown(false);
@@ -192,7 +212,7 @@ export function TopBar({
 
           {/* Plant Dropdown */}
           {showPlantDropdown && (
-            <div className="absolute right-0 z-50 mt-2 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+            <div id="topbar-plant-panel" className="absolute right-0 z-50 mt-2 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
               {plants.map((plant) => (
                 <button
                   key={plant}
@@ -231,8 +251,11 @@ export function TopBar({
         {/* Notifications */}
         <div className="relative" ref={notifRef}>
           <button 
+            ref={notifButtonRef}
             type="button"
             aria-label="Open notifications"
+            aria-expanded={showNotifications}
+            aria-controls="topbar-notifications-panel"
             onClick={() => {
               setShowNotifications(!showNotifications);
               setShowPlantDropdown(false);
@@ -251,7 +274,7 @@ export function TopBar({
 
           {/* Notifications Dropdown */}
           {showNotifications && (
-            <div className="absolute right-0 z-50 mt-2 w-[min(20rem,calc(100vw-1rem))] rounded-lg border border-gray-200 bg-white py-2 shadow-lg">
+            <div id="topbar-notifications-panel" className="absolute right-0 z-50 mt-2 w-[min(20rem,calc(100vw-1rem))] rounded-lg border border-gray-200 bg-white py-2 shadow-lg">
               <div className="px-4 py-2 border-b border-gray-100">
                 <h3 className="font-semibold text-gray-900">{t("topBar.notifications.title")}</h3>
               </div>
@@ -288,8 +311,11 @@ export function TopBar({
 
         <div className="relative lg:hidden" ref={overflowRef}>
           <button
+            ref={overflowButtonRef}
             type="button"
             aria-label="Open top bar utility menu"
+            aria-expanded={showUtilityOverflow}
+            aria-controls="topbar-utility-panel"
             onClick={() => {
               setShowUtilityOverflow(!showUtilityOverflow);
               setShowPlantDropdown(false);
@@ -303,7 +329,7 @@ export function TopBar({
           </button>
 
           {showUtilityOverflow && (
-            <div className="absolute right-0 z-50 mt-2 w-[min(18rem,85vw)] rounded-xl border border-gray-200 bg-white p-3 shadow-lg">
+            <div id="topbar-utility-panel" className="absolute right-0 z-50 mt-2 w-[min(18rem,85vw)] rounded-xl border border-gray-200 bg-white p-3 shadow-lg">
               <div className="space-y-3">
                 <div className="grid grid-cols-1 gap-2">
                   {plants.map((plant) => (
@@ -359,7 +385,11 @@ export function TopBar({
         {/* Language Selector */}
         <div className="relative hidden lg:block" ref={langRef}>
           <button 
+            ref={langButtonRef}
             type="button"
+            aria-label={`Language: ${selectedLanguage.name}`}
+            aria-expanded={showLangDropdown}
+            aria-controls="topbar-lang-panel"
             onClick={() => {
               setShowLangDropdown(!showLangDropdown);
               setShowPlantDropdown(false);
@@ -376,7 +406,7 @@ export function TopBar({
 
           {/* Language Dropdown */}
           {showLangDropdown && (
-            <div className="absolute right-0 z-50 mt-2 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+            <div id="topbar-lang-panel" className="absolute right-0 z-50 mt-2 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
               {languages.map((lang) => (
                 <button
                   key={lang.locale}
@@ -399,8 +429,11 @@ export function TopBar({
         {/* User Profile */}
         <div className="relative" ref={userRef}>
           <button 
+            ref={userButtonRef}
             type="button"
             aria-label="Open user menu"
+            aria-expanded={showUserDropdown}
+            aria-controls="topbar-user-panel"
             onClick={() => {
               setShowUserDropdown(!showUserDropdown);
               setShowPlantDropdown(false);
@@ -419,7 +452,7 @@ export function TopBar({
 
           {/* User Dropdown */}
           {showUserDropdown && (
-            <div className="absolute right-0 z-50 mt-2 w-[min(14rem,calc(100vw-1rem))] rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+            <div id="topbar-user-panel" className="absolute right-0 z-50 mt-2 w-[min(14rem,calc(100vw-1rem))] rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
               <div className="px-4 py-3 border-b border-gray-100">
                 <p className="text-sm font-semibold text-gray-900">{currentUser?.username || 'User'}</p>
                 <p className="text-xs text-gray-500">{currentUser?.email || '-'}</p>
