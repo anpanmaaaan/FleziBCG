@@ -53,7 +53,7 @@ def test_security_events_endpoint_delegates_with_tenant_and_limit(monkeypatch):
     monkeypatch.setattr(
         security_events_router_module,
         "get_security_events",
-        lambda db, tenant_id, limit: [
+        lambda db, tenant_id, limit, offset, event_type, actor_user_id, resource_type, resource_id, created_from, created_to: [
             {
                 "tenant_id": tenant_id,
                 "actor_user_id": "admin-user",
@@ -87,3 +87,16 @@ def test_security_events_endpoint_rejects_without_admin_permission():
     response = client.get("/api/v1/security-events")
 
     assert response.status_code == 403
+
+
+def test_security_events_endpoint_rejects_invalid_time_range():
+    app, identity = _build_app()
+    _override_admin_dependency(app, identity)
+    app.dependency_overrides[security_events_router_module.get_db] = lambda: object()
+
+    client = TestClient(app)
+    response = client.get(
+        "/api/v1/security-events?created_from=2026-05-01T12:00:00Z&created_to=2026-05-01T10:00:00Z"
+    )
+
+    assert response.status_code == 422

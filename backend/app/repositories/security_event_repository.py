@@ -35,13 +35,37 @@ def list_security_events(
     *,
     tenant_id: str,
     limit: int = 100,
+    offset: int = 0,
+    event_type: str | None = None,
+    actor_user_id: str | None = None,
+    resource_type: str | None = None,
+    resource_id: str | None = None,
+    created_from=None,
+    created_to=None,
 ) -> list[SecurityEventLog]:
     safe_limit = max(1, min(limit, 500))
+    safe_offset = max(0, offset)
+
+    query = select(SecurityEventLog).where(SecurityEventLog.tenant_id == tenant_id)
+
+    if event_type:
+        query = query.where(SecurityEventLog.event_type == event_type)
+    if actor_user_id:
+        query = query.where(SecurityEventLog.actor_user_id == actor_user_id)
+    if resource_type:
+        query = query.where(SecurityEventLog.resource_type == resource_type)
+    if resource_id:
+        query = query.where(SecurityEventLog.resource_id == resource_id)
+    if created_from is not None:
+        query = query.where(SecurityEventLog.created_at >= created_from)
+    if created_to is not None:
+        query = query.where(SecurityEventLog.created_at <= created_to)
+
     return list(
         db.scalars(
-            select(SecurityEventLog)
-            .where(SecurityEventLog.tenant_id == tenant_id)
+            query
             .order_by(SecurityEventLog.created_at.desc(), SecurityEventLog.id.desc())
             .limit(safe_limit)
+            .offset(safe_offset)
         )
     )

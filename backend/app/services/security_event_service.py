@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app.models.security_event import SecurityEventLog
 from app.repositories.security_event_repository import (
@@ -37,5 +38,24 @@ def get_security_events(
     *,
     tenant_id: str,
     limit: int = 100,
+    offset: int = 0,
+    event_type: str | None = None,
+    actor_user_id: str | None = None,
+    resource_type: str | None = None,
+    resource_id: str | None = None,
+    created_from: datetime | None = None,
+    created_to: datetime | None = None,
 ) -> list[SecurityEventLog]:
-    return list_security_events(db, tenant_id=tenant_id, limit=limit)
+    normalized_event_type = event_type.strip().upper() if event_type else None
+    return list_security_events(
+        db,
+        tenant_id=tenant_id,
+        limit=limit,
+        offset=offset,
+        event_type=normalized_event_type,
+        actor_user_id=actor_user_id,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        created_from=created_from,
+        created_to=created_to,
+    )
