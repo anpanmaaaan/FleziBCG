@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, Edit, Trash, Lock } from "lucide-react";
 import { toast } from "sonner";
-import { MockWarningBanner, ScreenStatusBadge } from "@/app/components";
+import { GovernancePageShell } from "@/app/components";
 import { useI18n } from "@/app/i18n";
 
 interface Role {
@@ -53,31 +53,25 @@ export function RoleManagement() {
   const [roles] = useState(mockRoles);
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      <MockWarningBanner
-        phase="SHELL"
-        note="Role and permission management is not yet connected to backend. Backend IAM system remains source of truth for role definitions and assignments."
-      />
-      <div className="flex-1 flex flex-col p-6">
-        {/* Page header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">Role Management</h1>
-            <ScreenStatusBadge phase="SHELL" />
-          </div>
-          <button
-            disabled
-            onClick={() => toast.info("Role creation requires backend workflow")}
-            className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-2"
-            title="This action requires backend IAM workflow"
-          >
-            <Lock className="w-4 h-4" />
-            Create Role (Future)
-          </button>
-        </div>
-
-        {/* Roles Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <GovernancePageShell
+      title="Role Management"
+      subtitle="Manage roles, personas, and action permissions"
+      phase="SHELL"
+      bannerNote="Role and permission management is not yet connected to backend. Backend IAM system remains source of truth for role definitions and assignments."
+      actions={
+        <button
+          disabled
+          onClick={() => toast.info("Role creation requires backend workflow")}
+          className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-2"
+          title="This action requires backend IAM workflow"
+        >
+          <Lock className="w-4 h-4" />
+          Create Role (Future)
+        </button>
+      }
+    >
+      {/* Roles Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {roles.map((role) => (
             <div key={role.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm">
               <div className="flex items-start justify-between mb-3">
@@ -111,8 +105,7 @@ export function RoleManagement() {
               </div>
             </div>
           ))}
-        </div>
       </div>
-    </div>
+    </GovernancePageShell>
   );
 }

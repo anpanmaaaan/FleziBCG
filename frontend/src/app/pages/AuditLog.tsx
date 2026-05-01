@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Lock, Search, Download, Filter } from "lucide-react";
-import { MockWarningBanner, ScreenStatusBadge } from "@/app/components";
+import { GovernancePageShell } from "@/app/components";
 import { useI18n } from "@/app/i18n";
 
 interface AuditEvent {
@@ -70,20 +70,15 @@ export function AuditLog() {
   );
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      <MockWarningBanner
-        phase="SHELL"
-        note="Audit log is displayed for visualization only. Backend audit and compliance system remains source of truth for all operational events."
-      />
-      <div className="flex-1 flex flex-col p-6">
-        {/* Page header */}
-        <div className="flex items-center gap-3 mb-6">
-          <h1 className="text-2xl font-bold">Audit Log</h1>
-          <ScreenStatusBadge phase="SHELL" />
-        </div>
+    <GovernancePageShell
+      title="Audit Log"
+      subtitle="Immutable operational event history"
+      phase="SHELL"
+      bannerNote="Audit log is displayed for visualization only. Backend audit and compliance system remains source of truth for all operational events."
+    >
 
-        {/* Filters */}
-        <div className="flex items-center gap-4 mb-6">
+      {/* Filters */}
+      <div className="flex items-center gap-4 mb-6">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
@@ -112,10 +107,10 @@ export function AuditLog() {
           </button>
         </div>
 
-        {/* Events Table */}
-        <div className="flex-1 overflow-auto border border-gray-200 rounded-lg">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b sticky top-0">
+      {/* Events Table */}
+      <div className="flex-1 overflow-auto border border-gray-200 rounded-lg">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b sticky top-0">
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Timestamp</th>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Actor</th>
@@ -150,12 +145,11 @@ export function AuditLog() {
           </table>
         </div>
 
-        {/* Note */}
-        <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded text-sm text-slate-700 flex items-start gap-2">
-          <Lock className="w-4 h-4 mt-0.5 flex-shrink-0" />
-          <span>All audit events are immutable records managed by backend compliance system.</span>
-        </div>
+      {/* Note */}
+      <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded text-sm text-slate-700 flex items-start gap-2">
+        <Lock className="w-4 h-4 mt-0.5 flex-shrink-0" />
+        <span>All audit events are immutable records managed by backend compliance system.</span>
       </div>
-    </div>
+    </GovernancePageShell>
   );
 }

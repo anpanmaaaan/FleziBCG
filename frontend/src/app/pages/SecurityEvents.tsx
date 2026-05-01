@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Lock, AlertTriangle, Search } from "lucide-react";
-import { MockWarningBanner, ScreenStatusBadge } from "@/app/components";
+import { GovernancePageShell } from "@/app/components";
 import { useI18n } from "@/app/i18n";
 
 interface SecurityEvent {
@@ -93,20 +93,15 @@ export function SecurityEvents() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      <MockWarningBanner
-        phase="SHELL"
-        note="Security events are displayed for visualization only. Backend security and incident response system remains source of truth for threat detection and remediation."
-      />
-      <div className="flex-1 flex flex-col p-6">
-        {/* Page header */}
-        <div className="flex items-center gap-3 mb-6">
-          <h1 className="text-2xl font-bold">Security Events</h1>
-          <ScreenStatusBadge phase="SHELL" />
-        </div>
+    <GovernancePageShell
+      title="Security Events"
+      subtitle="Threat detection and incident monitoring"
+      phase="SHELL"
+      bannerNote="Security events are displayed for visualization only. Backend security and incident response system remains source of truth for threat detection and remediation."
+    >
 
-        {/* Search */}
-        <div className="mb-6">
+      {/* Search */}
+      <div className="mb-6">
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
@@ -119,10 +114,10 @@ export function SecurityEvents() {
           </div>
         </div>
 
-        {/* Events Table */}
-        <div className="flex-1 overflow-auto border border-gray-200 rounded-lg">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b sticky top-0">
+      {/* Events Table */}
+      <div className="flex-1 overflow-auto border border-gray-200 rounded-lg">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b sticky top-0">
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Timestamp</th>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Severity</th>
@@ -162,10 +157,9 @@ export function SecurityEvents() {
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
-        </div>
+          </tbody>
+        </table>
       </div>
-    </div>
+    </GovernancePageShell>
   );
 }
