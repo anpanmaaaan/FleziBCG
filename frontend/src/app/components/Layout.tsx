@@ -1,7 +1,9 @@
 import { Link, Navigate, Outlet, useLocation } from "react-router";
 import {
   AlertTriangle,
+  Activity,
   BarChart3,
+  Box,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
@@ -14,11 +16,14 @@ import {
   Monitor,
   Package,
   PlayCircle,
+  Ruler,
   ScanSearch,
   Server,
   Settings,
+  ShieldAlert,
   ShieldCheck,
   Tag,
+  TrendingUp,
   UserCheck,
   X,
   Lock,
@@ -144,6 +149,24 @@ function getIconForPath(path: string) {
   }
   if (path.startsWith("/supervisory")) {
     return Eye;
+  }
+  if (path.startsWith("/quality-dashboard")) {
+    return ShieldAlert;
+  }
+  if (path.startsWith("/quality-measurements")) {
+    return Ruler;
+  }
+  if (path.startsWith("/quality-holds")) {
+    return AlertTriangle;
+  }
+  if (path.startsWith("/material-readiness")) {
+    return Package;
+  }
+  if (path.startsWith("/staging-kitting")) {
+    return Box;
+  }
+  if (path.startsWith("/wip-buffers")) {
+    return Activity;
   }
   if (path.startsWith("/settings")) {
     return Settings;

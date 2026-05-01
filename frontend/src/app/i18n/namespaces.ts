@@ -48,6 +48,12 @@ export const I18N_NAMESPACES = {
   downtimeAnalysis: "downtimeAnalysis",
   shiftSummary: "shiftSummary",
   supervisoryOpDetail: "supervisoryOpDetail",
+  qualityDashboard: "qualityDashboard",
+  measurementEntry: "measurementEntry",
+  qualityHolds: "qualityHolds",
+  materialReadiness: "materialReadiness",
+  stagingKitting: "stagingKitting",
+  wipBuffers: "wipBuffers",
 } as const;
 
 export type I18nNamespace = (typeof I18N_NAMESPACES)[keyof typeof I18N_NAMESPACES];

@@ -300,6 +300,42 @@ export const SCREEN_STATUS_REGISTRY: Record<string, ScreenStatusEntry> = {
     dataSource: "NONE",
     notes: "Supervisory operation detail shell. Supervisory authority, override actions, and execution truth are managed by backend command and authorization system.",
   },
+  qualityDashboard: {
+    routePattern: "/quality-dashboard",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Quality Lite Dashboard shell. Quality evaluation and disposition are managed by the backend quality domain.",
+  },
+  measurementEntry: {
+    routePattern: "/quality-measurements",
+    phase: "SHELL",
+    dataSource: "NONE",
+    notes: "Measurement entry shell. Pass/fail evaluation and disposition are managed by the backend quality domain.",
+  },
+  qualityHolds: {
+    routePattern: "/quality-holds",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Quality holds shell for supervisory review. Hold release and approval are managed by the backend quality domain.",
+  },
+  materialReadiness: {
+    routePattern: "/material-readiness",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Material readiness shell for execution planning. Inventory truth and material availability are managed by backend inventory/material system.",
+  },
+  stagingKitting: {
+    routePattern: "/staging-kitting",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Staging & kitting shell for material coordination. WMS transactions and material movements are managed by backend inventory/material system.",
+  },
+  wipBuffers: {
+    routePattern: "/wip-buffers",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "WIP queue and buffers shell for production planning. WIP position and flow are managed by backend inventory/material system.",
+  },
 };
 
 const SCREEN_ROUTE_ALIASES: Record<string, string> = {

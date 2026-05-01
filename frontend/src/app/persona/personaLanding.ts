@@ -34,6 +34,12 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "Station Monitor", to: "/station-monitor" },
     { label: "Downtime Analysis", to: "/downtime-analysis" },
     { label: "Shift Summary", to: "/shift-summary" },
+    { label: "Material Readiness", to: "/material-readiness" },
+    { label: "Staging & Kitting", to: "/staging-kitting" },
+    { label: "WIP Buffers", to: "/wip-buffers" },
+    { label: "Quality Lite Dashboard", to: "/quality-dashboard" },
+    { label: "Quality Measurements", to: "/quality-measurements" },
+    { label: "Quality Holds", to: "/quality-holds" },
     { label: "Quality", to: "/quality" },
     { label: "Defects", to: "/defects" },
   ],
@@ -48,11 +54,17 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "Reason Codes", to: "/reason-codes" },
     { label: "Line Monitor", to: "/line-monitor" },
     { label: "Downtime Analysis", to: "/downtime-analysis" },
+    { label: "Material Readiness", to: "/material-readiness" },
+    { label: "Staging & Kitting", to: "/staging-kitting" },
+    { label: "WIP Buffers", to: "/wip-buffers" },
     { label: "Traceability", to: "/traceability" },
     { label: "Quality", to: "/quality" },
   ],
   QC: [
     { label: "Global Operations", to: "/operations?lens=qc" },
+    { label: "Quality Lite Dashboard", to: "/quality-dashboard" },
+    { label: "Quality Measurements", to: "/quality-measurements" },
+    { label: "Quality Holds", to: "/quality-holds" },
     { label: "Quality", to: "/quality" },
     { label: "Defects", to: "/defects" },
     { label: "Traceability", to: "/traceability" },
@@ -77,6 +89,12 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "Station Monitor", to: "/station-monitor" },
     { label: "Downtime Analysis", to: "/downtime-analysis" },
     { label: "Shift Summary", to: "/shift-summary" },
+    { label: "Material Readiness", to: "/material-readiness" },
+    { label: "Staging & Kitting", to: "/staging-kitting" },
+    { label: "WIP Buffers", to: "/wip-buffers" },
+    { label: "Quality Lite Dashboard", to: "/quality-dashboard" },
+    { label: "Quality Measurements", to: "/quality-measurements" },
+    { label: "Quality Holds", to: "/quality-holds" },
     { label: "Quality", to: "/quality" },
     { label: "Defects", to: "/defects" },
     { label: "Traceability", to: "/traceability" },
@@ -413,6 +431,26 @@ export function isRouteAllowedForPersona(persona: ResolvedPersona, pathname: str
   }
   if (pathname.startsWith("/supervisory/operations/")) {
     return ["SUP", "PMG", "ADM"].includes(persona);
+  }
+
+  // Quality Lite / Material / Traceability shells
+  if (pathname === "/quality-dashboard") {
+    return ["QC", "SUP", "PMG", "ADM"].includes(persona);
+  }
+  if (pathname === "/quality-measurements") {
+    return ["QC", "SUP", "PMG", "ADM"].includes(persona);
+  }
+  if (pathname === "/quality-holds") {
+    return ["QC", "SUP", "PMG", "ADM"].includes(persona);
+  }
+  if (pathname === "/material-readiness") {
+    return ["SUP", "IEP", "PMG", "ADM"].includes(persona);
+  }
+  if (pathname === "/staging-kitting") {
+    return ["SUP", "IEP", "PMG", "ADM"].includes(persona);
+  }
+  if (pathname === "/wip-buffers") {
+    return ["SUP", "IEP", "PMG", "ADM"].includes(persona);
   }
 
   return false;

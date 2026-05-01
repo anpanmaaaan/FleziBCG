@@ -3,6 +3,7 @@
 ## History
 | Date | Version | Change |
 |---|---:|---|
+| 2026-05-01 | v1.4 | FE-COVERAGE-01D: Added 6 Quality Lite / Material / Traceability SHELL screens. Routes increased 47→53, SHELL phases increased 23→29. |
 | 2026-05-01 | v1.3 | FE-COVERAGE-01C: Added 9 Execution/Supervisory SHELL screens. Routes increased 38→47, SHELL phases increased 14→23. |
 | 2026-04-28 | v1.2 | FE-COVERAGE-01B: Added 5 MMD SHELL screens (BomList, BomDetail, RoutingOperationDetail, ResourceRequirements, ReasonCodes). Routes increased 33→38, SHELL phases increased 9→14. |
 | 2026-05-01 | v1.1 | Updated governance screens: 9 new SHELL screens added (UserManagement, RoleManagement, ActionRegistry, ScopeAssignments, SessionManagement, AuditLog, SecurityEvents, TenantSettings, PlantHierarchy). Routes increased 24→33, SHELL phases increased 0→9. |
@@ -60,21 +61,24 @@ Audit the current frontend screen/route/page coverage of FleziBCG before creatin
 
 ## 4. Executive Summary
 
-**Frontend Coverage Status (as of 2026-05-01 — after FE-COVERAGE-01C)**
+**Frontend Coverage Status (as of 2026-05-01 — after FE-COVERAGE-01D)**
 
-| Metric | Before FE-COVERAGE-01A | After FE-COVERAGE-01A | After FE-COVERAGE-01B | After FE-COVERAGE-01C |
-|---|---|---|---|---|
-| **Total Routes Defined** | 24 | 33 | 38 | 47 |
-| **Total Page Files** | 22 (21 unique) | 31 (30 unique) | 36 (35 unique) | 45 (44 unique) |
-| **CONNECTED Pages** | 13 (59%) | 13 (42%) | 13 (36%) | 13 (29%) |
-| **PARTIAL Pages** | 3 (14%) | 3 (10%) | 3 (8%) | 3 (7%) |
-| **MOCK Pages** | 7 (32%) | 7 (23%) | 7 (19%) | 7 (16%) |
-| **SHELL Pages** | 0 (0%) | 9 (29%) | 14 (39%) | 23 (51%) |
-| **PLACEHOLDER Pages** | 2 (9%) | 2 (6%) | 2 (6%) | 2 (4%) |
-| **DEV-ONLY Pages** | 1 (5%) | 1 (3%) | 1 (3%) | 1 (2%) |
-| **Domains with Any Coverage** | 9 / 15 target groups | 10 / 15 target groups | 11 / 15 | 12 / 15 |
+| Metric | Before FE-COVERAGE-01A | After FE-COVERAGE-01A | After FE-COVERAGE-01B | After FE-COVERAGE-01C | After FE-COVERAGE-01D |
+|---|---|---|---|---|---|
+| **Total Routes Defined** | 24 | 33 | 38 | 47 | 53 |
+| **Total Page Files** | 22 (21 unique) | 31 (30 unique) | 36 (35 unique) | 45 (44 unique) | 51 (50 unique) |
+| **CONNECTED Pages** | 13 (59%) | 13 (42%) | 13 (36%) | 13 (29%) | 13 (25%) |
+| **PARTIAL Pages** | 3 (14%) | 3 (10%) | 3 (8%) | 3 (7%) | 3 (6%) |
+| **MOCK Pages** | 7 (32%) | 7 (23%) | 7 (19%) | 7 (16%) | 7 (14%) |
+| **SHELL Pages** | 0 (0%) | 9 (29%) | 14 (39%) | 23 (51%) | 29 (57%) |
+| **PLACEHOLDER Pages** | 2 (9%) | 2 (6%) | 2 (6%) | 2 (4%) | 2 (4%) |
+| **DEV-ONLY Pages** | 1 (5%) | 1 (3%) | 1 (3%) | 1 (2%) | 1 (2%) |
+| **Domains with Any Coverage** | 9 / 15 target groups | 10 / 15 target groups | 11 / 15 | 12 / 15 | 12 / 15 |
 
-**Key Insight (FE-COVERAGE-01C)**: Added 9 Execution/Supervisory shell screens (OperationTimeline, StationSession, OperatorIdentification, EquipmentBinding, LineMonitor, StationMonitor, DowntimeAnalysis, ShiftSummary, SupervisoryOperationDetail). All dangerous execution actions are disabled. All execution/supervisory truth remains in backend. Shell pages serve as to-be visualization targets and UX documentation for upcoming backend integration.
+**Key Insights**:
+- **FE-COVERAGE-01D**: Added 6 Quality Lite / Material / Traceability SHELL screens (QualityDashboard, MeasurementEntry, QualityHolds, MaterialReadiness, StagingKitting, WipBuffers). Hard Mode MOM v3 boundaries enforced: quality disposition, material inventory position, and WIP location remain backend-only. All dangerous operations disabled. Shell pages serve as visualization documentation for upcoming backend integration.
+- **FE-COVERAGE-01C**: Added 9 Execution/Supervisory shell screens. All dangerous execution actions are disabled. All execution/supervisory truth remains in backend.
+- **Coverage Growth**: 38 → 53 routes in 2 iterations; SHELL pages now represent 57% of total page count.
 
 ---
 

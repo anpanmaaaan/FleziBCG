@@ -43,6 +43,12 @@ import { StationMonitor } from "./pages/StationMonitor";
 import { DowntimeAnalysis } from "./pages/DowntimeAnalysis";
 import { ShiftSummary } from "./pages/ShiftSummary";
 import { SupervisoryOperationDetail } from "./pages/SupervisoryOperationDetail";
+import { QualityDashboard } from "./pages/QualityDashboard";
+import { MeasurementEntry } from "./pages/MeasurementEntry";
+import { QualityHolds } from "./pages/QualityHolds";
+import { MaterialReadiness } from "./pages/MaterialReadiness";
+import { StagingKitting } from "./pages/StagingKitting";
+import { WipBuffers } from "./pages/WipBuffers";
 import { PersonaLandingRedirect } from "./persona/PersonaLandingRedirect";
 import { RequireAuth } from "./auth/RequireAuth";
 
@@ -105,6 +111,14 @@ export const router = createBrowserRouter([
       { path: "downtime-analysis", Component: DowntimeAnalysis },
       { path: "shift-summary", Component: ShiftSummary },
       { path: "supervisory/operations/:operationId", Component: SupervisoryOperationDetail },
+      
+      // Quality Lite / Material / Traceability shells
+      { path: "quality-dashboard", Component: QualityDashboard },
+      { path: "quality-measurements", Component: MeasurementEntry },
+      { path: "quality-holds", Component: QualityHolds },
+      { path: "material-readiness", Component: MaterialReadiness },
+      { path: "staging-kitting", Component: StagingKitting },
+      { path: "wip-buffers", Component: WipBuffers },
       
       // Station Execution
       { path: "station", Component: StationExecution },
