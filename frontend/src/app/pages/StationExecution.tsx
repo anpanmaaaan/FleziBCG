@@ -4,7 +4,15 @@ import { PageHeader } from "@/app/components";
 import { StatusBadge } from "@/app/components";
 import { MockWarningBanner } from "@/app/components";
 import { toast } from "sonner";
-import { RefreshCw, Lock, X, ChevronDown, ArrowLeft, RotateCcw, Info } from "lucide-react";
+import { RefreshCw, Lock, X, RotateCcw, Info } from "lucide-react";
+import { StationExecutionHeader } from "@/app/components/station-execution/StationExecutionHeader";
+import { StationQueuePanel, isBackendClaimableQueueStatus } from "@/app/components/station-execution/StationQueuePanel";
+import { ExecutionStateHero } from "@/app/components/station-execution/ExecutionStateHero";
+import { AllowedActionZone } from "@/app/components/station-execution/AllowedActionZone";
+import { ClosureStatePanel } from "@/app/components/station-execution/ClosureStatePanel";
+import { ReopenOperationModal } from "@/app/components/station-execution/ReopenOperationModal";
+import { StartDowntimeDialog } from "@/app/components/station-execution/StartDowntimeDialog";
+import type { QueueFilter } from "@/app/components/station-execution/QueueFilterBar";
 import {
   fetchDowntimeReasons,
   operationApi,
@@ -20,148 +28,6 @@ import {
 } from "@/app/api";
 import { useI18n } from "@/app/i18n";
 import type { I18nSemanticKey } from "@/app/i18n/keys";
-
-function ReopenOperationModal({ open, onClose, onSubmit, loading }: {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (reason: string) => void;
-  loading: boolean;
-}) {
-  const { t } = useI18n();
-  const [reason, setReason] = useState("");
-
-  useEffect(() => {
-    if (!open) {
-      setReason("");
-    }
-  }, [open]);
-
-  if (!open) return null;
-
-  const trimmedReason = reason.trim();
-
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl p-6 w-96" onClick={e => e.stopPropagation()}>
-        <h2 className="text-lg font-bold mb-4">{t("station.action.reopen")}</h2>
-        <label className="block mb-2 text-sm font-medium text-gray-700">
-          {t("station.reopen.reason.label")}
-          <textarea
-            className="mt-1 block w-full border border-gray-300 rounded-lg p-2 min-h-28 resize-y"
-            value={reason}
-            onChange={e => setReason(e.target.value)}
-            placeholder={t("station.reopen.reason.placeholder")}
-            disabled={loading}
-          />
-        </label>
-        <p className="text-xs text-gray-500">{t("station.reopen.reason.helper")}</p>
-        <div className="flex gap-2 mt-4 justify-end">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700" disabled={loading}>
-            {t("station.reopen.dialog.cancel")}
-          </button>
-          <button
-            onClick={() => onSubmit(trimmedReason)}
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-50"
-            disabled={loading || trimmedReason.length === 0}
-          >
-            {t("station.reopen.dialog.submit")}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StartDowntimeModal({ open, onClose, onSubmit, loading, reasons, reasonsLoading }: {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (reasonCode: string, note: string) => void;
-  loading: boolean;
-  reasons: DowntimeReasonOption[];
-  reasonsLoading: boolean;
-}) {
-  const { t } = useI18n();
-  const [reasonCode, setReasonCode] = useState("");
-  const [note, setNote] = useState("");
-
-  useEffect(() => {
-    if (!open) {
-      setReasonCode("");
-      setNote("");
-      return;
-    }
-
-    setReasonCode((current) => {
-      if (current && reasons.some((item) => item.reason_code === current)) {
-        return current;
-      }
-      return reasons[0]?.reason_code ?? "";
-    });
-  }, [open, reasons]);
-
-  if (!open) return null;
-
-  const selectedReason = reasons.find((item) => item.reason_code === reasonCode) ?? null;
-  const noteRequired = selectedReason?.requires_comment ?? false;
-  const noteValue = note.trim();
-  const submitDisabled =
-    loading ||
-    reasonsLoading ||
-    !reasonCode ||
-    (noteRequired && noteValue.length === 0);
-
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl p-6 w-96" onClick={e => e.stopPropagation()}>
-        <h2 className="text-lg font-bold mb-4">{t("station.action.startDowntime")}</h2>
-        <label className="block mb-2 text-sm font-medium text-gray-700">
-          {t("station.downtime.reason.label")}
-          <select
-            className="mt-1 block w-full border border-gray-300 rounded-lg p-2"
-            value={reasonCode}
-            onChange={e => setReasonCode(e.target.value)}
-            disabled={loading || reasonsLoading || reasons.length === 0}
-          >
-            {reasons.length === 0 ? (
-              <option value="">{t("station.downtime.reason.empty")}</option>
-            ) : (
-              reasons.map((item) => (
-                <option key={item.reason_code} value={item.reason_code}>{item.reason_name}</option>
-              ))
-            )}
-          </select>
-        </label>
-        {selectedReason ? (
-          <p className="mb-2 text-xs text-gray-500">
-            {t("station.downtime.reason.groupPrefix")} {selectedReason.reason_group}
-          </p>
-        ) : null}
-        <label className="block mb-2 text-sm font-medium text-gray-700">
-          {noteRequired ? t("station.downtime.note.requiredLabel") : t("station.downtime.note.label")}
-          <input
-            className="mt-1 block w-full border border-gray-300 rounded-lg p-2"
-            value={note}
-            onChange={e => setNote(e.target.value)}
-            placeholder={noteRequired ? t("station.downtime.note.requiredPlaceholder") : t("station.downtime.note.placeholder")}
-            disabled={loading || reasonsLoading}
-          />
-        </label>
-        {reasonsLoading ? <p className="text-xs text-gray-500">{t("station.downtime.reason.loading")}</p> : null}
-        {!reasonsLoading && reasons.length === 0 ? <p className="text-xs text-amber-700">{t("station.downtime.reason.emptyHelp")}</p> : null}
-        <div className="flex gap-2 mt-4 justify-end">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700" disabled={loading}>{t("common.action.cancel")}</button>
-          <button
-            onClick={() => onSubmit(reasonCode, noteValue)}
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-50"
-            disabled={submitDisabled}
-          >
-            {t("station.action.startDowntime")}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── Numeric Keypad Overlay ────────────────────────────────────────────────────
 
@@ -352,276 +218,7 @@ function Stepper({
   );
 }
 
-// ── Queue List ────────────────────────────────────────────────────────────────
-
-interface QueueListProps {
-  items: StationQueueItem[];
-  loading: boolean;
-  activeOperationId?: number;
-  filter: QueueFilter;
-  onFilterChange: (filter: QueueFilter) => void;
-  onSelect: (item: StationQueueItem) => void;
-}
-
-type QueueFilter = "all" | "mine" | "ready" | "paused" | "blocked" | "downtime";
-
-const isBackendClaimableQueueStatus = (status: StationQueueItem["status"]): boolean =>
-  status === "PLANNED" || status === "IN_PROGRESS";
-
-const matchesQueueFilter = (item: StationQueueItem, filter: QueueFilter): boolean => {
-  switch (filter) {
-    case "mine":
-      return item.claim.state === "mine";
-    case "ready":
-      return isBackendClaimableQueueStatus(item.status) && !item.downtime_open;
-    case "paused":
-      return item.status === "PAUSED";
-    case "blocked":
-      return item.status === "BLOCKED";
-    case "downtime":
-      return item.downtime_open;
-    case "all":
-    default:
-      return true;
-  }
-};
-
-function QueueList({
-  items,
-  loading,
-  activeOperationId,
-  filter,
-  onFilterChange,
-  onSelect,
-}: QueueListProps) {
-  const { t } = useI18n();
-  const hasMineClaim = items.some((item) => item.claim.state === "mine");
-
-  const summary = useMemo(() => {
-    return items.reduce(
-      (acc, item) => {
-        if (isBackendClaimableQueueStatus(item.status)) {
-          acc.ready += 1;
-        }
-        if (item.status === "PAUSED") {
-          acc.paused += 1;
-        }
-        if (item.status === "BLOCKED") {
-          acc.blocked += 1;
-        }
-        if (item.downtime_open) {
-          acc.downtime += 1;
-        }
-        if (item.claim.state === "mine") {
-          acc.mine += 1;
-        }
-        return acc;
-      },
-      { ready: 0, paused: 0, blocked: 0, downtime: 0, mine: 0 },
-    );
-  }, [items]);
-
-  const filteredItems = useMemo(
-    () => items.filter((item) => matchesQueueFilter(item, filter)),
-    [filter, items],
-  );
-  const selectedIsFilteredOut =
-    activeOperationId !== undefined &&
-    items.some((item) => item.operation_id === activeOperationId) &&
-    !filteredItems.some((item) => item.operation_id === activeOperationId);
-
-  const filterDefs: { key: QueueFilter; label: string }[] = [
-    { key: "all", label: t("station.queue.filter.all") },
-    { key: "mine", label: t("station.queue.filter.mine") },
-    { key: "ready", label: t("station.queue.filter.ready") },
-    { key: "paused", label: t("station.queue.filter.paused") },
-    { key: "blocked", label: t("station.queue.filter.blocked") },
-    { key: "downtime", label: t("station.queue.filter.downtime") },
-  ];
-
-  if (loading) {
-    return <p className="text-sm text-gray-500 py-8 text-center">{t("station.loading")}</p>;
-  }
-  if (items.length === 0) {
-    return (
-      <p className="text-sm text-gray-500 py-8 text-center">
-        {t("station.queue.empty")}
-      </p>
-    );
-  }
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-        <div className="rounded-lg border bg-white px-3 py-2">
-          <p className="text-[11px] text-gray-500">{t("station.queue.summary.ready")}</p>
-          <p className="text-sm font-semibold text-gray-900">{summary.ready}</p>
-        </div>
-        <div className="rounded-lg border bg-white px-3 py-2">
-          <p className="text-[11px] text-gray-500">{t("station.queue.summary.paused")}</p>
-          <p className="text-sm font-semibold text-amber-700">{summary.paused}</p>
-        </div>
-        <div className="rounded-lg border bg-white px-3 py-2">
-          <p className="text-[11px] text-gray-500">{t("station.queue.summary.blocked")}</p>
-          <p className="text-sm font-semibold text-red-700">{summary.blocked}</p>
-        </div>
-        <div className="rounded-lg border bg-white px-3 py-2">
-          <p className="text-[11px] text-gray-500">{t("station.queue.summary.downtime")}</p>
-          <p className="text-sm font-semibold text-red-700">{summary.downtime}</p>
-        </div>
-        <div className="rounded-lg border bg-white px-3 py-2">
-          <p className="text-[11px] text-gray-500">{t("station.queue.summary.mine")}</p>
-          <p className="text-sm font-semibold text-blue-700">{summary.mine}</p>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 flex-wrap">
-        {filterDefs.map((entry) => {
-          const active = filter === entry.key;
-          return (
-            <button
-              key={entry.key}
-              type="button"
-              onClick={() => onFilterChange(entry.key)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
-                active
-                  ? "bg-blue-600 border-blue-600 text-white"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              {entry.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {selectedIsFilteredOut && (
-        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-          {t("station.queue.selectedOutsideFilter")}
-        </p>
-      )}
-
-      {filteredItems.length === 0 && (
-        <p className="text-sm text-gray-500 py-6 text-center">{t("station.queue.emptyFiltered")}</p>
-      )}
-
-      {filteredItems.map((item) => {
-        const active = activeOperationId === item.operation_id;
-        const locked = item.claim.state === "other";
-        const showDowntimeTag = item.downtime_open;
-        const showBlockedDowntimeHint = item.status === "BLOCKED" && item.downtime_open;
-        const isMine = item.claim.state === "mine";
-        const isClaimableByStatus = isBackendClaimableQueueStatus(item.status);
-
-        const rowTone =
-          item.status === "BLOCKED"
-            ? "border-red-200 bg-red-50"
-            : item.status === "PAUSED"
-            ? "border-amber-200 bg-amber-50"
-            : "border-gray-200 bg-white";
-
-        const claimHint =
-          item.claim.state === "mine"
-            ? t("station.claim.ownedBadge")
-            : item.claim.state === "other"
-            ? t("station.queue.claimedByOther")
-            : isClaimableByStatus && !hasMineClaim
-            ? t("station.queue.readyToClaim")
-            : null;
-
-        const claimHintTone =
-          item.claim.state === "mine"
-            ? "text-blue-700"
-            : item.claim.state === "other"
-            ? "text-orange-700"
-            : "text-emerald-700";
-
-        return (
-          <button
-            key={item.operation_id}
-            type="button"
-            disabled={locked}
-            onClick={() => onSelect(item)}
-            className={`w-full text-left p-4 rounded-xl border-2 transition ${
-              active
-                ? "border-blue-500 bg-blue-50"
-                : locked
-                ? "border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed"
-                : `${rowTone} hover:border-blue-300 hover:bg-blue-50 active:scale-[0.99]`
-            }`}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 min-w-0">
-                {locked && <Lock className="w-4 h-4 text-orange-500 shrink-0" />}
-                {isMine && <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0" aria-hidden="true" />}
-                <p className="font-semibold text-base text-gray-900 truncate">
-                  {item.name}
-                </p>
-              </div>
-              <StatusBadge variant={mapExecutionStatusBadgeVariant(item.status)}>
-                {t(mapExecutionStatusText(item.status) as I18nSemanticKey)}
-              </StatusBadge>
-            </div>
-            <div className="mt-1 flex items-center gap-2 flex-wrap">
-              <p className="text-xs text-gray-500">{item.operation_number}</p>
-              {showDowntimeTag && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold">
-                  {t("station.queue.downtimeActive")}
-                </span>
-              )}
-              {showBlockedDowntimeHint && (
-                <span className="text-xs text-red-700 font-medium">
-                  {t("station.queue.blockedByDowntime")}
-                </span>
-              )}
-              {claimHint && <span className={`text-xs font-medium ${claimHintTone}`}>{claimHint}</span>}
-            </div>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 // ── Main Component ────────────────────────────────────────────────────────────
-
-function KpiCard({ label, value, highlight = false }: { label: string; value: string | number; highlight?: boolean }) {
-  return (
-    <div className={`rounded-2xl border p-4 text-center md:p-5 ${highlight ? "border-blue-200 bg-blue-50/50 ring-2 ring-blue-100" : "border-slate-200 bg-white"}`}>
-      <div className={`text-base font-medium sm:text-lg md:text-xl ${highlight ? "text-blue-700" : "text-slate-700"}`}>{label}</div>
-      <div className={`mt-3 text-3xl leading-none sm:text-4xl md:text-5xl lg:text-6xl ${highlight ? "font-bold text-blue-700" : "font-bold text-slate-900"}`}>
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function TimeCluster({
-  targetTime,
-  elapsed,
-  overBy,
-}: {
-  targetTime: string;
-  elapsed: string;
-  overBy?: string | null;
-}) {
-  const { t } = useI18n();
-
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 md:p-5">
-      <div className="grid grid-cols-2 gap-3 sm:gap-5">
-        <div>
-          <div className="text-sm font-medium text-slate-600 sm:text-base md:text-lg">{t("station.timer.targetTime")}</div>
-          <div className="mt-2 text-2xl font-semibold text-slate-900 sm:text-3xl md:text-4xl">{targetTime}</div>
-        </div>
-        <div>
-          <div className="text-sm font-medium text-slate-600 sm:text-base md:text-lg">{t("station.timer.elapsed")}</div>
-          <div className="mt-2 text-2xl font-semibold text-slate-900 sm:text-3xl md:text-4xl">{elapsed}</div>
-          {overBy ? <div className="mt-2 text-xs font-medium text-amber-600 sm:text-sm md:text-base">{t("station.timer.overBy", { duration: overBy })}</div> : null}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function StationExecution() {
   const [downtimeModalOpen, setDowntimeModalOpen] = useState(false);
@@ -704,8 +301,6 @@ export function StationExecution() {
   // releasing, creating an unrecoverable dead-end. Backend enforces the same
   // rule; the frontend guard removes the affordance proactively.
   const canReleaseClaim = claimState === "mine" && operation?.status === "PLANNED";
-  const canClockOnByStatus =
-    operation?.status === "PLANNED";
 
   // Mode B = operator has claimed this operation, unless user explicitly
   // navigates back to the full selection surface.
@@ -1148,7 +743,7 @@ export function StationExecution() {
               <button
                 onClick={() => void refreshQueue()}
                 disabled={queueLoading}
-                className="h-10 px-4 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="min-h-11 px-4 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 active:scale-95 transition disabled:opacity-50"
               >
                 <RefreshCw className="inline w-4 h-4 mr-1" />
                 {t("station.action.refresh")}
@@ -1181,7 +776,7 @@ export function StationExecution() {
               <button
                 onClick={() => void claimOperation()}
                 disabled={claimLoading || !canClaimCurrentOperation}
-                className="shrink-0 h-12 px-6 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50"
+                className="shrink-0 min-h-14 px-6 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 active:scale-[0.98] transition disabled:opacity-50"
               >
                 {claimLoading ? t("station.action.claiming") : t("station.action.claim")}
               </button>
@@ -1202,7 +797,7 @@ export function StationExecution() {
             <p className="text-center py-12 text-gray-500">{t("station.loading")}</p>
           ) : (
             <>
-              <QueueList
+              <StationQueuePanel
                 items={queueItems}
                 loading={queueLoading}
                 activeOperationId={operation?.id}
@@ -1249,72 +844,20 @@ export function StationExecution() {
   return (
     <div className="h-full flex flex-col bg-gray-50 min-h-0 overflow-hidden">
       {/* Compact single-row header */}
-      <div className="flex flex-col gap-3 px-3 py-3 bg-white border-b shadow-sm shrink-0 sm:px-4 lg:flex-row lg:items-center lg:justify-between">
-        {/* Context row: station / operation name / status badges */}
-        <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
-          <span className="text-sm text-gray-500 shrink-0 whitespace-nowrap">
-            {t("station.workstation.label")} {stationScope}
-          </span>
-          <span className="shrink-0 h-5 w-px bg-gray-300" aria-hidden="true" />
-          <span className="font-bold text-base text-gray-900 truncate">{operation.name}</span>
-          <StatusBadge
-            variant={mapExecutionStatusBadgeVariant(operation.status)}
-            size="sm"
-          >
-            {getStatusLabel(operation.status)}
-          </StatusBadge>
-          {operation.closure_status === "CLOSED" && (
-            <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-900 text-white text-xs font-semibold">
-              {t("station.closure.closedBadge")}
-            </span>
-          )}
-          {operation.downtime_open && (
-            <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold">
-              ● {t("station.downtime.active.banner")}
-            </span>
-          )}
-        </div>
-        {/* Control row: claim badge + nav/view controls + release command */}
-        <div className="flex w-full flex-wrap items-center gap-2 sm:gap-3 shrink-0 lg:w-auto lg:flex-nowrap lg:justify-end">
-          {/* Claim ownership indicator */}
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-sm font-semibold order-first sm:order-none">
-            {t("station.claim.ownedBadge")}
-          </span>
-          {/* Nav / view controls */}
-          <button
-            onClick={backToSelection}
-            className="h-10 sm:h-11 px-3 sm:px-4 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 active:scale-95 transition flex items-center gap-1.5"
-          >
-            <ArrowLeft className="w-4 h-4 shrink-0" />
-            {t("station.action.backToSelection")}
-          </button>
-          <button
-            onClick={() => void refreshQueue()}
-            disabled={queueLoading}
-            className="h-10 sm:h-11 px-3 sm:px-4 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 active:scale-95 transition disabled:opacity-50 flex items-center gap-1.5"
-          >
-            <RefreshCw className="w-4 h-4 shrink-0" />
-            {t("station.action.refresh")}
-          </button>
-          <button
-            onClick={() => setQueueOverlayOpen((prev) => !prev)}
-            className="h-10 sm:h-11 px-3 sm:px-4 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 active:scale-95 transition flex items-center gap-1.5"
-          >
-            {t("station.tab.queue")}
-            <ChevronDown className="w-4 h-4 shrink-0" />
-          </button>
-          {/* Divider before command-bearing Release */}
-          <span className="shrink-0 h-7 w-px bg-gray-200" aria-hidden="true" />
-          {/* Release — command-bearing, destructive. Disabled logic is backend-derived. */}
-          <button
-            onClick={() => void releaseClaim()}
-            disabled={claimLoading || !canReleaseClaim}
-            className="h-10 sm:h-11 px-3 sm:px-4 border border-red-200 rounded-lg text-sm text-red-600 hover:bg-red-50 active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {t("station.action.release")}
-          </button>
-        </div>
-      </div>
+      <StationExecutionHeader
+        stationScope={stationScope}
+        operationName={operation.name}
+        operationStatus={operation.status}
+        closureStatus={operation.closure_status}
+        downtimeOpen={operation.downtime_open}
+        claimLoading={claimLoading}
+        canReleaseClaim={canReleaseClaim}
+        queueLoading={queueLoading}
+        onBackToSelection={backToSelection}
+        onRefresh={() => void refreshQueue()}
+        onToggleQueue={() => setQueueOverlayOpen((prev) => !prev)}
+        onReleaseClaim={() => void releaseClaim()}
+      />
 
       {/* Queue overlay */}
       {queueOverlayOpen && (
@@ -1336,7 +879,7 @@ export function StationExecution() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <QueueList
+            <StationQueuePanel
               items={queueItems}
               loading={queueLoading}
               activeOperationId={operation.id}
@@ -1352,87 +895,16 @@ export function StationExecution() {
       <MockWarningBanner phase="PARTIAL" note={t("screenStatus.banner.deprecation.body" as any)} />
 
       {/* Execution body — must not scroll on iPad landscape */}
-      <div className="flex-1 min-h-0 flex flex-col p-3 sm:p-4 gap-3 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-50">
-        {/* Hero summary card */}
-        <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
-          <div className="mb-4 border-b border-slate-200 pb-4">
-            <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm sm:text-base md:text-xl">
-              <span className="whitespace-nowrap">
-                <span className="text-slate-500">{t("station.context.workOrder")}:</span>{" "}
-                <span className="font-semibold text-slate-900">{operation.work_order_number}</span>
-              </span>
-              <span className="whitespace-nowrap">
-                <span className="text-slate-500">{t("station.context.productionOrder")}:</span>{" "}
-                <span className="font-semibold text-slate-900">{operation.production_order_number}</span>
-              </span>
-              <span className="whitespace-nowrap">
-                <span className="text-slate-500">{t("station.context.startedAt")}:</span>{" "}
-                <span className="font-semibold text-slate-900">
-                  {operation.actual_start
-                    ? new Date(operation.actual_start).toLocaleString()
-                    : t("station.context.notStarted")}
-                </span>
-              </span>
-            </div>
-          </div>
-
-          <div className="grid gap-3 md:gap-4 lg:grid-cols-[1fr_1fr_1fr_minmax(280px,360px)]">
-            <KpiCard label={t("station.qty.target")} value={operation.quantity} />
-            <KpiCard label={t("station.qty.completed")} value={operation.completed_qty} />
-            <KpiCard label={t("station.qty.remaining")} value={remainingQty} highlight />
-            <TimeCluster
-              targetTime={targetTimeLabel}
-              elapsed={elapsedExecutionMs !== null ? formatDuration(elapsedExecutionMs) : t("station.timer.unavailable")}
-              overBy={overTargetMs !== null ? formatDuration(overTargetMs) : null}
-            />
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-x-4 sm:gap-x-8 gap-y-2 text-sm sm:text-base md:text-xl text-slate-700">
-            <span><span className="text-slate-500">{t("station.qty.totalGood")}</span>: <span className="font-semibold text-emerald-700">{operation.good_qty}</span></span>
-            <span><span className="text-slate-500">{t("station.qty.totalScrap")}</span>: <span className="font-semibold text-rose-600">{operation.scrap_qty}</span></span>
-            {(operation.status === "PAUSED" || operation.status === "BLOCKED") && (
-              <span>
-                <span className="text-slate-500">{t("station.timer.pausedTotal")}</span>: {formatDuration(pausedTotalMs)}
-              </span>
-            )}
-            {(operation.status === "PAUSED" || operation.status === "BLOCKED") && (
-              <span>
-                <span className="text-slate-500">{t("station.timer.downtimeTotal")}</span>: {formatDuration(downtimeTotalMs)}
-              </span>
-            )}
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <div className={`rounded-2xl border px-4 py-3 ${operation.closure_status === "CLOSED" ? "border-slate-300 bg-slate-100" : "border-slate-200 bg-slate-50"}`}>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t("station.closure.sectionTitle")}</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{t(operation.closure_status === "CLOSED" ? "station.closure.closedState" : "station.closure.openState")}</p>
-              <p className="mt-1 text-xs text-slate-600">
-                {t(operation.closure_status === "CLOSED" ? "station.closed.executionBlocked" : "station.closure.openHelper")}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t("station.reopen.audit.title")}</p>
-              <p className="mt-1 text-sm text-slate-900">
-                {t("station.reopen.audit.count", { count: operation.reopen_count ?? 0 })}
-              </p>
-              {operation.last_closed_at && (
-                <p className="mt-1 text-xs text-slate-600">
-                  {t("station.reopen.audit.lastClosed", {
-                    at: new Date(operation.last_closed_at).toLocaleString(),
-                    by: operation.last_closed_by ?? "-",
-                  })}
-                </p>
-              )}
-              {operation.last_reopened_at && (
-                <p className="mt-1 text-xs text-slate-600">
-                  {t("station.reopen.audit.lastReopened", {
-                    at: new Date(operation.last_reopened_at).toLocaleString(),
-                    by: operation.last_reopened_by ?? "-",
-                  })}
-                </p>
-              )}
-            </div>
-          </div>
-        </section>
+      <div className="flex-1 min-h-0 flex flex-col p-3 sm:p-4 gap-3 sm:gap-4 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-50">
+        <ExecutionStateHero
+          operation={operation}
+          remainingQty={remainingQty}
+          targetTimeLabel={targetTimeLabel}
+          elapsedLabel={elapsedExecutionMs !== null ? formatDuration(elapsedExecutionMs) : t("station.timer.unavailable")}
+          overByLabel={overTargetMs !== null ? formatDuration(overTargetMs) : null}
+          pausedTotalLabel={formatDuration(pausedTotalMs)}
+          downtimeTotalLabel={formatDuration(downtimeTotalMs)}
+        />
 
         {/* Report / input block */}
         <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
@@ -1469,42 +941,20 @@ export function StationExecution() {
           <button
             onClick={() => void reportQuantity()}
             disabled={actionLoading || !canReportProduction}
-            className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-md transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-blue-600 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+            className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-md active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-blue-600 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
           >
             {t("station.action.reportQty")}
           </button>
         </section>
 
-        {(canCloseOperation || canReopenOperation || operation.closure_status === "CLOSED") && (
-          <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
-            <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-2">
-              {t("station.closure.sectionTitle")}
-            </p>
-            <p className="mt-2 text-sm sm:text-base text-slate-600 md:text-xl mb-5">
-              {t(operation.closure_status === "CLOSED" ? "station.closed.secondaryHint" : "station.closure.secondaryHint")}
-            </p>
-            <div className="flex flex-col gap-3">
-              {canCloseOperation && (
-                <button
-                  onClick={() => void closeOperation()}
-                  disabled={actionLoading || !canCloseOperation}
-                  className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl border-2 border-slate-400 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                >
-                  {t("station.action.closeOperation")}
-                </button>
-              )}
-              {canReopenOperation && (
-                <button
-                  onClick={() => setReopenModalOpen(true)}
-                  disabled={actionLoading || !canReopenOperation}
-                  className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {t("station.action.reopen")}
-                </button>
-              )}
-            </div>
-          </section>
-        )}
+        <ClosureStatePanel
+          closureStatus={operation.closure_status}
+          canCloseOperation={canCloseOperation}
+          canReopenOperation={canReopenOperation}
+          actionLoading={actionLoading}
+          onCloseOperation={() => void closeOperation()}
+          onOpenReopenModal={() => setReopenModalOpen(true)}
+        />
 
         {/* Guidance callout */}
         {guidanceMessage && (
@@ -1517,89 +967,24 @@ export function StationExecution() {
           </div>
         )}
 
-        {/* Primary Action Zone */}
-        <section className="shrink-0 flex flex-col gap-2 pb-1">
-          {operation.status === "PLANNED" && (
-            <button
-              onClick={() => void startOperation()}
-              disabled={actionLoading || operation.closure_status === "CLOSED" || !canExecuteByClaim || !canDo("start_execution")}
-              className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold tracking-wide bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl"
-            >
-              {t("station.action.clockOn")}
-            </button>
-          )}
-
-          {operation.status === "IN_PROGRESS" && (
-            <>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => void pauseOperation()}
-                  disabled={actionLoading || operation.closure_status === "CLOSED" || !canPauseExecution}
-                  className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-amber-400 text-slate-900 hover:bg-amber-500 disabled:opacity-50"
-                >
-                  {t("station.action.pause")}
-                </button>
-                <button
-                  onClick={() => setDowntimeModalOpen(true)}
-                  disabled={downtimeLoading || operation.closure_status === "CLOSED" || !canStartDowntime}
-                  className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-slate-600 text-white hover:bg-slate-700 disabled:opacity-50"
-                >
-                  {t("station.action.startDowntime")}
-                </button>
-              </div>
-              {canCompleteExecution && (
-                <button
-                  onClick={() => void completeOperation()}
-                  disabled={actionLoading || operation.closure_status === "CLOSED" || !canCompleteExecution}
-                  className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl border-2 border-amber-500 bg-white text-amber-700 hover:bg-amber-50 disabled:opacity-50"
-                >
-                  {t("station.action.completeOperation")}
-                </button>
-              )}
-            </>
-          )}
-
-          {operation.status === "PAUSED" && (
-            <>
-              {!operation.downtime_open ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => void resumeOperation()}
-                    disabled={actionLoading || operation.closure_status === "CLOSED" || !canResumeExecution}
-                    className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
-                  >
-                    {t("station.action.resume")}
-                  </button>
-                  <button
-                    onClick={() => setDowntimeModalOpen(true)}
-                    disabled={downtimeLoading || operation.closure_status === "CLOSED" || !canStartDowntime}
-                    className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-slate-600 text-white hover:bg-slate-700 disabled:opacity-50"
-                  >
-                    {t("station.action.startDowntime")}
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => void endDowntime()}
-                  disabled={downtimeLoading || operation.closure_status === "CLOSED" || !canEndDowntimeAction}
-                  className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
-                >
-                  {t("station.action.endDowntime")}
-                </button>
-              )}
-            </>
-          )}
-
-          {operation.status === "BLOCKED" && operation.downtime_open && (
-            <button
-              onClick={() => void endDowntime()}
-              disabled={downtimeLoading || operation.closure_status === "CLOSED" || !canEndDowntimeAction}
-              className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-sm transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
-            >
-              {t("station.action.endDowntime")}
-            </button>
-          )}
-        </section>
+        <AllowedActionZone
+          operation={operation}
+          actionLoading={actionLoading}
+          downtimeLoading={downtimeLoading}
+          canExecuteByClaim={canExecuteByClaim}
+          canPauseExecution={canPauseExecution}
+          canStartDowntime={canStartDowntime}
+          canCompleteExecution={canCompleteExecution}
+          canResumeExecution={canResumeExecution}
+          canEndDowntimeAction={canEndDowntimeAction}
+          canDo={canDo}
+          onStartOperation={() => void startOperation()}
+          onPauseOperation={() => void pauseOperation()}
+          onOpenDowntimeModal={() => setDowntimeModalOpen(true)}
+          onCompleteOperation={() => void completeOperation()}
+          onResumeOperation={() => void resumeOperation()}
+          onEndDowntime={() => void endDowntime()}
+        />
 
         <ReopenOperationModal
           open={reopenModalOpen}
@@ -1608,7 +993,7 @@ export function StationExecution() {
           loading={actionLoading}
         />
 
-        <StartDowntimeModal
+        <StartDowntimeDialog
           open={downtimeModalOpen}
           onClose={() => setDowntimeModalOpen(false)}
           onSubmit={startDowntime}

@@ -93,26 +93,26 @@ export function StationQueuePanel({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-        <div className="rounded-lg border bg-white px-3 py-2">
-          <p className="text-[11px] text-gray-500">{t("station.queue.summary.ready")}</p>
-          <p className="text-sm font-semibold text-gray-900">{summary.ready}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+        <div className="rounded-lg border bg-white px-3 py-2.5">
+          <p className="text-xs sm:text-sm text-gray-500">{t("station.queue.summary.ready")}</p>
+          <p className="text-sm sm:text-base font-semibold text-gray-900">{summary.ready}</p>
         </div>
-        <div className="rounded-lg border bg-white px-3 py-2">
-          <p className="text-[11px] text-gray-500">{t("station.queue.summary.paused")}</p>
-          <p className="text-sm font-semibold text-amber-700">{summary.paused}</p>
+        <div className="rounded-lg border bg-white px-3 py-2.5">
+          <p className="text-xs sm:text-sm text-gray-500">{t("station.queue.summary.paused")}</p>
+          <p className="text-sm sm:text-base font-semibold text-amber-700">{summary.paused}</p>
         </div>
-        <div className="rounded-lg border bg-white px-3 py-2">
-          <p className="text-[11px] text-gray-500">{t("station.queue.summary.blocked")}</p>
-          <p className="text-sm font-semibold text-red-700">{summary.blocked}</p>
+        <div className="rounded-lg border bg-white px-3 py-2.5">
+          <p className="text-xs sm:text-sm text-gray-500">{t("station.queue.summary.blocked")}</p>
+          <p className="text-sm sm:text-base font-semibold text-red-700">{summary.blocked}</p>
         </div>
-        <div className="rounded-lg border bg-white px-3 py-2">
-          <p className="text-[11px] text-gray-500">{t("station.queue.summary.downtime")}</p>
-          <p className="text-sm font-semibold text-red-700">{summary.downtime}</p>
+        <div className="rounded-lg border bg-white px-3 py-2.5">
+          <p className="text-xs sm:text-sm text-gray-500">{t("station.queue.summary.downtime")}</p>
+          <p className="text-sm sm:text-base font-semibold text-red-700">{summary.downtime}</p>
         </div>
-        <div className="rounded-lg border bg-white px-3 py-2">
-          <p className="text-[11px] text-gray-500">{t("station.queue.summary.mine")}</p>
-          <p className="text-sm font-semibold text-blue-700">{summary.mine}</p>
+        <div className="rounded-lg border bg-white px-3 py-2.5">
+          <p className="text-xs sm:text-sm text-gray-500">{t("station.queue.summary.mine")}</p>
+          <p className="text-sm sm:text-base font-semibold text-blue-700">{summary.mine}</p>
         </div>
       </div>
 

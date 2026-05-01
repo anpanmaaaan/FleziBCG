@@ -30,10 +30,12 @@ from app.services.operation_service import (
     ReopenOperationConflictError,
     ResumeExecutionConflictError,
     StartOperationConflictError,
+    StationSessionGuardError,
     abort_operation,
     close_operation,
     complete_operation,
     derive_operation_detail,
+    ensure_open_station_session_for_command,
     end_downtime,
     pause_operation,
     report_quantity,
@@ -57,6 +59,10 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def _raise_station_session_guard_http_error(exc: StationSessionGuardError) -> None:
+    raise HTTPException(status_code=exc.status_code, detail=exc.error_code)
 
 
 @router.get("/operations/{operation_id}", response_model=OperationDetail)
@@ -83,12 +89,31 @@ def start_operation_endpoint(
         raise HTTPException(status_code=404, detail="Operation not found")
 
     try:
+        ensure_open_station_session_for_command(
+            db,
+            tenant_id=identity.tenant_id,
+            station_id=operation.station_scope_value,
+            operator_user_id=(request.operator_id or "").strip() or identity.user_id,
+            command_name="start_operation",
+        )
+    except StationSessionGuardError as exc:
+        _raise_station_session_guard_http_error(exc)
+
+    try:
         ensure_operation_claim_owned_by_identity(db, identity, operation_id)
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
 
     try:
-        return start_operation(db, operation, request, tenant_id=identity.tenant_id)
+        return start_operation(
+            db,
+            operation,
+            request,
+            actor_user_id=identity.user_id,
+            tenant_id=identity.tenant_id,
+        )
+    except StationSessionGuardError as exc:
+        _raise_station_session_guard_http_error(exc)
     except ClosedRecordConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except StartOperationConflictError as exc:
@@ -111,12 +136,31 @@ def report_quantity_endpoint(
         raise HTTPException(status_code=404, detail="Operation not found")
 
     try:
+        ensure_open_station_session_for_command(
+            db,
+            tenant_id=identity.tenant_id,
+            station_id=operation.station_scope_value,
+            operator_user_id=(request.operator_id or "").strip() or identity.user_id,
+            command_name="report_quantity",
+        )
+    except StationSessionGuardError as exc:
+        _raise_station_session_guard_http_error(exc)
+
+    try:
         ensure_operation_claim_owned_by_identity(db, identity, operation_id)
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
 
     try:
-        return report_quantity(db, operation, request, tenant_id=identity.tenant_id)
+        return report_quantity(
+            db,
+            operation,
+            request,
+            actor_user_id=identity.user_id,
+            tenant_id=identity.tenant_id,
+        )
+    except StationSessionGuardError as exc:
+        _raise_station_session_guard_http_error(exc)
     except ClosedRecordConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
@@ -135,6 +179,17 @@ def pause_operation_endpoint(
         raise HTTPException(status_code=404, detail="Operation not found")
 
     try:
+        ensure_open_station_session_for_command(
+            db,
+            tenant_id=identity.tenant_id,
+            station_id=operation.station_scope_value,
+            operator_user_id=identity.user_id,
+            command_name="pause_operation",
+        )
+    except StationSessionGuardError as exc:
+        _raise_station_session_guard_http_error(exc)
+
+    try:
         ensure_operation_claim_owned_by_identity(db, identity, operation_id)
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
@@ -147,6 +202,8 @@ def pause_operation_endpoint(
             actor_user_id=identity.user_id,
             tenant_id=identity.tenant_id,
         )
+    except StationSessionGuardError as exc:
+        _raise_station_session_guard_http_error(exc)
     except ClosedRecordConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except PauseExecutionConflictError as exc:
@@ -167,6 +224,17 @@ def resume_operation_endpoint(
         raise HTTPException(status_code=404, detail="Operation not found")
 
     try:
+        ensure_open_station_session_for_command(
+            db,
+            tenant_id=identity.tenant_id,
+            station_id=operation.station_scope_value,
+            operator_user_id=identity.user_id,
+            command_name="resume_operation",
+        )
+    except StationSessionGuardError as exc:
+        _raise_station_session_guard_http_error(exc)
+
+    try:
         ensure_operation_claim_owned_by_identity(db, identity, operation_id)
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
@@ -179,6 +247,8 @@ def resume_operation_endpoint(
             actor_user_id=identity.user_id,
             tenant_id=identity.tenant_id,
         )
+    except StationSessionGuardError as exc:
+        _raise_station_session_guard_http_error(exc)
     except ClosedRecordConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except ResumeExecutionConflictError as exc:
@@ -199,12 +269,31 @@ def complete_operation_endpoint(
         raise HTTPException(status_code=404, detail="Operation not found")
 
     try:
+        ensure_open_station_session_for_command(
+            db,
+            tenant_id=identity.tenant_id,
+            station_id=operation.station_scope_value,
+            operator_user_id=(request.operator_id or "").strip() or identity.user_id,
+            command_name="complete_operation",
+        )
+    except StationSessionGuardError as exc:
+        _raise_station_session_guard_http_error(exc)
+
+    try:
         ensure_operation_claim_owned_by_identity(db, identity, operation_id)
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
 
     try:
-        return complete_operation(db, operation, request, tenant_id=identity.tenant_id)
+        return complete_operation(
+            db,
+            operation,
+            request,
+            actor_user_id=identity.user_id,
+            tenant_id=identity.tenant_id,
+        )
+    except StationSessionGuardError as exc:
+        _raise_station_session_guard_http_error(exc)
     except ClosedRecordConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except CompleteOperationConflictError as exc:
@@ -246,6 +335,17 @@ def start_downtime_endpoint(
         raise HTTPException(status_code=404, detail="Operation not found")
 
     try:
+        ensure_open_station_session_for_command(
+            db,
+            tenant_id=identity.tenant_id,
+            station_id=operation.station_scope_value,
+            operator_user_id=identity.user_id,
+            command_name="start_downtime",
+        )
+    except StationSessionGuardError as exc:
+        _raise_station_session_guard_http_error(exc)
+
+    try:
         ensure_operation_claim_owned_by_identity(db, identity, operation_id)
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
@@ -260,6 +360,8 @@ def start_downtime_endpoint(
             actor_user_id=identity.user_id,
             tenant_id=identity.tenant_id,
         )
+    except StationSessionGuardError as exc:
+        _raise_station_session_guard_http_error(exc)
     except ClosedRecordConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except StartDowntimeConflictError as exc:
@@ -280,6 +382,17 @@ def end_downtime_endpoint(
         raise HTTPException(status_code=404, detail="Operation not found")
 
     try:
+        ensure_open_station_session_for_command(
+            db,
+            tenant_id=identity.tenant_id,
+            station_id=operation.station_scope_value,
+            operator_user_id=identity.user_id,
+            command_name="end_downtime",
+        )
+    except StationSessionGuardError as exc:
+        _raise_station_session_guard_http_error(exc)
+
+    try:
         ensure_operation_claim_owned_by_identity(db, identity, operation_id)
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
@@ -292,6 +405,8 @@ def end_downtime_endpoint(
             actor_user_id=identity.user_id,
             tenant_id=identity.tenant_id,
         )
+    except StationSessionGuardError as exc:
+        _raise_station_session_guard_http_error(exc)
     except ClosedRecordConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except EndDowntimeConflictError as exc:
