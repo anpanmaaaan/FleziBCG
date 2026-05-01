@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     # WHY: 480 min (8 h) matches a single factory shift. Tokens expire at shift
     # end, forcing re-auth. Adjust if shift patterns change.
     jwt_access_token_expire_minutes: int = 480
+    # WHY: 30-day default for refresh tokens. Long-lived to survive across
+    # multiple shifts without forcing re-login. Adjust per security policy.
+    jwt_refresh_token_expire_days: int = 30
     # INVARIANT: Max impersonation window must never exceed a single shift to
     # limit blast radius of a compromised admin session.
     impersonation_max_duration_minutes: int = 480

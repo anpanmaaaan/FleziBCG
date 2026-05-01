@@ -86,10 +86,15 @@ def test_alembic_baseline_is_root_revision():
 
 
 def test_alembic_head_is_baseline():
-    """HEAD must resolve to the baseline revision (only revision in chain)."""
+    """HEAD must resolve to the latest revision in the chain.
+
+    Updated: 0002 (add_refresh_tokens) is now head; 0001 is its base.
+    This test validates the migration chain is linear and has a single head.
+    """
     script_dir = _get_script_dir()
     heads = script_dir.get_heads()
-    assert "0001" in heads, f"Expected 0001 as head, got: {heads}"
+    assert len(heads) == 1, f"Expected exactly one head, got: {heads}"
+    assert "0002" in heads, f"Expected 0002 as head, got: {heads}"
 
 
 def test_alembic_upgrade_head_live(db_engine):
