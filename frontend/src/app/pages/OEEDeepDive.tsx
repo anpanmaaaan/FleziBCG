@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Breadcrumb } from '@/app/components';
+import { Breadcrumb, ScreenStatusBadge } from '@/app/components';
 import { MockWarningBanner } from '@/app/components';
 import { useI18n } from '@/app/i18n';
 import {
@@ -205,7 +205,10 @@ export function OEEDeepDive() {
           
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">OEE Deep Dive Dashboard</h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-gray-900">OEE Deep Dive Dashboard</h1>
+                <ScreenStatusBadge phase="MOCK" />
+              </div>
               <p className="text-sm text-gray-600 mt-1">
                 Real-time Overall Equipment Effectiveness analytics with AI insights
               </p>

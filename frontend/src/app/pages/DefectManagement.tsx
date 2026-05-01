@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
-import { Search, Plus, AlertTriangle, CheckCircle, Clock, XCircle, Filter } from "lucide-react";
+import { Search, Plus, AlertTriangle, CheckCircle, Clock, XCircle, Filter, Lock } from "lucide-react";
 import { toast } from "sonner";
+import { MockWarningBanner, ScreenStatusBadge } from "@/app/components";
+import { useI18n } from "@/app/i18n";
 
 interface Defect {
   id: string;
@@ -117,6 +119,7 @@ const mockDefects: Defect[] = [
 ];
 
 export function DefectManagement() {
+  const { t } = useI18n();
   const [defects, setDefects] = useState(mockDefects);
   const [searchValue, setSearchValue] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -194,7 +197,16 @@ export function DefectManagement() {
 
   return (
     <div className="h-full flex flex-col bg-white">
+      <MockWarningBanner phase="MOCK" note="Defect records are not yet connected to backend truth. Use this for visualization only." />
       <div className="flex-1 flex flex-col p-6">
+        {/* Page header with status badge */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold">Defect Management</h1>
+            <ScreenStatusBadge phase="MOCK" />
+          </div>
+        </div>
+
         {/* Filters */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -253,11 +265,13 @@ export function DefectManagement() {
           </div>
 
           <button
+            disabled
             onClick={() => toast.info('Record Defect feature coming soon')}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
+            className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-2"
+            title="This action is not available for mock data"
           >
-            <Plus className="w-4 h-4" />
-            Record Defect
+            <Lock className="w-4 h-4" />
+            Record Defect (Future)
           </button>
         </div>
 

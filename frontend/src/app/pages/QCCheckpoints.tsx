@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
-import { Search, Plus, CheckCircle2, XCircle, AlertCircle, Edit2, Trash2 } from "lucide-react";
+import { Search, Plus, CheckCircle2, XCircle, AlertCircle, Edit2, Trash2, Lock } from "lucide-react";
 import { toast } from "sonner";
+import { MockWarningBanner, ScreenStatusBadge } from "@/app/components";
+import { useI18n } from "@/app/i18n";
 
 interface QCCheckpoint {
   id: string;
@@ -100,6 +102,7 @@ const mockCheckpoints: QCCheckpoint[] = [
 ];
 
 export function QCCheckpoints() {
+  const { t } = useI18n();
   const [checkpoints, setCheckpoints] = useState(mockCheckpoints);
   const [searchValue, setSearchValue] = useState('');
   const [filterStation, setFilterStation] = useState<string>('all');
@@ -165,7 +168,16 @@ export function QCCheckpoints() {
 
   return (
     <div className="h-full flex flex-col bg-white">
+      <MockWarningBanner phase="MOCK" note="Quality checkpoint configuration is not yet connected to backend truth. Use this for visualization only." />
       <div className="flex-1 flex flex-col p-6">
+        {/* Page header with status badge */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold">Quality Checkpoints</h1>
+            <ScreenStatusBadge phase="MOCK" />
+          </div>
+        </div>
+
         {/* Filters */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -208,11 +220,13 @@ export function QCCheckpoints() {
           </div>
 
           <button
+            disabled
             onClick={() => toast.info('Add QC Checkpoint feature coming soon')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-2"
+            title="This action is not available for mock data"
           >
-            <Plus className="w-4 h-4" />
-            Add Checkpoint
+            <Lock className="w-4 h-4" />
+            Add Checkpoint (Future)
           </button>
         </div>
 
@@ -353,16 +367,18 @@ export function QCCheckpoints() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <button
+                        disabled
                         onClick={() => handleEdit(checkpoint)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded"
-                        title="Edit"
+                        className="p-2 text-gray-400 cursor-not-allowed"
+                        title="Edit is not available for mock data"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
+                        disabled
                         onClick={() => handleDelete(checkpoint)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded"
-                        title="Delete"
+                        className="p-2 text-gray-400 cursor-not-allowed"
+                        title="Delete is not available for mock data"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
