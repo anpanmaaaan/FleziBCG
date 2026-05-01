@@ -308,6 +308,55 @@ CANONICAL
 ### Verdict
 ALLOW_IMPLEMENTATION_COMPLETE
 
+## Slice HM3-08H2-V1
+Name: P0-C-08H2-V1 Frontend Verification Recovery / Build-Lint Validation
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/implementation/p0-c-08h2-frontend-queue-consumer-cutover-report.md | H2 changed frontend ownership consumption only | Verification recovery must isolate frontend lint/build validity without scope expansion |
+| docs/implementation/p0-c-08h2-hard-mode-mom-v3-gate.md | No backend/runtime/shape changes permitted | Recovery can only run checks and apply frontend-lint/type fixes if needed |
+| frontend/package.json | Script surface defines available checks | `lint` and `build` runnable; `test` unavailable |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| verification recovery run | none_required | none_required | N/A | n/a | none | verification-only slice |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---|---|---|
+| no backend behavior change | migration_boundary | scope guard + smoke regression | no | yes | H2 gate |
+| ownership-cutover frontend remains buildable | frontend_contract | lint/build verification | no | yes | H2 report |
+| claim compatibility not removed | compatibility | scope guard | no | yes | H2/H1 contracts |
+
+### Test Matrix
+| Test ID | Scenario | Type | Given | When | Then | Event Assertion | Invariant Assertion |
+|---|---|---|---|---|---|---|---|
+| HM3-08H2V1-T1 | lint via Windows-safe command | verification | frontend workspace | run `npm.cmd run lint` | pass | none | FE lint-clean |
+| HM3-08H2V1-T2 | build via Windows-safe command | verification | frontend workspace | run `npm.cmd run build` | pass | none | FE build-clean |
+| HM3-08H2V1-T3 | test script availability check | verification | frontend workspace | run `npm.cmd run test` | missing script reported | none | classify unavailable script |
+| HM3-08H2V1-T4 | backend smoke guardrail | regression | backend workspace | run claim/queue/guard trio | pass | none | no backend drift |
+
+### Final verification result
+- Frontend lint: `FRONTEND_LINT_EXIT:0`
+- Frontend build: `FRONTEND_BUILD_EXIT:0`
+- Frontend test: missing script (`FRONTEND_TEST_EXIT:1`)
+- Backend smoke trio: `29 passed`, `BACKEND_SMOKE_EXIT:0`
+
+### Scope guard confirmation
+- No backend runtime code changes.
+- No backend API shape changes.
+- No command or StationSession guard behavior changes.
+- No queue migration changes.
+- No claim removal.
+
+### Event naming status
+none_required - verification-only slice introduced no new domain events.
+
+### Verdict
+READY_FOR_P0_C_08H3_BACKEND_CLAIM_GUARD_REMOVAL_CONTRACT
+
 ## HM3-026 — P0-C-08F Claim API Deprecation Lock
 
 ## Routing

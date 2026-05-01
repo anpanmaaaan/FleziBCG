@@ -17,10 +17,11 @@ interface QueueOperationCardProps {
 export function QueueOperationCard({ item, active, hasMineClaim, onSelect }: QueueOperationCardProps) {
   const { t } = useI18n();
 
-  const locked = item.claim.state === "other";
-  const showDowntimeTag = item.downtime_open;
-  const showBlockedDowntimeHint = item.status === "BLOCKED" && item.downtime_open;
-  const isMine = item.claim.state === "mine";
+  // H2+: Ownership-first logic; claim fallback for compatibility
+  const lockedByOther = (item.ownership?.owner_state === "other" && item.ownership?.has_open_session)
+    || item.claim.state === "other";
+  const isMine = (item.ownership?.owner_state === "mine" && item.ownership?.has_open_session)
+    || item.claim.state === "mine";
   const isClaimableByStatus = isBackendClaimableQueueStatus(item.status);
 
   const rowTone =
@@ -30,8 +31,13 @@ export function QueueOperationCard({ item, active, hasMineClaim, onSelect }: Que
       ? "border-amber-200 bg-amber-50"
       : "border-gray-200 bg-white";
 
-  const claimHint =
-    item.claim.state === "mine"
+  // H2+: Ownership-first hint text; claim fallback for compatibility
+  const ownershipHint =
+    item.ownership?.owner_state === "mine" && item.ownership?.has_open_session
+      ? t("station.claim.ownedBadge")
+      : item.ownership?.owner_state === "other" && item.ownership?.has_open_session
+      ? t("station.queue.claimedByOther")
+      : item.claim.state === "mine"
       ? t("station.claim.ownedBadge")
       : item.claim.state === "other"
       ? t("station.queue.claimedByOther")
@@ -39,8 +45,12 @@ export function QueueOperationCard({ item, active, hasMineClaim, onSelect }: Que
       ? t("station.queue.readyToClaim")
       : null;
 
-  const claimHintTone =
-    item.claim.state === "mine"
+  const ownershipHintTone =
+    item.ownership?.owner_state === "mine" && item.ownership?.has_open_session
+      ? "text-blue-700"
+      : item.ownership?.owner_state === "other" && item.ownership?.has_open_session
+      ? "text-orange-700"
+      : item.claim.state === "mine"
       ? "text-blue-700"
       : item.claim.state === "other"
       ? "text-orange-700"
@@ -49,19 +59,19 @@ export function QueueOperationCard({ item, active, hasMineClaim, onSelect }: Que
   return (
     <button
       type="button"
-      disabled={locked}
+      disabled={lockedByOther}
       onClick={() => onSelect(item)}
       className={`w-full text-left p-4 rounded-xl border-2 transition ${
         active
           ? "border-blue-500 bg-blue-50"
-          : locked
+          : lockedByOther
           ? "border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed"
           : `${rowTone} hover:border-blue-300 hover:bg-blue-50 active:scale-[0.99]`
       }`}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
-          {locked && <Lock className="w-4 h-4 text-orange-500 shrink-0" />}
+          {lockedByOther && <Lock className="w-4 h-4 text-orange-500 shrink-0" />}
           {isMine && <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0" aria-hidden="true" />}
           <p className="font-semibold text-base text-gray-900 truncate">
             {item.name}
@@ -73,17 +83,17 @@ export function QueueOperationCard({ item, active, hasMineClaim, onSelect }: Que
       </div>
       <div className="mt-1 flex items-center gap-2 flex-wrap">
         <p className="text-xs text-gray-500">{item.operation_number}</p>
-        {showDowntimeTag && (
+        {item.downtime_open && (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold">
             {t("station.queue.downtimeActive")}
           </span>
         )}
-        {showBlockedDowntimeHint && (
+        {item.status === "BLOCKED" && item.downtime_open && (
           <span className="text-xs text-red-700 font-medium">
             {t("station.queue.blockedByDowntime")}
           </span>
         )}
-        {claimHint && <span className={`text-xs font-medium ${claimHintTone}`}>{claimHint}</span>}
+        {ownershipHint && <span className={`text-xs font-medium ${ownershipHintTone}`}>{ownershipHint}</span>}
       </div>
     </button>
   );

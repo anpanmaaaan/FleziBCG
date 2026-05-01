@@ -278,33 +278,47 @@ export function StationExecution() {
   const selectedQueueItem = operation
     ? queueItems.find((item) => item.operation_id === operation.id) ?? null
     : null;
+  // H2+: Ownership-first logic; claim is compatibility-only fallback
+  const ownershipState = selectedQueueItem?.ownership;
+  const ownerState = ownershipState?.owner_state ?? "none";
+  const hasOpenSession = ownershipState?.has_open_session ?? false;
+  // Compatibility fallback: use claim if ownership unavailable
   const claimState = selectedQueueItem?.claim.state ?? "none";
-  const ownedClaimOperationId =
-    queueItems.find((item) => item.claim.state === "mine")?.operation_id ?? null;
-  const ownsAnotherClaim =
-    ownedClaimOperationId !== null && ownedClaimOperationId !== operation?.id;
+  
+  // Detect if current user owns a session (H2+: ownership block primary)
+  const ownedSessionOperationId =
+    queueItems.find((item) => item.ownership?.owner_state === "mine" && item.ownership?.has_open_session)?.operation_id ?? null;
+  const ownsAnotherSession =
+    ownedSessionOperationId !== null && ownedSessionOperationId !== operation?.id;
+  
   const canClaimByStatus = operation
     ? isBackendClaimableQueueStatus(operation.status)
     : false;
-  const canClaimCurrentOperation = canClaimByStatus && !ownsAnotherClaim;
-  const canExecuteByClaim = claimState === "mine";
-  const canReportProduction = canExecuteByClaim && canDo("report_production");
-  const canPauseExecution = canExecuteByClaim && canDo("pause_execution");
-  const canStartDowntime = canExecuteByClaim && canDo("start_downtime");
-  const canCompleteExecution = canExecuteByClaim && canDo("complete_execution");
-  const canResumeExecution = canExecuteByClaim && canDo("resume_execution");
-  const canEndDowntimeAction = canExecuteByClaim && canDo("end_downtime");
+  const canClaimCurrentOperation = canClaimByStatus && !ownsAnotherSession;
+  
+  // H2+: Ownership-first execution readiness gate
+  const canExecuteByOwnership = ownerState === "mine" && hasOpenSession;
+  // Compatibility fallback if ownership unavailable
+  const canExecuteByClaim = !canExecuteByOwnership && claimState === "mine";
+  const canExecute = canExecuteByOwnership || canExecuteByClaim;
+  
+  const canReportProduction = canExecute && canDo("report_production");
+  const canPauseExecution = canExecute && canDo("pause_execution");
+  const canStartDowntime = canExecute && canDo("start_downtime");
+  const canCompleteExecution = canExecute && canDo("complete_execution");
+  const canResumeExecution = canExecute && canDo("resume_execution");
+  const canEndDowntimeAction = canExecute && canDo("end_downtime");
   const canCloseOperation = canDo("close_operation") && operation?.closure_status === "OPEN";
   const canReopenOperation = canDo("reopen_operation") && operation?.closure_status === "CLOSED";
   // Release is only safe on PLANNED. On IN_PROGRESS / PAUSED / BLOCKED the
   // operation has active execution context and the operator cannot reclaim after
   // releasing, creating an unrecoverable dead-end. Backend enforces the same
   // rule; the frontend guard removes the affordance proactively.
-  const canReleaseClaim = claimState === "mine" && operation?.status === "PLANNED";
+  const canReleaseClaim = canExecute && operation?.status === "PLANNED";
 
-  // Mode B = operator has claimed this operation, unless user explicitly
+  // Mode B = operator is assigned to this operation (H2+: ownership-based), unless user explicitly
   // navigates back to the full selection surface.
-  const isExecutionMode = claimState === "mine" && !forceSelectionMode;
+  const isExecutionMode = canExecute && !forceSelectionMode;
 
   const [timerNowMs, setTimerNowMs] = useState<number>(Date.now());
 
@@ -767,7 +781,7 @@ export function StationExecution() {
                     {getStatusLabel(operation.status)}
                   </StatusBadge>
                 </div>
-                {ownsAnotherClaim && (
+                {ownsAnotherSession && (
                   <p className="mt-2 text-xs text-amber-700">
                     {t("station.claim.singleActiveHint")}
                   </p>
@@ -783,8 +797,8 @@ export function StationExecution() {
             </div>
           )}
 
-          {/* Operation claimed by someone else */}
-          {operation && claimState === "other" && (
+          {/* Operation owned by someone else (H2+: ownership-first display) */}
+          {operation && ownerState === "other" && (
             <div className="mb-4 bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center gap-2 text-orange-800">
               <Lock className="w-4 h-4 shrink-0" />
               <p className="text-sm font-medium">

@@ -84,9 +84,9 @@ export function StationExecutionHeader({
         <DowntimeStatusPanel downtimeOpen={downtimeOpen} />
       </div>
 
-      {/* Control row: claim badge + nav/view controls + release command */}
+      {/* Control row: ownership badge + nav/view controls + release command */}
       <div className="flex w-full flex-wrap items-center gap-2 sm:gap-3 shrink-0 lg:w-auto lg:flex-nowrap lg:justify-end">
-        {/* Claim ownership indicator */}
+        {/* Ownership indicator (H2+: ownership-focused, fallback to claim for compatibility) */}
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-sm font-semibold order-first sm:order-none">
           {t("station.claim.ownedBadge")}
         </span>

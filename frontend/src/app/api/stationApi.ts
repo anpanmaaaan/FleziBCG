@@ -9,6 +9,22 @@ export interface ClaimSummary {
   claimed_by_user_id: string | null;
 }
 
+/**
+ * StationSession ownership context for queue item.
+ * Target ownership truth (introduced in 08D, consumed in 08H2+).
+ * Replaces claim-based ownership logic in frontend.
+ */
+export interface SessionOwnershipSummary {
+  target_owner_type: string;
+  ownership_migration_status: string;
+  session_id: string | null;
+  station_id: string | null;
+  session_status: string | null;
+  operator_user_id: string | null;
+  owner_state: string;
+  has_open_session: boolean;
+}
+
 export interface StationQueueItem {
   operation_id: number;
   operation_number: string;
@@ -19,6 +35,8 @@ export interface StationQueueItem {
   planned_start: string | null;
   planned_end: string | null;
   claim: ClaimSummary;
+  /** Target ownership truth (H2+): ownership block from StationSession context */
+  ownership: SessionOwnershipSummary;
   downtime_open: boolean;
 }
 
@@ -43,6 +61,11 @@ export const stationApi = {
     return request<StationQueueResponse>("/v1/station/queue");
   },
 
+  /**
+   * DEPRECATED (H2+): Use queue ownership context instead.
+   * Claim is compatibility-only; ownership block is primary.
+   * May be removed in 08H4+.
+   */
   claim(operationId: number, payload: { reason?: string; duration_minutes?: number } = {}) {
     return request<ClaimResponse>(`${STATION_BASE_PATH}/${operationId}/claim`, {
       method: "POST",
@@ -50,6 +73,11 @@ export const stationApi = {
     });
   },
 
+  /**
+   * DEPRECATED (H2+): Use queue ownership context instead.
+   * Claim is compatibility-only; ownership block is primary.
+   * May be removed in 08H4+.
+   */
   release(operationId: number, payload: { reason: string }) {
     return request<ClaimResponse>(`${STATION_BASE_PATH}/${operationId}/release`, {
       method: "POST",
@@ -57,6 +85,11 @@ export const stationApi = {
     });
   },
 
+  /**
+   * DEPRECATED (H2+): Use queue ownership context instead.
+   * Claim is compatibility-only; ownership block is primary.
+   * May be removed in 08H4+.
+   */
   getClaim(operationId: number) {
     return request<{ state: QueueClaimState; expires_at: string | null; claimed_by_user_id: string | null }>(
       `${STATION_BASE_PATH}/${operationId}/claim`,

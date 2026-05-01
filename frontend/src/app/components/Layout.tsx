@@ -179,6 +179,18 @@ function getIconForPath(path: string) {
   if (path.startsWith("/settings")) {
     return Settings;
   }
+  if (path.startsWith("/ai")) {
+    return TrendingUp;
+  }
+  if (path.startsWith("/integration")) {
+    return Server;
+  }
+  if (path.startsWith("/digital-twin")) {
+    return Cpu;
+  }
+  if (path.startsWith("/compliance")) {
+    return Shield;
+  }
   return PlayCircle;
 }
 
@@ -191,7 +203,10 @@ const GROUP_ICONS: Record<string, React.ComponentType<{ className?: string }>> =
   "material-wip": Package,
   "traceability": ScanSearch,
   "reporting-analytics": BarChart3,
+  "integration": Server,
   "planning-scheduling": CalendarClock,
+  "digital-twin": Cpu,
+  "compliance": Shield,
   "governance-admin": Settings,
   "_other": Layers,
 };

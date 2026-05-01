@@ -5,6 +5,7 @@ export interface AllowedActionZoneProps {
   operation: OperationDetail;
   actionLoading: boolean;
   downtimeLoading: boolean;
+  /** H2+: Driven by ownership/session context (backward-compat prop name: canExecuteByClaim) */
   canExecuteByClaim: boolean;
   canPauseExecution: boolean;
   canStartDowntime: boolean;
