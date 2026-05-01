@@ -25,6 +25,7 @@ export function ImpersonationSwitcher({ roleCode }: { roleCode?: string | null }
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const isMountedRef = useRef(true);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     return () => {
@@ -52,6 +53,7 @@ export function ImpersonationSwitcher({ roleCode }: { roleCode?: string | null }
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setOpen(false);
+        triggerRef.current?.focus();
       }
     }
 
@@ -83,6 +85,7 @@ export function ImpersonationSwitcher({ roleCode }: { roleCode?: string | null }
       toast.success(t("impersonation.toast.started"));
       if (isMountedRef.current) {
         setOpen(false);
+        triggerRef.current?.focus();
         setReason("");
       }
     } catch (error) {
@@ -98,7 +101,10 @@ export function ImpersonationSwitcher({ roleCode }: { roleCode?: string | null }
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
+        aria-expanded={open}
+        aria-controls="impersonation-modal-panel"
         onClick={() => setOpen(true)}
         disabled={submitting}
         className="px-3 py-2 text-sm font-medium text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50 disabled:opacity-50"
@@ -107,14 +113,14 @@ export function ImpersonationSwitcher({ roleCode }: { roleCode?: string | null }
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div id="impersonation-modal-panel" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-lg rounded-xl bg-white shadow-xl border border-gray-200">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">{t("impersonation.dialog.subtitle")}</h3>
               <button
                 type="button"
                 aria-label={t("common.action.close")}
-                onClick={() => setOpen(false)}
+                onClick={() => { setOpen(false); triggerRef.current?.focus(); }}
                 className="text-gray-500 hover:text-gray-700"
               >
                 {t("common.action.close")}
@@ -174,7 +180,7 @@ export function ImpersonationSwitcher({ roleCode }: { roleCode?: string | null }
             <div className="px-5 py-4 border-t border-gray-100 flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setOpen(false)}
+                onClick={() => { setOpen(false); triggerRef.current?.focus(); }}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
               >
                 {t("common.action.cancel")}
