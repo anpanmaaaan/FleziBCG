@@ -106,6 +106,9 @@ export const NAV_GROUPS: NavGroup[] = [
       "/performance",
       "/downtime-analysis",
       "/reports",
+      // AI screens live under Reporting & Analytics (FE-NAV-03).
+      // AI is advisory intelligence, not an independent operational module.
+      "/ai",
     ],
   },
   {
@@ -119,11 +122,6 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "planning-scheduling",
     label: "Planning & Scheduling",
     routePrefixes: ["/scheduling"],
-  },
-  {
-    id: "ai-intelligence",
-    label: "AI & Intelligence",
-    routePrefixes: ["/ai"],
   },
   {
     id: "digital-twin",
