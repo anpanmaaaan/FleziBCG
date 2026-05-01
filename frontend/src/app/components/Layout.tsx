@@ -18,6 +18,14 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/app/auth";
+
+function getFocusableElements(container: HTMLElement | null) {
+  return Array.from(
+    container?.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    ) ?? []
+  ).filter((el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true');
+}
 import {
   getDefaultLandingForPersona,
   getPersonaEnforcementMode,
@@ -75,6 +83,7 @@ export function Layout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
 
   const persona = resolvePersonaFromRoleCode(effectiveRoleCode ?? currentUser?.role_code ?? null);
   const enforcementMode = getPersonaEnforcementMode();
@@ -107,6 +116,31 @@ export function Layout() {
     setMobileSidebarOpen(false);
   }, [location.pathname, location.search]);
 
+  useEffect(() => {
+    if (!mobileSidebarOpen) return;
+
+    function handleDrawerTab(event: KeyboardEvent) {
+      if (event.key !== 'Tab') return;
+      const focusable = getFocusableElements(drawerRef.current);
+      if (!focusable.length) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const activeEl = document.activeElement as HTMLElement;
+
+      if (event.shiftKey && activeEl === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && activeEl === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    drawerRef.current?.addEventListener('keydown', handleDrawerTab);
+    return () => drawerRef.current?.removeEventListener('keydown', handleDrawerTab);
+  }, [mobileSidebarOpen]);
+
   if (!canAccessCurrentPath) {
     return <Navigate to={landing} replace />;
   }
@@ -124,7 +158,7 @@ export function Layout() {
           key={item.to}
           to={item.to}
           onClick={onNavigate}
-          className={`group mb-1 flex items-center gap-3 rounded-xl px-3 py-3 transition-all ${
+          className={`group mb-1 flex items-center gap-3 rounded-xl px-3 py-3 transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${
             isActive
               ? "bg-slate-900 text-white shadow-sm"
               : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
@@ -149,12 +183,12 @@ export function Layout() {
   return (
     <div className="flex h-screen bg-slate-50">
       {mobileSidebarOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true">
+        <div ref={drawerRef} className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true">
           <button
             type="button"
             aria-label="Close navigation drawer"
             onClick={() => { setMobileSidebarOpen(false); menuButtonRef.current?.focus(); }}
-            className="absolute inset-0 bg-slate-900/45"
+            className="absolute inset-0 bg-slate-900/45 focus-visible:outline-0"
           />
           <aside id="app-mobile-navigation-drawer" className="relative flex h-full w-[min(20rem,85vw)] flex-col border-r border-slate-200 bg-white text-slate-700 shadow-xl">
             <div className="flex min-h-[72px] items-center justify-between border-b border-slate-200 px-4">
@@ -163,12 +197,12 @@ export function Layout() {
                 type="button"
                 aria-label="Close navigation drawer"
                 onClick={() => { setMobileSidebarOpen(false); menuButtonRef.current?.focus(); }}
-                className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <nav className="flex-1 overflow-y-auto px-3 py-4">{renderMenuItems(false, () => setMobileSidebarOpen(false))}</nav>
+            <nav className="flex-1 overflow-y-auto px-3 py-4" role="navigation" aria-label="Mobile navigation">{renderMenuItems(false, () => setMobileSidebarOpen(false))}</nav>
           </aside>
         </div>
       )}
@@ -181,7 +215,7 @@ export function Layout() {
           <button
             type="button"
             onClick={() => setSidebarCollapsed((prev) => !prev)}
-            className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
           >
             {sidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
           </button>

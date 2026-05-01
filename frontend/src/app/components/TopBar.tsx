@@ -177,7 +177,7 @@ export function TopBar({
               closeMenus();
               onOpenSidebar?.();
             }}
-            className="rounded-lg border border-gray-200 p-2 text-gray-700 transition-colors hover:bg-gray-50 lg:hidden"
+            className="rounded-lg border border-gray-200 p-2 text-gray-700 transition-colors hover:bg-gray-50 lg:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -204,7 +204,7 @@ export function TopBar({
               setShowNotifications(false);
               setShowUtilityOverflow(false);
             }}
-            className="flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+            className="flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
           >
             <span>{selectedPlant}</span>
             <ChevronDown className="w-4 h-4 text-gray-500" />
@@ -263,7 +263,7 @@ export function TopBar({
               setShowUserDropdown(false);
               setShowUtilityOverflow(false);
             }}
-            className="relative rounded-full p-2 text-gray-600 transition-colors hover:bg-gray-100"
+            className="relative rounded-full p-2 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
           >
             <Bell className="w-5 h-5" />
             {/* Notification Badge */}
@@ -323,7 +323,7 @@ export function TopBar({
               setShowUserDropdown(false);
               setShowNotifications(false);
             }}
-            className="rounded-lg border border-gray-200 p-2 text-gray-700 transition-colors hover:bg-gray-50"
+            className="rounded-lg border border-gray-200 p-2 text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
           >
             <MoreHorizontal className="h-5 w-5" />
           </button>
@@ -397,7 +397,7 @@ export function TopBar({
               setShowNotifications(false);
               setShowUtilityOverflow(false);
             }}
-            className="flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+            className="flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
           >
             <span className="text-lg">{selectedLanguage.flag}</span>
             <span className="font-medium">{selectedLanguage.locale.toUpperCase()}</span>
@@ -441,7 +441,7 @@ export function TopBar({
               setShowNotifications(false);
               setShowUtilityOverflow(false);
             }}
-            className="flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white pl-2 pr-2 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+            className="flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white pl-2 pr-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
           >
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white font-semibold shadow-sm">
               {(currentUser?.username?.[0] || 'U').toUpperCase()}
