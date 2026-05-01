@@ -105,6 +105,14 @@ export const NAV_GROUPS: NavGroup[] = [
     routePrefixes: [
       "/performance",
       "/downtime-analysis",
+      "/reports",
+    ],
+  },
+  {
+    id: "integration",
+    label: "Integration",
+    routePrefixes: [
+      "/integration",
     ],
   },
   {

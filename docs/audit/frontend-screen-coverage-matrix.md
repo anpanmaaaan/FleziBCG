@@ -3,6 +3,7 @@
 ## History
 | Date | Version | Change |
 |---|---:|---|
+| 2026-05-02 | v1.5 | FE-COVERAGE-01E: Added 8 Integration + 6 Reporting SHELL screens. Routes increased 53→67, SHELL phases increased 29→43. i18n keys 1321→1509 (+188). |
 | 2026-05-01 | v1.4 | FE-COVERAGE-01D: Added 6 Quality Lite / Material / Traceability SHELL screens. Routes increased 47→53, SHELL phases increased 23→29. |
 | 2026-05-01 | v1.3 | FE-COVERAGE-01C: Added 9 Execution/Supervisory SHELL screens. Routes increased 38→47, SHELL phases increased 14→23. |
 | 2026-04-28 | v1.2 | FE-COVERAGE-01B: Added 5 MMD SHELL screens (BomList, BomDetail, RoutingOperationDetail, ResourceRequirements, ReasonCodes). Routes increased 33→38, SHELL phases increased 9→14. |
@@ -61,24 +62,25 @@ Audit the current frontend screen/route/page coverage of FleziBCG before creatin
 
 ## 4. Executive Summary
 
-**Frontend Coverage Status (as of 2026-05-01 — after FE-COVERAGE-01D)**
+**Frontend Coverage Status (as of 2026-05-02 — after FE-COVERAGE-01E)**
 
-| Metric | Before FE-COVERAGE-01A | After FE-COVERAGE-01A | After FE-COVERAGE-01B | After FE-COVERAGE-01C | After FE-COVERAGE-01D |
-|---|---|---|---|---|---|
-| **Total Routes Defined** | 24 | 33 | 38 | 47 | 53 |
-| **Total Page Files** | 22 (21 unique) | 31 (30 unique) | 36 (35 unique) | 45 (44 unique) | 51 (50 unique) |
-| **CONNECTED Pages** | 13 (59%) | 13 (42%) | 13 (36%) | 13 (29%) | 13 (25%) |
-| **PARTIAL Pages** | 3 (14%) | 3 (10%) | 3 (8%) | 3 (7%) | 3 (6%) |
-| **MOCK Pages** | 7 (32%) | 7 (23%) | 7 (19%) | 7 (16%) | 7 (14%) |
-| **SHELL Pages** | 0 (0%) | 9 (29%) | 14 (39%) | 23 (51%) | 29 (57%) |
-| **PLACEHOLDER Pages** | 2 (9%) | 2 (6%) | 2 (6%) | 2 (4%) | 2 (4%) |
-| **DEV-ONLY Pages** | 1 (5%) | 1 (3%) | 1 (3%) | 1 (2%) | 1 (2%) |
-| **Domains with Any Coverage** | 9 / 15 target groups | 10 / 15 target groups | 11 / 15 | 12 / 15 | 12 / 15 |
+| Metric | Before FE-COVERAGE-01A | After FE-COVERAGE-01A | After FE-COVERAGE-01B | After FE-COVERAGE-01C | After FE-COVERAGE-01D | After FE-COVERAGE-01E |
+|---|---|---|---|---|---|---|
+| **Total Routes Defined** | 24 | 33 | 38 | 47 | 53 | 67 |
+| **Total Page Files** | 22 (21 unique) | 31 (30 unique) | 36 (35 unique) | 45 (44 unique) | 51 (50 unique) | 65 (64 unique) |
+| **CONNECTED Pages** | 13 (59%) | 13 (42%) | 13 (36%) | 13 (29%) | 13 (25%) | 13 (20%) |
+| **PARTIAL Pages** | 3 (14%) | 3 (10%) | 3 (8%) | 3 (7%) | 3 (6%) | 3 (5%) |
+| **MOCK Pages** | 7 (32%) | 7 (23%) | 7 (19%) | 7 (16%) | 7 (14%) | 7 (11%) |
+| **SHELL Pages** | 0 (0%) | 9 (29%) | 14 (39%) | 23 (51%) | 29 (57%) | 43 (67%) |
+| **PLACEHOLDER Pages** | 2 (9%) | 2 (6%) | 2 (6%) | 2 (4%) | 2 (4%) | 2 (3%) |
+| **DEV-ONLY Pages** | 1 (5%) | 1 (3%) | 1 (3%) | 1 (2%) | 1 (2%) | 1 (2%) |
+| **Domains with Any Coverage** | 9 / 15 target groups | 10 / 15 target groups | 11 / 15 | 12 / 15 | 12 / 15 | 14 / 15 |
 
 **Key Insights**:
+- **FE-COVERAGE-01E**: Added 8 Integration + 6 Reporting SHELL screens. 14 new routes. 14 new screenStatus entries. 188 new i18n keys. All dangerous integration/ERP/reconciliation actions disabled. Reporting screens show only `—` placeholder KPIs. Integration truth boundary enforced: frontend does NOT post to ERP, reconcile, or retry messages.
 - **FE-COVERAGE-01D**: Added 6 Quality Lite / Material / Traceability SHELL screens (QualityDashboard, MeasurementEntry, QualityHolds, MaterialReadiness, StagingKitting, WipBuffers). Hard Mode MOM v3 boundaries enforced: quality disposition, material inventory position, and WIP location remain backend-only. All dangerous operations disabled. Shell pages serve as visualization documentation for upcoming backend integration.
 - **FE-COVERAGE-01C**: Added 9 Execution/Supervisory shell screens. All dangerous execution actions are disabled. All execution/supervisory truth remains in backend.
-- **Coverage Growth**: 38 → 53 routes in 2 iterations; SHELL pages now represent 57% of total page count.
+- **Coverage Growth**: 38 → 67 routes across 3 iterations; SHELL pages now represent 67% of total page count.
 
 ---
 
@@ -365,14 +367,14 @@ Comprehensive primitive set: form controls, layout (card, sidebar, scroll-area),
 
 | Target Screen | Domain | Target Phase | Existing Source File | Current Route | Current Status | Data Source | Gap | Mock Risk | Recommendation | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Integration Dashboard | Integration | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | Backend integration module not ready |
-| External System Registry | Integration | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | Backend system registry not exposed to FE |
-| ERP Mapping | Integration | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | ERP posting logic; wait for full backend module |
-| Inbound Messages | Integration | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | Backend message queue not yet exposed |
-| Outbound Messages | Integration | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | Backend message queue not yet exposed |
-| Posting Requests | Integration | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | ERP posting; critical domain; wait for backend |
-| Reconciliation | Integration | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | Backend reconciliation logic not ready |
-| Retry / Failure Queue | Integration | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | Backend retry logic not yet exposed to FE |
+| Integration Dashboard | Integration | P2 | IntegrationDashboard.tsx | /integration | SHELL | MOCK_FIXTURE | Backend connectivity | — | **SHELL_DELIVERED** (FE-COVERAGE-01E) | Shell: integration state, posting status, reconciliation truth are backend-only |
+| External System Registry | Integration | P2 | ExternalSystems.tsx | /integration/systems | SHELL | MOCK_FIXTURE | Backend system registry | — | **SHELL_DELIVERED** (FE-COVERAGE-01E) | Shell: Add/Edit/Delete disabled; real system config is backend-only |
+| ERP Mapping | Integration | P2 | ErpMapping.tsx | /integration/erp-mapping | SHELL | MOCK_FIXTURE | Backend ERP adapter | — | **SHELL_DELIVERED** (FE-COVERAGE-01E) | Shell: Validate/Publish disabled; ERP field mapping is backend-only |
+| Inbound Messages | Integration | P2 | InboundMessages.tsx | /integration/inbound | SHELL | MOCK_FIXTURE | Backend event bus | — | **SHELL_DELIVERED** (FE-COVERAGE-01E) | Shell: Replay disabled; message processing is backend-only |
+| Outbound Messages | Integration | P2 | OutboundMessages.tsx | /integration/outbound | SHELL | MOCK_FIXTURE | Backend event bus | — | **SHELL_DELIVERED** (FE-COVERAGE-01E) | Shell: Resend disabled; message delivery is backend-only |
+| Posting Requests | Integration | P2 | PostingRequests.tsx | /integration/posting-requests | SHELL | MOCK_FIXTURE | Backend ERP posting | — | **SHELL_DELIVERED** (FE-COVERAGE-01E) | Shell: Retry/Cancel disabled; frontend does NOT post to ERP |
+| Reconciliation | Integration | P2 | Reconciliation.tsx | /integration/reconciliation | SHELL | MOCK_FIXTURE | Backend reconciliation | — | **SHELL_DELIVERED** (FE-COVERAGE-01E) | Shell: Resolve/Approve disabled; frontend does NOT reconcile |
+| Retry / Failure Queue | Integration | P2 | RetryQueue.tsx | /integration/retry-queue | SHELL | MOCK_FIXTURE | Backend fault-tolerance | — | **SHELL_DELIVERED** (FE-COVERAGE-01E) | Shell: Retry/Skip/Dead-letter disabled; frontend does NOT retry messages |
 
 ### **G. Reporting / KPI / OEE**
 
@@ -380,12 +382,12 @@ Comprehensive primitive set: form controls, layout (card, sidebar, scroll-area),
 |---|---|---|---|---|---|---|---|---|---|---|
 | OEE Overview | Reporting | P1 | Dashboard.tsx (partial) | /dashboard | CONNECTED | REAL_API | OEE summary only | LOW | **EXTEND_EXISTING** | Dashboard has KPI summary; deep dive is mock |
 | OEE Deep Dive | Reporting | P1 | OEEDeepDive.tsx | /performance/oee-deep-dive | MOCK | INLINE_STATIC (oee-mock-data.ts) | Full mock trends + mocked AI | HIGH | **EXTEND_EXISTING** | Mock data only; when OEE backend ready, replace mock |
-| Downtime Report | Reporting | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **CREATE_SHELL_NEXT** | Backend downtime data exists; FE report not yet built |
-| Production Performance Report | Reporting | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **CREATE_SHELL_NEXT** | Backend has metrics; FE reporting not yet built |
-| Quality Performance Report | Reporting | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | Depends on quality module |
-| Shift Report | Reporting | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **CREATE_SHELL_NEXT** | Backend shift data exists; FE reporting not yet built |
-| Material/WIP Report | Reporting | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | Depends on material/WIP module |
-| Integration Status Report | Reporting | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | Depends on integration module |
+| Downtime Report | Reporting | P2 | DowntimeReport.tsx | /reports/downtime | SHELL | MOCK_FIXTURE | Backend reporting API | — | **SHELL_DELIVERED** (FE-COVERAGE-01E) | Shell: Export disabled; aggregated downtime requires backend analytics |
+| Production Performance Report | Reporting | P2 | ProductionPerformanceReport.tsx | /reports/production-performance | SHELL | MOCK_FIXTURE | Backend reporting API | — | **SHELL_DELIVERED** (FE-COVERAGE-01E) | Shell: Export disabled; KPIs are — placeholder; no production truth |
+| Quality Performance Report | Reporting | P2 | QualityPerformanceReport.tsx | /reports/quality-performance | SHELL | MOCK_FIXTURE | Backend quality+reporting | — | **SHELL_DELIVERED** (FE-COVERAGE-01E) | Shell: Export disabled; official quality metrics are backend-only |
+| Shift Report | Reporting | P2 | ShiftReport.tsx | /reports/shift | SHELL | MOCK_FIXTURE | Backend shift management | — | **SHELL_DELIVERED** (FE-COVERAGE-01E) | Shell: Close Shift/Export disabled; official shift data is backend-only |
+| Material/WIP Report | Reporting | P2 | MaterialWipReport.tsx | /reports/material-wip | SHELL | MOCK_FIXTURE | Backend inventory module | — | **SHELL_DELIVERED** (FE-COVERAGE-01E) | Shell: Export disabled; WIP/material truth is backend-only |
+| Integration Status Report | Reporting | P2 | IntegrationStatusReport.tsx | /reports/integration-status | SHELL | MOCK_FIXTURE | Backend integration + observability | — | **SHELL_DELIVERED** (FE-COVERAGE-01E) | Shell: Export disabled; integration monitoring is backend-only |
 
 ### **H. Andon / Notification / Maintenance**
 
@@ -437,19 +439,20 @@ Comprehensive primitive set: form controls, layout (card, sidebar, scroll-area),
 | **Execution / Operations** | 10 (PO List, WO List, Op Detail, Station, Global Monitor, Session, Quantity, Close/Reopen, etc.) | 3 (Op Detail, Station, Equipment Binding) | 1 (Dispatch) | 3 (Equipment, Event Timeline, Block Reasons) | 1 (Dispatch) | P0-P2 | **POLISH_ONLY** (FE-SHELL-04 completed keyboard accessibility; mark PARTIAL intentionally) |
 | **Quality Management** | 0 | 0 | 2 (QCCheckpoints, DefectManagement) | 6 (Dashboard, Measurement, Evaluation, Hold, Nonconformance, Disposition) | 5 (QC, Defects, Hold, Nonconformance, Disposition) | P2-P3 | **DEFER** (Quality module backend required first) |
 | **Material / Traceability** | 0 | 0 | 5 (Traceability search, genealogy, forward/backward trace, full mock) | 5 (Material Readiness, Staging, WIP, Lot, Backflush) | 7 (all until backend) | P2-P3 | **DEFER** (Traceability backend API required; do NOT productionize mock) |
-| **Integration** | 0 | 0 | 0 | 8 (Dashboard, Systems, ERP, Messages, Posting, Reconciliation, Queue) | 8 (all until backend) | P3 | **DEFER** (Integration module backend required) |
-| **Reporting / KPI** | 2 (KPI in Dashboard, OEE overview) | 1 (OEE Deep Dive mock) | 1 (OEE Deep Dive mock) | 5 (Downtime, Production, Quality, Shift, Material) | 1 (Quality Report) | P1-P2 | **FE-COVERAGE-01E** (shells for Downtime, Production, Shift reports) |
+| **Integration** | 0 | 0 | 8 (all 8 integration shells; FE-COVERAGE-01E) | 0 | 0 (shells delivered; backend required for live data) | P3 | **SHELL_DELIVERED** (FE-COVERAGE-01E complete) |
+| **Reporting / KPI** | 2 (KPI in Dashboard, OEE overview) | 1 (OEE Deep Dive mock) | 7 (OEE Deep Dive mock + 6 new report shells; FE-COVERAGE-01E) | 0 | 1 (OEE Deep Dive — wait for backend) | P1-P2 | **SHELL_DELIVERED** (FE-COVERAGE-01E complete) |
 | **Andon / Notification** | 0 | 0 | 1 (Notification bell mock) | 4 (Board, Raise, Center, Escalation) | 4 (all until backend) | P2-P3 | **CREATE_SHELL_NEXT** (Notification Center screen) |
 | **APS / Planning** | 0 | 0 | 2 (APSScheduling, DispatchQueue) | 4 (Planning Board, Capacity, Plan vs Actual, Replanning) | 4 (all until backend) | P2-P3 | **DEFER** (APS/Planning backend required) |
 | **AI / Digital Twin / Compliance** | 0 | 0 | 0 | 11 (all screens) | 11 (all until backend + critical safety guardrails) | P3 | **FE-COVERAGE-01F** (placeholders only; strict rules: no active predictions, no real state, no approval decisions) |
-| **TOTALS** | **20** | **6** | **12** | **58** | **48** | — | — |
+| **TOTALS** | **20** | **6** | **26** | **44** | **36** | — | — |
 
 **Key Insights:**
 - **Strong coverage (connected)**: Foundation, Execution, Master Data = 18 screens
 - **Good partial coverage**: Execution domain (3 PARTIAL marked intentionally)
 - **Dangerous mocks**: Quality (2), Traceability (5), APS (2), Reporting (1) = 10 screens at HIGH/CRITICAL risk
 - **Nearly complete domains**: Execution (13/16), Master Data (7/9)
-- **Missing domains**: Governance (10/13), Reporting (3/8), Andon (4/7), Planning (4/6), Integration (0/8), AI/Twin/Compliance (0/11)
+- **Newly covered**: Integration (8/8 shells), Reporting (6/8 shells), Governance (9/13)
+- **Still missing**: Andon (4/7), Planning (4/6), AI/Twin/Compliance (0/11)
 
 ---
 
