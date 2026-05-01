@@ -2,9 +2,9 @@
 P0-C-04C Diagnostic Session Context Bridge Tests.
 
 Behavior contract:
-- Missing StationSession produces diagnostic readiness signal only.
-- Missing StationSession must NOT reject execution command.
-- Existing command outcomes remain unchanged.
+- Missing StationSession produces diagnostic readiness signal.
+- Missing StationSession now rejects guarded execution commands.
+- Matching OPEN StationSession preserves normal command outcomes.
 - Diagnostic output is backend-derived (tenant_id + station_scope_value from
   verified context, not from user input).
 - No new domain events are introduced in this slice.
@@ -24,13 +24,15 @@ from app.models.rbac import Role, Scope, UserRoleAssignment
 from app.models.station_session import StationSession
 from app.schemas.operation import OperationStartRequest
 from app.security.dependencies import RequestIdentity
-from app.services.operation_service import start_operation
+from app.services.operation_service import StationSessionGuardError, start_operation
 from app.services.station_session_diagnostic import (
     SessionReadiness,
     get_station_session_diagnostic,
 )
 from app.services.station_session_service import (
     close_station_session,
+    get_current_station_session,
+    identify_operator_at_station,
     open_station_session,
 )
 
@@ -119,24 +121,56 @@ def _purge(db) -> None:
 
 def _seed_station_scope(db, tenant_id: str = _TENANT_ID) -> Scope:
     opr_role = _ensure_opr_role(db)
-    scope = Scope(
-        tenant_id=tenant_id,
-        scope_type="station",
-        scope_value=_STATION,
-    )
-    db.add(scope)
-    db.flush()
-    db.add(
-        UserRoleAssignment(
-            user_id=_ACTOR,
-            role_id=opr_role.id,
-            scope_id=scope.id,
-            is_primary=True,
-            is_active=True,
+    scope = db.scalar(
+        select(Scope).where(
+            Scope.tenant_id == tenant_id,
+            Scope.scope_type == "station",
+            Scope.scope_value == _STATION,
         )
     )
+    if scope is None:
+        scope = Scope(
+            tenant_id=tenant_id,
+            scope_type="station",
+            scope_value=_STATION,
+        )
+        db.add(scope)
+        db.flush()
+
+    assignment = db.scalar(
+        select(UserRoleAssignment).where(
+            UserRoleAssignment.user_id == _ACTOR,
+            UserRoleAssignment.role_id == opr_role.id,
+            UserRoleAssignment.scope_id == scope.id,
+        )
+    )
+    if assignment is None:
+        db.add(
+            UserRoleAssignment(
+                user_id=_ACTOR,
+                role_id=opr_role.id,
+                scope_id=scope.id,
+                is_primary=True,
+                is_active=True,
+            )
+        )
     db.commit()
     return scope
+
+
+def _ensure_open_station_session(db) -> StationSession:
+    identity = _identity()
+    session = get_current_station_session(db, identity, station_id=_STATION)
+    if session is None:
+        session = open_station_session(db, identity, station_id=_STATION)
+    if session.operator_user_id != _ACTOR:
+        session = identify_operator_at_station(
+            db,
+            identity,
+            session_id=session.session_id,
+            operator_user_id=_ACTOR,
+        )
+    return session
 
 
 def _seed_operation(db, suffix: str = "01") -> Operation:
@@ -267,8 +301,8 @@ def test_diagnostic_tenant_mismatch_no_false_positive(bridge_fixture):
 # ---------------------------------------------------------------------------
 
 
-def test_start_operation_proceeds_without_session(bridge_fixture):
-    """BRIDGE-T1: start_operation succeeds even when no StationSession exists."""
+def test_start_operation_requires_session(bridge_fixture):
+    """BRIDGE-T1: start_operation rejects when no StationSession exists."""
     db = bridge_fixture
     op = _seed_operation(db, suffix="no-session")
 
@@ -278,14 +312,13 @@ def test_start_operation_proceeds_without_session(bridge_fixture):
     )
     assert diagnostic.readiness == SessionReadiness.NO_ACTIVE_SESSION
 
-    # Command must succeed regardless
-    detail = start_operation(
-        db,
-        op,
-        OperationStartRequest(operator_id=_ACTOR, started_at=None),
-        tenant_id=_TENANT_ID,
-    )
-    assert detail.status == StatusEnum.in_progress.value
+    with pytest.raises(StationSessionGuardError, match="STATION_SESSION_REQUIRED"):
+        start_operation(
+            db,
+            op,
+            OperationStartRequest(operator_id=_ACTOR, started_at=None),
+            tenant_id=_TENANT_ID,
+        )
 
 
 def test_start_operation_proceeds_with_open_session(bridge_fixture):
@@ -293,7 +326,7 @@ def test_start_operation_proceeds_with_open_session(bridge_fixture):
     db = bridge_fixture
     op = _seed_operation(db, suffix="with-session")
 
-    open_station_session(db, _identity(), station_id=_STATION)
+    _ensure_open_station_session(db)
 
     diagnostic = get_station_session_diagnostic(
         db, tenant_id=_TENANT_ID, station_id=_STATION

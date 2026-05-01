@@ -1,4 +1,5 @@
 from pathlib import Path
+from threading import Lock
 
 from sqlalchemy import text
 
@@ -41,25 +42,58 @@ from app.services.approval_service import seed_approval_rules
 from app.services.user_service import seed_demo_users
 
 
+_MIGRATIONS_APPLIED = False
+_MIGRATION_APPLY_LOCK = Lock()
+_MIGRATION_ADVISORY_LOCK_KEY = 84082026
+
+
 def _apply_sql_migrations() -> None:
-    migrations_dir = Path(__file__).resolve().parents[2] / "scripts" / "migrations"
-    if not migrations_dir.exists():
+    global _MIGRATIONS_APPLIED
+
+    if _MIGRATIONS_APPLIED:
         return
 
-    migration_files = sorted(migrations_dir.glob("*.sql"))
-    if not migration_files:
-        return
+    with _MIGRATION_APPLY_LOCK:
+        if _MIGRATIONS_APPLIED:
+            return
 
-    with engine.begin() as conn:
-        for migration_file in migration_files:
-            sql_text = migration_file.read_text(encoding="utf-8")
-            statements = [
-                statement.strip()
-                for statement in sql_text.split(";")
-                if statement.strip()
-            ]
-            for statement in statements:
-                conn.execute(text(statement))
+        migrations_dir = Path(__file__).resolve().parents[2] / "scripts" / "migrations"
+        if not migrations_dir.exists():
+            _MIGRATIONS_APPLIED = True
+            return
+
+        migration_files = sorted(migrations_dir.glob("*.sql"))
+        if not migration_files:
+            _MIGRATIONS_APPLIED = True
+            return
+
+        with engine.begin() as conn:
+            locked = False
+            if engine.dialect.name == "postgresql":
+                # Serialize migration DDL across processes in shared test DB usage.
+                conn.execute(
+                    text("SELECT pg_advisory_lock(:lock_key)"),
+                    {"lock_key": _MIGRATION_ADVISORY_LOCK_KEY},
+                )
+                locked = True
+            try:
+                for migration_file in migration_files:
+                    sql_text = migration_file.read_text(encoding="utf-8")
+                    statements = [
+                        statement.strip()
+                        for statement in sql_text.split(";")
+                        if statement.strip()
+                    ]
+                    for statement in statements:
+                        conn.execute(text(statement))
+            finally:
+                if locked:
+                    conn.execute(
+                        text("SELECT pg_advisory_unlock(:lock_key)"),
+                        {"lock_key": _MIGRATION_ADVISORY_LOCK_KEY},
+                    )
+
+        _MIGRATIONS_APPLIED = True
 
 
 def init_db(*, bootstrap_schema: bool = False) -> None:

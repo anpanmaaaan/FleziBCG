@@ -10,6 +10,9 @@ from app.config.settings import settings
 from app.models.master import Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.rbac import Role, Scope, UserRoleAssignment
 from app.models.station_claim import OperationClaim, OperationClaimAuditLog
+from app.repositories.station_session_repository import (
+    get_active_station_session_for_station,
+)
 from app.security.dependencies import RequestIdentity
 from app.services.operation_service import derive_operation_runtime_projection_for_ids
 
@@ -277,6 +280,14 @@ def _to_claim_state(
     return ("other", claim.expires_at, claim.claimed_by_user_id)
 
 
+def _to_session_owner_state(identity: RequestIdentity, operator_user_id: str | None) -> str:
+    if not operator_user_id:
+        return "unassigned"
+    if operator_user_id == identity.user_id:
+        return "mine"
+    return "other"
+
+
 def get_station_queue(db: Session, identity: RequestIdentity) -> tuple[str, list[dict]]:
     ensure_operator_context(identity)
     station_scope = resolve_station_scope(db, identity)
@@ -325,6 +336,12 @@ def get_station_queue(db: Session, identity: RequestIdentity) -> tuple[str, list
         and runtime_projection_by_operation_id[row[0].id].status in active_queue_statuses
     ]
 
+    active_station_session = get_active_station_session_for_station(
+        db,
+        tenant_id=identity.tenant_id,
+        station_id=station_scope.scope_value,
+    )
+
     active_operation_ids = [operation.id for operation, _wo, _po in active_rows]
     claims = {}
     if active_operation_ids:
@@ -364,6 +381,41 @@ def get_station_queue(db: Session, identity: RequestIdentity) -> tuple[str, list
                     "state": state,
                     "expires_at": expires_at,
                     "claimed_by_user_id": claimed_by_user_id,
+                },
+                "ownership": {
+                    "target_owner_type": "station_session",
+                    "ownership_migration_status": "TARGET_SESSION_OWNER_WITH_CLAIM_COMPAT",
+                    "session_id": (
+                        active_station_session.session_id
+                        if active_station_session is not None
+                        else None
+                    ),
+                    "station_id": (
+                        active_station_session.station_id
+                        if active_station_session is not None
+                        else None
+                    ),
+                    "session_status": (
+                        active_station_session.status
+                        if active_station_session is not None
+                        else None
+                    ),
+                    "operator_user_id": (
+                        active_station_session.operator_user_id
+                        if active_station_session is not None
+                        else None
+                    ),
+                    "owner_state": _to_session_owner_state(
+                        identity,
+                        (
+                            active_station_session.operator_user_id
+                            if active_station_session is not None
+                            else None
+                        ),
+                    )
+                    if active_station_session is not None
+                    else "none",
+                    "has_open_session": active_station_session is not None,
                 },
                 "downtime_open": runtime_projection.downtime_open,
             }

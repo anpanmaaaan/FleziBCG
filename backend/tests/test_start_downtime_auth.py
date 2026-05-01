@@ -11,6 +11,7 @@ from app.db.session import SessionLocal
 from app.models.master import Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.execution import ExecutionEvent
 from app.models.rbac import Scope
+from app.models.station_session import StationSession
 from app.models.station_claim import OperationClaim
 from app.security.dependencies import RequestIdentity
 
@@ -133,6 +134,15 @@ def seeded_operation():
             expires_at=now + timedelta(hours=1),
         )
     )
+    db.add(
+        StationSession(
+            session_id=uuid4().hex,
+            tenant_id="default",
+            station_id=scope.scope_value,
+            operator_user_id="test-user",
+            status="OPEN",
+        )
+    )
     db.commit()
     db.refresh(op)
 
@@ -140,6 +150,7 @@ def seeded_operation():
         yield op
     finally:
         db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id == op.id))
+        db.execute(delete(StationSession).where(StationSession.station_id == scope.scope_value))
         db.execute(delete(OperationClaim).where(OperationClaim.operation_id == op.id))
         db.execute(delete(Operation).where(Operation.id == op.id))
         db.execute(delete(WorkOrder).where(WorkOrder.id == wo.id))

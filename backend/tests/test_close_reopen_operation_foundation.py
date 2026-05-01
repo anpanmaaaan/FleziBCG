@@ -9,6 +9,8 @@ from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent, ExecutionEventType
 from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.rbac import Role, Scope, UserRoleAssignment
+from app.models.station_session import StationSession
 from app.schemas.operation import (
     OperationCloseRequest,
     OperationPauseRequest,
@@ -25,9 +27,26 @@ from app.services.operation_service import (
     reopen_operation,
     resume_operation,
 )
+from app.security.dependencies import RequestIdentity
+from app.services.station_session_service import (
+    get_current_station_session,
+    identify_operator_at_station,
+    open_station_session,
+)
 
 _PREFIX = "TEST-CLOSE-REOPEN"
 _TENANT_ID = "default"
+
+
+def _identity(user_id: str) -> RequestIdentity:
+    return RequestIdentity(
+        user_id=user_id,
+        username=user_id,
+        email=None,
+        tenant_id=_TENANT_ID,
+        role_code="OPR",
+        is_authenticated=True,
+    )
 
 
 def _purge(db) -> None:
@@ -51,7 +70,70 @@ def _purge(db) -> None:
             db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
         db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
     db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
+    db.execute(delete(StationSession).where(StationSession.station_id.like("TEST_CLOSE_REOPEN%")))
+    db.execute(delete(UserRoleAssignment).where(UserRoleAssignment.user_id == "opr-001"))
+    db.execute(delete(Scope).where(Scope.scope_value.like("TEST_CLOSE_REOPEN%")))
     db.commit()
+
+
+def _ensure_opr_role(db) -> Role:
+    role = db.scalar(select(Role).where(Role.code == "OPR"))
+    if role is not None:
+        return role
+    role = Role(code="OPR", name="Operator", role_type="system", is_system=True)
+    db.add(role)
+    db.flush()
+    return role
+
+
+def _ensure_open_station_session(db, *, user_id: str, station_id: str) -> StationSession:
+    role = _ensure_opr_role(db)
+    scope = db.scalar(
+        select(Scope).where(
+            Scope.tenant_id == _TENANT_ID,
+            Scope.scope_type == "station",
+            Scope.scope_value == station_id,
+        )
+    )
+    if scope is None:
+        scope = Scope(
+            tenant_id=_TENANT_ID,
+            scope_type="station",
+            scope_value=station_id,
+        )
+        db.add(scope)
+        db.flush()
+    assignment = db.scalar(
+        select(UserRoleAssignment).where(
+            UserRoleAssignment.user_id == user_id,
+            UserRoleAssignment.role_id == role.id,
+            UserRoleAssignment.scope_id == scope.id,
+        )
+    )
+    if assignment is None:
+        db.add(
+            UserRoleAssignment(
+                user_id=user_id,
+                role_id=role.id,
+                scope_id=scope.id,
+                is_primary=True,
+                is_active=True,
+            )
+        )
+        db.commit()
+
+    identity = _identity(user_id)
+    session = get_current_station_session(db, identity, station_id=station_id)
+    if session is None:
+        session = open_station_session(db, identity, station_id=station_id)
+    if session.operator_user_id != user_id:
+        session = identify_operator_at_station(
+            db,
+            identity,
+            session_id=session.session_id,
+            operator_user_id=user_id,
+        )
+    return session
 
 
 @pytest.fixture
@@ -278,6 +360,7 @@ def test_reopen_operation_success_updates_metadata_appends_event_and_projects_pa
     assert closed.closure_status == ClosureStatusEnum.closed.value
 
     # Closed invariant blocks execution writes while CLOSED.
+    _ensure_open_station_session(db, user_id="opr-001", station_id="TEST_CLOSE_REOPEN_STATION")
     with pytest.raises(ClosedRecordConflictError, match="STATE_CLOSED_RECORD"):
         pause_operation(
             db,
@@ -308,6 +391,7 @@ def test_reopen_operation_success_updates_metadata_appends_event_and_projects_pa
 
     # After reopen, closed invariant no longer blocks execution writes.
     reopened_live = get_operation(db, op.id)
+    _ensure_open_station_session(db, user_id="opr-001", station_id="TEST_CLOSE_REOPEN_STATION")
     resumed = resume_operation(
         db,
         reopened_live,

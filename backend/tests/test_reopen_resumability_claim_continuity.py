@@ -10,6 +10,7 @@ from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent, ExecutionEventType
 from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.rbac import Role, Scope, UserRoleAssignment
+from app.models.station_session import StationSession
 from app.models.station_claim import OperationClaim, OperationClaimAuditLog
 from app.security.dependencies import RequestIdentity
 from app.services.operation_service import (
@@ -23,6 +24,11 @@ from app.schemas.operation import (
     OperationResumeRequest,
 )
 from app.services.station_claim_service import claim_operation, get_station_queue
+from app.services.station_session_service import (
+    get_current_station_session,
+    identify_operator_at_station,
+    open_station_session,
+)
 
 _PREFIX = "TEST-REOPEN-CLAIM-CONTINUITY"
 _TENANT_ID = "default"
@@ -85,6 +91,21 @@ def _ensure_role(db, code: str, name: str) -> Role:
     db.add(role)
     db.flush()
     return role
+
+
+def _ensure_open_station_session(db, *, user_id: str) -> StationSession:
+    identity = _identity(user_id)
+    session = get_current_station_session(db, identity, station_id=_STATION_SCOPE)
+    if session is None:
+        session = open_station_session(db, identity, station_id=_STATION_SCOPE)
+    if session.operator_user_id != user_id:
+        session = identify_operator_at_station(
+            db,
+            identity,
+            session_id=session.session_id,
+            operator_user_id=user_id,
+        )
+    return session
 
 
 @pytest.fixture
@@ -275,6 +296,7 @@ def test_reopen_restores_last_claim_owner_path_and_resume_is_reachable(db_sessio
     assert queue_item["status"] == StatusEnum.paused.value
     assert queue_item["claim"]["state"] == "mine"
 
+    _ensure_open_station_session(db, user_id=_OWNER_USER_ID)
     resumed = resume_operation(
         db,
         op,
@@ -328,7 +350,7 @@ def test_reopen_preserves_active_claim_continuity_when_claim_still_exists(db_ses
     assert active_claims[0].claimed_by_user_id == _OWNER_USER_ID
 
 
-def test_reopen_rejects_when_restoring_owner_would_violate_single_active_claim_rule(db_session):
+def test_reopen_skips_claim_restoration_when_owner_has_other_active_claim(db_session):
     db, _scope = db_session
     op_reopen = _seed_operation(db, "CONFLICT-REOPEN")
     op_other = _seed_operation(db, "CONFLICT-OTHER")
@@ -357,11 +379,22 @@ def test_reopen_rejects_when_restoring_owner_would_violate_single_active_claim_r
 
     claim_operation(db, _identity(_OWNER_USER_ID), op_other.id, reason="other-active")
 
-    with pytest.raises(ValueError, match="STATE_REOPEN_OWNER_HAS_OTHER_ACTIVE_CLAIM"):
-        reopen_operation(
-            db,
-            op_reopen,
-            OperationReopenRequest(reason="should conflict"),
-            actor_user_id=_SUP_USER_ID,
-            tenant_id=_TENANT_ID,
+    reopened = reopen_operation(
+        db,
+        op_reopen,
+        OperationReopenRequest(reason="reopen should not be blocked by claim conflict"),
+        actor_user_id=_SUP_USER_ID,
+        tenant_id=_TENANT_ID,
+    )
+    assert reopened.closure_status == ClosureStatusEnum.open.value
+    assert reopened.status == StatusEnum.paused.value
+
+    active_claims_for_reopened = list(
+        db.scalars(
+            select(OperationClaim).where(
+                OperationClaim.operation_id == op_reopen.id,
+                OperationClaim.released_at.is_(None),
+            )
         )
+    )
+    assert active_claims_for_reopened == []

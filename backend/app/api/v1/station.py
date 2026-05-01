@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
@@ -22,6 +22,14 @@ from app.services.station_claim_service import (
 )
 
 router = APIRouter(prefix="/station", tags=["station"])
+
+
+def add_claim_api_deprecation_headers(response: Response) -> None:
+    # Claim endpoints remain callable for compatibility, but StationSession is
+    # the target ownership model for new ownership behavior.
+    response.headers["Deprecation"] = "true"
+    response.headers["X-FleziBCG-Deprecation-Status"] = "compatibility-only"
+    response.headers["X-FleziBCG-Replacement"] = "StationSession"
 
 
 def get_db():
@@ -53,9 +61,11 @@ def read_station_queue(
 def claim_station_operation(
     operation_id: int,
     request: ClaimRequest,
+    response: Response,
     db: Session = Depends(get_db),
     identity: RequestIdentity = Depends(require_authenticated_identity),
 ):
+    add_claim_api_deprecation_headers(response)
     try:
         claim, station_scope_value = claim_operation(
             db,
@@ -86,9 +96,11 @@ def claim_station_operation(
 def release_station_operation(
     operation_id: int,
     request: ReleaseClaimRequest,
+    response: Response,
     db: Session = Depends(get_db),
     identity: RequestIdentity = Depends(require_authenticated_identity),
 ):
+    add_claim_api_deprecation_headers(response)
     try:
         claim, station_scope_value = release_operation_claim(
             db,
@@ -115,9 +127,11 @@ def release_station_operation(
 @router.get("/queue/{operation_id}/claim")
 def get_station_claim_status(
     operation_id: int,
+    response: Response,
     db: Session = Depends(get_db),
     identity: RequestIdentity = Depends(require_authenticated_identity),
 ):
+    add_claim_api_deprecation_headers(response)
     try:
         return get_operation_claim_status(db, identity, operation_id)
     except PermissionError as exc:

@@ -428,8 +428,11 @@ def _restore_claim_continuity_for_reopen(db: Session, *, operation, tenant_id: s
         .order_by(OperationClaim.id.desc())
         .with_for_update()
     )
+    # Claim is now compatibility-only for reopen continuity. When the historical
+    # owner already has another active claim in the same station, we skip
+    # restoration instead of rejecting reopen.
     if conflicting_claim is not None and conflicting_claim.expires_at > now:
-        raise ReopenOperationConflictError("STATE_REOPEN_OWNER_HAS_OTHER_ACTIVE_CLAIM")
+        return
 
     restored_claim = OperationClaim(
         tenant_id=tenant_id,

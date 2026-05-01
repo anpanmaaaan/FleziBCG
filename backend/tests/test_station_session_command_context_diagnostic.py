@@ -2,16 +2,18 @@
 P0-C-04C / P0-C-04D — Command Context Diagnostic Integration Tests.
 
 Purpose:
-- Verify that all execution commands produce identical outcomes with and
-  without an OPEN StationSession.
+- Verify that guarded execution commands reject without an OPEN StationSession.
+- Verify that execution commands produce expected outcomes with a matching
+    OPEN StationSession.
 - Verify that StationSession diagnostic context IS accessible from the same
   tenant/station context that execution commands use.
 - Prove that existing rejection codes are unchanged.
 - Prove that cross-tenant and CLOSED sessions do not create false positives.
 
 Contract:
-- Diagnostic result (session_ctx) is a local variable in service functions.
-  It is informational only and never used for command rejection.
+- Diagnostic result (session_ctx) remains informational only.
+- Guarded commands require a matching OPEN StationSession before later state
+    validations run.
 - OperationDetail API response shape is unchanged.
 - Claim compatibility regression must remain green.
 """
@@ -36,6 +38,7 @@ from app.security.dependencies import RequestIdentity
 from app.services.operation_service import (
     StartOperationConflictError,
     PauseExecutionConflictError,
+    StationSessionGuardError,
     start_operation,
     pause_operation,
 )
@@ -45,6 +48,8 @@ from app.services.station_session_diagnostic import (
 )
 from app.services.station_session_service import (
     close_station_session,
+    get_current_station_session,
+    identify_operator_at_station,
     open_station_session,
 )
 
@@ -118,23 +123,55 @@ def _purge(db) -> None:
 
 def _seed_station_scope(db) -> None:
     opr_role = _ensure_opr_role(db)
-    scope = Scope(
-        tenant_id=_TENANT_ID,
-        scope_type="station",
-        scope_value=_STATION,
-    )
-    db.add(scope)
-    db.flush()
-    db.add(
-        UserRoleAssignment(
-            user_id=_ACTOR,
-            role_id=opr_role.id,
-            scope_id=scope.id,
-            is_primary=True,
-            is_active=True,
+    scope = db.scalar(
+        select(Scope).where(
+            Scope.tenant_id == _TENANT_ID,
+            Scope.scope_type == "station",
+            Scope.scope_value == _STATION,
         )
     )
+    if scope is None:
+        scope = Scope(
+            tenant_id=_TENANT_ID,
+            scope_type="station",
+            scope_value=_STATION,
+        )
+        db.add(scope)
+        db.flush()
+
+    assignment = db.scalar(
+        select(UserRoleAssignment).where(
+            UserRoleAssignment.user_id == _ACTOR,
+            UserRoleAssignment.role_id == opr_role.id,
+            UserRoleAssignment.scope_id == scope.id,
+        )
+    )
+    if assignment is None:
+        db.add(
+            UserRoleAssignment(
+                user_id=_ACTOR,
+                role_id=opr_role.id,
+                scope_id=scope.id,
+                is_primary=True,
+                is_active=True,
+            )
+        )
     db.commit()
+
+
+def _ensure_open_station_session(db) -> StationSession:
+    identity = _identity()
+    session = get_current_station_session(db, identity, station_id=_STATION)
+    if session is None:
+        session = open_station_session(db, identity, station_id=_STATION)
+    if session.operator_user_id != _ACTOR:
+        session = identify_operator_at_station(
+            db,
+            identity,
+            session_id=session.session_id,
+            operator_user_id=_ACTOR,
+        )
+    return session
 
 
 def _seed_planned_op(db, suffix: str) -> Operation:
@@ -178,6 +215,7 @@ def _seed_planned_op(db, suffix: str) -> Operation:
 def _seed_running_op(db, suffix: str) -> Operation:
     """Seeds a PLANNED op then starts it; returns the refreshed operation."""
     op = _seed_planned_op(db, suffix)
+    _ensure_open_station_session(db)
     detail = start_operation(
         db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID
     )
@@ -204,8 +242,8 @@ def cmd_fixture():
 # CMD-T1: start_operation unchanged — no StationSession
 # ---------------------------------------------------------------------------
 
-def test_start_operation_unchanged_no_session(cmd_fixture):
-    """CMD-T1: start_operation succeeds when no StationSession exists."""
+def test_start_operation_requires_session(cmd_fixture):
+    """CMD-T1: start_operation rejects when no StationSession exists."""
     db = cmd_fixture
     op = _seed_planned_op(db, "t1-no-sess")
 
@@ -213,10 +251,10 @@ def test_start_operation_unchanged_no_session(cmd_fixture):
     diag = get_station_session_diagnostic(db, tenant_id=_TENANT_ID, station_id=_STATION)
     assert diag.readiness == SessionReadiness.NO_ACTIVE_SESSION
 
-    detail = start_operation(
-        db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID
-    )
-    assert detail.status == StatusEnum.in_progress.value
+    with pytest.raises(StationSessionGuardError, match="STATION_SESSION_REQUIRED"):
+        start_operation(
+            db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -228,7 +266,7 @@ def test_start_operation_unchanged_with_open_session(cmd_fixture):
     db = cmd_fixture
     op = _seed_planned_op(db, "t2-with-sess")
 
-    open_station_session(db, _identity(), station_id=_STATION)
+    _ensure_open_station_session(db)
 
     diag = get_station_session_diagnostic(db, tenant_id=_TENANT_ID, station_id=_STATION)
     assert diag.readiness == SessionReadiness.OPEN
@@ -244,22 +282,25 @@ def test_start_operation_unchanged_with_open_session(cmd_fixture):
 # CMD-T3: pause_operation unchanged — no StationSession
 # ---------------------------------------------------------------------------
 
-def test_pause_operation_unchanged_no_session(cmd_fixture):
-    """CMD-T3: pause_operation succeeds when no StationSession exists."""
+def test_pause_operation_requires_session(cmd_fixture):
+    """CMD-T3: pause_operation rejects when no StationSession exists."""
     db = cmd_fixture
-    op = _seed_running_op(db, "t3-no-sess")
+    op = _seed_planned_op(db, "t3-no-sess")
+    op.status = StatusEnum.in_progress.value
+    db.add(op)
+    db.commit()
 
     diag = get_station_session_diagnostic(db, tenant_id=_TENANT_ID, station_id=_STATION)
     assert diag.readiness == SessionReadiness.NO_ACTIVE_SESSION
 
-    detail = pause_operation(
-        db,
-        op,
-        OperationPauseRequest(reason_code=None, note=None),
-        actor_user_id=_ACTOR,
-        tenant_id=_TENANT_ID,
-    )
-    assert detail.status == StatusEnum.paused.value
+    with pytest.raises(StationSessionGuardError, match="STATION_SESSION_REQUIRED"):
+        pause_operation(
+            db,
+            op,
+            OperationPauseRequest(reason_code=None, note=None),
+            actor_user_id=_ACTOR,
+            tenant_id=_TENANT_ID,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -269,9 +310,8 @@ def test_pause_operation_unchanged_no_session(cmd_fixture):
 def test_pause_operation_unchanged_with_open_session(cmd_fixture):
     """CMD-T4: pause_operation succeeds (same outcome) when OPEN StationSession exists."""
     db = cmd_fixture
+    _ensure_open_station_session(db)
     op = _seed_running_op(db, "t4-with-sess")
-
-    open_station_session(db, _identity(), station_id=_STATION)
 
     diag = get_station_session_diagnostic(db, tenant_id=_TENANT_ID, station_id=_STATION)
     assert diag.readiness == SessionReadiness.OPEN
@@ -293,6 +333,7 @@ def test_pause_operation_unchanged_with_open_session(cmd_fixture):
 def test_start_operation_rejection_unchanged_with_no_session(cmd_fixture):
     """CMD-T5: start_operation still rejects IN_PROGRESS operation with same error code."""
     db = cmd_fixture
+    _ensure_open_station_session(db)
     # Seed a PLANNED op with no operator_id so no operator-conflict guard fires
     op = _seed_planned_op(db, "t5-reject")
     # Start it (no operator_id avoids the per-operator running check)
@@ -318,7 +359,7 @@ def test_diagnostic_accessible_from_command_context(cmd_fixture):
     op = _seed_planned_op(db, "t6-diag")
 
     # Open a session for the same station
-    open_station_session(db, _identity(), station_id=_STATION)
+    _ensure_open_station_session(db)
 
     # The same context that a command has (tenant_id + operation.station_scope_value)
     # can derive diagnostic readiness
@@ -340,7 +381,7 @@ def test_closed_session_not_active_context_from_command_context(cmd_fixture):
     db = cmd_fixture
     op = _seed_planned_op(db, "t7-closed-sess")
 
-    session = open_station_session(db, _identity(), station_id=_STATION)
+    session = _ensure_open_station_session(db)
     close_station_session(db, _identity(), session_id=session.session_id)
 
     diag = get_station_session_diagnostic(
@@ -350,11 +391,10 @@ def test_closed_session_not_active_context_from_command_context(cmd_fixture):
     )
     assert diag.readiness == SessionReadiness.NO_ACTIVE_SESSION
 
-    # Command still proceeds normally
-    detail = start_operation(
-        db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID
-    )
-    assert detail.status == StatusEnum.in_progress.value
+    with pytest.raises(StationSessionGuardError, match="STATION_SESSION_CLOSED"):
+        start_operation(
+            db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -367,7 +407,7 @@ def test_cross_tenant_session_no_false_positive(cmd_fixture):
     op = _seed_planned_op(db, "t8-cross-tenant")
 
     # Open session for THIS tenant
-    open_station_session(db, _identity(), station_id=_STATION)
+    _ensure_open_station_session(db)
 
     # Diagnostic for OTHER tenant must return NO_ACTIVE_SESSION
     diag = get_station_session_diagnostic(
@@ -391,6 +431,7 @@ def test_cross_tenant_session_no_false_positive(cmd_fixture):
 def test_pause_rejection_unchanged_no_session(cmd_fixture):
     """CMD-T9 (variant): pause on PLANNED op still rejects with same error code."""
     db = cmd_fixture
+    _ensure_open_station_session(db)
     op = _seed_planned_op(db, "t9-pause-reject")
     # op is PLANNED — cannot pause
 
