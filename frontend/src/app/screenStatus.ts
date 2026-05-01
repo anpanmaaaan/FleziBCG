@@ -162,6 +162,60 @@ export const SCREEN_STATUS_REGISTRY: Record<string, ScreenStatusEntry> = {
     dataSource: "NONE",
     notes: "Settings screen is a placeholder. Currently redirects to Dashboard.",
   },
+  userManagement: {
+    routePattern: "/users",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "User management interface is a shell. Backend IAM system manages actual users, roles, and authentication.",
+  },
+  roleManagement: {
+    routePattern: "/roles",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Role management interface is a shell. Backend RBAC system defines actual role permissions.",
+  },
+  actionRegistry: {
+    routePattern: "/action-registry",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Action registry is read-only shell for visualization. Backend authorization system remains source of truth.",
+  },
+  scopeAssignments: {
+    routePattern: "/scope-assignments",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Scope assignment interface is a shell. Backend tenant isolation and RBAC manage actual scopes.",
+  },
+  sessionManagement: {
+    routePattern: "/sessions",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Session management interface is a shell. Backend authentication system manages actual sessions.",
+  },
+  auditLog: {
+    routePattern: "/audit-log",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Audit log display is a shell for visualization. Backend compliance system maintains immutable audit records.",
+  },
+  securityEvents: {
+    routePattern: "/security-events",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Security events interface is a shell. Backend security system manages threat detection and incident response.",
+  },
+  tenantSettings: {
+    routePattern: "/tenant-settings",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Tenant settings interface is a shell. Backend multi-tenant system manages actual tenant configurations.",
+  },
+  plantHierarchy: {
+    routePattern: "/plant-hierarchy",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Plant hierarchy display is a shell for visualization. Backend master data system manages actual hierarchy.",
+  },
 };
 
 const SCREEN_ROUTE_ALIASES: Record<string, string> = {

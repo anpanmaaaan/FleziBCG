@@ -3,6 +3,7 @@
 ## History
 | Date | Version | Change |
 |---|---:|---|
+| 2026-05-01 | v1.1 | Updated governance screens: 9 new SHELL screens added (UserManagement, RoleManagement, ActionRegistry, ScopeAssignments, SessionManagement, AuditLog, SecurityEvents, TenantSettings, PlantHierarchy). Routes increased 24→33, SHELL phases increased 0→9. |
 | 2026-05-01 | v1.0 | Created frontend screen coverage audit baseline. Captures 24 routes, 22 pages, 13 CONNECTED, 3 PARTIAL, 7 MOCK, 2 PLACEHOLDER before broad FE shell coverage work. |
 
 ---
@@ -59,20 +60,19 @@ Audit the current frontend screen/route/page coverage of FleziBCG before creatin
 
 **Frontend Coverage Status (as of 2026-05-01)**
 
-| Metric | Value |
-|---|---|
-| **Total Routes Defined** | 24 |
-| **Total Page Files** | 22 (21 unique) |
-| **CONNECTED Pages** | 13 (59%) |
-| **PARTIAL Pages** | 3 (14%) |
-| **MOCK Pages** | 7 (32%) |
-| **PLACEHOLDER Pages** | 2 (9%) |
-| **DEV-ONLY Pages** | 1 (5%) |
-| **Domains with Any Coverage** | 9 / 15 target groups |
-| **Fully Covered Domains** | 3 (Auth, Execution, Master Data) |
-| **Mostly Missing Domains** | 6 (Quality, Integration, APS, AI, Andon, Compliance) |
+| Metric | Before FE-COVERAGE-01A | After FE-COVERAGE-01A |
+|---|---|---|
+| **Total Routes Defined** | 24 | 33 |
+| **Total Page Files** | 22 (21 unique) | 31 (30 unique) |
+| **CONNECTED Pages** | 13 (59%) | 13 (42%) |
+| **PARTIAL Pages** | 3 (14%) | 3 (10%) |
+| **MOCK Pages** | 7 (32%) | 7 (23%) |
+| **SHELL Pages** | 0 (0%) | 9 (29%) |
+| **PLACEHOLDER Pages** | 2 (9%) | 2 (6%) |
+| **DEV-ONLY Pages** | 1 (5%) | 1 (3%) |
+| **Domains with Any Coverage** | 9 / 15 target groups | 10 / 15 target groups |
 
-**Key Insight**: The frontend has strong coverage of execution/operations, good master data support, and functional authentication. Significant gaps exist in quality management, planning, reporting, and all future-domain features (AI, Digital Twin, Compliance). Several screens are mock-based and carry **high fake-truth risk**.
+**Key Insight**: FE-COVERAGE-01A added 9 governance shell screens for product owner visualization. Governance domain now has comprehensive shell coverage (UserMgmt, RolesMgmt, ActionRegistry, ScopeAssignments, SessionMgmt, AuditLog, SecurityEvents, TenantSettings, PlantHierarchy). Remaining gaps: Quality, Integration, APS, AI, Andon, Compliance still mostly missing or mock-only.
 
 ---
 
@@ -278,17 +278,16 @@ Comprehensive primitive set: form controls, layout (card, sidebar, scroll-area),
 | Login | Authentication | P0 | LoginPage.tsx | /login | CONNECTED | REAL_API | None | LOW | **PRESERVE** | Core auth working; FE-SHELL-04 added keyboard accessibility |
 | Home / Landing | Foundation | P0 | Home.tsx | /home | PLACEHOLDER | PLACEHOLDER_ONLY | Needs design | LOW | **EXTEND_EXISTING** | Basic nav page exists; add persona-specific content |
 | Dashboard | Analytics | P1 | Dashboard.tsx | /dashboard | CONNECTED | REAL_API | None | LOW | **PRESERVE** | Real KPI data; working well |
-| User Management | Governance | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | Backend user CRUD not yet exposed to FE |
-| User Invitation | Governance | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | Backend user invitation logic exists but not exposed |
-| Role Management | Governance | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | Roles are read-only from JWT; management is backend-only |
-| Action / Permission Registry | Governance | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | Backend action registry exists; FE consumer only |
-| Role Assignment | Governance | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | Backend supports; FE not yet needed |
-| Scope Assignment | Governance | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | Backend supports scopes; FE assignment screen not yet built |
-| Session Management | Governance | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | Sessions managed server-side only |
+| User Management | Governance | P2 | UserManagement.tsx | /users | SHELL | MOCK_FIXTURE | Backend IAM needed | LOW | **EXTEND_EXISTING** | FE-COVERAGE-01A: SHELL visualization for admin UI |
+| Role Management | Governance | P2 | RoleManagement.tsx | /roles | SHELL | MOCK_FIXTURE | Backend RBAC needed | LOW | **EXTEND_EXISTING** | FE-COVERAGE-01A: SHELL visualization for role definitions |
+| Action / Permission Registry | Governance | P2 | ActionRegistry.tsx | /action-registry | SHELL | MOCK_FIXTURE | Backend action registry API | LOW | **EXTEND_EXISTING** | FE-COVERAGE-01A: SHELL read-only action code registry |
+| Scope Assignment | Governance | P2 | ScopeAssignments.tsx | /scope-assignments | SHELL | MOCK_FIXTURE | Backend scope API needed | LOW | **EXTEND_EXISTING** | FE-COVERAGE-01A: SHELL visualization for scope hierarchy |
+| Session Management | Governance | P2 | SessionManagement.tsx | /sessions | SHELL | MOCK_FIXTURE | Backend session API needed | LOW | **EXTEND_EXISTING** | FE-COVERAGE-01A: SHELL visualization for active sessions |
 | Support / Impersonation | Governance | P1 | ImpersonationSwitcher.tsx (component) | (in TopBar) | CONNECTED | REAL_API | Screen UI only | LOW | **EXTEND_EXISTING** | Switcher in TopBar works; no dedicated screen |
-| Audit Log | Governance | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **CREATE_SHELL_NEXT** | Backend audit log exists; FE not yet built |
-| Security Events | Governance | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **CREATE_SHELL_NEXT** | Backend security event tracking exists |
-| Tenant Settings | Governance | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | Tenant management is backend-only for now |
+| Audit Log | Governance | P2 | AuditLog.tsx | /audit-log | SHELL | MOCK_FIXTURE | Backend audit API needed | LOW | **EXTEND_EXISTING** | FE-COVERAGE-01A: SHELL visualization for immutable audit events |
+| Security Events | Governance | P2 | SecurityEvents.tsx | /security-events | SHELL | MOCK_FIXTURE | Backend security events API | LOW | **EXTEND_EXISTING** | FE-COVERAGE-01A: SHELL visualization for security incidents |
+| Tenant Settings | Governance | P2 | TenantSettings.tsx | /tenant-settings | SHELL | MOCK_FIXTURE | Backend tenant config API | LOW | **EXTEND_EXISTING** | FE-COVERAGE-01A: SHELL visualization for tenant profile |
+| Plant Hierarchy | Master Data | P2 | PlantHierarchy.tsx | /plant-hierarchy | SHELL | MOCK_FIXTURE | Backend hierarchy API needed | LOW | **EXTEND_EXISTING** | FE-COVERAGE-01A: SHELL visualization for plant/area/line/station structure |
 
 ### **B. Manufacturing Master Data**
 
