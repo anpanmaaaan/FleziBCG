@@ -176,8 +176,10 @@ export function DispatchQueue() {
 
           <div className="flex items-center gap-3">
             <button
+              disabled
               onClick={() => toast.info(t("dispatch.toast.comingSoon"))}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed"
+              title="Resequence is not available for mock data"
             >
               {t("dispatch.action.resequence")}
             </button>

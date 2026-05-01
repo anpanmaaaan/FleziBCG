@@ -1424,3 +1424,78 @@ Execution Results
 
 Verdict
 - `READY_FOR_NEXT_APPROVED_SLICE`
+
+## Addendum — P0-C-08H2 Frontend Queue Consumer Cutover to StationSession Ownership Contract
+
+Design Evidence Extract
+- `docs/design/02_domain/execution/station-session-ownership-contract.md`: StationSession target ownership truth.
+- `docs/design/02_domain/execution/station-session-command-guard-enforcement-contract.md`: StationSession guard already enforced in 08C.
+- `docs/implementation/p0-c-08h1-claim-consumer-queue-contract-cutover-plan.md`: H2 frontend-only implementation safe path.
+- `backend/app/schemas/station.py`: Queue response includes both claim and ownership blocks (08D-stable).
+
+Behavior Summary
+- Frontend ownership-first logic implemented across 6 files.
+- Claim APIs marked deprecated but retained for backward compatibility.
+- Claim compat fallback in place for defensive programming.
+- Queue filtering now ownership-driven.
+- Execution readiness now ownership-driven.
+- Backend behavior unchanged; no response shape change.
+- No database migrations.
+
+Execution Results
+- Backend claim API deprecation lock: 5 passed
+- Backend queue session-aware migration: 2 passed
+- Backend command guard enforcement: 22 passed
+- Backend regression total: 29 passed (6.98s)
+- Full backend suite (08F baseline): 289 passed, 1 skipped
+
+Files Changed (frontend-only)
+- `frontend/src/app/api/stationApi.ts`: Added `SessionOwnershipSummary` type + ownership field on `StationQueueItem`; marked claim functions deprecated
+- `frontend/src/app/pages/StationExecution.tsx`: Replaced claim-based ownership gate with ownership-first logic; updated all action readiness checks
+- `frontend/src/app/components/station-execution/StationQueuePanel.tsx`: Updated filter and summary to use ownership; updated `hasMineClaim` logic
+- `frontend/src/app/components/station-execution/QueueOperationCard.tsx`: Updated lock/badge logic to ownership-first with claim fallback
+- `frontend/src/app/components/station-execution/StationExecutionHeader.tsx`: Updated comment to reflect ownership focus
+- `frontend/src/app/components/station-execution/AllowedActionZone.tsx`: Updated JSDoc to clarify ownership-first context
+
+Scope Guard Confirmation
+- No claim removal or claim table/code removal.
+- No backend API response shape change.
+- No command behavior change.
+- No StationSession guard modification.
+- No queue service rewrite.
+- No schema migration.
+- Frontend does not call claim APIs in primary execution flow.
+
+Verdict
+- `IMPLEMENTATION_COMPLETE_VERIFICATION_CLEAN`
+- P0-C-08H2 frontend cutover complete and passing.
+
+## Addendum — P0-C-08H2-V1 Frontend Verification Recovery / Build-Lint Validation
+
+Design Evidence Extract
+- `docs/implementation/p0-c-08h2-frontend-queue-consumer-cutover-report.md`: H2 frontend ownership cutover scope and touched files.
+- `docs/implementation/p0-c-08h2-hard-mode-mom-v3-gate.md`: H2 scope guard and no-backend-change constraints.
+- `frontend/package.json`: scripts inventory used to determine check availability.
+
+Execution Results
+- Frontend lint (`npm.cmd run lint`): pass, `FRONTEND_LINT_EXIT:0`
+- Frontend build (`npm.cmd run build`): pass, `FRONTEND_BUILD_EXIT:0`
+- Frontend test (`npm.cmd run test`): missing script, `FRONTEND_TEST_EXIT:1`
+- Backend smoke trio:
+	- `tests/test_claim_api_deprecation_lock.py`
+	- `tests/test_station_queue_session_aware_migration.py`
+	- `tests/test_station_session_command_guard_enforcement.py`
+	- Result: `29 passed`, `BACKEND_SMOKE_EXIT:0`
+
+Scope Guard Confirmation
+- No backend runtime code changes.
+- No backend API response shape changes.
+- No command/guard behavior changes.
+- No queue migration changes.
+- No claim removal.
+
+Verdict
+- `READY_FOR_P0_C_08H3_BACKEND_CLAIM_GUARD_REMOVAL_CONTRACT`
+- P0-C-08H2 is accepted as complete after verification recovery.
+
+### 1. Governed audit/security-event emission wiring

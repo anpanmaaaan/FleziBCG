@@ -19,7 +19,10 @@ export const isBackendClaimableQueueStatus = (status: StationQueueItem["status"]
 const matchesQueueFilter = (item: StationQueueItem, filter: QueueFilter): boolean => {
   switch (filter) {
     case "mine":
-      return item.claim.state === "mine";
+      // H2+: Ownership-first logic; claim fallback for compatibility
+      return item.ownership?.owner_state === "mine" && item.ownership?.has_open_session
+        ? true
+        : item.claim.state === "mine";
     case "ready":
       return isBackendClaimableQueueStatus(item.status) && !item.downtime_open;
     case "paused":
@@ -43,7 +46,11 @@ export function StationQueuePanel({
   onSelect,
 }: StationQueuePanelProps) {
   const { t } = useI18n();
-  const hasMineClaim = items.some((item) => item.claim.state === "mine");
+  // H2+: Ownership-first logic; claim fallback for compatibility
+  const hasMineClaim = items.some(
+    (item) => (item.ownership?.owner_state === "mine" && item.ownership?.has_open_session)
+      || item.claim.state === "mine",
+  );
 
   const summary = useMemo(() => {
     return items.reduce(
@@ -60,7 +67,8 @@ export function StationQueuePanel({
         if (item.downtime_open) {
           acc.downtime += 1;
         }
-        if (item.claim.state === "mine") {
+        // H2+: Ownership-first logic; claim fallback for compatibility
+        if ((item.ownership?.owner_state === "mine" && item.ownership?.has_open_session) || item.claim.state === "mine") {
           acc.mine += 1;
         }
         return acc;

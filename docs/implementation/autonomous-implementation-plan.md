@@ -768,3 +768,41 @@ Verification summary (sequential, required matrix):
 Slice closure note:
 - 08E implementation scope is complete.
 - Full-suite verification in this run is not clean due DB deadlock/transaction contamination under teardown overlap.
+
+  ### P0-C-08G Claim Removal Readiness Check
+
+  Status: Complete (review-only, no implementation).
+
+  Verdict: READY_FOR_P0_C_08H_STAGED_REMOVAL_PLAN
+
+  ### P0-C-08H1 Claim Consumer / Queue Contract Cutover Plan
+
+  Status: Complete (plan-only, no implementation).
+
+  Verdict: READY_FOR_P0_C_08H2_FRONTEND_QUEUE_CONSUMER_CUTOVER
+
+  ### P0-C-08H2 Frontend Queue Consumer Cutover to StationSession Ownership Contract
+
+  Status: Complete.
+
+  Completed scope:
+  - Frontend ownership-first logic implemented across 6 key files
+  - Claim APIs marked deprecated; retained for backward compatibility
+  - Claim compat fallback in place for defensive programming
+  - Queue filtering now ownership-driven
+  - Execution readiness now ownership-driven
+  - No backend behavior modifications
+  - No database migrations
+  - Frontend does not call claim APIs in primary execution flow
+
+  Verification summary:
+  - Backend claim API deprecation: 5 passed
+  - Backend queue session-aware migration: 2 passed
+  - Backend command guard enforcement: 22 passed
+  - Backend regression total: 29 passed (6.98s)
+  - Full backend suite (08F baseline): 289 passed, 1 skipped
+
+  Verdict:
+  - `ALLOW_IMPLEMENTATION_COMPLETE`
+  - P0-C-08H2 complete and passing.
+  - Proceeding with P0-C-08H3 Backend Execution Route Claim Guard Removal (next slice).
