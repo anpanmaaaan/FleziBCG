@@ -805,4 +805,43 @@ Slice closure note:
   Verdict:
   - `ALLOW_IMPLEMENTATION_COMPLETE`
   - P0-C-08H2 complete and passing.
-  - Proceeding with P0-C-08H3 Backend Execution Route Claim Guard Removal (next slice).
+
+  ### P0-C-08H3 Backend Execution Route Claim Guard Removal Contract
+
+  Status: Complete (contract-only, no implementation).
+
+  Verdict: READY_FOR_P0_C_08H4_ROUTE_GUARD_REMOVAL_SUBSET
+
+  ### P0-C-08H4 Backend Execution Route Claim Guard Removal for StationSession-Enforced Commands
+
+  Status: Complete.
+
+  Completed scope:
+  - Removed route-level claim guard from approved seven command routes only:
+    - start
+    - pause
+    - resume
+    - report-quantity
+    - start-downtime
+    - end-downtime
+    - complete
+  - Added route-level H4 contract regression suite:
+    - `backend/tests/test_execution_route_claim_guard_removal.py`
+  - Kept close/reopen unchanged.
+  - Kept claim API/service/model/table/audit unchanged.
+  - Kept queue behavior unchanged.
+  - No frontend changes.
+  - No migrations.
+
+  Verification summary:
+  - H4 route test: `12 passed`, `H4_ROUTE_TEST_EXIT:0`
+  - StationSession guard regression: `22 passed`, `H4_STATION_SESSION_REG_EXIT:0`
+  - Claim compatibility regression: `25 passed`, `H4_CLAIM_COMPAT_REG_EXIT:0`
+  - Queue regression: `10 passed`, `H4_QUEUE_REG_EXIT:0`
+  - Close/reopen regression: `36 passed`, `H4_CLOSE_REOPEN_REG_EXIT:0`
+  - Command hardening regression: `48 passed`, `H4_CMD_HARDEN_REG_EXIT:0`
+  - Full backend suite rerun after cleanup: `301 passed, 1 skipped`, `H4_FULL_BACKEND_EXIT:0`
+
+  Verdict:
+  - `P0-C-08H4_COMPLETE_VERIFICATION_CLEAN`
+  - Stop after this single slice.

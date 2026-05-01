@@ -308,6 +308,73 @@ CANONICAL
 ### Verdict
 ALLOW_IMPLEMENTATION_COMPLETE
 
+## HM3-027 — P0-C-08H4 Backend Execution Route Claim Guard Removal
+
+## Routing
+- Selected brain: docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md
+- Selected mode: Hard Mode MOM v3 (SINGLE-SLICE)
+- Hard Mode MOM: docs/ai-skills/hard-mode-mom-v3/SKILL.md
+- Reason: remove route-level claim compatibility guard from approved StationSession-enforced command subset only.
+
+### Design Evidence Extract
+- `docs/implementation/p0-c-08h3-backend-execution-route-claim-guard-removal-contract.md`
+- `docs/implementation/p0-c-08h2-frontend-queue-consumer-cutover-report.md`
+- `docs/implementation/p0-c-08f-claim-api-deprecation-lock-report.md`
+- `docs/design/02_domain/execution/station-session-command-guard-enforcement-contract.md`
+- `docs/design/02_domain/execution/station-session-ownership-contract.md`
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| remove route-level claim guard from 7 approved commands | none (event contract unchanged) | none_required | unchanged | n/a | none | H3 contract |
+| command rejected by failed StationSession guard | no command event appended | domain_event guard | unchanged | n/a | none | 08C + H4 tests |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---|---|---|
+| StationSession remains authoritative ownership guard | session | route + service guard chain | no | yes | 08C contract |
+| claim cannot authorize command when StationSession fails | authorization | route guard order | no | yes | H4 contract tests |
+| claim cannot block approved commands when StationSession passes | migration_boundary | removed route claim guard | no | yes | H4 contract tests |
+| close/reopen unchanged | state_machine | explicit non-scope boundary | no | yes | close/reopen regressions |
+| claim API/service/model/table/audit retained | compatibility | scope guard + regression suites | no | yes | 08F + H4 constraints |
+
+### State Transition Map
+No execution state transition model changes. H4 modifies route authorization compatibility order only for the approved seven commands.
+
+### Test Matrix
+| Test ID | Scenario | Type | Given | When | Then | Event Assertion | Invariant Assertion |
+|---|---|---|---|---|---|---|---|
+| HM3-027-T1 | valid StationSession without claim succeeds (7 commands) | regression | matching OPEN StationSession, no claim | call command route | 200 | command event emitted | claim not required at route |
+| HM3-027-T2 | active claim cannot bypass missing StationSession | regression | active claim, no session | call route | StationSession guard error | no command event | session remains authoritative |
+| HM3-027-T3 | conflicting claim does not block valid session | regression | claim owned by other, matching OPEN StationSession | call route | success | command event emitted | claim conflict non-authoritative |
+| HM3-027-T4 | invalid state guard still applies | regression | matching OPEN StationSession, invalid operation state | call route | existing 409 state guard | no claim-guard error | state machine unchanged |
+| HM3-027-T5 | close/reopen unchanged | regression | close/reopen paths | call routes and run suites | unchanged behavior | unchanged event semantics | boundary preserved |
+
+### Final verification result
+- `tests/test_execution_route_claim_guard_removal.py`: `12 passed`, `H4_ROUTE_TEST_EXIT:0`
+- `tests/test_station_session_command_guard_enforcement.py`: `22 passed`, `H4_STATION_SESSION_REG_EXIT:0`
+- claim compatibility batch: `25 passed`, `H4_CLAIM_COMPAT_REG_EXIT:0`
+- queue regression batch: `10 passed`, `H4_QUEUE_REG_EXIT:0`
+- close/reopen regression batch: `36 passed`, `H4_CLOSE_REOPEN_REG_EXIT:0`
+- command hardening batch: `48 passed`, `H4_CMD_HARDEN_REG_EXIT:0`
+- full backend rerun after cleanup: `301 passed, 1 skipped`, `H4_FULL_BACKEND_EXIT:0`
+- optional frontend smoke: lint/build both `0`
+
+### Scope guard confirmation
+- Removed route-level claim guard only from start/pause/resume/report-quantity/start-downtime/end-downtime/complete.
+- close/reopen untouched.
+- Claim APIs/services/models/tables/audits untouched.
+- No StationSession guard semantic changes.
+- No queue behavior changes.
+- No frontend changes.
+- No migrations.
+
+### Event naming status
+UNCHANGED_CANONICAL
+
+### Verdict
+ALLOW_IMPLEMENTATION_COMPLETE
+
 ## Slice HM3-08H2-V1
 Name: P0-C-08H2-V1 Frontend Verification Recovery / Build-Lint Validation
 
