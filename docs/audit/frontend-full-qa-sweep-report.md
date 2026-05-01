@@ -211,9 +211,9 @@ Pages with *additionally* inline `MockWarningBanner` have belt-and-suspenders di
 
 | Severity | Issue | Impact | Recommended Follow-up |
 |---|---|---|---|
-| LOW | `Home.tsx` in-page MockWarningBanner missing | RouteStatusBanner (layout) covers disclosure automatically; no user impact | Document in next coverage slice; no urgent fix needed |
+| RESOLVED | `Home.tsx` in-page MockWarningBanner missing | ✓ RouteStatusBanner (layout) covers disclosure automatically; no user impact | ✓ Documented & verified in FE-CLEANUP-01; no fix needed |
 | LOW | `Home.tsx` `handleLineControl` dead code (defined but never called) | No functional impact; function is unreachable from UI | Clean up in future maintenance slice |
-| LOW | `ProductionTracking.tsx` + `Production.tsx` are orphan files not connected to any route | Not reachable by users; build still succeeds because they are not imported | Document as deferred cleanup; do NOT delete without confirming they are truly unused |
+| RESOLVED | `ProductionTracking.tsx` + `Production.tsx` are orphan files not connected to any route | ✓ Files deleted; build/lint/route-check all PASS | ✓ Cleaned up in FE-CLEANUP-01 |
 | LOW | Station execution screenshots not re-run (screenshot harness requires live dev server) | Harness exists (`npm run qa:station-execution:screenshots`); station execution source was modified by separate p0-c-08h2 work | Run screenshot harness after p0-c-08h2 merge; deferred to FE-QA-03 |
 | LOW | Deep keyboard tab order testing not performed in-browser | Code review shows correct `focus-visible` rings and `aria` attributes; actual tab order requires Playwright run | Deferred to FE-QA-03 with Playwright accessibility sweep |
 | LOW | Responsive screenshot coverage limited to Station Execution | Other domains not yet screenshot-tested at 4 viewports | Expand screenshot harness in future QA slice |
