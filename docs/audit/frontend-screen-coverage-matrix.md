@@ -3,6 +3,7 @@
 ## History
 | Date | Version | Change |
 |---|---:|---|
+| 2026-04-28 | v1.2 | FE-COVERAGE-01B: Added 5 MMD SHELL screens (BomList, BomDetail, RoutingOperationDetail, ResourceRequirements, ReasonCodes). Routes increased 33→38, SHELL phases increased 9→14. |
 | 2026-05-01 | v1.1 | Updated governance screens: 9 new SHELL screens added (UserManagement, RoleManagement, ActionRegistry, ScopeAssignments, SessionManagement, AuditLog, SecurityEvents, TenantSettings, PlantHierarchy). Routes increased 24→33, SHELL phases increased 0→9. |
 | 2026-05-01 | v1.0 | Created frontend screen coverage audit baseline. Captures 24 routes, 22 pages, 13 CONNECTED, 3 PARTIAL, 7 MOCK, 2 PLACEHOLDER before broad FE shell coverage work. |
 
@@ -295,13 +296,13 @@ Comprehensive primitive set: form controls, layout (card, sidebar, scroll-area),
 |---|---|---|---|---|---|---|---|---|---|---|
 | Product List | Master Data | P0 | ProductList.tsx | /products | CONNECTED | REAL_API | None | LOW | **PRESERVE** | Fully working; real product list |
 | Product Detail | Master Data | P1 | ProductDetail.tsx | /products/:productId | PARTIAL | REAL_API | Missing BOM tab | LOW | **EXTEND_EXISTING** | Basic detail works; add BOM expansion |
-| BOM List | Master Data | P1 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | Backend BOM API exists; FE not yet exposed |
-| BOM Detail | Master Data | P1 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | Part of Product Detail expansion; defer |
+| BOM List | Master Data | P1 | BomList.tsx | /bom | SHELL | MOCK_FIXTURE | — | — | **SHELL_DELIVERED** | FE-COVERAGE-01B: Shell page with mock fixture. Backend BOM API needed for full connection. |
+| BOM Detail | Master Data | P1 | BomDetail.tsx | /bom/:bomId | SHELL | MOCK_FIXTURE | — | — | **SHELL_DELIVERED** | FE-COVERAGE-01B: Shell page with mock fixture. Part of Product Detail expansion path. |
 | Routing List | Master Data | P0 | RouteList.tsx | /routes | CONNECTED | REAL_API | None | LOW | **PRESERVE** | Fully working; real routing list |
 | Routing Detail | Master Data | P1 | RouteDetail.tsx | /routes/:routeId | CONNECTED | REAL_API | None | LOW | **PRESERVE** | Full routing + operation sequence |
 | Routing Operation Detail | Master Data | P1 | (Partial in RouteDetail.tsx) | (within /routes/:routeId) | PARTIAL | REAL_API | Detail modal incomplete | LOW | **EXTEND_EXISTING** | Operation details in routing; add expand capability |
-| Resource Requirement Mapping | Master Data | P2 | (MISSING) | (MISSING) | MISSING | — | Full screen | — | **DO_NOT_IMPLEMENT_YET** | Backend resource mapping not yet exposed |
-| Reason Code / Master Data | Master Data | P1 | (Partial in StartDowntimeDialog.tsx) | (in StationExecution) | PARTIAL | REAL_API | Downtime reasons only | MEDIUM | **EXTEND_EXISTING** | Downtime reasons exist; other reason codes (quality, hold, etc.) not yet exposed |
+| Resource Requirement Mapping | Master Data | P2 | ResourceRequirements.tsx | /resource-requirements | SHELL | MOCK_FIXTURE | — | — | **SHELL_DELIVERED** | FE-COVERAGE-01B: Shell page with mock fixture. Backend resource mapping API needed for full connection. |
+| Reason Code / Master Data | Master Data | P1 | ReasonCodes.tsx | /reason-codes | SHELL | MOCK_FIXTURE | — | LOW | **SHELL_DELIVERED** | FE-COVERAGE-01B: Shell page with mock fixture covering all domains. Downtime reasons already in StationExecution via real API (preserved). |
 
 ### **C. Execution / Operations**
 
@@ -427,7 +428,7 @@ Comprehensive primitive set: form controls, layout (card, sidebar, scroll-area),
 | Domain | Existing Connected | Existing Partial | Mock/Shell | Missing | Do Not Implement Yet | Phase | Recommended Next Pack |
 |---|---|---|---|---|---|---|---|
 | **Foundation / IAM / Governance** | 3 (Login, Dashboard, Impersonation) | 0 | 0 | 10 (User Mgmt, Roles, Permissions, Sessions, Audit, Security, Tenant, etc.) | 8 | P0-P2 | **FE-COVERAGE-01A** (shells for Audit, Security Events, Role Assignment) |
-| **Manufacturing Master Data** | 5 (Products, Product Detail, Routes, Route Detail, Reason Codes) | 2 (Product Detail BOM, Routing Operation Detail) | 0 | 2 (BOM List, Resource Mapping) | 0 | P0-P2 | **EXTEND_EXISTING** (add BOM expansion) |
+| **Manufacturing Master Data** | 10 (Products, Product Detail, Routes, Route Detail, BOM List, BOM Detail, Routing Op Detail, Resource Reqs, Reason Codes, + existing) | 2 (Product Detail BOM tab, Routing Op Detail) | 5 (BOM List, BOM Detail, Routing Op Detail, Resource Reqs, Reason Codes) | 0 | 0 | P0-P2 | **SHELL_DELIVERED** (FE-COVERAGE-01B complete) |
 | **Execution / Operations** | 10 (PO List, WO List, Op Detail, Station, Global Monitor, Session, Quantity, Close/Reopen, etc.) | 3 (Op Detail, Station, Equipment Binding) | 1 (Dispatch) | 3 (Equipment, Event Timeline, Block Reasons) | 1 (Dispatch) | P0-P2 | **POLISH_ONLY** (FE-SHELL-04 completed keyboard accessibility; mark PARTIAL intentionally) |
 | **Quality Management** | 0 | 0 | 2 (QCCheckpoints, DefectManagement) | 6 (Dashboard, Measurement, Evaluation, Hold, Nonconformance, Disposition) | 5 (QC, Defects, Hold, Nonconformance, Disposition) | P2-P3 | **DEFER** (Quality module backend required first) |
 | **Material / Traceability** | 0 | 0 | 5 (Traceability search, genealogy, forward/backward trace, full mock) | 5 (Material Readiness, Staging, WIP, Lot, Backflush) | 7 (all until backend) | P2-P3 | **DEFER** (Traceability backend API required; do NOT productionize mock) |

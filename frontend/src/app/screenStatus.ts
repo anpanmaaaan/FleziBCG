@@ -216,6 +216,36 @@ export const SCREEN_STATUS_REGISTRY: Record<string, ScreenStatusEntry> = {
     dataSource: "MOCK_FIXTURE",
     notes: "Plant hierarchy display is a shell for visualization. Backend master data system manages actual hierarchy.",
   },
+  bomList: {
+    routePattern: "/bom",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "BOM list is a shell for visualization. Backend MMD system manages BOM lifecycle, versioning, and release.",
+  },
+  bomDetail: {
+    routePattern: "/bom/:id",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "BOM detail is a shell. Component truth and BOM release/retire governance require backend MMD API.",
+  },
+  routingOpDetail: {
+    routePattern: "/routes/:routeId/operations/:operationId",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Routing operation detail is a shell. Execution eligibility and resource applicability are determined by backend.",
+  },
+  resourceRequirements: {
+    routePattern: "/resource-requirements",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Resource requirement mapping is a shell for visualization. Backend MMD and resource systems manage actual applicability.",
+  },
+  reasonCodes: {
+    routePattern: "/reason-codes",
+    phase: "SHELL",
+    dataSource: "MOCK_FIXTURE",
+    notes: "Reason code registry is a shell for visualization. Backend MMD system manages all reason code lifecycle and domain assignment.",
+  },
 };
 
 const SCREEN_ROUTE_ALIASES: Record<string, string> = {
