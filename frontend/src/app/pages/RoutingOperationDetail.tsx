@@ -13,14 +13,11 @@ interface OperationDetail {
   operation_name: string;
   sequence_no: number;
   lifecycle_status: string;
-  work_center: string;
+  work_center_code: string | null;
   standard_cycle_time: number;
-  setup_time: number;
-  run_time_per_unit: number;
+  setup_time: number | null;
+  run_time_per_unit: number | null;
   required_resource_type: string;
-  required_skill: string | null;
-  required_skill_level: string | null;
-  qc_checkpoint_count: number;
   description: string;
 }
 
@@ -34,14 +31,11 @@ const mockOperations: Record<string, OperationDetail> = {
     operation_name: "CNC Turning",
     sequence_no: 10,
     lifecycle_status: "RELEASED",
-    work_center: "WC-LATHE-01",
+    work_center_code: "WC-LATHE-01",
     standard_cycle_time: 45,
     setup_time: 15,
     run_time_per_unit: 30,
     required_resource_type: "CNC_LATHE",
-    required_skill: "CNC_OPERATOR",
-    required_skill_level: "LEVEL_2",
-    qc_checkpoint_count: 2,
     description: "Turn outer diameter to 40mm h6 tolerance. Check surface finish Ra 1.6.",
   },
   "OP-002": {
@@ -53,14 +47,11 @@ const mockOperations: Record<string, OperationDetail> = {
     operation_name: "Cylindrical Grinding",
     sequence_no: 20,
     lifecycle_status: "RELEASED",
-    work_center: "WC-GRINDER-01",
+    work_center_code: "WC-GRINDER-01",
     standard_cycle_time: 60,
     setup_time: 20,
     run_time_per_unit: 40,
     required_resource_type: "CYLINDRICAL_GRINDER",
-    required_skill: "GRINDER_OPERATOR",
-    required_skill_level: "LEVEL_3",
-    qc_checkpoint_count: 3,
     description: "Grind to final dimension 40h6. Tolerance ±0.008mm. Measure at 3 points.",
   },
 };
@@ -72,8 +63,6 @@ export function RoutingOperationDetail() {
 
   const resourceSection = operation ? [
     { label: "Required Resource Type", value: operation.required_resource_type },
-    { label: "Required Skill", value: operation.required_skill ?? "—" },
-    { label: "Skill Level", value: operation.required_skill_level ?? "—" },
   ] : [];
 
   return (
@@ -137,7 +126,7 @@ export function RoutingOperationDetail() {
                 </div>
                 <div>
                   <div className="text-xs text-gray-500 mb-1">{t("routingOpDetail.field.workCenter")}</div>
-                  <div className="font-mono text-sm text-slate-700">{operation.work_center}</div>
+                  <div className="font-mono text-sm text-slate-700">{operation.work_center_code ?? "—"}</div>
                 </div>
                 <div>
                   <div className="text-xs text-gray-500 mb-1">{t("bomList.col.status")}</div>
@@ -156,11 +145,11 @@ export function RoutingOperationDetail() {
                 </div>
                 <div>
                   <div className="text-xs text-blue-600 mb-1">{t("routingOpDetail.field.setupTime")}</div>
-                  <div className="text-xl font-semibold text-blue-900">{operation.setup_time} min</div>
+                  <div className="text-xl font-semibold text-blue-900">{operation.setup_time != null ? `${operation.setup_time} min` : "—"}</div>
                 </div>
                 <div>
                   <div className="text-xs text-blue-600 mb-1">{t("routingOpDetail.field.runTime")}</div>
-                  <div className="text-xl font-semibold text-blue-900">{operation.run_time_per_unit} min</div>
+                  <div className="text-xl font-semibold text-blue-900">{operation.run_time_per_unit != null ? `${operation.run_time_per_unit} min` : "—"}</div>
                 </div>
               </div>
             </div>
@@ -177,17 +166,6 @@ export function RoutingOperationDetail() {
                 ))}
                 <div className="flex items-center gap-4 pt-2 border-t border-gray-200">
                   <div className="text-xs text-gray-400 italic">Resource assignment and validation requires backend MMD and resource applicability check.</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Quality section */}
-            <div>
-              <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">{t("routingOpDetail.section.quality")}</h2>
-              <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                <div className="text-sm text-yellow-800">
-                  <span className="font-medium">{operation.qc_checkpoint_count} checkpoint(s) configured</span>
-                  <span className="text-yellow-600 ml-2">— QC checkpoint linkage is managed by backend quality domain.</span>
                 </div>
               </div>
             </div>

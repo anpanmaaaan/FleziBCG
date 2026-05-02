@@ -1145,7 +1145,6 @@ export const enRegistry: I18nRegistry = {
   "routingOpDetail.section.identity": "Operation Identity",
   "routingOpDetail.section.timing": "Standard Timing",
   "routingOpDetail.section.resources": "Required Resources",
-  "routingOpDetail.section.quality": "Quality Checkpoints",
   "routingOpDetail.field.operationCode": "Operation Code",
   "routingOpDetail.field.operationName": "Operation Name",
   "routingOpDetail.field.routeCode": "Routing Code",

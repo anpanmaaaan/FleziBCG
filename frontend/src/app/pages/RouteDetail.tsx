@@ -186,8 +186,8 @@ export function RouteDetail() {
                           <div className="font-medium">{operation.operation_code}</div>
                           <div className="text-xs text-gray-600">{operation.operation_name}</div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-800">{operation.standard_cycle_time ?? "-"}</td>
-                        <td className="px-4 py-3 text-sm text-gray-800">{operation.required_resource_type ?? "-"}</td>
+                        <td className="px-4 py-3 text-sm text-gray-800">{operation.standard_cycle_time ?? "—"}</td>
+                        <td className="px-4 py-3 text-sm text-gray-800">{operation.work_center_code ?? "—"}</td>
                       </tr>
                     ))}
                   </tbody>
