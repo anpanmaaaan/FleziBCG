@@ -35,7 +35,6 @@ from app.models.approval import (  # noqa: F401
     ApprovalAuditLog,  # noqa: F401
 )
 from app.models.session import Session, SessionAuditLog  # noqa: F401
-from app.models.station_claim import OperationClaim, OperationClaimAuditLog  # noqa: F401
 from app.models.user import User  # noqa: F401
 from app.models.security_event import SecurityEventLog  # noqa: F401
 from app.models.product import Product  # noqa: F401

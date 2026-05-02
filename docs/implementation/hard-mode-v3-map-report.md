@@ -529,6 +529,86 @@ NO_NEW_EVENTS
 ### Final Verdict
 P0_C_08H16C_COMPLETE_SCRIPT_SURFACE_CLEAN
 
+---
+
+## HM3-046 — P0-C-08H17 Claim ORM Model / Table Drop Migration
+
+### Slice ID
+P0-C-08H17
+
+### Brain / Mode
+MOM Brain / Strict / Single-Slice
+
+### Hard Mode MOM trigger
+ORM model removal + DB table drop migration + audit/history table retirement + Alembic migration chain governance.
+
+### Design Evidence Extract
+
+| Source | Fact |
+|---|---|
+| H13 policy | `CLAIM_RETENTION_POLICY_DEV_HARD_DROP_APPROVED` |
+| H16 contract | Drop order: `operation_claim_audit_logs` first (FK child), `operation_claims` second (parent) |
+| H14B–H16C | All API/frontend/service/test/script claim dependencies removed |
+| `0008_boms.py` | Downgrade convention: full table recreation with indexes |
+| `0009_station_claims.sql` (read-only) | Column definitions used as downgrade schema reference |
+
+### ORM / Metadata Removal Map
+
+| Artifact | Before | After |
+|---|---|---|
+| `backend/app/models/station_claim.py` | ORM model file | DELETED |
+| `OperationClaim` | ORM class | Gone |
+| `OperationClaimAuditLog` | ORM class | Gone |
+| `backend/app/db/init_db.py:38` | Claim model import | Removed |
+| `backend/alembic/versions/0009_drop_station_claims.py` | Did not exist | CREATED |
+
+### Migration Impact Map
+
+| Table | Action | Order |
+|---|---|---|
+| `operation_claim_audit_logs` | DROP in upgrade | 1st (FK child) |
+| `operation_claims` | DROP in upgrade | 2nd (FK parent) |
+| `operation_claim_audit_logs` | RECREATE in downgrade | 2nd |
+| `operation_claims` | RECREATE in downgrade | 1st |
+
+### Invariants Preserved
+- StationSession execution ownership truth: unchanged
+- Queue `claim` compatibility field: unchanged (separate deferred slice)
+- `station_claim_service.py` queue paths: unchanged (active service, not deleted)
+- Historical SQL file `0009_station_claims.sql`: not edited
+
+### Test Matrix
+
+| ID | Test / Check | Result |
+|---|---|---|
+| HM3-046-T1 | `alembic current` before upgrade = 0008 | PASS |
+| HM3-046-T2 | `alembic heads` = 0009 | PASS |
+| HM3-046-T3 | `alembic upgrade head` (0008→0009) | PASS (exit 0) |
+| HM3-046-T4 | Table absence check (both tables gone) | PASS (exit 0) |
+| HM3-046-T5 | Exec/queue/reopen focused tests | 23 passed |
+| HM3-046-T6 | Dependency burn-down tests | 41 passed |
+| HM3-046-T7 | Script compile gate | `H17_SCRIPT_COMPILE_EXIT:0` |
+| HM3-046-T8 | Frontend lint/build/routes | all exit 0 |
+| HM3-046-T9 | Post-impl active claim sweep | `H17_ACTIVE_CLAIM_SWEEP_EXIT:0` |
+| HM3-046-T10 | Full backend suite | 120 passed, 1 skipped (exit 0) |
+
+### Final verification result
+- Migration applied: 0008 → 0009
+- Tables dropped: `operation_claim_audit_logs`, `operation_claims`
+- ORM model removed: yes
+- Registry import removed: yes
+- Queue compatibility: unchanged
+- Full backend suite: PASS
+
+### Event naming status
+NO_NEW_EVENTS
+
+### Implementation Artifact
+- `docs/implementation/p0-c-08h17-claim-orm-model-table-drop-migration-report.md`
+
+### Final Verdict
+P0_C_08H17_COMPLETE_VERIFICATION_CLEAN
+
 ## HM3-041 — P0-C-08H15 Claim Service / Schema / Model Removal Contract
 
 ## Routing
