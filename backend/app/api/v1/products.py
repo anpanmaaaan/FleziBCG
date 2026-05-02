@@ -2,8 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
+from app.schemas.bom import BomDetail, BomItem
 from app.schemas.product import ProductCreateRequest, ProductItem, ProductUpdateRequest, ProductVersionItem
 from app.security.dependencies import RequestIdentity, require_action, require_authenticated_identity
+from app.services.bom_service import get_bom as get_bom_service
+from app.services.bom_service import list_boms as list_boms_service
 from app.services.product_service import (
     create_product as create_product_service,
     get_product_by_id as get_product_by_id_service,
@@ -124,6 +127,40 @@ def list_product_versions(
             db,
             tenant_id=identity.tenant_id,
             product_id=product_id,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.get("/{product_id}/boms", response_model=list[BomItem])
+def list_boms(
+    product_id: str,
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(require_authenticated_identity),
+) -> list[BomItem]:
+    try:
+        return list_boms_service(
+            db,
+            tenant_id=identity.tenant_id,
+            product_id=product_id,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.get("/{product_id}/boms/{bom_id}", response_model=BomDetail)
+def get_bom(
+    product_id: str,
+    bom_id: str,
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(require_authenticated_identity),
+) -> BomDetail:
+    try:
+        return get_bom_service(
+            db,
+            tenant_id=identity.tenant_id,
+            product_id=product_id,
+            bom_id=bom_id,
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
