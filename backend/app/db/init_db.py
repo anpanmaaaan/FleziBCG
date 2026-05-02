@@ -39,6 +39,7 @@ from app.models.user import User  # noqa: F401
 from app.models.security_event import SecurityEventLog  # noqa: F401
 from app.models.product import Product  # noqa: F401
 from app.models.product_version import ProductVersion  # noqa: F401
+from app.models.reason_code import ReasonCode  # noqa: F401
 from app.models.bom import Bom, BomItem  # noqa: F401
 from app.models.routing import Routing, RoutingOperation  # noqa: F401
 from app.models.resource_requirement import ResourceRequirement  # noqa: F401
