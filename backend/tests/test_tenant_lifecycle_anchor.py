@@ -283,7 +283,12 @@ def test_tenant_downgrade_drops_tenants_table_only() -> None:
 
 
 def test_alembic_head_is_updated_to_new_revision() -> None:
-    """Alembic ScriptDirectory must report a single head at '0006'."""
+    """Alembic ScriptDirectory must report a single head at or after '0006'.
+
+    Updated: head is now 0007 (product_versions, P0-B MMD-BE-03). The
+    original P0-A-02A invariant — that 0006 exists and is in the chain —
+    is verified by test_migration_revision_exists and the linear-chain check.
+    """
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
@@ -291,4 +296,6 @@ def test_alembic_head_is_updated_to_new_revision() -> None:
     script_dir = ScriptDirectory.from_config(cfg)
     heads = script_dir.get_heads()
     assert len(heads) == 1, f"Expected exactly one Alembic head, got: {heads}"
-    assert "0006" in heads, f"Expected '0006' as head, got: {heads}"
+    # 0006 must appear somewhere in the linear chain (not necessarily as head)
+    revisions = [r.revision for r in script_dir.walk_revisions()]
+    assert "0006" in revisions, f"Expected '0006' in chain, got: {revisions}"
