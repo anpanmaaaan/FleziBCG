@@ -242,9 +242,9 @@ export const SCREEN_STATUS_REGISTRY: Record<string, ScreenStatusEntry> = {
   },
   reasonCodes: {
     routePattern: "/reason-codes",
-    phase: "SHELL",
-    dataSource: "MOCK_FIXTURE",
-    notes: "Reason code registry is a shell for visualization. Backend MMD system manages all reason code lifecycle and domain assignment.",
+    phase: "PARTIAL",
+    dataSource: "BACKEND_API",
+    notes: "Reason code list reads backend MMD API (/v1/reason-codes). Supports domain/category/lifecycle/include_inactive filters. Create/edit/retire actions remain disabled. MMD-FULLSTACK-08.",
   },
   operationTimeline: {
     routePattern: "/operations/:operationId/timeline",

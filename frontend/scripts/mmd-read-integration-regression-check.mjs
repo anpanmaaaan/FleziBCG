@@ -65,18 +65,22 @@ const productApi      = await readSource("app/api/productApi.ts");
 const productDetail   = await readSource("app/pages/ProductDetail.tsx");
 const bomList         = await readSource("app/pages/BomList.tsx");
 const bomDetail       = await readSource("app/pages/BomDetail.tsx");
+const reasonCodesPage = await readSource("app/pages/ReasonCodes.tsx");
+const reasonCodeApi   = await readSource("app/api/reasonCodeApi.ts");
 
-if (!routingApi)   abort("src/app/api/routingApi.ts not found");
-if (!rodPage)      abort("src/app/pages/RoutingOperationDetail.tsx not found");
-if (!rrPage)       abort("src/app/pages/ResourceRequirements.tsx not found");
-if (!screenStatus) abort("src/app/screenStatus.ts not found");
-if (!routesTsx)    abort("src/app/routes.tsx not found");
-if (!i18nEn)       abort("src/app/i18n/registry/en.ts not found");
-if (!i18nJa)       abort("src/app/i18n/registry/ja.ts not found");
-if (!productApi)   abort("src/app/api/productApi.ts not found");
-if (!productDetail) abort("src/app/pages/ProductDetail.tsx not found");
-if (!bomList)      abort("src/app/pages/BomList.tsx not found");
-if (!bomDetail)    abort("src/app/pages/BomDetail.tsx not found");
+if (!routingApi)      abort("src/app/api/routingApi.ts not found");
+if (!rodPage)         abort("src/app/pages/RoutingOperationDetail.tsx not found");
+if (!rrPage)          abort("src/app/pages/ResourceRequirements.tsx not found");
+if (!screenStatus)    abort("src/app/screenStatus.ts not found");
+if (!routesTsx)       abort("src/app/routes.tsx not found");
+if (!i18nEn)          abort("src/app/i18n/registry/en.ts not found");
+if (!i18nJa)          abort("src/app/i18n/registry/ja.ts not found");
+if (!productApi)      abort("src/app/api/productApi.ts not found");
+if (!productDetail)   abort("src/app/pages/ProductDetail.tsx not found");
+if (!bomList)         abort("src/app/pages/BomList.tsx not found");
+if (!bomDetail)       abort("src/app/pages/BomDetail.tsx not found");
+if (!reasonCodesPage) abort("src/app/pages/ReasonCodes.tsx not found");
+if (!reasonCodeApi)   abort("src/app/api/reasonCodeApi.ts not found");
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // A. Routing API contract lock (MMD-FULLSTACK-01 + MMD-FULLSTACK-03)
@@ -527,6 +531,141 @@ if (/\bcomponent_code\b/.test(bomDetail) || /\bcomponent_name\b/.test(bomDetail)
   fail("bom_no_rejected_fields", "BomDetail.tsx contains rejected fields (component_code, component_name, item_type) — these are not in BomComponentItem schema");
 } else {
   pass("bom_no_rejected_fields");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// I. Reason Codes FE read integration lock (MMD-FULLSTACK-08)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// I1 — ReasonCodeItemFromAPI type exists in reasonCodeApi.ts
+if (/ReasonCodeItemFromAPI/.test(reasonCodeApi)) {
+  pass("rc_api_type_exists");
+} else {
+  fail("rc_api_type_exists", "reasonCodeApi.ts missing ReasonCodeItemFromAPI interface");
+}
+
+// I2 — listReasonCodes helper exists in reasonCodeApi.ts
+if (/listReasonCodes/.test(reasonCodeApi)) {
+  pass("rc_api_list_helper_exists");
+} else {
+  fail("rc_api_list_helper_exists", "reasonCodeApi.ts missing listReasonCodes method");
+}
+
+// I3 — getReasonCode helper exists in reasonCodeApi.ts
+if (/getReasonCode/.test(reasonCodeApi)) {
+  pass("rc_api_get_helper_exists");
+} else {
+  fail("rc_api_get_helper_exists", "reasonCodeApi.ts missing getReasonCode method");
+}
+
+// I4 — ReasonCodes.tsx consumes listReasonCodes (backend read integration active)
+if (/listReasonCodes/.test(reasonCodesPage)) {
+  pass("rc_page_consumes_list_reason_codes");
+} else {
+  fail("rc_page_consumes_list_reason_codes", "ReasonCodes.tsx does not call listReasonCodes — backend read integration missing");
+}
+
+// I5 — ReasonCodes.tsx does not use inline mock array as primary data source
+if (/const\s+mockReasonCodes\s*=\s*\[/.test(reasonCodesPage)) {
+  fail("rc_no_primary_mock_array", "ReasonCodes.tsx contains const mockReasonCodes = [...] — inline mock is still primary data source; backend read integration not applied");
+} else {
+  pass("rc_no_primary_mock_array");
+}
+
+// I6 — Domain filter support: domain filter present (backend API query param)
+if (/domain/.test(reasonCodeApi) && /include_inactive/.test(reasonCodeApi)) {
+  pass("rc_api_supports_domain_and_inactive_filter");
+} else {
+  fail("rc_api_supports_domain_and_inactive_filter", "reasonCodeApi.ts missing domain or include_inactive filter support");
+}
+
+// I7 — Screen status: reasonCodes is PARTIAL + BACKEND_API
+const rcStatusBlock = screenStatus.match(/reasonCodes\s*:\s*\{[^}]*\}/s);
+if (!rcStatusBlock) {
+  fail("screen_status_reason_codes_registered", "screenStatus.ts does not have reasonCodes entry");
+} else {
+  const block = rcStatusBlock[0];
+  if (/phase\s*:\s*["']SHELL["']|phase\s*:\s*["']MOCK["']|phase\s*:\s*["']FUTURE["']/.test(block)) {
+    fail("screen_status_reason_codes_partial_backend", "screenStatus.ts reasonCodes has regressed to SHELL/MOCK/FUTURE — must be PARTIAL/BACKEND_API");
+  } else if (/phase\s*:\s*["']PARTIAL["']/.test(block) && /BACKEND_API/.test(block)) {
+    pass("screen_status_reason_codes_partial_backend");
+  } else {
+    fail("screen_status_reason_codes_partial_backend", "screenStatus.ts reasonCodes is not PARTIAL/BACKEND_API");
+  }
+}
+
+// I8 — Create/edit/delete/release/retire write actions remain disabled
+// Heuristic: no enabled onClick on write-style buttons
+const rcWriteButtonEnabled = /(?<!disabled[^>]{0,200})<button[^>]+onClick[^>]*>.*?(?:create reason|edit reason|delete reason|release reason|retire reason)/is.test(reasonCodesPage);
+if (rcWriteButtonEnabled) {
+  fail("rc_write_actions_remain_disabled", "ReasonCodes.tsx appears to have an enabled write-action button — read-only contract violated");
+} else {
+  pass("rc_write_actions_remain_disabled");
+}
+
+// I9 — No downtime_reason import or API usage in ReasonCodes.tsx
+// Strip comment lines (// ...) before checking to avoid false positives from boundary-guard doc comments.
+const rcPageStrippedComments = reasonCodesPage.replace(/^\s*\/\/.*$/gm, "");
+if (/downtime.?reason/i.test(rcPageStrippedComments)) {
+  fail("rc_no_downtime_reason_import", "ReasonCodes.tsx contains non-comment reference to downtime_reason — boundary violation: unified reason codes must not replace downtime_reason API");
+} else {
+  pass("rc_no_downtime_reason_import");
+}
+
+// I10 — No execution/quality/material mutation language in ReasonCodes.tsx
+if (/pauseOperation|startDowntime|reportQuantity|closeOperation|qualityPass|qualityFail|scrapConfirm|moveInventory|backflush/i.test(reasonCodesPage)) {
+  fail("rc_no_operational_mutation", "ReasonCodes.tsx contains execution/quality/material mutation language — boundary violation");
+} else {
+  pass("rc_no_operational_mutation");
+}
+
+// I11 — Route /reason-codes still exists (regression guard)
+if (/["']reason-codes["']/.test(routesTsx)) {
+  pass("rc_route_exists");
+} else {
+  fail("rc_route_exists", "routes.tsx missing /reason-codes route — MMD-FULLSTACK-08 regression");
+}
+
+// I12 — i18n key: reasonCodes.col.name exists in en.ts (new column added by MMD-FULLSTACK-08)
+if (/reasonCodes\.col\.name/.test(i18nEn)) {
+  pass("i18n_en_rc_col_name");
+} else {
+  fail("i18n_en_rc_col_name", "en.ts missing reasonCodes.col.name i18n key (added by MMD-FULLSTACK-08)");
+}
+
+// I13 — i18n key: reasonCodes.col.name exists in ja.ts
+if (/reasonCodes\.col\.name/.test(i18nJa)) {
+  pass("i18n_ja_rc_col_name");
+} else {
+  fail("i18n_ja_rc_col_name", "ja.ts missing reasonCodes.col.name i18n key (added by MMD-FULLSTACK-08)");
+}
+
+// I14 — i18n key: reasonCodes.error.load exists in en.ts
+if (/reasonCodes\.error\.load/.test(i18nEn)) {
+  pass("i18n_en_rc_error_load");
+} else {
+  fail("i18n_en_rc_error_load", "en.ts missing reasonCodes.error.load i18n key (added by MMD-FULLSTACK-08)");
+}
+
+// I15 — i18n key: reasonCodes.error.load exists in ja.ts
+if (/reasonCodes\.error\.load/.test(i18nJa)) {
+  pass("i18n_ja_rc_error_load");
+} else {
+  fail("i18n_ja_rc_error_load", "ja.ts missing reasonCodes.error.load i18n key (added by MMD-FULLSTACK-08)");
+}
+
+// I16 — i18n key: reasonCodes.filter.includeInactive exists in en.ts
+if (/reasonCodes\.filter\.includeInactive/.test(i18nEn)) {
+  pass("i18n_en_rc_filter_include_inactive");
+} else {
+  fail("i18n_en_rc_filter_include_inactive", "en.ts missing reasonCodes.filter.includeInactive i18n key (added by MMD-FULLSTACK-08)");
+}
+
+// I17 — i18n key: reasonCodes.filter.includeInactive exists in ja.ts
+if (/reasonCodes\.filter\.includeInactive/.test(i18nJa)) {
+  pass("i18n_ja_rc_filter_include_inactive");
+} else {
+  fail("i18n_ja_rc_filter_include_inactive", "ja.ts missing reasonCodes.filter.includeInactive i18n key (added by MMD-FULLSTACK-08)");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
