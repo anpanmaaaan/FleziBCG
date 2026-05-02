@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
-from app.models.user import User
-from app.repositories.user_repository import list_users_by_tenant, set_user_active
+from app.models.user import LIFECYCLE_STATUS_ACTIVE, LIFECYCLE_STATUS_DISABLED, User
+from app.repositories.user_repository import list_users_by_tenant, set_user_active, set_user_lifecycle_status
 from app.services.security_event_service import record_security_event
 
 
@@ -32,6 +32,13 @@ def activate_user(
         tenant_id=tenant_id,
         is_active=True,
     )
+    if user is not None:
+        user = set_user_lifecycle_status(
+            db,
+            user_id=user_id,
+            tenant_id=tenant_id,
+            lifecycle_status=LIFECYCLE_STATUS_ACTIVE,
+        )
     if user is not None and actor_user_id is not None:
         record_security_event(
             db,
@@ -59,6 +66,13 @@ def deactivate_user(
         tenant_id=tenant_id,
         is_active=False,
     )
+    if user is not None:
+        user = set_user_lifecycle_status(
+            db,
+            user_id=user_id,
+            tenant_id=tenant_id,
+            lifecycle_status=LIFECYCLE_STATUS_DISABLED,
+        )
     if user is not None and actor_user_id is not None:
         record_security_event(
             db,
