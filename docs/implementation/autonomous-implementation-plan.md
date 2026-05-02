@@ -230,6 +230,36 @@ Implementation report:
 Verdict:
 - `P0_C_08H16B_COMPLETE_WITH_MODEL_REFERENCES_DEFERRED`
 
+### P0-C-08H16C Legacy Script Claim Dependency Burn-Down
+
+Status: Complete.
+
+Completed scope:
+- Deleted legacy claim verification scripts:
+  - `backend/scripts/verify_station_claim.py`
+  - `backend/scripts/verify_station_queue_claim.py`
+- Rewrote remaining claim-dependent verification scripts to StationSession guard semantics:
+  - `backend/scripts/verify_clock_on.py`
+  - `backend/scripts/verify_clock_off.py`
+  - `backend/scripts/verify_station_execution_seed.py`
+- Removed claim model/table cleanup dependencies from seed utilities:
+  - `backend/scripts/seed/common.py`
+  - `backend/scripts/seed/seed_station_execution_opr.py`
+- Held boundaries: no edits to `backend/app/models/station_claim.py`, `backend/app/db/init_db.py`, or historical migration artifacts.
+
+Verification summary:
+- Backend regression batch 1: `40 passed`
+- Backend regression batch 2: `50 passed`
+- Script compile gate: `H16C_COMPILEALL_EXIT:0`
+- Frontend lint/build/route smoke: all exit 0 (`npm.cmd` execution path)
+- Post-edit script claim sweep: `H16C_SCRIPT_CLAIM_SWEEP_EXIT:0`
+
+Implementation report:
+- `docs/implementation/p0-c-08h16c-legacy-script-claim-dependency-burn-down-report.md`
+
+Verdict:
+- `P0_C_08H16C_COMPLETE_SCRIPT_SURFACE_CLEAN`
+
 ## Current Slice Ledger
 
 ### Completed Slices

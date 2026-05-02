@@ -470,6 +470,65 @@ ALLOW_IMPLEMENTATION
 ### Final Verdict
 P0_C_08H16B_COMPLETE_WITH_MODEL_REFERENCES_DEFERRED
 
+## HM3-045 — P0-C-08H16C Legacy Script Claim Dependency Burn-Down
+
+## Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Single-Slice Backend Implementation
+- Hard Mode MOM: v3
+- Reason: Legacy script claim dependency removal is required before claim model/table retirement and touches execution-adjacent verification paths.
+
+### Design Evidence Extract
+| Fact | Evidence | Confirmed |
+|---|---|---|
+| H16B left script-level claim references intentionally deferred | H16B implementation report residual map | ✅ |
+| H16C scope is script-only dependency burn-down | H16/H16B contract sequence | ✅ |
+| Model/init/migration surfaces must remain unchanged in H16C | H16 contract boundary | ✅ |
+
+### Claim Dependency Burn-Down Map
+| Script Surface | H16C Action | Result |
+|---|---|---|
+| `backend/scripts/verify_station_claim.py` | deleted | complete |
+| `backend/scripts/verify_station_queue_claim.py` | deleted | complete |
+| `backend/scripts/verify_clock_on.py` | rewritten to StationSession guard checks | complete |
+| `backend/scripts/verify_clock_off.py` | rewritten to StationSession guard checks | complete |
+| `backend/scripts/verify_station_execution_seed.py` | rewritten to queue/session-guard satisfiability checks | complete |
+| `backend/scripts/seed/common.py` | removed claim model cleanup code | complete |
+| `backend/scripts/seed/seed_station_execution_opr.py` | removed claim model cleanup code | complete |
+
+### Invariant Map
+| Invariant | Status |
+|---|---|
+| Backend execution truth unchanged | Preserved |
+| StationSession guard behavior unchanged | Preserved |
+| Claim model and init registration untouched in this slice | Preserved |
+| Historical migration artifacts untouched | Preserved |
+
+### Test Matrix
+| Test ID | Scenario | Result |
+|---|---|---|
+| HM3-045-T1 | backend regression batch 1 | `40 passed` |
+| HM3-045-T2 | backend regression batch 2 | `50 passed` |
+| HM3-045-T3 | script compile gate | `H16C_COMPILEALL_EXIT:0` |
+| HM3-045-T4 | frontend lint/build/routes | all exit 0 |
+| HM3-045-T5 | script claim sweep | `H16C_SCRIPT_CLAIM_SWEEP_EXIT:0` |
+
+### Final verification result
+- Backend regression batch 1: passed
+- Backend regression batch 2: passed
+- Script compile gate: passed
+- Frontend lint/build/route smoke: passed
+- Script claim sweep: passed (absolute-path rerun)
+
+### Event naming status
+NO_NEW_EVENTS
+
+### Implementation Artifact
+- `docs/implementation/p0-c-08h16c-legacy-script-claim-dependency-burn-down-report.md`
+
+### Final Verdict
+P0_C_08H16C_COMPLETE_SCRIPT_SURFACE_CLEAN
+
 ## HM3-041 — P0-C-08H15 Claim Service / Schema / Model Removal Contract
 
 ## Routing

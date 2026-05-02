@@ -34,7 +34,6 @@ from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent
 from app.models.master import Operation, ProductionOrder, StatusEnum, WorkOrder
-from app.models.station_claim import OperationClaim, OperationClaimAuditLog
 from app.schemas.operation import (
     OperationCompleteRequest,
     OperationEndDowntimeRequest,
@@ -97,14 +96,7 @@ def _reset_station_seed(db) -> None:
         )
         if operation_ids:
             db.execute(
-                delete(OperationClaimAuditLog).where(
-                    OperationClaimAuditLog.operation_id.in_(operation_ids)
-                )
-            )
-            db.execute(
-                delete(OperationClaim).where(
-                    OperationClaim.operation_id.in_(operation_ids)
-                )
+                delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(operation_ids))
             )
         db.execute(
             delete(ExecutionEvent).where(ExecutionEvent.work_order_id.in_(wo_ids))

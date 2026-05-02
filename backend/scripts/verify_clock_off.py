@@ -1,8 +1,8 @@
-"""
-Operator Clock Off verification script.
+﻿"""
+Operator Clock Off verification script (StationSession guard version).
 
 Checks:
-1) Complete without claim -> 403
+1) Complete without active station session -> 409 STATION_SESSION_REQUIRED
 2) Complete when status != IN_PROGRESS -> 409
 3) Clock On -> Clock Off -> OP_COMPLETED exists and status COMPLETED
 4) Double Clock Off -> 409 and no duplicate OP_COMPLETED
@@ -23,7 +23,7 @@ from app.main import app
 from app.models.execution import ExecutionEvent, ExecutionEventType
 from app.models.master import Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.rbac import Role, RoleScope, Scope, UserRole, UserRoleAssignment
-from app.models.station_claim import OperationClaim, OperationClaimAuditLog
+from app.models.station_session import StationSession
 from app.models.user import User
 from app.security.auth import pwd_context
 
@@ -225,14 +225,6 @@ def _cleanup(db) -> None:
     )
     if operation_ids:
         db.execute(
-            delete(OperationClaimAuditLog).where(
-                OperationClaimAuditLog.operation_id.in_(operation_ids)
-            )
-        )
-        db.execute(
-            delete(OperationClaim).where(OperationClaim.operation_id.in_(operation_ids))
-        )
-        db.execute(
             delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(operation_ids))
         )
 
@@ -244,6 +236,8 @@ def _cleanup(db) -> None:
         db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
 
     db.execute(delete(ProductionOrder).where(ProductionOrder.order_number == PO_NUMBER))
+
+    db.execute(delete(StationSession).where(StationSession.tenant_id == TENANT_ID, StationSession.station_id == STATION_SCOPE))
 
     db.execute(delete(UserRoleAssignment).where(UserRoleAssignment.user_id == USER_ID))
     user_roles = list(db.scalars(select(UserRole).where(UserRole.user_id == USER_ID)))
@@ -263,6 +257,15 @@ def _login(client: TestClient) -> str:
     if response.status_code != 200:
         raise RuntimeError(f"Login failed: {response.status_code} {response.text}")
     return response.json()["access_token"]
+
+
+def _open_station_session(client: TestClient, headers: dict[str, str]) -> int:
+    response = client.post(
+        "/api/v1/station/sessions",
+        headers=headers,
+        json={"station_id": STATION_SCOPE, "operator_user_id": USER_ID},
+    )
+    return response.status_code
 
 
 def _count_completed_events(db, operation_id: int) -> int:
@@ -300,26 +303,24 @@ def main() -> None:
 
     checks: list[Check] = []
 
-    # 1) Complete without claim -> 403
-    complete_without_claim = client.post(
+    # 1) Complete without station session -> 409
+    complete_without_session = client.post(
         f"/api/v1/operations/{op_a_id}/complete",
         headers=headers,
         json={"operator_id": USER_ID},
     )
     checks.append(
         Check(
-            name="1) Complete without claim",
-            passed=complete_without_claim.status_code == 403,
-            detail=f"status={complete_without_claim.status_code}",
+            name="1) Complete without station session",
+            passed=complete_without_session.status_code == 409
+            and "STATION_SESSION_REQUIRED" in complete_without_session.text,
+            detail=f"status={complete_without_session.status_code}, body={complete_without_session.text}",
         )
     )
 
+    session_open_status = _open_station_session(client, headers)
+
     # 2) Complete when status != IN_PROGRESS -> 409
-    claim_a = client.post(
-        f"/api/v1/station/queue/{op_a_id}/claim",
-        headers=headers,
-        json={},
-    )
     complete_pending = client.post(
         f"/api/v1/operations/{op_a_id}/complete",
         headers=headers,
@@ -328,8 +329,8 @@ def main() -> None:
     checks.append(
         Check(
             name="2) Complete when status != IN_PROGRESS",
-            passed=claim_a.status_code == 200 and complete_pending.status_code == 409,
-            detail=f"claim_status={claim_a.status_code}, complete_status={complete_pending.status_code}",
+            passed=session_open_status == 200 and complete_pending.status_code == 409,
+            detail=f"session_status={session_open_status}, complete_status={complete_pending.status_code}",
         )
     )
 
@@ -386,11 +387,6 @@ def main() -> None:
     )
 
     # 5) Clock On OP A -> Clock Off OP A -> Clock On OP B (same station) -> PASS
-    claim_b = client.post(
-        f"/api/v1/station/queue/{op_b_id}/claim",
-        headers=headers,
-        json={},
-    )
     start_b = client.post(
         f"/api/v1/operations/{op_b_id}/start",
         headers=headers,
@@ -400,11 +396,9 @@ def main() -> None:
     checks.append(
         Check(
             name="5) Start OP B after Clock Off OP A",
-            passed=claim_b.status_code == 200
-            and start_b.status_code == 200
-            and start_b_status == "IN_PROGRESS",
+            passed=start_b.status_code == 200 and start_b_status == "IN_PROGRESS",
             detail=(
-                f"claim_b_status={claim_b.status_code}, start_b_status={start_b.status_code}, "
+                f"start_b_status={start_b.status_code}, "
                 f"operation_status={start_b_status}"
             ),
         )

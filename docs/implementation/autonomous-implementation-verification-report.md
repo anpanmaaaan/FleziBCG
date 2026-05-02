@@ -122,6 +122,50 @@ Implementation artifact
 Verdict
 - `P0_C_08H16B_COMPLETE_WITH_MODEL_REFERENCES_DEFERRED`
 
+## Addendum — P0-C-08H16C Legacy Script Claim Dependency Burn-Down
+
+Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Single-Slice Backend Implementation
+- Hard Mode MOM: v3
+- Reason: Legacy script claim dependency retirement is a migration-readiness prerequisite and touches execution-adjacent verification tooling.
+
+Implementation Summary
+- Deleted legacy claim verification scripts:
+	- `backend/scripts/verify_station_claim.py`
+	- `backend/scripts/verify_station_queue_claim.py`
+- Rewrote remaining claim-dependent verifiers to StationSession guard behavior:
+	- `backend/scripts/verify_clock_on.py`
+	- `backend/scripts/verify_clock_off.py`
+	- `backend/scripts/verify_station_execution_seed.py`
+- Removed claim-model cleanup from seed paths:
+	- `backend/scripts/seed/common.py`
+	- `backend/scripts/seed/seed_station_execution_opr.py`
+- Preserved runtime/model/migration boundaries:
+	- `backend/app/models/station_claim.py` unchanged
+	- `backend/app/db/init_db.py` unchanged
+	- `backend/scripts/migrations/0009_station_claims.sql` unchanged
+
+Verification Results (H16C)
+- Backend regression batch 1:
+	- `40 passed`
+- Backend regression batch 2:
+	- `50 passed`
+- Script compile gate:
+	- `H16C_COMPILEALL_EXIT:0`
+- Frontend lint/build/route smoke:
+	- `H16C_FRONTEND_LINT_EXIT:0`
+	- `H16C_FRONTEND_BUILD_EXIT:0`
+	- `H16C_FRONTEND_ROUTE_SMOKE_EXIT:0` (24 PASS, 0 FAIL; 77/78 covered, 1 excluded redirect)
+- Script claim dependency sweep:
+	- `H16C_SCRIPT_CLAIM_SWEEP_EXIT:0`
+
+Implementation artifact
+- `docs/implementation/p0-c-08h16c-legacy-script-claim-dependency-burn-down-report.md`
+
+Verdict
+- `P0_C_08H16C_COMPLETE_SCRIPT_SURFACE_CLEAN`
+
 ## Addendum — P0-C-08H15 Claim Service / Schema / Model Removal Contract
 
 Routing
