@@ -1,8 +1,47 @@
 # MMD-BE-07: Minimal Reason Code Read Model and Read-Only API
 
-**Audit Report** | **Status**: ✅ IMPLEMENTATION COMPLETE & VERIFIED
+**Audit Report** | **Status**: ✅ IMPLEMENTATION COMPLETE & VERIFIED (Post-Commit Patch Applied)
 
 **Date**: 2026-05-02 | **Slice**: MMD-BE-07 | **Mode**: Hard Mode MOM v3 (Contract-first)
+
+---
+
+## Post-Commit Patch (2026-05-02)
+
+**Patch Scope**: SQL bootstrap mirror added. No runtime behavior changed.
+
+| Item | Status |
+|------|--------|
+| SQL bootstrap mirror added | ✅ `backend/scripts/migrations/0020_reason_codes.sql` |
+| Runtime behavior changed | ❌ No changes |
+| downtime_reason touched | ❌ Untouched |
+| Reason-code API modified | ❌ Unchanged (read-only) |
+| New tests required | ❌ None — no behavior change |
+
+**Post-Patch Verification Results**:
+
+```
+Backend tests (22 reason code + 32 MMD safety):
+  python -m pytest -q tests/test_reason_code_foundation_api.py
+                      tests/test_reason_code_foundation_service.py
+                      tests/test_product_foundation_api.py
+                      tests/test_routing_foundation_api.py
+                      tests/test_resource_requirement_api.py
+                      tests/test_bom_foundation_api.py
+                      tests/test_mmd_rbac_action_codes.py
+  Result: ✅ 54 passed in 3.10s
+
+Alembic migration chain:
+  python -m alembic heads
+  Result: ✅ 0010 (head)
+
+Frontend regression (node scripts/mmd-read-integration-regression-check.mjs):
+  Result: ✅ 67 passed, 0 failed
+
+Route smoke check (node scripts/route-smoke-check.mjs):
+  Result: ✅ PASS 24/24 checks — 77/78 covered, 1 excluded (redirect-only)
+  /reason-codes route: ✅ COVERED
+```
 
 ---
 
