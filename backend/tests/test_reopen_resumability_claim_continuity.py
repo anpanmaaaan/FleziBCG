@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 import pytest
 from sqlalchemy import delete, select
@@ -11,7 +11,6 @@ from app.models.execution import ExecutionEvent, ExecutionEventType
 from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.rbac import Role, Scope, UserRoleAssignment
 from app.models.station_session import StationSession
-from app.models.station_claim import OperationClaim, OperationClaimAuditLog
 from app.security.dependencies import RequestIdentity
 from app.services.operation_service import (
     close_operation,
@@ -23,7 +22,7 @@ from app.schemas.operation import (
     OperationReopenRequest,
     OperationResumeRequest,
 )
-from app.services.station_claim_service import claim_operation, get_station_queue
+from app.services.station_claim_service import get_station_queue
 from app.services.station_session_service import (
     get_current_station_session,
     identify_operator_at_station,
@@ -64,12 +63,6 @@ def _purge(db) -> None:
         if wo_ids:
             op_ids = list(db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids))))
             if op_ids:
-                db.execute(
-                    delete(OperationClaimAuditLog).where(
-                        OperationClaimAuditLog.operation_id.in_(op_ids)
-                    )
-                )
-                db.execute(delete(OperationClaim).where(OperationClaim.operation_id.in_(op_ids)))
                 db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
                 db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
             db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
@@ -140,7 +133,7 @@ def db_session():
                 ),
             ]
         )
-        yield db, scope
+        yield db
     finally:
         _purge(db)
         db.close()
@@ -213,41 +206,10 @@ def _mark_operation_completed(db, op: Operation) -> Operation:
     return op
 
 
-def _mark_operation_paused_runtime(db, op: Operation) -> Operation:
-    wo = db.get(WorkOrder, op.work_order_id)
-    assert wo is not None
-    db.add_all(
-        [
-            ExecutionEvent(
-                event_type=ExecutionEventType.OP_STARTED.value,
-                production_order_id=wo.production_order_id,
-                work_order_id=wo.id,
-                operation_id=op.id,
-                payload={"started_at": datetime(2099, 10, 1, 8, 0, 0).isoformat()},
-                tenant_id=_TENANT_ID,
-            ),
-            ExecutionEvent(
-                event_type=ExecutionEventType.EXECUTION_PAUSED.value,
-                production_order_id=wo.production_order_id,
-                work_order_id=wo.id,
-                operation_id=op.id,
-                payload={"paused_at": datetime(2099, 10, 1, 8, 15, 0).isoformat()},
-                tenant_id=_TENANT_ID,
-            ),
-        ]
-    )
-    op.status = StatusEnum.paused.value
-    db.add(op)
-    db.commit()
-    db.refresh(op)
-    return op
-
-
 def test_reopen_restores_last_claim_owner_path_and_resume_is_reachable(db_session):
-    db, _scope = db_session
+    db = db_session
     op = _seed_operation(db, "RESTORE")
 
-    claim_operation(db, _identity(_OWNER_USER_ID), op.id, reason="initial-claim")
     _mark_operation_completed(db, op)
     close_operation(
         db,
@@ -256,18 +218,6 @@ def test_reopen_restores_last_claim_owner_path_and_resume_is_reachable(db_sessio
         actor_user_id=_SUP_USER_ID,
         tenant_id=_TENANT_ID,
     )
-
-    existing_claim = db.scalar(
-        select(OperationClaim).where(
-            OperationClaim.operation_id == op.id,
-            OperationClaim.released_at.is_(None),
-        )
-    )
-    assert existing_claim is not None
-    existing_claim.released_at = datetime.now(timezone.utc)
-    existing_claim.release_reason = "expired-while-closed"
-    db.add(existing_claim)
-    db.commit()
 
     reopened = reopen_operation(
         db,
@@ -279,22 +229,11 @@ def test_reopen_restores_last_claim_owner_path_and_resume_is_reachable(db_sessio
     assert reopened.closure_status == ClosureStatusEnum.open.value
     assert reopened.status == StatusEnum.paused.value
 
-    active_claim = db.scalar(
-        select(OperationClaim)
-        .where(
-            OperationClaim.operation_id == op.id,
-            OperationClaim.released_at.is_(None),
-        )
-        .order_by(OperationClaim.id.desc())
-    )
-    assert active_claim is not None
-    assert active_claim.claimed_by_user_id == _OWNER_USER_ID
-
     scope_value, items = get_station_queue(db, _identity(_OWNER_USER_ID))
     assert scope_value == _STATION_SCOPE
     queue_item = next(item for item in items if item["operation_id"] == op.id)
     assert queue_item["status"] == StatusEnum.paused.value
-    assert queue_item["claim"]["state"] == "mine"
+    assert queue_item["claim"] is None  # H10: queue claim payload is null-only
 
     _ensure_open_station_session(db, user_id=_OWNER_USER_ID)
     resumed = resume_operation(
@@ -307,19 +246,9 @@ def test_reopen_restores_last_claim_owner_path_and_resume_is_reachable(db_sessio
     assert resumed.status == StatusEnum.in_progress.value
 
 
-def test_reopen_claim_restoration_is_narrow_and_does_not_make_generic_paused_claimable(db_session):
-    db, _scope = db_session
-    paused_op = _seed_operation(db, "PAUSED-NARROW")
-    _mark_operation_paused_runtime(db, paused_op)
-
-    with pytest.raises(ValueError, match="not claimable"):
-        claim_operation(db, _identity(_OWNER_USER_ID), paused_op.id, reason="should-fail")
-
-
 def test_reopen_preserves_active_claim_continuity_when_claim_still_exists(db_session):
-    db, _scope = db_session
+    db = db_session
     op = _seed_operation(db, "CONTINUITY")
-    claim_operation(db, _identity(_OWNER_USER_ID), op.id, reason="initial-claim")
     _mark_operation_completed(db, op)
 
     close_operation(
@@ -337,26 +266,14 @@ def test_reopen_preserves_active_claim_continuity_when_claim_still_exists(db_ses
         tenant_id=_TENANT_ID,
     )
     assert reopened.status == StatusEnum.paused.value
-
-    active_claims = list(
-        db.scalars(
-            select(OperationClaim).where(
-                OperationClaim.operation_id == op.id,
-                OperationClaim.released_at.is_(None),
-            )
-        )
-    )
-    assert len(active_claims) == 1
-    assert active_claims[0].claimed_by_user_id == _OWNER_USER_ID
+    assert reopened.closure_status == ClosureStatusEnum.open.value
 
 
 def test_reopen_skips_claim_restoration_when_owner_has_other_active_claim(db_session):
-    db, _scope = db_session
+    db = db_session
     op_reopen = _seed_operation(db, "CONFLICT-REOPEN")
-    op_other = _seed_operation(db, "CONFLICT-OTHER")
-
-    claim_operation(db, _identity(_OWNER_USER_ID), op_reopen.id, reason="claim-reopen")
     _mark_operation_completed(db, op_reopen)
+
     close_operation(
         db,
         op_reopen,
@@ -365,36 +282,12 @@ def test_reopen_skips_claim_restoration_when_owner_has_other_active_claim(db_ses
         tenant_id=_TENANT_ID,
     )
 
-    original_claim = db.scalar(
-        select(OperationClaim).where(
-            OperationClaim.operation_id == op_reopen.id,
-            OperationClaim.released_at.is_(None),
-        )
-    )
-    assert original_claim is not None
-    original_claim.released_at = datetime.now(timezone.utc)
-    original_claim.release_reason = "expired-while-closed"
-    db.add(original_claim)
-    db.commit()
-
-    claim_operation(db, _identity(_OWNER_USER_ID), op_other.id, reason="other-active")
-
     reopened = reopen_operation(
         db,
         op_reopen,
-        OperationReopenRequest(reason="reopen should not be blocked by claim conflict"),
+        OperationReopenRequest(reason="reopen should stay claim-independent"),
         actor_user_id=_SUP_USER_ID,
         tenant_id=_TENANT_ID,
     )
     assert reopened.closure_status == ClosureStatusEnum.open.value
     assert reopened.status == StatusEnum.paused.value
-
-    active_claims_for_reopened = list(
-        db.scalars(
-            select(OperationClaim).where(
-                OperationClaim.operation_id == op_reopen.id,
-                OperationClaim.released_at.is_(None),
-            )
-        )
-    )
-    assert active_claims_for_reopened == []

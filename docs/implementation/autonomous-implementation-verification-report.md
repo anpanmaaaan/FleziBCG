@@ -84,6 +84,44 @@ Contract artifact
 Verdict
 - `READY_FOR_P0_C_08H16B_CLAIM_MODEL_TEST_DEPENDENCY_BURN_DOWN`
 
+## Addendum — P0-C-08H16B Claim Model/Test Dependency Burn-Down
+
+Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Single-Slice Backend Implementation
+- Hard Mode MOM: v3
+- Reason: test fixture/model dependency retirement for claim compatibility debt with migration-readiness boundaries.
+
+Implementation Summary
+- Removed OperationClaim/OperationClaimAuditLog imports from required H16B test files.
+- Removed claim-row fixture inserts and claim-row teardown statements in targeted tests.
+- Rewrote claim-dependent reopen/guard test paths toward StationSession-native expectations.
+- Held boundaries: no migration, no table drop, no model file deletion, no queue contract change.
+
+Verification Results (H16B)
+- Backend focused execution/queue/reopen subset:
+	- `42 passed`, `H16B_EXEC_QUEUE_REOPEN_EXIT:0`
+- Backend dependency burn-down subset:
+	- `51 passed`, `H16B_DEPENDENCY_BURN_DOWN_EXIT:0`
+- Claim dependency sweep:
+	- `H16B_CLAIM_DEPENDENCY_SWEEP_EXIT:0`
+	- targeted H16B test files: no `OperationClaim`/`OperationClaimAuditLog` references
+- Frontend lint:
+	- `H16B_FRONTEND_LINT_EXIT:0`
+- Frontend build:
+	- `H16B_FRONTEND_BUILD_EXIT:0`
+- Frontend route smoke:
+	- `H16B_FRONTEND_ROUTE_SMOKE_EXIT:0` (24 PASS, 0 FAIL; 77/78 covered)
+
+Full backend suite
+- Not run in this H16B slice.
+
+Implementation artifact
+- [docs/implementation/p0-c-08h16b-claim-model-test-dependency-burn-down-report.md](docs/implementation/p0-c-08h16b-claim-model-test-dependency-burn-down-report.md)
+
+Verdict
+- `P0_C_08H16B_COMPLETE_WITH_MODEL_REFERENCES_DEFERRED`
+
 ## Addendum — P0-C-08H15 Claim Service / Schema / Model Removal Contract
 
 Routing
