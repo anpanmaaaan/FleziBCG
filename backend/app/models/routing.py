@@ -50,6 +50,11 @@ class RoutingOperation(Base):
     sequence_no: Mapped[int] = mapped_column(Integer, nullable=False)
     standard_cycle_time: Mapped[float | None] = mapped_column(Float, nullable=True)
     required_resource_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # WHY: v1.2 contract boundary patch — RoutingOperation-owned extended fields.
+    # All nullable per routing-foundation-contract.md Section 3 (extended structure).
+    setup_time: Mapped[float | None] = mapped_column(Float, nullable=True)
+    run_time_per_unit: Mapped[float | None] = mapped_column(Float, nullable=True)
+    work_center_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -41,6 +41,12 @@ class RoutingOperationItem(BaseModel):
     sequence_no: int
     standard_cycle_time: float | None = None
     required_resource_type: str | None = None
+    # WHY: v1.2 contract boundary patch — read-only response fields. Write-path
+    # support (Create/Update request schemas) is intentionally NOT added in
+    # MMD-BE-01; deferred to a future write-path slice.
+    setup_time: float | None = None
+    run_time_per_unit: float | None = None
+    work_center_code: str | None = None
     created_at: datetime
     updated_at: datetime
 
