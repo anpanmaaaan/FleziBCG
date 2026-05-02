@@ -1,9 +1,9 @@
-"""
-Operator Clock On verification script.
+﻿"""
+Operator Clock On verification script (StationSession guard version).
 
 Checks:
-1) Start without claim -> 403
-2) Claim + start -> PASS
+1) Start without active station session -> 409 STATION_SESSION_REQUIRED
+2) Open station session + start -> PASS
 3) Start again same OP -> 409
 4) Start OP A, then start OP B at same station -> 409
 5) Complete OP A, then start OP B -> PASS
@@ -23,7 +23,7 @@ from app.main import app
 from app.models.execution import ExecutionEvent
 from app.models.master import Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.rbac import Role, RoleScope, Scope, UserRole, UserRoleAssignment
-from app.models.station_claim import OperationClaim, OperationClaimAuditLog
+from app.models.station_session import StationSession
 from app.models.user import User
 from app.security.auth import pwd_context
 
@@ -225,14 +225,6 @@ def _cleanup(db) -> None:
     )
     if operation_ids:
         db.execute(
-            delete(OperationClaimAuditLog).where(
-                OperationClaimAuditLog.operation_id.in_(operation_ids)
-            )
-        )
-        db.execute(
-            delete(OperationClaim).where(OperationClaim.operation_id.in_(operation_ids))
-        )
-        db.execute(
             delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(operation_ids))
         )
 
@@ -244,6 +236,8 @@ def _cleanup(db) -> None:
         db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
 
     db.execute(delete(ProductionOrder).where(ProductionOrder.order_number == PO_NUMBER))
+
+    db.execute(delete(StationSession).where(StationSession.tenant_id == TENANT_ID, StationSession.station_id == STATION_SCOPE))
 
     db.execute(delete(UserRoleAssignment).where(UserRoleAssignment.user_id == USER_ID))
     user_roles = list(db.scalars(select(UserRole).where(UserRole.user_id == USER_ID)))
@@ -263,6 +257,15 @@ def _login(client: TestClient) -> str:
     if response.status_code != 200:
         raise RuntimeError(f"Login failed: {response.status_code} {response.text}")
     return response.json()["access_token"]
+
+
+def _open_station_session(client: TestClient, headers: dict[str, str]) -> int:
+    response = client.post(
+        "/api/v1/station/sessions",
+        headers=headers,
+        json={"station_id": STATION_SCOPE, "operator_user_id": USER_ID},
+    )
+    return response.status_code
 
 
 def _print_results(results: list[Check]) -> None:
@@ -287,26 +290,24 @@ def main() -> None:
 
     checks: list[Check] = []
 
-    # 1) Start without claim -> 403
-    start_without_claim = client.post(
+    # 1) Start without active station session -> 409
+    start_without_session = client.post(
         f"/api/v1/operations/{op_a_id}/start",
         headers=headers,
         json={"operator_id": USER_ID},
     )
     checks.append(
         Check(
-            name="1) Start without claim",
-            passed=start_without_claim.status_code == 403,
-            detail=f"status={start_without_claim.status_code}",
+            name="1) Start without station session",
+            passed=start_without_session.status_code == 409
+            and "STATION_SESSION_REQUIRED" in start_without_session.text,
+            detail=f"status={start_without_session.status_code}, body={start_without_session.text}",
         )
     )
 
-    # 2) Claim + start -> PASS
-    claim_a = client.post(
-        f"/api/v1/station/queue/{op_a_id}/claim",
-        headers=headers,
-        json={},
-    )
+    session_open_status = _open_station_session(client, headers)
+
+    # 2) Open station session + start -> PASS
     start_a = client.post(
         f"/api/v1/operations/{op_a_id}/start",
         headers=headers,
@@ -315,12 +316,12 @@ def main() -> None:
     start_a_status = start_a.json().get("status") if start_a.status_code == 200 else "-"
     checks.append(
         Check(
-            name="2) Claim + start",
-            passed=claim_a.status_code == 200
+            name="2) Open session + start",
+            passed=session_open_status == 200
             and start_a.status_code == 200
             and start_a_status == "IN_PROGRESS",
             detail=(
-                f"claim_status={claim_a.status_code}, start_status={start_a.status_code}, "
+                f"session_status={session_open_status}, start_status={start_a.status_code}, "
                 f"operation_status={start_a_status}"
             ),
         )
@@ -341,11 +342,6 @@ def main() -> None:
     )
 
     # 4) Start OP A, then start OP B at same station -> 409
-    claim_b = client.post(
-        f"/api/v1/station/queue/{op_b_id}/claim",
-        headers=headers,
-        json={},
-    )
     start_b_while_a_running = client.post(
         f"/api/v1/operations/{op_b_id}/start",
         headers=headers,
@@ -354,9 +350,8 @@ def main() -> None:
     checks.append(
         Check(
             name="4) Start OP A then OP B same station",
-            passed=claim_b.status_code == 200
-            and start_b_while_a_running.status_code == 409,
-            detail=f"claim_status={claim_b.status_code}, start_status={start_b_while_a_running.status_code}",
+            passed=start_b_while_a_running.status_code == 409,
+            detail=f"start_status={start_b_while_a_running.status_code}",
         )
     )
 
