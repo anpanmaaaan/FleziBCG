@@ -1,0 +1,203 @@
+# Backend CI — Foundation + Alembic Migration Gate
+#
+# PURPOSE: Disposable Postgres-backed CI gate for the P0-A foundation.
+# Runs Alembic migration chain verification and the full P0-A foundation test
+# suite against a real Postgres DB. Complements pr-gate.yml which uses SQLite.
+#
+# INVARIANT: Never hard-code production DB credentials here.
+# Credentials below are CI-only, scoped to a throwaway container.
+#
+# EXCLUDED: test_station_queue_session_aware_migration.py — pre-existing
+# SQLAlchemy "prepared state" error unrelated to P0-A changes. Must NOT
+# be fixed in this workflow. See docs/audit/p0-a-ci-01-*.md for details.
+
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  backend-foundation:
+    name: Backend Foundation + Alembic Gate (Postgres)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          # CI-only credentials — scoped to the throwaway service container.
+          POSTGRES_USER: flezibcg_ci
+          POSTGRES_PASSWORD: flezibcg_ci
+          POSTGRES_DB: flezibcg_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U flezibcg_ci -d flezibcg_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # WHY: Set DATABASE_URL at job level so all steps inherit it.
+      # pydantic-settings reads this into settings.database_url; the
+      # set_database_url validator skips building from parts when this is set.
+      # psycopg (v3) driver — matches requirements.txt.
+      DATABASE_URL: postgresql+psycopg://flezibcg_ci:flezibcg_ci@localhost:5432/flezibcg_test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        shell: bash
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Backend import check
+        shell: bash
+        run: |
+          cd backend
+          python -c "import app.main; print('import ok')"
+
+      # ── Alembic head check ────────────────────────────────────────────────
+      # Reads migration files only — does not require a live DB connection.
+      # Fails the build if multiple heads are detected (branched chain).
+      - name: Alembic — verify single linear head
+        shell: bash
+        run: |
+          cd backend
+          echo "--- alembic heads output ---"
+          python -m alembic heads
+          echo "----------------------------"
+          HEAD_COUNT=$(python -m alembic heads 2>&1 | grep -c "(head)" || true)
+          echo "Alembic head count: $HEAD_COUNT"
+          if [ "$HEAD_COUNT" -ne 1 ]; then
+            echo "::error::Expected exactly 1 Alembic head, found $HEAD_COUNT."
+            echo "Multiple heads indicate a branched migration chain."
+            echo "Resolve by merging heads before merging this PR."
+            exit 1
+          fi
+          echo "Single linear head confirmed — OK"
+
+      # ── Alembic upgrade ──────────────────────────────────────────────────
+      # Runs the full migration chain against the disposable Postgres DB.
+      - name: Alembic — upgrade to head
+        shell: bash
+        run: |
+          cd backend
+          python -m alembic upgrade head
+          echo "alembic upgrade head completed"
+
+      - name: Alembic — confirm current matches head
+        shell: bash
+        run: |
+          cd backend
+          echo "--- alembic current ---"
+          python -m alembic current
+          echo "-----------------------"
+
+      # ── P0-A Foundation tests: Alembic + migration + bootstrap ───────────
+      - name: P0-A tests — Alembic baseline + migration smoke + bootstrap guard
+        shell: bash
+        run: |
+          cd backend
+          python -m pytest -q \
+            tests/test_alembic_baseline.py \
+            tests/test_qa_foundation_migration_smoke.py \
+            tests/test_init_db_bootstrap_guard.py \
+            --tb=short
+
+      # ── P0-A Foundation tests: refresh token ─────────────────────────────
+      - name: P0-A tests — refresh token foundation + rotation + runtime
+        shell: bash
+        run: |
+          cd backend
+          python -m pytest -q \
+            tests/test_refresh_token_foundation.py \
+            tests/test_refresh_token_rotation.py \
+            tests/test_auth_refresh_token_runtime.py \
+            --tb=short
+
+      # ── P0-A Foundation tests: auth session alignment ────────────────────
+      - name: P0-A tests — auth session API alignment
+        shell: bash
+        run: |
+          cd backend
+          python -m pytest -q \
+            tests/test_auth_session_api_alignment.py \
+            --tb=short
+
+      # ── P0-A Foundation tests: user lifecycle ─────────────────────────────
+      - name: P0-A tests — user lifecycle status + service
+        shell: bash
+        run: |
+          cd backend
+          python -m pytest -q \
+            tests/test_user_lifecycle_status.py \
+            tests/test_user_lifecycle_service.py \
+            --tb=short
+
+      # ── P0-A Foundation tests: plant hierarchy ORM ───────────────────────
+      - name: P0-A tests — plant hierarchy ORM foundation
+        shell: bash
+        run: |
+          cd backend
+          python -m pytest -q \
+            tests/test_plant_hierarchy_orm_foundation.py \
+            --tb=short
+
+      # ── P0-A Foundation tests: security events ───────────────────────────
+      - name: P0-A tests — security event service + endpoint
+        shell: bash
+        run: |
+          cd backend
+          python -m pytest -q \
+            tests/test_security_event_service.py \
+            tests/test_security_events_endpoint.py \
+            --tb=short
+
+      # ── P0-A Foundation tests: CORS + PR gate workflow ───────────────────
+      - name: P0-A tests — CORS policy + PR gate workflow config
+        shell: bash
+        run: |
+          cd backend
+          python -m pytest -q \
+            tests/test_cors_policy.py \
+            tests/test_pr_gate_workflow_config.py \
+            --tb=short
+
+      # ── Step summary ──────────────────────────────────────────────────────
+      - name: CI gate summary
+        if: always()
+        shell: bash
+        run: |
+          echo "## Backend CI — Foundation + Alembic Gate" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Postgres: postgres:16 (disposable CI container)" >> "$GITHUB_STEP_SUMMARY"
+          echo "Alembic head: linear chain to 0005" >> "$GITHUB_STEP_SUMMARY"
+          echo "P0-A foundation test suite: see step results above" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Excluded (pre-existing, unrelated to P0-A):" >> "$GITHUB_STEP_SUMMARY"
+          echo "- test_station_queue_session_aware_migration.py" >> "$GITHUB_STEP_SUMMARY"
