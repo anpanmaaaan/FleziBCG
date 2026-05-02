@@ -218,15 +218,15 @@ export const SCREEN_STATUS_REGISTRY: Record<string, ScreenStatusEntry> = {
   },
   bomList: {
     routePattern: "/bom",
-    phase: "SHELL",
-    dataSource: "MOCK_FIXTURE",
-    notes: "BOM list is a shell for visualization. Backend MMD system manages BOM lifecycle, versioning, and release.",
+    phase: "PARTIAL",
+    dataSource: "BACKEND_API",
+    notes: "BOM list reads backend MMD API with product-scoped lookup. Product selection is required. Mutation actions remain disabled.",
   },
   bomDetail: {
     routePattern: "/bom/:id",
-    phase: "SHELL",
-    dataSource: "MOCK_FIXTURE",
-    notes: "BOM detail is a shell. Component truth and BOM release/retire governance require backend MMD API.",
+    phase: "PARTIAL",
+    dataSource: "BACKEND_API",
+    notes: "BOM detail reads backend MMD API by productId (query param) and bomId. Component display uses component_product_id as identifier. Mutation actions remain disabled.",
   },
   routingOpDetail: {
     routePattern: "/routes/:routeId/operations/:operationId",

@@ -63,6 +63,8 @@ const i18nEn          = await readSource("app/i18n/registry/en.ts");
 const i18nJa          = await readSource("app/i18n/registry/ja.ts");
 const productApi      = await readSource("app/api/productApi.ts");
 const productDetail   = await readSource("app/pages/ProductDetail.tsx");
+const bomList         = await readSource("app/pages/BomList.tsx");
+const bomDetail       = await readSource("app/pages/BomDetail.tsx");
 
 if (!routingApi)   abort("src/app/api/routingApi.ts not found");
 if (!rodPage)      abort("src/app/pages/RoutingOperationDetail.tsx not found");
@@ -73,6 +75,8 @@ if (!i18nEn)       abort("src/app/i18n/registry/en.ts not found");
 if (!i18nJa)       abort("src/app/i18n/registry/ja.ts not found");
 if (!productApi)   abort("src/app/api/productApi.ts not found");
 if (!productDetail) abort("src/app/pages/ProductDetail.tsx not found");
+if (!bomList)      abort("src/app/pages/BomList.tsx not found");
+if (!bomDetail)    abort("src/app/pages/BomDetail.tsx not found");
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // A. Routing API contract lock (MMD-FULLSTACK-01 + MMD-FULLSTACK-03)
@@ -398,6 +402,131 @@ if (/createVersion|updateVersion|deleteVersion|addVersion|editVersion/.test(prod
   fail("pv_no_write_ui_in_product_detail", "ProductDetail.tsx contains Product Version write UI — must be read-only in MMD-FULLSTACK-06");
 } else {
   pass("pv_no_write_ui_in_product_detail");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// H. BOM FE read integration lock (MMD-FULLSTACK-07)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// H1 — BomItemFromAPI type exists in productApi.ts
+if (/BomItemFromAPI/.test(productApi)) {
+  pass("bom_api_type_exists");
+} else {
+  fail("bom_api_type_exists", "productApi.ts missing BomItemFromAPI interface");
+}
+
+// H2 — BomComponentItemFromAPI type exists in productApi.ts
+if (/BomComponentItemFromAPI/.test(productApi)) {
+  pass("bom_api_component_type_exists");
+} else {
+  fail("bom_api_component_type_exists", "productApi.ts missing BomComponentItemFromAPI interface");
+}
+
+// H3 — listProductBoms helper exists in productApi.ts
+if (/listProductBoms/.test(productApi)) {
+  pass("bom_api_list_helper_exists");
+} else {
+  fail("bom_api_list_helper_exists", "productApi.ts missing listProductBoms method");
+}
+
+// H4 — getProductBom helper exists in productApi.ts
+if (/getProductBom/.test(productApi)) {
+  pass("bom_api_get_helper_exists");
+} else {
+  fail("bom_api_get_helper_exists", "productApi.ts missing getProductBom method");
+}
+
+// H5 — BomList calls listProductBoms (backend read integration active)
+if (/listProductBoms/.test(bomList)) {
+  pass("bom_list_uses_list_product_boms");
+} else {
+  fail("bom_list_uses_list_product_boms", "BomList.tsx does not call listProductBoms — shell/mock regression likely");
+}
+
+// H6 — BomList has no primary inline mock array (reversion guard)
+if (/const\s+mockBoms\s*=\s*\[/.test(bomList)) {
+  fail("bom_list_no_primary_mock_array", "BomList.tsx contains const mockBoms = [...] — backend read integration may have been reverted");
+} else {
+  pass("bom_list_no_primary_mock_array");
+}
+
+// H7 — BomList handles product selection (product context required invariant)
+if (/selectedProductId/.test(bomList)) {
+  pass("bom_list_product_selection");
+} else {
+  fail("bom_list_product_selection", "BomList.tsx does not manage selectedProductId — product-scoped API context invariant broken");
+}
+
+// H8 — BomList view links include productId query param
+if (/productId/.test(bomList) && /encodeURIComponent/.test(bomList)) {
+  pass("bom_list_view_links_pass_product_id");
+} else {
+  fail("bom_list_view_links_pass_product_id", "BomList.tsx view links missing productId query param or encodeURIComponent");
+}
+
+// H9 — BomDetail calls getProductBom (backend read integration active)
+if (/getProductBom/.test(bomDetail)) {
+  pass("bom_detail_uses_get_product_bom");
+} else {
+  fail("bom_detail_uses_get_product_bom", "BomDetail.tsx does not call getProductBom — shell/mock regression likely");
+}
+
+// H10 — BomDetail handles missing productId (boundary invariant)
+if (/productId/.test(bomDetail) && /useSearchParams/.test(bomDetail)) {
+  pass("bom_detail_product_context_handling");
+} else {
+  fail("bom_detail_product_context_handling", "BomDetail.tsx does not use useSearchParams to read productId — product context boundary invariant broken");
+}
+
+// H11 — BomDetail has no primary inline mock fixtures (reversion guard)
+if (/const\s+mockBomHeaders\s*=/.test(bomDetail) || /const\s+mockBomComponents\s*=/.test(bomDetail)) {
+  fail("bom_detail_no_primary_mock_fixtures", "BomDetail.tsx contains mockBomHeaders or mockBomComponents — backend read integration may have been reverted");
+} else {
+  pass("bom_detail_no_primary_mock_fixtures");
+}
+
+// H12 — Screen status: bomList is PARTIAL + BACKEND_API
+const bomListStatusBlock = screenStatus.match(/bomList\s*:\s*\{[^}]*\}/s);
+if (!bomListStatusBlock) {
+  fail("screen_status_bom_list_registered", "screenStatus.ts does not have bomList entry");
+} else {
+  const block = bomListStatusBlock[0];
+  if (/phase\s*:\s*["']SHELL["']|phase\s*:\s*["']MOCK["']|phase\s*:\s*["']FUTURE["']/.test(block)) {
+    fail("screen_status_bom_list_partial_backend", "screenStatus.ts bomList has regressed to SHELL/MOCK/FUTURE — must be PARTIAL/BACKEND_API");
+  } else if (/phase\s*:\s*["']PARTIAL["']/.test(block) && /BACKEND_API/.test(block)) {
+    pass("screen_status_bom_list_partial_backend");
+  } else {
+    fail("screen_status_bom_list_partial_backend", "screenStatus.ts bomList is not PARTIAL/BACKEND_API");
+  }
+}
+
+// H13 — Screen status: bomDetail is PARTIAL + BACKEND_API
+const bomDetailStatusBlock = screenStatus.match(/bomDetail\s*:\s*\{[^}]*\}/s);
+if (!bomDetailStatusBlock) {
+  fail("screen_status_bom_detail_registered", "screenStatus.ts does not have bomDetail entry");
+} else {
+  const block = bomDetailStatusBlock[0];
+  if (/phase\s*:\s*["']SHELL["']|phase\s*:\s*["']MOCK["']|phase\s*:\s*["']FUTURE["']/.test(block)) {
+    fail("screen_status_bom_detail_partial_backend", "screenStatus.ts bomDetail has regressed to SHELL/MOCK/FUTURE — must be PARTIAL/BACKEND_API");
+  } else if (/phase\s*:\s*["']PARTIAL["']/.test(block) && /BACKEND_API/.test(block)) {
+    pass("screen_status_bom_detail_partial_backend");
+  } else {
+    fail("screen_status_bom_detail_partial_backend", "screenStatus.ts bomDetail is not PARTIAL/BACKEND_API");
+  }
+}
+
+// H14 — BOM uses component_product_id (correct backend field, not component_code)
+if (/component_product_id/.test(bomDetail)) {
+  pass("bom_detail_uses_component_product_id");
+} else {
+  fail("bom_detail_uses_component_product_id", "BomDetail.tsx does not reference component_product_id — may be using rejected component_code field");
+}
+
+// H15 — BOM does not use rejected fields
+if (/\bcomponent_code\b/.test(bomDetail) || /\bcomponent_name\b/.test(bomDetail) || /\bitem_type\b/.test(bomDetail)) {
+  fail("bom_no_rejected_fields", "BomDetail.tsx contains rejected fields (component_code, component_name, item_type) — these are not in BomComponentItem schema");
+} else {
+  pass("bom_no_rejected_fields");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

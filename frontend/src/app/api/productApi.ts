@@ -28,6 +28,39 @@ export interface ProductVersionItemFromAPI {
   updated_at: string;
 }
 
+export interface BomItemFromAPI {
+  bom_id: string;
+  tenant_id: string;
+  product_id: string;
+  bom_code: string;
+  bom_name: string;
+  lifecycle_status: "DRAFT" | "RELEASED" | "RETIRED";
+  effective_from?: string | null;
+  effective_to?: string | null;
+  description?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BomComponentItemFromAPI {
+  bom_item_id: string;
+  tenant_id: string;
+  bom_id: string;
+  component_product_id: string;
+  line_no: number;
+  quantity: number;
+  unit_of_measure: string;
+  scrap_factor?: number | null;
+  reference_designator?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BomFromAPI extends BomItemFromAPI {
+  items: BomComponentItemFromAPI[];
+}
+
 const BASE_PATH = "/v1/products";
 
 export const productApi = {
@@ -49,6 +82,20 @@ export const productApi = {
   getProductVersion(productId: string, versionId: string, signal?: AbortSignal) {
     return request<ProductVersionItemFromAPI>(
       `${BASE_PATH}/${encodeURIComponent(productId)}/versions/${encodeURIComponent(versionId)}`,
+      { signal },
+    );
+  },
+
+  listProductBoms(productId: string, signal?: AbortSignal) {
+    return request<BomItemFromAPI[]>(
+      `${BASE_PATH}/${encodeURIComponent(productId)}/boms`,
+      { signal },
+    );
+  },
+
+  getProductBom(productId: string, bomId: string, signal?: AbortSignal) {
+    return request<BomFromAPI>(
+      `${BASE_PATH}/${encodeURIComponent(productId)}/boms/${encodeURIComponent(bomId)}`,
       { signal },
     );
   },
