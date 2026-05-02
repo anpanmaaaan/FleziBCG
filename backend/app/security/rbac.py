@@ -61,6 +61,9 @@ ACTION_CODE_REGISTRY: dict[str, PermissionFamily] = {
     # Configuration administration action codes — govern platform-administered
     # reference/config data (not manufacturing master data, not IAM).
     "admin.downtime_reason.manage": "ADMIN",
+    # Audit / security governance action codes — admin-restricted access to
+    # security and audit event logs. Read-only but requires ADMIN family.
+    "admin.security_event.read": "ADMIN",
 }
 
 # EDGE: Aliases are resolved at check time in _normalize_role_code, never
