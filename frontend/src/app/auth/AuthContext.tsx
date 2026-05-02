@@ -4,6 +4,7 @@ import { authApi, type AuthUser } from "@/app/api";
 import { setHttpContextProvider, setUnauthorizedHandler } from "@/app/api";
 
 const AUTH_TOKEN_KEY = "mes.auth.token";
+const REFRESH_TOKEN_KEY = "mes.auth.refresh_token";
 
 interface AuthContextValue {
   isAuthenticated: boolean;
@@ -14,6 +15,7 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   logoutAll: () => Promise<void>;
   refreshCurrentUser: () => Promise<void>;
+  refreshTokens: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -38,11 +40,32 @@ function setStoredToken(token: string | null): void {
   }
 }
 
+function getStoredRefreshToken(): string | null {
+  try {
+    return window.localStorage.getItem(REFRESH_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setStoredRefreshToken(token: string | null): void {
+  try {
+    if (!token) {
+      window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+      return;
+    }
+    window.localStorage.setItem(REFRESH_TOKEN_KEY, token);
+  } catch {
+    // Ignore storage errors in AuthN-only phase.
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => getStoredToken());
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const isLoggingOutRef = useRef(false);
+  const isRefreshingRef = useRef(false);
 
   useEffect(() => {
     setHttpContextProvider(() => ({
@@ -88,18 +111,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (username: string, password: string) => {
     const response = await authApi.login({ username, password });
-    // Set token and call refreshCurrentUser with the token override.
-    // This ensures /me request uses the new token before state updates propagate.
+    if (!response.refresh_token) {
+      // Backend contract requires a refresh token on login.
+      throw new Error("Auth contract error: login response missing refresh_token");
+    }
+    // Set access token and refresh token before fetching user identity.
     setToken(response.access_token);
     setStoredToken(response.access_token);
+    setStoredRefreshToken(response.refresh_token);
     await refreshCurrentUser(response.access_token);
   }, [refreshCurrentUser]);
 
   const clearLocalAuthState = useCallback(() => {
     setToken(null);
     setStoredToken(null);
+    setStoredRefreshToken(null);
     setCurrentUser(null);
   }, []);
+
+  /**
+   * Attempt to rotate the access + refresh token pair using the persisted refresh token.
+   * Returns true if tokens were successfully rotated, false on any failure.
+   *
+   * INVARIANT: Only one refresh attempt at a time (isRefreshingRef guard).
+   * INVARIANT: On failure, auth state is cleared — caller must redirect to login.
+   * INVARIANT: Raw refresh token is never logged or displayed.
+   */
+  const refreshTokens = useCallback(async (): Promise<boolean> => {
+    if (isRefreshingRef.current) {
+      // Already refreshing — do not stack a second attempt.
+      return false;
+    }
+
+    const storedRefreshToken = getStoredRefreshToken();
+    if (!storedRefreshToken) {
+      clearLocalAuthState();
+      return false;
+    }
+
+    isRefreshingRef.current = true;
+    try {
+      const response = await authApi.refresh({ refresh_token: storedRefreshToken });
+      if (!response.refresh_token) {
+        // Backend must return a new refresh token on rotation.
+        clearLocalAuthState();
+        return false;
+      }
+      // Atomically replace both tokens.
+      setToken(response.access_token);
+      setStoredToken(response.access_token);
+      setStoredRefreshToken(response.refresh_token);
+      // Update HTTP context immediately so the next request uses the new token.
+      setHttpContextProvider(() => ({
+        authToken: response.access_token,
+        tenantId: currentUser?.tenant_id ?? null,
+      }));
+      return true;
+    } catch {
+      // Refresh failed (401 = rotated/revoked/expired token). Clear all state.
+      clearLocalAuthState();
+      return false;
+    } finally {
+      isRefreshingRef.current = false;
+    }
+  }, [clearLocalAuthState, currentUser]);
 
   const logout = useCallback(async () => {
     if (isLoggingOutRef.current) {
@@ -135,9 +210,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setUnauthorizedHandler(() => {
-      void logout();
+      // On 401, attempt token rotation first. If refresh succeeds the caller
+      // can retry. If it fails, clearLocalAuthState is called inside refreshTokens.
+      // We do not await here — the unauthorized handler is fire-and-forget;
+      // state will be cleared synchronously if needed.
+      void refreshTokens();
     });
-  }, [logout]);
+  }, [refreshTokens]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -149,8 +228,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       logoutAll,
       refreshCurrentUser,
+      refreshTokens,
     }),
-    [currentUser, isInitializing, token, login, logout, logoutAll, refreshCurrentUser],
+    [currentUser, isInitializing, token, login, logout, logoutAll, refreshCurrentUser, refreshTokens],
   );
 
   // TODO(Phase 6B): Add persona enforcement wiring based on authenticated role_code.
