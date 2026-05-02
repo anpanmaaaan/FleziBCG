@@ -1,7 +1,7 @@
 export { authApi } from "./authApi";
 export type { AuthUser, LoginRequest, LoginResponse } from "./authApi";
 
-export { request, setHttpContextProvider, setUnauthorizedHandler, HttpError } from "./httpClient";
+export { request, setHttpContextProvider, setUnauthorizedHandler, setRefreshHandler, HttpError } from "./httpClient";
 export type { HttpMethod, HttpContext, RequestOptions } from "./httpClient";
 
 export { dashboardApi } from "./dashboardApi";
