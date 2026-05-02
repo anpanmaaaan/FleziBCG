@@ -191,8 +191,16 @@ export function RoutingOperationDetail() {
                     <div className="font-mono text-sm text-slate-700">{r.value}</div>
                   </div>
                 ))}
-                <div className="flex items-center gap-4 pt-2 border-t border-gray-200">
+                <div className="flex items-center justify-between gap-4 pt-2 border-t border-gray-200">
                   <div className="text-xs text-gray-400 italic">Resource assignment and validation requires backend MMD and resource applicability check.</div>
+                  {routeId && operationId && (
+                    <Link
+                      to={`/resource-requirements?routeId=${encodeURIComponent(routeId)}&operationId=${encodeURIComponent(operationId)}`}
+                      className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium shrink-0"
+                    >
+                      {t("routingOpDetail.action.viewResourceReqs")}
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
