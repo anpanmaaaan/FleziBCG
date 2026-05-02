@@ -6,6 +6,10 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
 class AuthUser(BaseModel):
     user_id: str
     username: str
@@ -18,4 +22,8 @@ class AuthUser(BaseModel):
 class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    # WHY: refresh_token is only present at issuance/rotation time. It is
+    # optional (None) so the schema works for both login and other responses
+    # that historically did not include it.
+    refresh_token: str | None = None
     user: AuthUser
