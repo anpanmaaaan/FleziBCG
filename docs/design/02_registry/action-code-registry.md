@@ -62,6 +62,12 @@ the code to its family and evaluates DB-backed role→permission rows.
 | `admin.master_data.routing.manage` | ADMIN | Create, update, add/remove operations, release, or retire a Routing |
 | `admin.master_data.resource_requirement.manage` | ADMIN | Create, update, or delete a Resource Requirement on a Routing Operation |
 
+### Configuration Administration — Added by P0-A-07B
+
+| Action Code | Family | Description |
+|---|---|---|
+| `admin.downtime_reason.manage` | ADMIN | Create, update, or deactivate a Downtime Reason reference entry |
+
 ---
 
 ## Naming Convention
@@ -91,3 +97,4 @@ Examples:
 | Date | Slice | Change |
 |---|---|---|
 | 2026-05-02 | MMD-BE-02 | Added `admin.master_data.product.manage`, `admin.master_data.routing.manage`, `admin.master_data.resource_requirement.manage` |
+| 2026-05-02 | P0-A-07B | Added `admin.downtime_reason.manage` — resolves GAP-1 from P0-A-07A |
