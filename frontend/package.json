@@ -11,7 +11,8 @@
     "lint:i18n": "npm run lint:i18n:hardcode && npm run lint:i18n:registry",
     "lint:i18n:hardcode": "bash scripts/check_i18n_hardcode.sh",
     "lint:i18n:registry": "node scripts/check_i18n_registry_parity.mjs",
-    "qa:station-execution:screenshots": "node scripts/station-execution-responsive-screenshots.mjs"
+    "qa:station-execution:screenshots": "node scripts/station-execution-responsive-screenshots.mjs",
+    "check:govadmin:persona": "node scripts/govadmin-persona-route-guard-check.mjs"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
