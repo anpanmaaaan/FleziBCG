@@ -100,6 +100,14 @@ def require_authenticated_identity(
     if not is_session_active(db, auth_identity.session_id, auth_identity.tenant_id):
         raise HTTPException(status_code=401, detail="Session is invalid or revoked")
 
+    # INVARIANT (P0-A-02B): Tenant lifecycle is checked on every authenticated
+    # request. Policy B (transitional): missing tenant row → allowed (legacy debt,
+    # see P0-A-02C). DISABLED/SUSPENDED tenant rows are hard-rejected here.
+    from app.repositories.tenant_repository import is_tenant_lifecycle_active
+
+    if not is_tenant_lifecycle_active(db, auth_identity.tenant_id):
+        raise HTTPException(status_code=403, detail="Tenant is not active")
+
     # TODO(Phase 6B): Introduce authorization/persona enforcement in dedicated policy layer.
     return RequestIdentity(
         user_id=auth_identity.user_id,
