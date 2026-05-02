@@ -134,6 +134,7 @@ jobs:
               tests/test_init_db_bootstrap_guard.py \
               tests/test_auth_session_api_alignment.py \
               tests/test_tenant_foundation.py \
+              tests/test_user_lifecycle_status.py \
               tests/test_user_lifecycle_service.py \
               tests/test_access_service.py \
               tests/test_security_event_service.py \
@@ -142,6 +143,9 @@ jobs:
               tests/test_admin_audit_security_events.py \
               tests/test_downtime_reason_admin_routes.py \
               tests/test_security_events_endpoint.py \
+              tests/test_refresh_token_foundation.py \
+              tests/test_refresh_token_rotation.py \
+              tests/test_plant_hierarchy_orm_foundation.py \
               tests/test_pr_gate_workflow_config.py || python -m pytest -q
           elif [ -d tests ]; then
             python -m pytest -q
