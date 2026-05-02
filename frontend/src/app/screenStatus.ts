@@ -230,9 +230,9 @@ export const SCREEN_STATUS_REGISTRY: Record<string, ScreenStatusEntry> = {
   },
   routingOpDetail: {
     routePattern: "/routes/:routeId/operations/:operationId",
-    phase: "SHELL",
-    dataSource: "MOCK_FIXTURE",
-    notes: "Routing operation detail is a shell. Execution eligibility and resource applicability are determined by backend.",
+    phase: "PARTIAL",
+    dataSource: "BACKEND_API",
+    notes: "Routing operation detail reads backend routing API by routeId and operationId. All mutation actions remain disabled.",
   },
   resourceRequirements: {
     routePattern: "/resource-requirements",
