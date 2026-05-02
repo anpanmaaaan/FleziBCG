@@ -58,6 +58,9 @@ ACTION_CODE_REGISTRY: dict[str, PermissionFamily] = {
     "admin.master_data.product.manage": "ADMIN",
     "admin.master_data.routing.manage": "ADMIN",
     "admin.master_data.resource_requirement.manage": "ADMIN",
+    # Configuration administration action codes — govern platform-administered
+    # reference/config data (not manufacturing master data, not IAM).
+    "admin.downtime_reason.manage": "ADMIN",
 }
 
 # EDGE: Aliases are resolved at check time in _normalize_role_code, never

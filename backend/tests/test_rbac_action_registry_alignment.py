@@ -12,12 +12,9 @@ They do NOT change runtime authorization behavior.
 
 --- Known semantic gaps (documented here, fixed in future slices) ---
 
-GAP-1: downtime_reasons.py uses admin.user.manage for downtime reason admin
-  mutations. The correct action code would be a dedicated CONFIGURE/ADMIN code
-  such as admin.downtime_reason.manage. Gap exists because no dedicated code
-  was added when the downtime reason admin routes were first implemented.
-  Fix requires: (a) new action code in rbac.py, (b) registry doc update,
-  (c) route update — out of scope for P0-A-07A.
+GAP-1: RESOLVED in P0-A-07B.
+  admin.downtime_reason.manage action code added. downtime_reasons.py updated
+  to use dedicated code. See audit report p0-a-07b-dedicated-downtime-reason-admin-action-report.md.
 
 GAP-2: security_events.py uses admin.user.manage for the security event read
   endpoint. Governance rule says read endpoints should use
@@ -71,11 +68,16 @@ _EXPECTED_ADMIN_MMD_CODES = frozenset({
     "admin.master_data.resource_requirement.manage",
 })
 
+_EXPECTED_ADMIN_CONFIG_CODES = frozenset({
+    "admin.downtime_reason.manage",
+})
+
 _ALL_EXPECTED_CODES = (
     _EXPECTED_EXECUTION_CODES
     | _EXPECTED_APPROVAL_CODES
     | _EXPECTED_ADMIN_IAM_CODES
     | _EXPECTED_ADMIN_MMD_CODES
+    | _EXPECTED_ADMIN_CONFIG_CODES
 )
 
 _VALID_FAMILIES: frozenset[str] = frozenset({"VIEW", "EXECUTE", "APPROVE", "CONFIGURE", "ADMIN"})
@@ -110,6 +112,12 @@ def test_all_canonical_admin_mmd_codes_in_registry() -> None:
     """MMD admin action codes must be in ACTION_CODE_REGISTRY."""
     missing = _EXPECTED_ADMIN_MMD_CODES - set(ACTION_CODE_REGISTRY)
     assert not missing, f"Missing MMD admin codes in ACTION_CODE_REGISTRY: {missing}"
+
+
+def test_all_canonical_admin_config_codes_in_registry() -> None:
+    """Configuration administration action codes must be in ACTION_CODE_REGISTRY."""
+    missing = _EXPECTED_ADMIN_CONFIG_CODES - set(ACTION_CODE_REGISTRY)
+    assert not missing, f"Missing config admin codes in ACTION_CODE_REGISTRY: {missing}"
 
 
 def test_action_code_registry_contains_exactly_canonical_set() -> None:
@@ -162,7 +170,7 @@ def test_approval_codes_map_to_approve_family() -> None:
 
 def test_admin_codes_map_to_admin_family() -> None:
     """All admin.* action codes must map to ADMIN family."""
-    admin_codes = _EXPECTED_ADMIN_IAM_CODES | _EXPECTED_ADMIN_MMD_CODES
+    admin_codes = _EXPECTED_ADMIN_IAM_CODES | _EXPECTED_ADMIN_MMD_CODES | _EXPECTED_ADMIN_CONFIG_CODES
     wrong = {
         code: ACTION_CODE_REGISTRY[code]
         for code in admin_codes
@@ -235,17 +243,22 @@ def test_approval_routes_use_only_approval_codes() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_known_gap_downtime_reasons_uses_admin_user_manage() -> None:
-    """GAP-1: downtime_reasons.py still uses admin.user.manage for admin mutations.
+def test_known_gap_downtime_reasons_resolved_uses_dedicated_action_code() -> None:
+    """GAP-1 RESOLVED (P0-A-07B): downtime_reasons.py now uses admin.downtime_reason.manage.
 
-    This is a known semantic gap (CONFIGURE/ADMIN action using IAM code).
-    This test locks the current state. If the gap is resolved in a future slice
-    (dedicated action code), remove this test and add a positive alignment test.
+    admin.user.manage must no longer appear in downtime_reasons.py.
+    The dedicated code must be present for both admin mutation routes.
     """
+    import re
+
     src = (BACKEND_ROOT / "app" / "api" / "v1" / "downtime_reasons.py").read_text(encoding="utf-8")
-    assert "admin.user.manage" in src, (
-        "downtime_reasons.py no longer references admin.user.manage. "
-        "If GAP-1 was resolved, remove this test and add a dedicated code check."
+    used_codes = re.findall(r'require_action\("([^"]+)"\)', src)
+    assert "admin.downtime_reason.manage" in used_codes, (
+        "downtime_reasons.py does not use admin.downtime_reason.manage. "
+        "GAP-1 resolution may have been reverted."
+    )
+    assert "admin.user.manage" not in used_codes, (
+        "downtime_reasons.py still uses admin.user.manage. GAP-1 was not resolved."
     )
 
 

@@ -49,7 +49,7 @@ def list_downtime_reasons(
 def upsert_downtime_reason(
     payload: DowntimeReasonUpsertRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.user.manage")),
+    identity: RequestIdentity = Depends(require_action("admin.downtime_reason.manage")),
 ) -> DowntimeReasonAdminItem:
     return upsert_downtime_reason_service(
         db,
@@ -66,7 +66,7 @@ def upsert_downtime_reason(
 def deactivate_downtime_reason(
     reason_code: str,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.user.manage")),
+    identity: RequestIdentity = Depends(require_action("admin.downtime_reason.manage")),
 ) -> DowntimeReasonAdminItem:
     row = deactivate_downtime_reason_service(
         db,
