@@ -13,6 +13,10 @@ def test_require_authenticated_identity_rejects_tenant_header_mismatch(
         "app.services.session_service.is_session_active",
         lambda db, session_id, tenant_id: True,
     )
+    monkeypatch.setattr(
+        "app.repositories.tenant_repository.is_tenant_lifecycle_active",
+        lambda db, tenant_id: True,
+    )
 
     app = FastAPI()
 
@@ -45,6 +49,10 @@ def test_require_authenticated_identity_allows_missing_tenant_header(
     monkeypatch.setattr(
         "app.services.session_service.is_session_active",
         lambda db, session_id, tenant_id: True,
+    )
+    monkeypatch.setattr(
+        "app.repositories.tenant_repository.is_tenant_lifecycle_active",
+        lambda db, tenant_id: True,
     )
 
     app = FastAPI()
