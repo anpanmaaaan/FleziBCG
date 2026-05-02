@@ -1,7 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
 from fastapi import HTTPException, Request
-from datetime import datetime, timedelta, timezone
 from typing import Any, cast
 from uuid import uuid4
 from sqlalchemy import delete
@@ -12,7 +11,6 @@ from app.models.master import Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.execution import ExecutionEvent
 from app.models.rbac import Scope
 from app.models.station_session import StationSession
-from app.models.station_claim import OperationClaim
 from app.security.dependencies import RequestIdentity
 
 client = TestClient(app)
@@ -123,17 +121,6 @@ def seeded_operation():
     db.add(op)
     db.flush()
 
-    now = datetime.now(timezone.utc)
-    db.add(
-        OperationClaim(
-            tenant_id="default",
-            operation_id=op.id,
-            station_scope_id=scope.id,
-            claimed_by_user_id="test-user",
-            claimed_at=now,
-            expires_at=now + timedelta(hours=1),
-        )
-    )
     db.add(
         StationSession(
             session_id=uuid4().hex,
@@ -151,7 +138,6 @@ def seeded_operation():
     finally:
         db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id == op.id))
         db.execute(delete(StationSession).where(StationSession.station_id == scope.scope_value))
-        db.execute(delete(OperationClaim).where(OperationClaim.operation_id == op.id))
         db.execute(delete(Operation).where(Operation.id == op.id))
         db.execute(delete(WorkOrder).where(WorkOrder.id == wo.id))
         db.execute(delete(ProductionOrder).where(ProductionOrder.id == po.id))

@@ -16,7 +16,6 @@ from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent
 from app.models.master import Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.rbac import Role, Scope, UserRoleAssignment
-from app.models.station_claim import OperationClaim, OperationClaimAuditLog
 from app.schemas.operation import (
     OperationEndDowntimeRequest,
     OperationPauseRequest,
@@ -78,16 +77,6 @@ def _purge(db) -> None:
                 )
             )
             if op_ids:
-                db.execute(
-                    delete(OperationClaimAuditLog).where(
-                        OperationClaimAuditLog.operation_id.in_(op_ids)
-                    )
-                )
-                db.execute(
-                    delete(OperationClaim).where(
-                        OperationClaim.operation_id.in_(op_ids)
-                    )
-                )
                 db.execute(
                     delete(ExecutionEvent).where(
                         ExecutionEvent.operation_id.in_(op_ids)
@@ -413,25 +402,20 @@ def test_station_queue_uses_derived_status_when_snapshot_is_stale(
     assert by_id[ops["running"].id]["status"] == StatusEnum.in_progress.value
 
 
-def test_station_queue_claim_fields_unchanged(station_queue_fixture):
+def test_station_queue_claim_payload_is_null_only_compatibility(station_queue_fixture):
     db, ops = station_queue_fixture
     _, items = get_station_queue(db, _identity())
     by_id = _items_by_op_id(items)
 
-    # No claims were created in the fixture; every item must report the
-    # canonical unclaimed summary.
+    # H10: claim payload is null-only. Shape preserved; detail no longer projected.
     for op_key in ("planned", "running", "paused", "blocked"):
         item = by_id[ops[op_key].id]
-        claim = item["claim"]
-        assert claim["state"] == "none"
-        assert claim["expires_at"] is None
-        assert claim["claimed_by_user_id"] is None
+        assert item["claim"] is None
 
-        # 08D additive migration: queue now carries session ownership metadata
-        # while preserving the legacy claim shape above.
+        # 08D additive migration: queue now carries session ownership metadata.
         ownership = item["ownership"]
         assert ownership["target_owner_type"] == "station_session"
         assert (
             ownership["ownership_migration_status"]
-            == "TARGET_SESSION_OWNER_WITH_CLAIM_COMPAT"
+            == "TARGET_SESSION_OWNER"
         )

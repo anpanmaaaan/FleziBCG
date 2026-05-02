@@ -416,6 +416,60 @@ ALLOW_CONTRACT_REVIEW
 ### Final Verdict
 READY_FOR_P0_C_08H16B_CLAIM_MODEL_TEST_DEPENDENCY_BURN_DOWN
 
+## HM3-044 — P0-C-08H16B Claim Model/Test Dependency Burn-Down
+
+## Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Single-Slice Backend Implementation
+- Hard Mode MOM: v3
+- Reason: claim dependency burn-down impacts execution-adjacent tests, model boundaries, and migration readiness sequencing.
+
+### Design Evidence Extract
+| Fact | Evidence | Confirmed |
+|---|---|---|
+| StationSession remains ownership truth | execution ownership contracts | ✅ |
+| Claim runtime API/client surfaces already retired | H14B/H15B baseline | ✅ |
+| H16B objective is dependency burn-down only | H16 contract | ✅ |
+| H16B must not add migration or drop tables | H16 contract boundary | ✅ |
+
+### Claim Dependency Burn-Down Map
+| Surface | Action | Result |
+|---|---|---|
+| required H16B test files with claim imports/fixtures/teardown | rewrite/remove claim dependencies | completed |
+| claim-dependent reopen/guard tests | rewrite to StationSession-native assertions | completed |
+| runtime/model/migration files | no destructive change | held |
+
+### ORM / Metadata Impact Map
+| Artifact | H16B Action | H17 Action |
+|---|---|---|
+| station_claim ORM models | retained | retire in migration slice |
+| init_db claim model imports | retained | evaluate with model retirement |
+| legacy claim SQL migration | retained immutable | keep as history |
+
+### Migration Boundary Map
+| Object | H16B | H17 |
+|---|---|---|
+| OperationClaim / OperationClaimAuditLog | keep | retire |
+| operation_claims / operation_claim_audit_logs | keep | drop via Alembic forward revision |
+| new Alembic drop migration | not allowed | required |
+
+### Test Matrix
+| Test ID | Scenario | Result |
+|---|---|---|
+| HM3-044-T1 | execution/queue/reopen subset | `42 passed` |
+| HM3-044-T2 | dependency burn-down subset | `51 passed` |
+| HM3-044-T3 | claim dependency sweep | target tests clean |
+| HM3-044-T4 | frontend lint/build/routes | all exit 0 |
+
+### Verdict before coding
+ALLOW_IMPLEMENTATION
+
+### Implementation Artifact
+- [docs/implementation/p0-c-08h16b-claim-model-test-dependency-burn-down-report.md](docs/implementation/p0-c-08h16b-claim-model-test-dependency-burn-down-report.md)
+
+### Final Verdict
+P0_C_08H16B_COMPLETE_WITH_MODEL_REFERENCES_DEFERRED
+
 ## HM3-041 — P0-C-08H15 Claim Service / Schema / Model Removal Contract
 
 ## Routing

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any, cast
 from uuid import uuid4
 
@@ -14,8 +14,6 @@ from app.db.session import SessionLocal
 from app.main import app
 from app.models.execution import ExecutionEvent, ExecutionEventType
 from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
-from app.models.rbac import Scope
-from app.models.station_claim import OperationClaim, OperationClaimAuditLog
 from app.models.station_session import StationSession
 from app.security.dependencies import RequestIdentity
 
@@ -117,12 +115,6 @@ def _purge(db) -> None:
         if wo_ids:
             op_ids = list(db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids))))
             if op_ids:
-                db.execute(
-                    delete(OperationClaimAuditLog).where(
-                        OperationClaimAuditLog.operation_id.in_(op_ids)
-                    )
-                )
-                db.execute(delete(OperationClaim).where(OperationClaim.operation_id.in_(op_ids)))
                 db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
                 db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
             db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
@@ -132,13 +124,6 @@ def _purge(db) -> None:
         delete(StationSession).where(
             StationSession.tenant_id == _TENANT_ID,
             StationSession.station_id.like(f"{_PREFIX}-%"),
-        )
-    )
-    db.execute(
-        delete(Scope).where(
-            Scope.tenant_id == _TENANT_ID,
-            Scope.scope_type == "station",
-            Scope.scope_value.like(f"{_PREFIX}-%"),
         )
     )
     db.commit()
@@ -279,36 +264,6 @@ def _insert_open_session(db, *, station_id: str, operator_user_id: str) -> None:
     db.commit()
 
 
-def _insert_active_claim(
-    db,
-    *,
-    operation_id: int,
-    station_scope_value: str,
-    claimed_by_user_id: str,
-) -> None:
-    scope = Scope(
-        tenant_id=_TENANT_ID,
-        scope_type="station",
-        scope_value=station_scope_value,
-    )
-    db.add(scope)
-    db.flush()
-
-    db.add(
-        OperationClaim(
-            tenant_id=_TENANT_ID,
-            operation_id=operation_id,
-            station_scope_id=scope.id,
-            claimed_by_user_id=claimed_by_user_id,
-            claimed_at=datetime.now(timezone.utc),
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
-            released_at=None,
-            release_reason=None,
-        )
-    )
-    db.commit()
-
-
 def _event_count(db, operation_id: int) -> int:
     return len(
         list(db.scalars(select(ExecutionEvent.id).where(ExecutionEvent.operation_id == operation_id)))
@@ -418,7 +373,7 @@ def test_valid_station_session_without_claim_succeeds_for_h4_commands(
     assert _latest_event_type(db_session, operation.id) == expected_event
 
 
-def test_active_claim_cannot_bypass_missing_station_session(db_session):
+def test_missing_station_session_rejects_start_even_without_claim(db_session):
     station_id = f"{_PREFIX}-BYPASS-ST"
     operation = _seed_operation(
         db_session,
@@ -427,13 +382,6 @@ def test_active_claim_cannot_bypass_missing_station_session(db_session):
         station_scope_value=station_id,
     )
     db_session.commit()
-
-    _insert_active_claim(
-        db_session,
-        operation_id=operation.id,
-        station_scope_value=station_id,
-        claimed_by_user_id=_ACTOR,
-    )
 
     before_count = _event_count(db_session, operation.id)
     response = client.post(
@@ -445,34 +393,6 @@ def test_active_claim_cannot_bypass_missing_station_session(db_session):
     assert response.status_code == 409
     assert response.json()["detail"] == "STATION_SESSION_REQUIRED"
     assert _event_count(db_session, operation.id) == before_count
-
-
-def test_conflicting_claim_no_longer_blocks_valid_station_session(db_session):
-    station_id = f"{_PREFIX}-CONFLICT-ST"
-    operation = _seed_operation(
-        db_session,
-        suffix="CONFLICT-CLAIM",
-        status=StatusEnum.planned.value,
-        station_scope_value=station_id,
-    )
-    db_session.commit()
-
-    _insert_active_claim(
-        db_session,
-        operation_id=operation.id,
-        station_scope_value=station_id,
-        claimed_by_user_id=_OTHER_ACTOR,
-    )
-    _insert_open_session(db_session, station_id=station_id, operator_user_id=_ACTOR)
-
-    response = client.post(
-        f"/api/v1/operations/{operation.id}/start",
-        json={"operator_id": _ACTOR},
-        headers=_headers(action="execution.start"),
-    )
-
-    assert response.status_code == 200
-    assert response.json()["id"] == operation.id
 
 
 def test_invalid_state_guard_still_works_after_station_session_passes(db_session):

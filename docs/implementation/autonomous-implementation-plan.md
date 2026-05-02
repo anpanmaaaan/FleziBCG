@@ -208,6 +208,28 @@ Contract artifact:
 Contract verdict:
 - `READY_FOR_P0_C_08H16B_CLAIM_MODEL_TEST_DEPENDENCY_BURN_DOWN`
 
+### P0-C-08H16B Claim Model/Test Dependency Burn-Down
+
+Status: Complete.
+
+Completed scope:
+- Removed claim model/table dependencies from required H16B test files.
+- Removed claim fixture inserts and claim teardown cleanup statements in targeted tests.
+- Rewrote reopen/guard tests to StationSession-native assertions where claim fixtures were previously used.
+- Preserved runtime boundaries: no migration, no table drop, no model deletion, no queue shape change.
+
+Verification summary:
+- Execution/queue/reopen subset: `42 passed` (`H16B_EXEC_QUEUE_REOPEN_EXIT:0`)
+- Dependency burn-down subset: `51 passed` (`H16B_DEPENDENCY_BURN_DOWN_EXIT:0`)
+- Claim dependency sweep: `H16B_CLAIM_DEPENDENCY_SWEEP_EXIT:0` (targeted tests clean)
+- Frontend lint/build/route smoke: all exit 0
+
+Implementation report:
+- [docs/implementation/p0-c-08h16b-claim-model-test-dependency-burn-down-report.md](docs/implementation/p0-c-08h16b-claim-model-test-dependency-burn-down-report.md)
+
+Verdict:
+- `P0_C_08H16B_COMPLETE_WITH_MODEL_REFERENCES_DEFERRED`
+
 ## Current Slice Ledger
 
 ### Completed Slices
