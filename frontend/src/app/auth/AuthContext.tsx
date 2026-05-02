@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { authApi, type AuthUser } from "@/app/api";
-import { setHttpContextProvider, setUnauthorizedHandler } from "@/app/api";
+import { setHttpContextProvider, setUnauthorizedHandler, setRefreshHandler } from "@/app/api";
 
 const AUTH_TOKEN_KEY = "mes.auth.token";
 const REFRESH_TOKEN_KEY = "mes.auth.refresh_token";
@@ -209,14 +209,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clearLocalAuthState]);
 
   useEffect(() => {
+    // Register the refresh handler: httpClient calls this on 401 to attempt token rotation
+    // before retrying the original request.
+    setRefreshHandler(() => refreshTokens());
+    // Register the unauthorized handler: called for non-retryable 401s (excluded endpoints,
+    // or when the retried request also receives 401). Clears local auth state.
     setUnauthorizedHandler(() => {
-      // On 401, attempt token rotation first. If refresh succeeds the caller
-      // can retry. If it fails, clearLocalAuthState is called inside refreshTokens.
-      // We do not await here — the unauthorized handler is fire-and-forget;
-      // state will be cleared synchronously if needed.
-      void refreshTokens();
+      clearLocalAuthState();
     });
-  }, [refreshTokens]);
+  }, [refreshTokens, clearLocalAuthState]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
