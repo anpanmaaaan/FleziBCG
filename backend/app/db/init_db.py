@@ -39,6 +39,7 @@ from app.models.station_claim import OperationClaim, OperationClaimAuditLog  # n
 from app.models.user import User  # noqa: F401
 from app.models.security_event import SecurityEventLog  # noqa: F401
 from app.models.product import Product  # noqa: F401
+from app.models.product_version import ProductVersion  # noqa: F401
 from app.models.routing import Routing, RoutingOperation  # noqa: F401
 from app.models.resource_requirement import ResourceRequirement  # noqa: F401
 from app.models.station_session import StationSession  # noqa: F401
