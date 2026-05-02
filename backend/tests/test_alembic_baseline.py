@@ -88,15 +88,16 @@ def test_alembic_baseline_is_root_revision():
 def test_alembic_head_is_baseline():
     """HEAD must resolve to the latest revision in the chain.
 
-    Updated: 0005 (add_plant_hierarchy) is now head;
+    Updated: 0006 (add_tenant_lifecycle_anchor) is now head;
     chain is 0001 -> 0002 (add_refresh_tokens) -> 0003 (routing_operation_extended_fields)
-    -> 0004 (add_user_lifecycle_status) -> 0005 (add_plant_hierarchy).
+    -> 0004 (add_user_lifecycle_status) -> 0005 (add_plant_hierarchy)
+    -> 0006 (add_tenant_lifecycle_anchor).
     This test validates the migration chain is linear and has a single head.
     """
     script_dir = _get_script_dir()
     heads = script_dir.get_heads()
     assert len(heads) == 1, f"Expected exactly one head, got: {heads}"
-    assert "0005" in heads, f"Expected 0005 as head, got: {heads}"
+    assert "0006" in heads, f"Expected 0006 as head, got: {heads}"
 
 
 def test_alembic_upgrade_head_live(db_engine):
@@ -112,5 +113,5 @@ def test_alembic_upgrade_head_live(db_engine):
             text("SELECT version_num FROM alembic_version")
         )
         rows = [r[0] for r in result]
-    assert "0001" in rows, f"Expected 0001 in alembic_version, got: {rows}"
+    assert "0006" in rows, f"Expected 0006 in alembic_version, got: {rows}"
 

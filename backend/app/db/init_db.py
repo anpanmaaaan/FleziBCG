@@ -50,6 +50,7 @@ from app.models.plant_hierarchy import (  # noqa: F401
     Station,  # noqa: F401
     Equipment,  # noqa: F401
 )
+from app.models.tenant import Tenant  # noqa: F401
 from app.security.rbac import seed_rbac_core
 from app.services.approval_service import seed_approval_rules
 from app.services.user_service import seed_demo_users
