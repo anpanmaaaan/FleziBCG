@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config.settings import Settings
+from app.models.user import LIFECYCLE_STATUS_ACTIVE
 
 # WHY: Argon2 is the primary hash scheme. The deprecated="auto" setting allows
 # transparent rehashing if a future scheme is added, without invalidating
@@ -155,11 +156,14 @@ def authenticate_user_db(
 
     # INVARIANT: Tenant isolation enforced at query time — a valid username
     # in tenant A must not authenticate in tenant B.
+    # INVARIANT: lifecycle_status must be ACTIVE — DISABLED and LOCKED users
+    # cannot authenticate regardless of is_active.
     user = db.scalar(
         select(User).where(
             User.username == username,
             User.tenant_id == tenant_id,
             User.is_active.is_(True),
+            User.lifecycle_status == LIFECYCLE_STATUS_ACTIVE,
         )
     )
     if user is None:
@@ -209,11 +213,14 @@ def get_identity_by_user_id(
     from app.models.rbac import Role, UserRole
     from app.models.user import User
 
+    # INVARIANT: lifecycle_status must be ACTIVE — refresh-token flow must not
+    # bypass account lifecycle status (DISABLED/LOCKED users cannot get new tokens).
     user = db.scalar(
         select(User).where(
             User.user_id == user_id,
             User.tenant_id == tenant_id,
             User.is_active.is_(True),
+            User.lifecycle_status == LIFECYCLE_STATUS_ACTIVE,
         )
     )
     if user is None:

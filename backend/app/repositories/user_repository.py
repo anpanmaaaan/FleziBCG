@@ -45,3 +45,19 @@ def set_user_active(
     db.commit()
     db.refresh(user)
     return user
+
+
+def set_user_lifecycle_status(
+    db: Session,
+    *,
+    user_id: str,
+    tenant_id: str,
+    lifecycle_status: str,
+) -> User | None:
+    user = get_user_by_user_id(db, user_id=user_id, tenant_id=tenant_id)
+    if user is None:
+        return None
+    user.lifecycle_status = lifecycle_status
+    db.commit()
+    db.refresh(user)
+    return user
