@@ -10,7 +10,7 @@ from __future__ import annotations
 import test_station_queue_active_states as legacy_queue
 from test_station_queue_active_states import station_queue_fixture  # noqa: F401
 
-from app.services.station_claim_service import get_station_queue
+from app.services.station_queue_service import get_station_queue
 from app.services.station_session_service import close_station_session, get_current_station_session
 
 
@@ -24,7 +24,7 @@ def test_station_queue_includes_session_ownership_summary(station_queue_fixture)
     ownership = by_id[ops["planned"].id]["ownership"]
 
     assert ownership["target_owner_type"] == "station_session"
-    assert ownership["ownership_migration_status"] == "TARGET_SESSION_OWNER_WITH_CLAIM_COMPAT"
+    assert ownership["ownership_migration_status"] == "TARGET_SESSION_OWNER"
     assert ownership["has_open_session"] is True
     assert ownership["station_id"] == legacy_queue._STATION_SCOPE_VALUE
     assert ownership["session_status"] == "OPEN"

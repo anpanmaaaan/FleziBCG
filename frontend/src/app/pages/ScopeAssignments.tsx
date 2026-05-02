@@ -67,7 +67,7 @@ export function ScopeAssignments() {
 
       {/* Assignments Table */}
       <div className="flex-1 overflow-auto border border-gray-200 rounded-lg">
-        <table className="w-full">
+        <table className="w-full min-w-[800px]">
           <thead className="bg-gray-50 border-b sticky top-0">
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">User</th>

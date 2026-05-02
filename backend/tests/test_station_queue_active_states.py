@@ -30,7 +30,7 @@ from app.services.operation_service import (
     start_downtime,
     start_operation,
 )
-from app.services.station_claim_service import get_station_queue
+from app.services.station_queue_service import get_station_queue
 from app.services.station_session_service import (
     get_current_station_session,
     identify_operator_at_station,
@@ -402,17 +402,13 @@ def test_station_queue_uses_derived_status_when_snapshot_is_stale(
     assert by_id[ops["running"].id]["status"] == StatusEnum.in_progress.value
 
 
-def test_station_queue_claim_payload_is_null_only_compatibility(station_queue_fixture):
+def test_station_queue_includes_session_ownership_summary_fields(station_queue_fixture):
     db, ops = station_queue_fixture
     _, items = get_station_queue(db, _identity())
     by_id = _items_by_op_id(items)
 
-    # H10: claim payload is null-only. Shape preserved; detail no longer projected.
     for op_key in ("planned", "running", "paused", "blocked"):
         item = by_id[ops[op_key].id]
-        assert item["claim"] is None
-
-        # 08D additive migration: queue now carries session ownership metadata.
         ownership = item["ownership"]
         assert ownership["target_owner_type"] == "station_session"
         assert (

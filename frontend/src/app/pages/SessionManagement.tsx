@@ -67,7 +67,7 @@ export function SessionManagement() {
 
       {/* Sessions Table */}
       <div className="flex-1 overflow-auto border border-gray-200 rounded-lg">
-        <table className="w-full">
+        <table className="w-full min-w-[700px]">
           <thead className="bg-gray-50 border-b sticky top-0">
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">User</th>
@@ -106,6 +106,7 @@ export function SessionManagement() {
                   <td className="px-6 py-4 text-sm">
                     <button
                       disabled
+                      aria-label="Revoke session (requires backend session management)"
                       className="p-2 text-gray-400 cursor-not-allowed"
                       title="This action requires backend session management"
                     >

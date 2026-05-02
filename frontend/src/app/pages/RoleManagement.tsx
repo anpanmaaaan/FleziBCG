@@ -89,6 +89,7 @@ export function RoleManagement() {
                 <div className="flex items-center gap-2">
                   <button
                     disabled
+                    aria-label="Edit role (requires backend IAM workflow)"
                     className="p-1.5 text-gray-400 cursor-not-allowed"
                     title="This action requires backend IAM workflow"
                   >
@@ -96,6 +97,7 @@ export function RoleManagement() {
                   </button>
                   <button
                     disabled
+                    aria-label="Delete role (requires backend IAM workflow)"
                     className="p-1.5 text-gray-400 cursor-not-allowed"
                     title="This action requires backend IAM workflow"
                   >

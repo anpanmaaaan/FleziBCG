@@ -25,7 +25,6 @@ from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent
 from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.station_session import StationSession
-from app.models.station_claim import OperationClaim, OperationClaimAuditLog
 from app.schemas.operation import (
     OperationEndDowntimeRequest,
     OperationStartDowntimeRequest,
@@ -347,20 +346,12 @@ def _purge(db) -> None:
         )
         if op_ids:
             db.execute(
-                delete(OperationClaimAuditLog).where(
-                    OperationClaimAuditLog.operation_id.in_(op_ids)
-                )
+                delete(ExecutionEvent).where(ExecutionEvent.work_order_id.in_(wo_ids))
             )
             db.execute(
-                delete(OperationClaim).where(OperationClaim.operation_id.in_(op_ids))
+                delete(StationSession).where(StationSession.station_id == "STATION_TEST_AA")
             )
-        db.execute(
-            delete(ExecutionEvent).where(ExecutionEvent.work_order_id.in_(wo_ids))
-        )
-        db.execute(
-            delete(StationSession).where(StationSession.station_id == "STATION_TEST_AA")
-        )
-        db.execute(delete(Operation).where(Operation.work_order_id.in_(wo_ids)))
+            db.execute(delete(Operation).where(Operation.work_order_id.in_(wo_ids)))
         db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
     db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
     db.commit()

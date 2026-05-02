@@ -437,6 +437,21 @@ export function isRouteAllowedForPersona(persona: ResolvedPersona, pathname: str
     return canAccessSettings(persona);
   }
 
+  // Governance & Admin routes — ADM only (UX routing; backend enforces authorization)
+  if (
+    pathname === "/users" ||
+    pathname === "/roles" ||
+    pathname === "/action-registry" ||
+    pathname === "/scope-assignments" ||
+    pathname === "/sessions" ||
+    pathname === "/audit-log" ||
+    pathname === "/security-events" ||
+    pathname === "/tenant-settings" ||
+    pathname === "/plant-hierarchy"
+  ) {
+    return ["ADM"].includes(persona);
+  }
+
   // Manufacturing Master Data shells — viewable by IEP, SUP, PMG, ADM
   if (pathname === "/bom" || pathname.startsWith("/bom/")) {
     return ["IEP", "SUP", "PMG", "ADM"].includes(persona);

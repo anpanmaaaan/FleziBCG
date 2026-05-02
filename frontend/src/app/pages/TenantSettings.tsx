@@ -55,8 +55,9 @@ export function TenantSettings() {
             {/* Settings Fields */}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tenant Name</label>
+                <label htmlFor="tenant-name" className="block text-sm font-medium text-gray-700 mb-2">Tenant Name</label>
                 <input
+                  id="tenant-name"
                   disabled
                   type="text"
                   value={mockTenant.name}
@@ -65,8 +66,9 @@ export function TenantSettings() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tenant Code</label>
+                <label htmlFor="tenant-code" className="block text-sm font-medium text-gray-700 mb-2">Tenant Code</label>
                 <input
+                  id="tenant-code"
                   disabled
                   type="text"
                   value={mockTenant.code}
@@ -75,8 +77,9 @@ export function TenantSettings() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Contact Email</label>
+                <label htmlFor="tenant-email" className="block text-sm font-medium text-gray-700 mb-2">Contact Email</label>
                 <input
+                  id="tenant-email"
                   disabled
                   type="email"
                   value={mockTenant.contact_email}
@@ -85,8 +88,9 @@ export function TenantSettings() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Administrator</label>
+                <label htmlFor="tenant-admin" className="block text-sm font-medium text-gray-700 mb-2">Administrator</label>
                 <input
+                  id="tenant-admin"
                   disabled
                   type="text"
                   value={mockTenant.admin_user}
@@ -95,8 +99,9 @@ export function TenantSettings() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Created</label>
+                <label htmlFor="tenant-created" className="block text-sm font-medium text-gray-700 mb-2">Created</label>
                 <input
+                  id="tenant-created"
                   disabled
                   type="text"
                   value={mockTenant.created_at}

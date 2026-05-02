@@ -46,7 +46,7 @@ export function GovernancePageShell({
     <div className={`h-full flex flex-col bg-white ${className}`}>
       <MockWarningBanner phase={phase} note={bannerNote} />
 
-      <div className="flex-1 flex flex-col p-6">
+      <div className="flex-1 flex flex-col p-4 sm:p-6">
         {/* Page Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
           <div>

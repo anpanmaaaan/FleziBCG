@@ -13,7 +13,7 @@ interface StationQueuePanelProps {
   onSelect: (item: StationQueueItem) => void;
 }
 
-export const isBackendClaimableQueueStatus = (status: StationQueueItem["status"]): boolean =>
+export const isBackendActionableQueueStatus = (status: StationQueueItem["status"]): boolean =>
   status === "PLANNED" || status === "IN_PROGRESS";
 
 const matchesQueueFilter = (item: StationQueueItem, filter: QueueFilter): boolean => {
@@ -22,7 +22,7 @@ const matchesQueueFilter = (item: StationQueueItem, filter: QueueFilter): boolea
       // H8: Ownership-only; claim fallback retired
       return item.ownership?.owner_state === "mine" && item.ownership?.has_open_session === true;
     case "ready":
-      return isBackendClaimableQueueStatus(item.status) && !item.downtime_open;
+      return isBackendActionableQueueStatus(item.status) && !item.downtime_open;
     case "paused":
       return item.status === "PAUSED";
     case "blocked":
@@ -45,14 +45,14 @@ export function StationQueuePanel({
 }: StationQueuePanelProps) {
   const { t } = useI18n();
   // H8: Ownership-only; claim fallback retired
-  const hasMineClaim = items.some(
+  const hasOwnedSessionInQueue = items.some(
     (item) => item.ownership?.owner_state === "mine" && item.ownership?.has_open_session === true,
   );
 
   const summary = useMemo(() => {
     return items.reduce(
       (acc, item) => {
-        if (isBackendClaimableQueueStatus(item.status)) {
+        if (isBackendActionableQueueStatus(item.status)) {
           acc.ready += 1;
         }
         if (item.status === "PAUSED") {
@@ -138,7 +138,7 @@ export function StationQueuePanel({
           key={item.operation_id}
           item={item}
           active={activeOperationId === item.operation_id}
-          hasMineClaim={hasMineClaim}
+          hasOwnedSessionInQueue={hasOwnedSessionInQueue}
           onSelect={onSelect}
         />
       ))}

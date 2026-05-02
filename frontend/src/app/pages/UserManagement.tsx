@@ -74,8 +74,8 @@ export function UserManagement() {
       }
     >
       {/* Filters & Summary */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
@@ -83,7 +83,7 @@ export function UserManagement() {
               placeholder="Search by username or email..."
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring w-96"
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring w-full sm:w-80"
             />
           </div>
           <div className="text-sm text-gray-600">
@@ -94,7 +94,7 @@ export function UserManagement() {
 
       {/* Users Table */}
       <div className="flex-1 overflow-auto border border-gray-200 rounded-lg">
-        <table className="w-full">
+        <table className="w-full min-w-[700px]">
           <thead className="bg-gray-50 border-b sticky top-0">
             <tr>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Username</th>
@@ -136,6 +136,7 @@ export function UserManagement() {
                   <div className="flex items-center gap-2">
                     <button
                       disabled
+                      aria-label="View user (requires backend IAM workflow)"
                       className="p-2 text-gray-400 cursor-not-allowed"
                       title="This action requires backend IAM workflow"
                     >
@@ -143,6 +144,7 @@ export function UserManagement() {
                     </button>
                     <button
                       disabled
+                      aria-label="Edit user (requires backend IAM workflow)"
                       className="p-2 text-gray-400 cursor-not-allowed"
                       title="This action requires backend IAM workflow"
                     >
@@ -150,6 +152,7 @@ export function UserManagement() {
                     </button>
                     <button
                       disabled
+                      aria-label="Delete user (requires backend IAM workflow)"
                       className="p-2 text-gray-400 cursor-not-allowed"
                       title="This action requires backend IAM workflow"
                     >

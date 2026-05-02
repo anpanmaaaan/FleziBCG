@@ -138,7 +138,7 @@ export function PlantHierarchy() {
 
       {/* Hierarchy Table */}
       <div className="flex-1 overflow-auto border border-gray-200 rounded-lg">
-        <table className="w-full">
+        <table className="w-full min-w-[560px]">
           <thead className="bg-gray-50 border-b sticky top-0">
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Name</th>
@@ -167,6 +167,7 @@ export function PlantHierarchy() {
                   <td className="px-6 py-4 text-sm flex items-center gap-2">
                     <button
                       disabled
+                      aria-label="Add child node (backend master data manages hierarchy)"
                       className="p-1.5 text-gray-400 cursor-not-allowed"
                       title="Backend master data system manages hierarchy"
                     >

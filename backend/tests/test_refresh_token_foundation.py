@@ -100,14 +100,22 @@ def test_refresh_token_migration_chain():
 
 
 def test_refresh_token_migration_head_is_0002():
-    """After adding 0002, Alembic head must be 0002."""
+    """Revision 0002 exists in the migration chain and has the correct down_revision.
+
+    NOTE: 0002 may no longer be the Alembic head if subsequent revisions were added
+    by other workstreams. The structural invariant is that 0002 exists with
+    down_revision='0001', not that it is the current head.
+    """
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
     cfg = Config(str(BACKEND_DIR / "alembic.ini"))
     script_dir = ScriptDirectory.from_config(cfg)
-    heads = script_dir.get_heads()
-    assert "0002" in heads, f"Expected 0002 as head, got: {heads}"
+    rev = script_dir.get_revision("0002")
+    assert rev is not None, "Revision 0002 must exist in the migration chain"
+    assert rev.down_revision == "0001", (
+        f"Expected 0002 down_revision='0001', got: {rev.down_revision}"
+    )
 
 
 def test_refresh_token_migration_upgrade_creates_only_refresh_tokens():

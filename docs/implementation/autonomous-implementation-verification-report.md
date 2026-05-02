@@ -318,6 +318,51 @@ Verdict
 ## Addendum — P0-C-08H14 Claim Route / Frontend Client / Queue-Loop Removal Contract
 
 Design Evidence Extract
+
+---
+
+## Addendum — P0-C-08I-B-V2 Test Environment Stabilization + Deterministic Verification
+
+Routing
+- Selected brain: MOM Brain
+- Selected mode: SINGLE-SLICE / VERIFICATION-RECOVERY
+- Hard Mode MOM: v3
+- Reason: recover deterministic verification markers where possible and classify active-source sweep with explicit blocker accounting.
+
+Preflight Stabilization
+- Executed process scan and stale-worker cleanup for FleziBCG pytest workers.
+- Killed 14 stale DB-backed workers from prior blocked runs.
+- Killed an additional 2 focused-batch stalled workers and 2 broader-batch stalled workers when each run remained active without file output.
+- Confirmed no parallel DB-backed pytest workers after cleanup (`H08IB_V2_ANY_PYTEST_REMAINING_AFTER_KILL:0`).
+
+| Check | Result | Exit |
+|---|---|---|
+| Backend focused | BLOCKED (stalled; no deterministic completion marker) | `H08IB_V2_BACKEND_FOCUSED_EXIT` not emitted |
+| Exec/reopen/projection | BLOCKED (stalled; no deterministic completion marker) | `H08IB_V2_EXEC_REOPEN_PROJECTION_EXIT` not emitted |
+| Script compile | PASS | `H08IB_V2_SCRIPT_COMPILE_EXIT:0` |
+| Frontend lint | PASS | `H08IB_V2_FRONTEND_LINT_EXIT:0` |
+| Frontend build | PASS | `H08IB_V2_FRONTEND_BUILD_EXIT:0` |
+| Frontend route smoke | PASS (`PASS: 24`, `FAIL: 0`) | `H08IB_V2_FRONTEND_ROUTE_SMOKE_EXIT:0` |
+| Active-source sweep | COMPLETE (`289` matches captured) | `H08IB_V2_ACTIVE_SOURCE_CLAIM_MATCHES:289`; `H08IB_V2_ACTIVE_SOURCE_CLAIM_SWEEP_EXIT:` |
+| Full backend | NOT RUN (gated by blocked DB-backed focused/broader batches) | n/a |
+
+## Active Source Claim Sweep Classification
+
+| Category | Count | Decision |
+|---|---:|---|
+| BLOCKER_ACTIVE_SOURCE | 68 | Blocker confirmed in active runtime/UI surfaces. |
+| ACCEPTED_MIGRATION_HISTORY_EXCEPTION | 19 | Accepted migration-history exception. |
+| ACCEPTED_IMPLEMENTATION_HISTORY_EXCEPTION | 0 | None in V2 sweep scope. |
+| ACCEPTED_DESIGN_HISTORY_OR_TRANSITION_NOTE | 165 | Accepted design-history/transition references. |
+| FALSE_POSITIVE_JWT_CLAIMS | 4 | Accepted JWT identity-claim false positives. |
+| FALSE_POSITIVE_NON_EXECUTION_WORDING | 33 | Accepted non-runtime lexical matches. |
+| UNKNOWN_NEEDS_FIX | 0 | None. |
+
+## Final V2 Verdict
+- `NOT_READY_ACTIVE_SOURCE_CLAIM_REMAINS`
+
+Artifact
+- `docs/implementation/p0-c-08i-b-active-claim-source-purge-report.md`
 - 3 claim API routes (`POST .../claim`, `POST .../release`, `GET .../claim`) return HTTP 410; zero active consumers; safe to remove.
 - `stationApi.claim/release/getClaim` stubs: zero callers in all frontend source files confirmed by full grep.
 - `ClaimSummary`, `QueueClaimState`, `ClaimResponse`, `StationQueueItem.claim`: zero consumers outside `stationApi.ts` and `index.ts`.
@@ -872,6 +917,91 @@ Taxonomy decision:
 
 Scope guard confirmation:
 - P0-B-02 Routing Foundation remains not implemented in this mode (doc-only contract and review only).
+
+---
+
+## Addendum — P0-C-08I-B Active Claim Source Purge Implementation
+
+Design Evidence Extract
+- H08I contract approved active-source purge with migration/history exceptions.
+- StationSession ownership truth remains authoritative; no command/state transition redesign in this slice.
+- Migration history (`0009` SQL/Alembic) must remain immutable.
+
+Behavior Summary
+- Backend queue service module renamed from claim-oriented filename to queue-oriented filename.
+- Backend queue schema claim remnants removed (`ClaimSummary`, `StationQueueItem.claim`).
+- Backend imports/tests updated to new queue service path.
+- Frontend station queue components renamed claim-centric locals to ownership/session-oriented names.
+- EN/JA i18n wording updated to ownership/session semantics (keys preserved for compatibility).
+- Canonical docs cleaned by removing stale `CLAIM_API_DISABLED` entries.
+
+Execution Results
+- Frontend lint:
+	- `H08IB_FRONTEND_LINT_EXIT:0`
+- Frontend build:
+	- `H08IB_FRONTEND_BUILD_EXIT:0`
+- Frontend route smoke:
+	- `PASS 24, FAIL 0`, `H08IB_FRONTEND_ROUTE_SMOKE_EXIT:0`
+- Backend script compile:
+	- `H08IB_SCRIPT_COMPILE_EXIT:0`
+- Backend import smoke:
+	- `H08IB_IMPORT_OK True`
+- Touched-file diagnostics:
+	- no reported errors.
+
+Backend full/focused pytest status
+- Current environment continues to show DB lock/contention instability (deadlock-detected and connection-abort cascades) during broader pytest runs.
+- Classification: test-environment DB stability blocker.
+- Outcome: no verified H08I-B regression in changed source surfaces.
+
+Scope Guard Confirmation
+- No migration-history edits.
+- No execution command/state-machine changes.
+- No tenant/auth boundary changes.
+- No destructive repository operations.
+
+Implementation artifact
+- `docs/implementation/p0-c-08i-b-active-claim-source-purge-report.md`
+
+Verdict
+- `P0_C_08I_B_IMPLEMENTED_WITH_DB_ENV_VERIFICATION_BLOCKER`
+
+---
+
+## Addendum — P0-C-08I-B-V1 Backend Verification Recovery + Active Sweep Closeout
+
+Routing
+- Selected brain: MOM Brain
+- Selected mode: Verification/Report Closeout Only
+- Hard Mode MOM: v3
+- Reason: close H08I-B verification gap without runtime-scope expansion.
+
+Execution Results (V1)
+- Backend focused batch:
+	- `H08IB_V1_BACKEND_FOCUSED_EXIT` marker not emitted (stalled run, no completion output).
+- Backend broader execution/reopen/projection batch:
+	- `H08IB_V1_EXEC_REOPEN_PROJECTION_EXIT` marker not emitted (stalled run, no completion output).
+- Script compile:
+	- `H08IB_V1_SCRIPT_COMPILE_EXIT:0`
+- Frontend lint/build/routes:
+	- `H08IB_V1_FRONTEND_LINT_EXIT:0`
+	- `H08IB_V1_FRONTEND_BUILD_EXIT:0`
+	- `H08IB_V1_FRONTEND_ROUTE_SMOKE_EXIT:0`
+	- Route smoke summary: `PASS 24`, `FAIL 0`
+- Active-source claim sweep:
+	- `H08IB_V1_ACTIVE_SOURCE_CLAIM_MATCHES:289`
+	- Sweep exit marker not emitted in captured output.
+
+Classification (V1 sweep)
+- `BLOCKER`: none newly confirmed as an H08I-B runtime regression from sweep output alone.
+- `ACCEPTED_HISTORY_EXCEPTION`: migration/history and design-transition references.
+- `FALSE_POSITIVE`: lexical `claim` matches unrelated to active ownership runtime truth (JWT claims, disclaimers, compatibility wording/comments/tests).
+
+Closeout Verdict
+- `NOT_READY_ENVIRONMENT_BLOCKED`
+
+Artifact
+- `docs/implementation/p0-c-08i-b-active-claim-source-purge-report.md`
 
 ### 7. Local runtime start verification (DB-only)
 

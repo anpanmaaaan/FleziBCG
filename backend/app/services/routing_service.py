@@ -72,6 +72,10 @@ def _to_operation_item(row: RoutingOperation) -> RoutingOperationItem:
         sequence_no=row.sequence_no,
         standard_cycle_time=row.standard_cycle_time,
         required_resource_type=row.required_resource_type,
+        # v1.2 contract boundary patch — read-only projection of extended fields.
+        setup_time=row.setup_time,
+        run_time_per_unit=row.run_time_per_unit,
+        work_center_code=row.work_center_code,
         created_at=row.created_at,
         updated_at=row.updated_at,
     )

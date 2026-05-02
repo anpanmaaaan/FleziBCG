@@ -22,7 +22,7 @@ from app.schemas.operation import (
     OperationReopenRequest,
     OperationResumeRequest,
 )
-from app.services.station_claim_service import get_station_queue
+from app.services.station_queue_service import get_station_queue
 from app.services.station_session_service import (
     get_current_station_session,
     identify_operator_at_station,
@@ -233,7 +233,6 @@ def test_reopen_restores_last_claim_owner_path_and_resume_is_reachable(db_sessio
     assert scope_value == _STATION_SCOPE
     queue_item = next(item for item in items if item["operation_id"] == op.id)
     assert queue_item["status"] == StatusEnum.paused.value
-    assert queue_item["claim"] is None  # H10: queue claim payload is null-only
 
     _ensure_open_station_session(db, user_id=_OWNER_USER_ID)
     resumed = resume_operation(
