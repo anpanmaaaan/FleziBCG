@@ -609,6 +609,63 @@ NO_NEW_EVENTS
 ### Final Verdict
 P0_C_08H17_COMPLETE_VERIFICATION_CLEAN
 
+## HM3-047 — P0-C-08I Claim Retirement Closeout / Repo Sweep Contract
+
+## Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Contract-Only / Single-Slice
+- Hard Mode MOM: v3 ON
+- Reason: Claim retirement closeout; touches execution ownership truth boundary, queue read model compatibility, API/service/source retirement scope, migration history governance
+
+### Slice
+P0-C-08I Claim Retirement Closeout / Repo Sweep Contract
+
+### Design Evidence Extract
+
+| Fact | Evidence |
+|---|---|
+| StationSession is current execution ownership truth | `station_claim_service.py:ownership_migration_status = "TARGET_SESSION_OWNER"` |
+| Claim API routes absent | `station.py` router — no `/claim`, `/release` routes present |
+| Frontend claim type absent | `stationApi.ts` — `StationQueueItem` has no `claim` field; no `ClaimSummary` interface |
+| Claim tables dropped | `alembic current` = 0009; table inspector confirmed tables absent |
+| Backend still projects `"claim": None` | Active queue projection key — null-only compat remnant |
+| `ClaimSummary` + `StationQueueItem.claim` in backend schema | Active backend schema remnant |
+| `station_claim_service.py` filename | Filename is historical artifact; file hosts active queue logic |
+| `CLAIM_API_DISABLED` in canonical error docs | Entry present in both canonical-error-codes.md and registry; no backend code uses it |
+
+### Reference Map Summary
+
+| Category | Count | H08I-B Action |
+|---|---|---|
+| Active backend schema | 2 | Delete |
+| Active backend service name | 1 (rename) | Rename → station_queue_service.py |
+| Active backend projection key | 1 | Remove |
+| Active backend route import | 1 | Update after rename |
+| Active frontend i18n keys | 10+ | Rename/delete |
+| Active frontend prop names | 2 | Rename → hasMineSession |
+| Active test imports | 3 | Update after service rename |
+| Active test function names | 3 | Rename (optional, low priority) |
+| Active test assertion | 1 | Remove |
+| Canonical error doc entries | 2 | Delete |
+| Migration files | 2 | KEEP (migration history) |
+| H-series implementation docs | 17+ | KEEP (governance history) |
+
+### HM3-047 Gate Verdict
+ALLOW_CONTRACT_REVIEW
+
+### Test Matrix (Contract-Only)
+
+| ID | Check | Result |
+|---|---|---|
+| HM3-047-T1 | Frontend lint | H08I_FRONTEND_LINT_EXIT:0 |
+| HM3-047-T2 | Backend full suite (H17 baseline) | 120 passed, 1 skipped |
+
+### Implementation Artifact
+- `docs/implementation/p0-c-08i-claim-retirement-closeout-repo-sweep-contract.md`
+
+### Final Verdict
+READY_FOR_P0_C_08I_B_WITH_MIGRATION_HISTORY_EXCEPTIONS
+
 ## HM3-041 — P0-C-08H15 Claim Service / Schema / Model Removal Contract
 
 ## Routing

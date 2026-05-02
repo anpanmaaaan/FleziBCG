@@ -204,6 +204,32 @@ Implementation artifact
 Verdict
 - `P0_C_08H17_COMPLETE_VERIFICATION_CLEAN`
 
+## Addendum — P0-C-08I Claim Retirement Closeout / Repo Sweep Contract
+
+Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Contract-Only / Single-Slice
+- Hard Mode MOM: v3 ON
+- Reason: Claim retirement closeout touches ownership truth boundary, queue read model, API/service/source retirement scope, migration history governance
+
+Summary
+- Full repo-wide claim reference sweep executed across backend, frontend, tests, scripts, docs, migrations
+- Classified all remaining claim references: active source vs migration history vs implementation docs
+- Frontend `StationQueueItem` and `ClaimSummary` TypeScript types already clean (H14B result confirmed)
+- Backend `ownership_migration_status` already `"TARGET_SESSION_OWNER"` (H10 result confirmed)
+- H08I-B scope defined: service rename, schema cleanup, projection key removal, i18n key renames, canonical error cleanup
+- Migration/history boundary established: `0009_drop_station_claims.py`, `0009_station_claims.sql`, H-series reports kept by policy
+
+Verification results (contract-only run)
+- `H08I_FRONTEND_LINT_EXIT:0`
+- Backend focused tests (H17 baseline): 120 passed, 1 skipped — no code changes in H08I; H17 baseline is valid evidence
+
+Implementation artifact
+- `docs/implementation/p0-c-08i-claim-retirement-closeout-repo-sweep-contract.md`
+
+Verdict
+- `READY_FOR_P0_C_08I_B_WITH_MIGRATION_HISTORY_EXCEPTIONS`
+
 ## Addendum — P0-C-08H15 Claim Service / Schema / Model Removal Contract
 
 Routing

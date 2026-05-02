@@ -287,6 +287,28 @@ Implementation report:
 Verdict:
 - `P0_C_08H17_COMPLETE_VERIFICATION_CLEAN`
 
+### P0-C-08I Claim Retirement Closeout / Repo Sweep Contract
+
+Status: Complete (contract-only).
+
+Completed scope:
+- Ran full repo-wide claim reference sweep across backend, frontend, tests, scripts, docs, migrations.
+- Classified every remaining claim reference: active source vs migration history vs implementation docs.
+- Confirmed frontend TypeScript `StationQueueItem` and `ClaimSummary` type already clean (H14B result).
+- Confirmed backend `ownership_migration_status` already `"TARGET_SESSION_OWNER"` (H10 result).
+- Mapped H08I-B active source purge scope: service rename, schema cleanup, i18n key rename, canonical error removal.
+- Defined migration/history boundary: `0009_drop_station_claims.py` + `0009_station_claims.sql` + H-series reports kept by convention.
+
+Verification checks run (contract-only baseline):
+- Frontend lint: `H08I_FRONTEND_LINT_EXIT:0`
+- Backend focused tests (H17 baseline): 120 passed, 1 skipped
+
+Contract artifact:
+- `docs/implementation/p0-c-08i-claim-retirement-closeout-repo-sweep-contract.md`
+
+Contract verdict:
+- `READY_FOR_P0_C_08I_B_WITH_MIGRATION_HISTORY_EXCEPTIONS`
+
 ## Current Slice Ledger
 
 ### Completed Slices
