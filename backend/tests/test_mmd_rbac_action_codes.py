@@ -1,0 +1,118 @@
+"""
+MMD-BE-02: RBAC Action Code Regression Tests
+
+Static checks that verify:
+1. MMD-specific action codes exist in ACTION_CODE_REGISTRY with ADMIN family.
+2. Product mutation endpoints do NOT use admin.user.manage.
+3. Routing mutation endpoints do NOT use admin.user.manage.
+4. Resource requirement mutation endpoints do NOT use admin.user.manage.
+5. Each endpoint group uses its own MMD-specific action code.
+
+These are deliberate source-level contract tests — not runtime integration tests.
+A unit/integration test framework is not available in this project.
+"""
+
+import re
+from pathlib import Path
+
+from app.security.rbac import ACTION_CODE_REGISTRY
+
+BACKEND_ROOT = Path(__file__).parent.parent
+PRODUCTS_SRC = (BACKEND_ROOT / "app" / "api" / "v1" / "products.py").read_text(encoding="utf-8")
+ROUTINGS_SRC = (BACKEND_ROOT / "app" / "api" / "v1" / "routings.py").read_text(encoding="utf-8")
+
+# ─── Registry checks ──────────────────────────────────────────────────────────
+
+def test_product_action_code_in_registry():
+    assert "admin.master_data.product.manage" in ACTION_CODE_REGISTRY, (
+        "admin.master_data.product.manage is missing from ACTION_CODE_REGISTRY"
+    )
+
+
+def test_product_action_code_is_admin_family():
+    assert ACTION_CODE_REGISTRY.get("admin.master_data.product.manage") == "ADMIN", (
+        "admin.master_data.product.manage must map to ADMIN family"
+    )
+
+
+def test_routing_action_code_in_registry():
+    assert "admin.master_data.routing.manage" in ACTION_CODE_REGISTRY, (
+        "admin.master_data.routing.manage is missing from ACTION_CODE_REGISTRY"
+    )
+
+
+def test_routing_action_code_is_admin_family():
+    assert ACTION_CODE_REGISTRY.get("admin.master_data.routing.manage") == "ADMIN", (
+        "admin.master_data.routing.manage must map to ADMIN family"
+    )
+
+
+def test_resource_requirement_action_code_in_registry():
+    assert "admin.master_data.resource_requirement.manage" in ACTION_CODE_REGISTRY, (
+        "admin.master_data.resource_requirement.manage is missing from ACTION_CODE_REGISTRY"
+    )
+
+
+def test_resource_requirement_action_code_is_admin_family():
+    assert ACTION_CODE_REGISTRY.get("admin.master_data.resource_requirement.manage") == "ADMIN", (
+        "admin.master_data.resource_requirement.manage must map to ADMIN family"
+    )
+
+
+# ─── Placeholder code absence checks ─────────────────────────────────────────
+
+def test_admin_user_manage_not_in_product_mutations():
+    """Product endpoints must not use the IAM user-management placeholder code."""
+    assert "admin.user.manage" not in PRODUCTS_SRC, (
+        "products.py still references admin.user.manage — governance debt not resolved"
+    )
+
+
+def test_admin_user_manage_not_in_routing_mutations():
+    """Routing and resource-requirement endpoints must not use the IAM placeholder code."""
+    assert "admin.user.manage" not in ROUTINGS_SRC, (
+        "routings.py still references admin.user.manage — governance debt not resolved"
+    )
+
+
+# ─── Correct code presence checks ────────────────────────────────────────────
+
+def test_product_endpoints_use_product_action_code():
+    """All 4 product mutation endpoints must use the product-specific action code."""
+    count = PRODUCTS_SRC.count('"admin.master_data.product.manage"')
+    assert count >= 4, (
+        f"Expected ≥4 uses of admin.master_data.product.manage in products.py, found {count}"
+    )
+
+
+def test_routing_endpoints_use_routing_action_code():
+    """All 7 routing mutation endpoints must use the routing-specific action code."""
+    count = ROUTINGS_SRC.count('"admin.master_data.routing.manage"')
+    assert count >= 7, (
+        f"Expected ≥7 uses of admin.master_data.routing.manage in routings.py, found {count}"
+    )
+
+
+def test_resource_requirement_endpoints_use_rr_action_code():
+    """All 3 resource-requirement mutation endpoints must use the RR-specific action code."""
+    count = ROUTINGS_SRC.count('"admin.master_data.resource_requirement.manage"')
+    assert count >= 3, (
+        f"Expected ≥3 uses of admin.master_data.resource_requirement.manage in routings.py, found {count}"
+    )
+
+
+# ─── Read endpoint boundary check ────────────────────────────────────────────
+
+def test_read_endpoints_do_not_require_mutation_action_code():
+    """GET handlers must use require_authenticated_identity, not require_action."""
+    # Extract all GET route function bodies (heuristic: look for require_action in GET handlers)
+    # A GET handler signature starts with @router.get and should not contain require_action
+    get_blocks = re.findall(
+        r'@router\.get\b[^@]+?(?=@router\.|$)',
+        PRODUCTS_SRC + ROUTINGS_SRC,
+        flags=re.DOTALL,
+    )
+    for block in get_blocks:
+        assert "require_action" not in block, (
+            f"A GET handler unexpectedly uses require_action: {block[:200]!r}"
+        )

@@ -52,7 +52,7 @@ def get_product_by_id(
 def create_product(
     payload: ProductCreateRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.user.manage")),
+    identity: RequestIdentity = Depends(require_action("admin.master_data.product.manage")),
 ) -> ProductItem:
     try:
         return create_product_service(
@@ -72,7 +72,7 @@ def update_product(
     product_id: str,
     payload: ProductUpdateRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.user.manage")),
+    identity: RequestIdentity = Depends(require_action("admin.master_data.product.manage")),
 ) -> ProductItem:
     try:
         return update_product_service(
@@ -94,7 +94,7 @@ def update_product(
 def release_product(
     product_id: str,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.user.manage")),
+    identity: RequestIdentity = Depends(require_action("admin.master_data.product.manage")),
 ) -> ProductItem:
     try:
         return release_product_service(
@@ -113,7 +113,7 @@ def release_product(
 def retire_product(
     product_id: str,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.user.manage")),
+    identity: RequestIdentity = Depends(require_action("admin.master_data.product.manage")),
 ) -> ProductItem:
     try:
         return retire_product_service(
