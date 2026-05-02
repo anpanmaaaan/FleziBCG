@@ -6,6 +6,7 @@ export interface AuthUser {
   email?: string | null;
   tenant_id: string;
   role_code?: string | null;
+  session_id?: string | null;
 }
 
 export interface LoginRequest {
@@ -16,12 +17,31 @@ export interface LoginRequest {
 export interface LoginResponse {
   access_token: string;
   token_type: "bearer";
+  refresh_token: string | null;
+  user: AuthUser;
+}
+
+export interface RefreshRequest {
+  refresh_token: string;
+}
+
+export interface RefreshResponse {
+  access_token: string;
+  token_type: "bearer";
+  refresh_token: string | null;
   user: AuthUser;
 }
 
 export const authApi = {
   login(payload: LoginRequest) {
     return request<LoginResponse>("/v1/auth/login", {
+      method: "POST",
+      body: payload,
+    });
+  },
+
+  refresh(payload: RefreshRequest) {
+    return request<RefreshResponse>("/v1/auth/refresh", {
       method: "POST",
       body: payload,
     });
