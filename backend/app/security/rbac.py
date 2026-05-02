@@ -53,6 +53,11 @@ ACTION_CODE_REGISTRY: dict[str, PermissionFamily] = {
     "admin.impersonation.create": "ADMIN",
     "admin.impersonation.revoke": "ADMIN",
     "admin.user.manage": "ADMIN",
+    # MMD master data mutation action codes — scoped per domain to avoid
+    # conflating manufacturing definition mutations with IAM user management.
+    "admin.master_data.product.manage": "ADMIN",
+    "admin.master_data.routing.manage": "ADMIN",
+    "admin.master_data.resource_requirement.manage": "ADMIN",
 }
 
 # EDGE: Aliases are resolved at check time in _normalize_role_code, never
