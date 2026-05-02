@@ -57,6 +57,10 @@ def test_missing_required_action_returns_403(monkeypatch):
         "app.services.session_service.is_session_active",
         lambda db, session_id, tenant_id: True,
     )
+    monkeypatch.setattr(
+        "app.repositories.tenant_repository.is_tenant_lifecycle_active",
+        lambda db, tenant_id: True,
+    )
     monkeypatch.setattr("app.security.dependencies.has_action", lambda db, identity, code: False)
     monkeypatch.setattr(
         "app.repositories.impersonation_repository.get_active_impersonation_session",
@@ -89,6 +93,10 @@ def test_action_guard_allows_request_when_action_present(monkeypatch):
     monkeypatch.setattr(
         "app.services.session_service.is_session_active",
         lambda db, session_id, tenant_id: True,
+    )
+    monkeypatch.setattr(
+        "app.repositories.tenant_repository.is_tenant_lifecycle_active",
+        lambda db, tenant_id: True,
     )
     monkeypatch.setattr("app.security.dependencies.has_action", lambda db, identity, code: True)
     monkeypatch.setattr(

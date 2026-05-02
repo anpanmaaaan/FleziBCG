@@ -9,18 +9,20 @@ def get_tenant_by_id(db: Session, tenant_id: str) -> Tenant | None:
 
 
 def is_tenant_lifecycle_active(db: Session, tenant_id: str) -> bool:
-    """Return True if the tenant is allowed to operate.
+    """Return True only if the tenant row exists and is operationally active.
 
-    Policy B (transitional): if no Tenant row exists for this tenant_id, return
-    True. This accommodates the existing fleet of tenant_id strings that were
-    established before the Tenant table existed (P0-A-02A). A missing row is
-    treated as legacy-allowed debt, documented for P0-A-02C enforcement cutover.
+    Policy A (strict, P0-A-02C): a missing Tenant row is treated as inactive
+    and causes the request to be rejected. This supersedes the transitional
+    Policy B (P0-A-02B) which allowed missing rows for legacy string tenants.
 
-    A row that exists MUST be both is_active=True and lifecycle_status=ACTIVE
-    to be allowed. DISABLED or SUSPENDED tenants are hard-rejected.
+    INVARIANTS:
+    - Row missing → False (reject).
+    - Row exists, is_active=False → False (reject).
+    - Row exists, lifecycle_status != ACTIVE → False (reject).
+    - Row exists, is_active=True, lifecycle_status=ACTIVE → True (allow).
     """
     tenant = get_tenant_by_id(db, tenant_id)
     if tenant is None:
-        # Policy B: no row → legacy debt, allow until cutover (P0-A-02C).
-        return True
+        # Policy A: no row → tenant does not exist → reject.
+        return False
     return tenant.is_lifecycle_active

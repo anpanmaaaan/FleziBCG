@@ -1,17 +1,16 @@
-"""Tests for P0-A-02B: Tenant Lifecycle Enforcement in Auth / Request Context.
+"""Tests for P0-A-02C: Strict Tenant Existence Enforcement in Auth / Request Context.
 
 INVARIANTS COVERED:
   1. Active tenant row (ACTIVE + is_active=True) → request allowed.
   2. Tenant row with lifecycle_status=DISABLED → 403 "Tenant is not active".
   3. Tenant row with lifecycle_status=SUSPENDED → 403 "Tenant is not active".
   4. Tenant row with is_active=False (any status) → 403 "Tenant is not active".
-  5. Missing tenant row → Policy B → request allowed (transitional debt).
+  5. Missing tenant row → Policy A → 403 "Tenant is not active" (strict enforcement).
   6. Existing invariant: tenant header mismatch → 403 "Tenant header mismatch"
      (check happens BEFORE lifecycle; unchanged behavior).
   7. Unauthenticated request → 401 "Authentication required" (unchanged).
 
-POLICY: Policy B (transitional). Missing tenant row → allowed. Enforcement
-cutover (strict Policy A) is deferred to P0-A-02C after seed/fixture backfill.
+POLICY: Policy A (strict, P0-A-02C). Missing tenant row is rejected.
 """
 
 from fastapi import Depends, FastAPI
@@ -150,7 +149,7 @@ def test_suspended_tenant_request_context_rejected(monkeypatch) -> None:
     assert response.json()["detail"] == "Tenant is not active"
 
 
-def test_is_active_false_request_context_rejected(monkeypatch) -> None:
+def test_inactive_tenant_request_context_rejected(monkeypatch) -> None:
     """Tenant row exists, is_active=False (status=ACTIVE) → 403 Tenant is not active."""
     monkeypatch.setattr(
         "app.services.session_service.is_session_active",
@@ -166,24 +165,24 @@ def test_is_active_false_request_context_rejected(monkeypatch) -> None:
     assert response.json()["detail"] == "Tenant is not active"
 
 
-def test_missing_tenant_row_policy_b_allows(monkeypatch) -> None:
-    """No Tenant row for the given tenant_id → Policy B → request allowed.
+def test_missing_tenant_row_rejected(monkeypatch) -> None:
+    """No Tenant row for the given tenant_id → Policy A → 403 Tenant is not active.
 
-    This is the transitional behavior. Cutover to strict enforcement (Policy A)
-    is P0-A-02C, after seed/fixture backfill creates rows for all active tenants.
+    Policy A (strict, P0-A-02C): missing row is treated as inactive and rejects
+    the request. This supersedes the transitional Policy B behavior.
     """
     monkeypatch.setattr(
         "app.services.session_service.is_session_active",
         lambda db, session_id, tenant_id: True,
     )
     factory = _make_factory()
-    # No tenant row seeded — Policy B: absent row → allowed
+    # No tenant row seeded — Policy A: absent row → reject
 
     client = TestClient(_build_app(factory))
     response = client.get("/secure")
 
-    assert response.status_code == 200
-    assert response.json()["tenant_id"] == "t-test"
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Tenant is not active"
 
 
 def test_tenant_header_mismatch_still_rejected(monkeypatch) -> None:
