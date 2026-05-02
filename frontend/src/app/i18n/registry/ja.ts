@@ -1135,7 +1135,6 @@ export const jaRegistry: I18nRegistry = {
   "routingOpDetail.section.identity": "工程識別情報",
   "routingOpDetail.section.timing": "標準時間",
   "routingOpDetail.section.resources": "必要リソース",
-  "routingOpDetail.section.quality": "品質チェックポイント",
   "routingOpDetail.field.operationCode": "工程コード",
   "routingOpDetail.field.operationName": "工程名",
   "routingOpDetail.field.routeCode": "ルーティングコード",

@@ -8,6 +8,11 @@ export interface RoutingOperationItemFromAPI {
   sequence_no: number;
   standard_cycle_time?: number | null;
   required_resource_type?: string | null;
+  // MMD-FULLSTACK-01: extended fields added by MMD-BE-01 (Alembic 0003).
+  // All nullable — backend returns null when not set.
+  setup_time?: number | null;
+  run_time_per_unit?: number | null;
+  work_center_code?: string | null;
   created_at: string;
   updated_at: string;
 }
