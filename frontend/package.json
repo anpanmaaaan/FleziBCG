@@ -14,9 +14,12 @@
     "qa:station-execution:screenshots": "node scripts/station-execution-responsive-screenshots.mjs",
     "check:govadmin:persona": "node scripts/govadmin-persona-route-guard-check.mjs",
     "check:auth:contract": "node scripts/auth-contract-smoke.mjs",
-    "check:auth:retry": "node scripts/auth-retry-smoke.mjs"
+    "check:auth:retry": "node scripts/auth-retry-smoke.mjs",
+    "test:e2e:auth": "playwright test e2e/auth-refresh-retry.spec.ts"
   },
   "dependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
     "@emotion/react": "11.14.0",
     "@emotion/styled": "11.14.1",
     "@mui/icons-material": "7.3.5",
@@ -79,6 +82,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.52.0",
     "@tailwindcss/vite": "4.1.12",
     "@types/react": "^18.3.12",
     "@vitejs/plugin-react": "4.7.0",
