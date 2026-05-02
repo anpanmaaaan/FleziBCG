@@ -260,6 +260,33 @@ Implementation report:
 Verdict:
 - `P0_C_08H16C_COMPLETE_SCRIPT_SURFACE_CLEAN`
 
+### P0-C-08H17 Claim ORM Model / Table Drop Migration
+
+Scope:
+- Deleted `backend/app/models/station_claim.py` (ORM classes `OperationClaim`, `OperationClaimAuditLog`)
+- Removed claim model import from `backend/app/db/init_db.py`
+- Added Alembic migration `0009_drop_station_claims.py`:
+  - Upgrade: drop `operation_claim_audit_logs` (child) then `operation_claims` (parent)
+  - Downgrade: full recreation of both tables with indexes and constraints
+
+Verification results:
+- `H17_ALEMBIC_CURRENT_BEFORE_EXIT:0` (head = 0008)
+- `H17_ALEMBIC_HEADS_EXIT:0` (0009 recognized as head)
+- `H17_ALEMBIC_UPGRADE_EXIT:0` (0008 → 0009 applied)
+- `H17_TABLE_ABSENCE_EXIT:0` (both tables confirmed absent)
+- Exec/queue/reopen focused tests: 23 passed
+- Dependency burn-down tests: 41 passed
+- `H17_SCRIPT_COMPILE_EXIT:0`
+- `H17_FRONTEND_LINT_EXIT:0` / `H17_FRONTEND_BUILD_EXIT:0` / `H17_FRONTEND_ROUTE_SMOKE_EXIT:0`
+- `H17_ACTIVE_CLAIM_SWEEP_EXIT:0`
+- Full backend suite: 120 passed, 1 skipped
+
+Implementation report:
+- `docs/implementation/p0-c-08h17-claim-orm-model-table-drop-migration-report.md`
+
+Verdict:
+- `P0_C_08H17_COMPLETE_VERIFICATION_CLEAN`
+
 ## Current Slice Ledger
 
 ### Completed Slices

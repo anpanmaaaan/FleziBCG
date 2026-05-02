@@ -166,6 +166,44 @@ Implementation artifact
 Verdict
 - `P0_C_08H16C_COMPLETE_SCRIPT_SURFACE_CLEAN`
 
+## Addendum — P0-C-08H17 Claim ORM Model / Table Drop Migration
+
+Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Single-Slice Implementation
+- Hard Mode MOM: v3
+- Reason: ORM model removal + DB table drop migration + audit table retirement; touches operational truth governance.
+
+Implementation Summary
+- Deleted `backend/app/models/station_claim.py` (defined `OperationClaim` + `OperationClaimAuditLog`).
+- Removed `from app.models.station_claim import OperationClaim, OperationClaimAuditLog` from `backend/app/db/init_db.py`.
+- Created `backend/alembic/versions/0009_drop_station_claims.py`:
+  - Upgrade: drops `operation_claim_audit_logs` (child FK) first, then `operation_claims` (parent).
+  - Downgrade: recreates both tables with all columns, FKs, and indexes per convention (matching 0008_boms.py style).
+- `backend/scripts/migrations/0009_station_claims.sql` NOT edited (immutable historical artifact).
+- `StationQueueItem.claim` NOT removed (queue compatibility preserved; separate deferred slice).
+- `station_claim_service.py` NOT deleted (active queue service).
+
+Verification Results (H17)
+- Alembic pre-upgrade head: `0008` (exit 0)
+- Alembic heads after 0009 added: `0009 (head)` (exit 0)
+- Alembic upgrade: `0008 -> 0009` applied (exit 0)
+- Table absence check: both tables absent (exit 0)
+- Exec/queue/reopen focused tests: 23 passed (exit 0)
+- Dependency burn-down tests: 41 passed (exit 0)
+	- `H17_SCRIPT_COMPILE_EXIT:0`
+	- `H17_FRONTEND_LINT_EXIT:0`
+	- `H17_FRONTEND_BUILD_EXIT:0`
+	- `H17_FRONTEND_ROUTE_SMOKE_EXIT:0`
+	- `H17_ACTIVE_CLAIM_SWEEP_EXIT:0`
+- Full backend suite: 120 passed, 1 skipped (exit 0)
+
+Implementation artifact
+- `docs/implementation/p0-c-08h17-claim-orm-model-table-drop-migration-report.md`
+
+Verdict
+- `P0_C_08H17_COMPLETE_VERIFICATION_CLEAN`
+
 ## Addendum — P0-C-08H15 Claim Service / Schema / Model Removal Contract
 
 Routing
