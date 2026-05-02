@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from pydantic import BaseModel
@@ -43,3 +43,21 @@ def validate_product_type(value: str) -> str:
     if normalized not in _ALLOWED_PRODUCT_TYPES:
         raise ValueError("Invalid product_type")
     return normalized
+
+
+_ALLOWED_VERSION_LIFECYCLE_STATUSES = {"DRAFT", "RELEASED", "RETIRED"}
+
+
+class ProductVersionItem(BaseModel):
+    product_version_id: str
+    tenant_id: str
+    product_id: str
+    version_code: str
+    version_name: str | None = None
+    lifecycle_status: str
+    is_current: bool
+    effective_from: date | None = None
+    effective_to: date | None = None
+    description: str | None = None
+    created_at: datetime
+    updated_at: datetime

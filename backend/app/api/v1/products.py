@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
-from app.schemas.product import ProductCreateRequest, ProductItem, ProductUpdateRequest
+from app.schemas.product import ProductCreateRequest, ProductItem, ProductUpdateRequest, ProductVersionItem
 from app.security.dependencies import RequestIdentity, require_action, require_authenticated_identity
 from app.services.product_service import (
     create_product as create_product_service,
@@ -11,6 +11,10 @@ from app.services.product_service import (
     release_product as release_product_service,
     retire_product as retire_product_service,
     update_product as update_product_service,
+)
+from app.services.product_version_service import (
+    get_product_version as get_product_version_service,
+    list_product_versions as list_product_versions_service,
 )
 
 router = APIRouter(prefix="/products", tags=["products"])
@@ -107,6 +111,40 @@ def release_product(
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/{product_id}/versions", response_model=list[ProductVersionItem])
+def list_product_versions(
+    product_id: str,
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(require_authenticated_identity),
+) -> list[ProductVersionItem]:
+    try:
+        return list_product_versions_service(
+            db,
+            tenant_id=identity.tenant_id,
+            product_id=product_id,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.get("/{product_id}/versions/{version_id}", response_model=ProductVersionItem)
+def get_product_version(
+    product_id: str,
+    version_id: str,
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(require_authenticated_identity),
+) -> ProductVersionItem:
+    try:
+        return get_product_version_service(
+            db,
+            tenant_id=identity.tenant_id,
+            product_id=product_id,
+            product_version_id=version_id,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
 
 @router.post("/{product_id}/retire", response_model=ProductItem)
