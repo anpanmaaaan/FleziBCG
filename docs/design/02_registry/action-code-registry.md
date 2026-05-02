@@ -68,6 +68,12 @@ the code to its family and evaluates DB-backed role→permission rows.
 |---|---|---|
 | `admin.downtime_reason.manage` | ADMIN | Create, update, or deactivate a Downtime Reason reference entry |
 
+### Audit / Security Governance — Added by P0-A-07C
+
+| Action Code | Family | Description |
+|---|---|---|
+| `admin.security_event.read` | ADMIN | Read security/audit event log entries (admin-restricted) |
+
 ---
 
 ## Naming Convention
@@ -98,3 +104,4 @@ Examples:
 |---|---|---|
 | 2026-05-02 | MMD-BE-02 | Added `admin.master_data.product.manage`, `admin.master_data.routing.manage`, `admin.master_data.resource_requirement.manage` |
 | 2026-05-02 | P0-A-07B | Added `admin.downtime_reason.manage` — resolves GAP-1 from P0-A-07A |
+| 2026-05-02 | P0-A-07C | Added `admin.security_event.read` — resolves GAP-2 from P0-A-07A |

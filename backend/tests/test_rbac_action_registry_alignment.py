@@ -16,11 +16,9 @@ GAP-1: RESOLVED in P0-A-07B.
   admin.downtime_reason.manage action code added. downtime_reasons.py updated
   to use dedicated code. See audit report p0-a-07b-dedicated-downtime-reason-admin-action-report.md.
 
-GAP-2: security_events.py uses admin.user.manage for the security event read
-  endpoint. Governance rule says read endpoints should use
-  require_authenticated_identity; this endpoint intentionally gates on ADMIN
-  family but reuses the user-manage action code. No dedicated action code
-  exists. Gap is acceptable for now — fix in a future audit-governance slice.
+GAP-2: RESOLVED in P0-A-07C.
+  admin.security_event.read action code added. security_events.py updated
+  to use dedicated code. See audit report p0-a-07c-dedicated-security-event-read-action-report.md.
 
 GAP-3: impersonations.py uses require_authenticated_identity (not require_action)
   for create/revoke routes. admin.impersonation.create and
@@ -72,12 +70,17 @@ _EXPECTED_ADMIN_CONFIG_CODES = frozenset({
     "admin.downtime_reason.manage",
 })
 
+_EXPECTED_ADMIN_AUDIT_CODES = frozenset({
+    "admin.security_event.read",
+})
+
 _ALL_EXPECTED_CODES = (
     _EXPECTED_EXECUTION_CODES
     | _EXPECTED_APPROVAL_CODES
     | _EXPECTED_ADMIN_IAM_CODES
     | _EXPECTED_ADMIN_MMD_CODES
     | _EXPECTED_ADMIN_CONFIG_CODES
+    | _EXPECTED_ADMIN_AUDIT_CODES
 )
 
 _VALID_FAMILIES: frozenset[str] = frozenset({"VIEW", "EXECUTE", "APPROVE", "CONFIGURE", "ADMIN"})
@@ -118,6 +121,12 @@ def test_all_canonical_admin_config_codes_in_registry() -> None:
     """Configuration administration action codes must be in ACTION_CODE_REGISTRY."""
     missing = _EXPECTED_ADMIN_CONFIG_CODES - set(ACTION_CODE_REGISTRY)
     assert not missing, f"Missing config admin codes in ACTION_CODE_REGISTRY: {missing}"
+
+
+def test_all_canonical_admin_audit_codes_in_registry() -> None:
+    """Audit/security governance action codes must be in ACTION_CODE_REGISTRY."""
+    missing = _EXPECTED_ADMIN_AUDIT_CODES - set(ACTION_CODE_REGISTRY)
+    assert not missing, f"Missing audit admin codes in ACTION_CODE_REGISTRY: {missing}"
 
 
 def test_action_code_registry_contains_exactly_canonical_set() -> None:
@@ -170,7 +179,7 @@ def test_approval_codes_map_to_approve_family() -> None:
 
 def test_admin_codes_map_to_admin_family() -> None:
     """All admin.* action codes must map to ADMIN family."""
-    admin_codes = _EXPECTED_ADMIN_IAM_CODES | _EXPECTED_ADMIN_MMD_CODES | _EXPECTED_ADMIN_CONFIG_CODES
+    admin_codes = _EXPECTED_ADMIN_IAM_CODES | _EXPECTED_ADMIN_MMD_CODES | _EXPECTED_ADMIN_CONFIG_CODES | _EXPECTED_ADMIN_AUDIT_CODES
     wrong = {
         code: ACTION_CODE_REGISTRY[code]
         for code in admin_codes
@@ -262,17 +271,22 @@ def test_known_gap_downtime_reasons_resolved_uses_dedicated_action_code() -> Non
     )
 
 
-def test_known_gap_security_events_uses_admin_user_manage() -> None:
-    """GAP-2: security_events.py uses admin.user.manage for the read endpoint.
+def test_known_gap_security_events_resolved_uses_dedicated_action_code() -> None:
+    """GAP-2 RESOLVED (P0-A-07C): security_events.py now uses admin.security_event.read.
 
-    No dedicated security events read action code exists. This test locks the
-    current state. If a dedicated code is added in a future audit-governance
-    slice, remove this test and add a positive alignment test.
+    admin.user.manage must no longer appear in security_events.py.
+    The dedicated audit read code must be present.
     """
+    import re
+
     src = (BACKEND_ROOT / "app" / "api" / "v1" / "security_events.py").read_text(encoding="utf-8")
-    assert "admin.user.manage" in src, (
-        "security_events.py no longer references admin.user.manage. "
-        "If GAP-2 was resolved, remove this test and add a dedicated code check."
+    used_codes = re.findall(r'require_action\("([^"]+)"\)', src)
+    assert "admin.security_event.read" in used_codes, (
+        "security_events.py does not use admin.security_event.read. "
+        "GAP-2 resolution may have been reverted."
+    )
+    assert "admin.user.manage" not in used_codes, (
+        "security_events.py still uses admin.user.manage. GAP-2 was not resolved."
     )
 
 
