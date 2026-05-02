@@ -7,7 +7,7 @@ import {
   ProductTypeBadge,
   ScreenStatusBadge,
 } from "@/app/components";
-import { HttpError, productApi, type ProductItemFromAPI } from "@/app/api";
+import { HttpError, productApi, type ProductItemFromAPI, type ProductVersionItemFromAPI } from "@/app/api";
 import { useI18n } from "@/app/i18n";
 
 export function ProductDetail() {
@@ -18,6 +18,10 @@ export function ProductDetail() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [missingProductId, setMissingProductId] = useState(false);
+
+  const [versions, setVersions] = useState<ProductVersionItemFromAPI[]>([]);
+  const [versionsLoading, setVersionsLoading] = useState(false);
+  const [versionsError, setVersionsError] = useState<string | null>(null);
 
   const resolveErrorMessage = (error: unknown): string => {
     if (error instanceof HttpError) {
@@ -69,10 +73,30 @@ export function ProductDetail() {
     }
   };
 
+  const loadVersions = async (signal?: AbortSignal) => {
+    if (!productId) return;
+    setVersionsLoading(true);
+    setVersionsError(null);
+    try {
+      const rows = await productApi.listProductVersions(productId, signal);
+      if (!signal?.aborted) {
+        setVersions(rows);
+      }
+    } catch (error) {
+      if (signal?.aborted) return;
+      setVersionsError(t("productDetail.versions.error"));
+    } finally {
+      if (!signal?.aborted) {
+        setVersionsLoading(false);
+      }
+    }
+  };
+
   useEffect(() => {
     const controller = new AbortController();
 
     void loadProduct(controller.signal);
+    void loadVersions(controller.signal);
     return () => controller.abort();
   }, [productId, t]);
 
@@ -171,6 +195,66 @@ export function ProductDetail() {
             <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
               <h2 className="text-base font-semibold text-gray-900 mb-3">{t("productDetail.section.routing")}</h2>
               <p className="text-sm text-gray-500">{t("productDetail.placeholder.routing")}</p>
+            </div>
+
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex flex-wrap items-center gap-3 mb-3">
+                <h2 className="text-base font-semibold text-gray-900">{t("productDetail.section.versions")}</h2>
+                <ScreenStatusBadge phase="PARTIAL" size="sm" />
+              </div>
+
+              {versionsLoading && (
+                <p className="text-sm text-gray-500">{t("productDetail.versions.loading")}</p>
+              )}
+
+              {!versionsLoading && versionsError && (
+                <p className="text-sm text-red-600">{versionsError}</p>
+              )}
+
+              {!versionsLoading && !versionsError && versions.length === 0 && (
+                <p className="text-sm text-gray-500">{t("productDetail.versions.empty")}</p>
+              )}
+
+              {!versionsLoading && !versionsError && versions.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-gray-200 text-gray-600">
+                        <th className="py-2 pr-4 font-medium">{t("productDetail.versions.col.versionCode")}</th>
+                        <th className="py-2 pr-4 font-medium">{t("productDetail.versions.col.versionName")}</th>
+                        <th className="py-2 pr-4 font-medium">{t("productDetail.versions.col.lifecycle")}</th>
+                        <th className="py-2 pr-4 font-medium">{t("productDetail.versions.col.isCurrent")}</th>
+                        <th className="py-2 pr-4 font-medium">{t("productDetail.versions.col.effectiveFrom")}</th>
+                        <th className="py-2 pr-4 font-medium">{t("productDetail.versions.col.effectiveTo")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {versions.map((v) => (
+                        <tr key={v.product_version_id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-2 pr-4 font-mono text-xs text-gray-800">{v.version_code}</td>
+                          <td className="py-2 pr-4 text-gray-700">{v.version_name ?? t("common.na")}</td>
+                          <td className="py-2 pr-4">
+                            <span className="inline-block rounded px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700">
+                              {v.lifecycle_status}
+                            </span>
+                          </td>
+                          <td className="py-2 pr-4">
+                            {v.is_current ? (
+                              <span className="inline-block rounded px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700">
+                                {t("common.yes")}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 text-xs">{t("common.no")}</span>
+                            )}
+                          </td>
+                          <td className="py-2 pr-4 text-gray-600">{v.effective_from ?? t("common.na")}</td>
+                          <td className="py-2 pr-4 text-gray-600">{v.effective_to ?? t("common.na")}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </>
         )}

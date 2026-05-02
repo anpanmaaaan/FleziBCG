@@ -61,6 +61,8 @@ const screenStatus    = await readSource("app/screenStatus.ts");
 const routesTsx       = await readSource("app/routes.tsx");
 const i18nEn          = await readSource("app/i18n/registry/en.ts");
 const i18nJa          = await readSource("app/i18n/registry/ja.ts");
+const productApi      = await readSource("app/api/productApi.ts");
+const productDetail   = await readSource("app/pages/ProductDetail.tsx");
 
 if (!routingApi)   abort("src/app/api/routingApi.ts not found");
 if (!rodPage)      abort("src/app/pages/RoutingOperationDetail.tsx not found");
@@ -69,6 +71,8 @@ if (!screenStatus) abort("src/app/screenStatus.ts not found");
 if (!routesTsx)    abort("src/app/routes.tsx not found");
 if (!i18nEn)       abort("src/app/i18n/registry/en.ts not found");
 if (!i18nJa)       abort("src/app/i18n/registry/ja.ts not found");
+if (!productApi)   abort("src/app/api/productApi.ts not found");
+if (!productDetail) abort("src/app/pages/ProductDetail.tsx not found");
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // A. Routing API contract lock (MMD-FULLSTACK-01 + MMD-FULLSTACK-03)
@@ -354,6 +358,46 @@ for (const { key, file, lang, pattern } of i18nChecks) {
   } else {
     fail(key, `${lang}.ts missing i18n key matching ${pattern}`);
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// G. Product Version FE read integration lock (MMD-FULLSTACK-06)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// G1 — ProductVersionItemFromAPI type exists in productApi.ts
+if (/ProductVersionItemFromAPI/.test(productApi)) {
+  pass("pv_api_type_exists");
+} else {
+  fail("pv_api_type_exists", "productApi.ts missing ProductVersionItemFromAPI interface");
+}
+
+// G2 — listProductVersions helper exists in productApi.ts
+if (/listProductVersions/.test(productApi)) {
+  pass("pv_api_list_helper_exists");
+} else {
+  fail("pv_api_list_helper_exists", "productApi.ts missing listProductVersions method");
+}
+
+// G3 — getProductVersion helper exists in productApi.ts
+if (/getProductVersion/.test(productApi)) {
+  pass("pv_api_get_helper_exists");
+} else {
+  fail("pv_api_get_helper_exists", "productApi.ts missing getProductVersion method");
+}
+
+// G4 — ProductDetail consumes listProductVersions (backend read integration present)
+if (/listProductVersions/.test(productDetail)) {
+  pass("pv_product_detail_consumes_list");
+} else {
+  fail("pv_product_detail_consumes_list", "ProductDetail.tsx does not call listProductVersions — backend read integration missing");
+}
+
+// G5 — No Product Version create/update/delete UI in ProductDetail
+// Check that no write-style action for versions exists in the UI
+if (/createVersion|updateVersion|deleteVersion|addVersion|editVersion/.test(productDetail)) {
+  fail("pv_no_write_ui_in_product_detail", "ProductDetail.tsx contains Product Version write UI — must be read-only in MMD-FULLSTACK-06");
+} else {
+  pass("pv_no_write_ui_in_product_detail");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
