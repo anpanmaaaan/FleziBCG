@@ -818,6 +818,43 @@ Non-scope preserved:
 - No StationSession hard enforcement
 - No claim removal or claim behavior change
 - No event name changes
+
+### 24. P0-C-08I-B Active Claim Source Purge Implementation
+
+Status: Verification closeout attempted in V1 and V2; active-source blocker matches remain and backend DB-backed determinism remains blocked.
+
+Hard Mode MOM v3 verdict: ALLOW_IMPLEMENTATION
+
+Scope implemented:
+- Renamed queue service module from historical claim naming to queue naming:
+  - `backend/app/services/station_claim_service.py` -> `backend/app/services/station_queue_service.py`
+- Updated backend imports to new queue service module:
+  - `backend/app/api/v1/station.py`
+  - affected queue/reopen tests.
+- Removed active queue claim schema remnants:
+  - deleted `ClaimSummary`
+  - removed `StationQueueItem.claim`
+- Updated frontend station execution surfaces from claim-centric local naming to ownership/session wording.
+- Updated EN/JA i18n values for ownership/session semantics while preserving key compatibility.
+- Removed stale `CLAIM_API_DISABLED` entries from canonical error docs and added cleanup-history note.
+
+Non-scope preserved:
+- No edits to migration-history artifacts (`0009` SQL/Alembic claim retirement files).
+- No execution command behavior/state-machine changes.
+- No auth/tenant boundary changes.
+
+Verification summary:
+- Frontend lint/build/route smoke: pass.
+- Backend script compile and import smoke: pass.
+- Touched-file diagnostics: clean.
+- Backend DB-backed pytest gates: environment instability blocker (deadlock/connection-abort contention), no confirmed H08I-B functional regression in changed surfaces.
+- V2 active-source sweep classification: `289` matches total with `BLOCKER_ACTIVE_SOURCE=68`, `ACCEPTED_MIGRATION_HISTORY_EXCEPTION=19`, `ACCEPTED_DESIGN_HISTORY_OR_TRANSITION_NOTE=165`, `FALSE_POSITIVE_JWT_CLAIMS=4`, `FALSE_POSITIVE_NON_EXECUTION_WORDING=33`, `UNKNOWN_NEEDS_FIX=0`.
+
+Implementation report:
+- `docs/implementation/p0-c-08i-b-active-claim-source-purge-report.md`
+
+Verdict:
+- `NOT_READY_ACTIVE_SOURCE_CLAIM_REMAINS`
 - No schema migration
 - No reopen hardening changes
 - No FE/UI changes

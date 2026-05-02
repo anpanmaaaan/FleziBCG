@@ -4,6 +4,8 @@
 
 | Date | Version | Change |
 |---|---:|---|
+| 2026-05-02 | v1.2 | Removed CLAIM_API_DISABLED after legacy claim routes were deleted in H14B/H08I-B cleanup. |
+| 2026-05-02 | v1.1 | Added CLAIM_API_DISABLED for P0-C-08H12B claim API runtime disablement. |
 | 2026-05-01 | v1.0 | Added approved StationSession command-guard error set for P0-C-08C controlled batch. |
 
 ## Scope

@@ -4,23 +4,23 @@ import { mapExecutionStatusBadgeVariant, mapExecutionStatusText, type StationQue
 import { useI18n } from "@/app/i18n";
 import type { I18nSemanticKey } from "@/app/i18n/keys";
 
-const isBackendClaimableQueueStatus = (status: StationQueueItem["status"]): boolean =>
+const isBackendActionableQueueStatus = (status: StationQueueItem["status"]): boolean =>
   status === "PLANNED" || status === "IN_PROGRESS";
 
 interface QueueOperationCardProps {
   item: StationQueueItem;
   active: boolean;
-  hasMineClaim: boolean;
+  hasOwnedSessionInQueue: boolean;
   onSelect: (item: StationQueueItem) => void;
 }
 
-export function QueueOperationCard({ item, active, hasMineClaim, onSelect }: QueueOperationCardProps) {
+export function QueueOperationCard({ item, active, hasOwnedSessionInQueue, onSelect }: QueueOperationCardProps) {
   const { t } = useI18n();
 
   // H8: Ownership-only; claim fallback retired
   const lockedByOther = item.ownership?.owner_state === "other" && item.ownership?.has_open_session === true;
   const isMine = item.ownership?.owner_state === "mine" && item.ownership?.has_open_session === true;
-  const isClaimableByStatus = isBackendClaimableQueueStatus(item.status);
+  const isActionableByStatus = isBackendActionableQueueStatus(item.status);
 
   const rowTone =
     item.status === "BLOCKED"
@@ -35,7 +35,7 @@ export function QueueOperationCard({ item, active, hasMineClaim, onSelect }: Que
       ? t("station.claim.ownedBadge")
       : item.ownership?.owner_state === "other" && item.ownership?.has_open_session
       ? t("station.queue.claimedByOther")
-      : isClaimableByStatus && !hasMineClaim
+      : isActionableByStatus && !hasOwnedSessionInQueue
       ? t("station.queue.readyToClaim")
       : null;
 

@@ -7,7 +7,6 @@ from sqlalchemy import delete, select
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent, ExecutionEventType
 from app.models.master import Operation, ProductionOrder, StatusEnum, WorkOrder
-from app.models.station_claim import OperationClaim, OperationClaimAuditLog
 from app.repositories.execution_event_repository import create_execution_event
 from app.services.operation_service import (
     derive_operation_detail,
@@ -42,14 +41,6 @@ def _purge(db) -> None:
             db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids)))
         )
         if op_ids:
-            db.execute(
-                delete(OperationClaimAuditLog).where(
-                    OperationClaimAuditLog.operation_id.in_(op_ids)
-                )
-            )
-            db.execute(
-                delete(OperationClaim).where(OperationClaim.operation_id.in_(op_ids))
-            )
             db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
         db.execute(delete(Operation).where(Operation.work_order_id.in_(wo_ids)))
         db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))

@@ -254,6 +254,59 @@ Name: Execution reopen/resume failure triage (`STATE_STATION_BUSY`)
 ### Event naming status
 CANONICAL
 
+---
+
+## HM3-049-V2 — P0-C-08I-B Test Environment Stabilization + Deterministic Verification
+
+### Routing
+- Selected brain: MOM Brain
+- Selected mode: SINGLE-SLICE / VERIFICATION-RECOVERY
+- Hard Mode MOM: v3
+- Reason: governed verification recovery for execution-adjacent claim-retirement closeout evidence.
+
+### Design Evidence Extract
+| Fact | Evidence | Confirmed |
+|---|---|---|
+| DB-backed pytest determinism requires single-flight execution | preflight process sweep + targeted stale-worker cleanup | ✅ |
+| Frontend and compile gates remain green | V2 markers all exit 0 for lint/build/routes/compile | ✅ |
+| Active-source claim sweep still reports non-history active matches | V2 sweep classification (`289` total, `68` blocker-active-source) | ✅ |
+
+### Event Map
+| Event | Change |
+|---|---|
+| Execution events | Unchanged (verification-only slice) |
+| Station-session events | Unchanged |
+| Claim retirement events | No new events introduced |
+
+### Invariant Map
+| Invariant | Status |
+|---|---|
+| Backend is execution/auth source of truth | Preserved |
+| Frontend remains intent-only | Preserved |
+| Migration-history immutability | Preserved |
+| Active-source claim-free requirement for H08I-B closeout | Not satisfied in V2 (`BLOCKER_ACTIVE_SOURCE=68`) |
+
+### Test Matrix
+| Test ID | Scenario | Result |
+|---|---|---|
+| HM3-049-T1 | preflight stale-worker cleanup + single-flight enforcement | pass |
+| HM3-049-T2 | backend focused deterministic completion marker | blocked |
+| HM3-049-T3 | backend broader deterministic completion marker | blocked |
+| HM3-049-T4 | compile/frontend gates | pass |
+| HM3-049-T5 | active-source sweep + classification | complete (blockers remain) |
+
+### Verification Results
+- `H08IB_V2_SCRIPT_COMPILE_EXIT:0`
+- `H08IB_V2_FRONTEND_LINT_EXIT:0`
+- `H08IB_V2_FRONTEND_BUILD_EXIT:0`
+- `H08IB_V2_FRONTEND_ROUTE_SMOKE_EXIT:0`
+- `H08IB_V2_ACTIVE_SOURCE_CLAIM_MATCHES:289`
+- `H08IB_V2_BACKEND_FOCUSED_EXIT` not emitted (blocked)
+- `H08IB_V2_EXEC_REOPEN_PROJECTION_EXIT` not emitted (blocked)
+
+### V2 Verdict
+`NOT_READY_ACTIVE_SOURCE_CLAIM_REMAINS`
+
 ## Slice HM3-005
 Name: P0-A CI governance artifact enforcement
 
@@ -978,6 +1031,95 @@ ALLOW_GOVERNANCE_POLICY_REVIEW
 | Route definitions must not be removed in H12B | ✅ SATISFIED — definitions retained |
 | Claim service/model/table must not be modified | ✅ SATISFIED — service functions untouched |
 | Audit history must not be deleted | ✅ SATISFIED — no table/data changes |
+
+---
+
+## HM3-048 — P0-C-08I-B Active Claim Source Purge Implementation
+
+## Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Single-Slice Implementation
+- Hard Mode MOM: v3
+- Reason: Active claim-source purge across backend/frontend/tests/docs while preserving migration-history invariants.
+
+### Design Evidence Extract
+| Fact | Evidence | Confirmed |
+|---|---|---|
+| StationSession remains ownership truth | H08I contract + queue ownership migration status | ✅ |
+| Claim API routes already removed | station route surface inventory | ✅ |
+| Active schema/service name remnants still existed | backend schema + module path references | ✅ |
+| Migration/history exceptions required | H08I contract boundary | ✅ |
+
+### Event Map
+| Event | Change |
+|---|---|
+| Execution command events | unchanged |
+| Station session events | unchanged |
+| Claim compatibility events | no new event behavior introduced |
+
+### Invariant Map
+| Invariant | Status |
+|---|---|
+| Backend remains execution truth source | Preserved |
+| Frontend remains intent-only | Preserved |
+| StationSession ownership semantics remain canonical | Preserved |
+| Migration history immutability (`0009` artifacts) | Preserved |
+
+### State Transition Map
+- No state-transition or command-guard changes in this slice.
+
+### Test Matrix
+| ID | Scenario | Result |
+|---|---|---|
+| HM3-048-T1 | frontend lint | pass (`H08IB_FRONTEND_LINT_EXIT:0`) |
+| HM3-048-T2 | frontend build | pass (`H08IB_FRONTEND_BUILD_EXIT:0`) |
+| HM3-048-T3 | frontend route smoke | pass (`PASS 24, FAIL 0`) |
+| HM3-048-T4 | backend script compile | pass (`H08IB_SCRIPT_COMPILE_EXIT:0`) |
+| HM3-048-T5 | backend import smoke | pass (`H08IB_IMPORT_OK True`) |
+| HM3-048-T6 | touched-file diagnostics | clean |
+| HM3-048-T7 | backend broader pytest | blocked by DB deadlock/connection-abort instability |
+
+### Verdict before coding
+ALLOW_IMPLEMENTATION
+
+### Implementation Artifact
+- `docs/implementation/p0-c-08i-b-active-claim-source-purge-report.md`
+
+### Final Verdict
+`P0_C_08I_B_IMPLEMENTED_WITH_DB_ENV_VERIFICATION_BLOCKER`
+
+---
+
+## HM3-048-V1 — P0-C-08I-B Backend Verification Recovery + Active Sweep Closeout
+
+### Routing
+- Selected brain: MOM Brain
+- Selected mode: Verification/Report Closeout Only
+- Hard Mode MOM: v3
+- Reason: recover backend verification evidence and close out active-source sweep classification without changing runtime scope.
+
+### V1 Evidence Delta
+- Backend focused + broader pytest runs: completion markers not emitted; runs stalled under current DB environment.
+- Script compile marker: `H08IB_V1_SCRIPT_COMPILE_EXIT:0`.
+- Frontend gates:
+	- `H08IB_V1_FRONTEND_LINT_EXIT:0`
+	- `H08IB_V1_FRONTEND_BUILD_EXIT:0`
+	- `H08IB_V1_FRONTEND_ROUTE_SMOKE_EXIT:0` (`PASS 24`, `FAIL 0`)
+- Active-source sweep marker:
+	- `H08IB_V1_ACTIVE_SOURCE_CLAIM_MATCHES:289`
+
+### Invariant Status
+- Execution/event/state-machine invariants: unchanged.
+- Migration-history immutability: preserved.
+- Backend-as-truth / frontend-intent-only: preserved.
+
+### V1 Sweep Classification
+- `BLOCKER`: none newly confirmed as H08I-B runtime regression from sweep output alone.
+- `ACCEPTED_HISTORY_EXCEPTION`: migration-history and design-transition references.
+- `FALSE_POSITIVE`: lexical `claim` hits outside active ownership runtime truth.
+
+### V1 Verdict
+`NOT_READY_ENVIRONMENT_BLOCKED`
 | Frontend must not be changed | ✅ SATISFIED — no FE files modified |
 | DB migration must not be added | ✅ SATISFIED — no migration |
 | Execution command behavior must not change | ✅ SATISFIED — no operation_service changes |
