@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { Lock, Server } from "lucide-react";
 import { HttpError, routingApi, type ResourceRequirementItemFromAPI, type RoutingItemFromAPI, type RoutingOperationItemFromAPI } from "@/app/api";
 import { MockWarningBanner, ScreenStatusBadge, BackendRequiredNotice } from "@/app/components";
@@ -208,7 +208,14 @@ export function ResourceRequirements() {
 
         {/* Summary info */}
         <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-          <strong>{t("resourceReqs.scope.label")}:</strong> {scopeText}
+          <div className="flex items-center justify-between gap-4">
+            <span><strong>{t("resourceReqs.scope.label")}:</strong> {scopeText}</span>
+            {(routeId || operationId) && (
+              <Link to="/resource-requirements" className="text-xs text-blue-600 hover:text-blue-800 font-medium shrink-0">
+                {t("resourceReqs.action.clearFilter")}
+              </Link>
+            )}
+          </div>
         </div>
 
         {/* Table */}
