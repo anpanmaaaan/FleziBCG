@@ -149,6 +149,7 @@ jobs:
               tests/test_tenant_lifecycle_anchor.py \
               tests/test_tenant_lifecycle_enforcement.py \
               tests/test_tenant_seed_bootstrap.py \
+              tests/test_scope_rbac_foundation_alignment.py \
               tests/test_pr_gate_workflow_config.py || python -m pytest -q
           elif [ -d tests ]; then
             python -m pytest -q

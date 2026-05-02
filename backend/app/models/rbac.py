@@ -7,6 +7,27 @@ from sqlalchemy.sql import func
 from app.db.base import Base
 
 
+# Canonical scope hierarchy constants for RBAC foundation alignment.
+SCOPE_TYPE_TENANT = "tenant"
+SCOPE_TYPE_PLANT = "plant"
+SCOPE_TYPE_AREA = "area"
+SCOPE_TYPE_LINE = "line"
+SCOPE_TYPE_STATION = "station"
+SCOPE_TYPE_EQUIPMENT = "equipment"
+
+SUPPORTED_SCOPE_TYPES = (
+    SCOPE_TYPE_TENANT,
+    SCOPE_TYPE_PLANT,
+    SCOPE_TYPE_AREA,
+    SCOPE_TYPE_LINE,
+    SCOPE_TYPE_STATION,
+    SCOPE_TYPE_EQUIPMENT,
+)
+
+PRINCIPAL_TYPE_USER = "user"
+PRINCIPAL_TYPE_ROLE = "role"
+
+
 class Role(Base):
     __tablename__ = "roles"
 

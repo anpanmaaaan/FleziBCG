@@ -212,6 +212,7 @@ jobs:
           cd backend
           python -m pytest -q \
             tests/test_cors_policy.py \
+            tests/test_scope_rbac_foundation_alignment.py \
             tests/test_pr_gate_workflow_config.py \
             --tb=short
 
