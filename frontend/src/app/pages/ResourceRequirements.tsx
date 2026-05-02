@@ -1,79 +1,27 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router";
 import { Lock, Server } from "lucide-react";
+import { HttpError, routingApi, type ResourceRequirementItemFromAPI, type RoutingItemFromAPI, type RoutingOperationItemFromAPI } from "@/app/api";
 import { MockWarningBanner, ScreenStatusBadge, BackendRequiredNotice } from "@/app/components";
 import { useI18n } from "@/app/i18n";
 
-interface ResourceRequirement {
-  req_id: string;
+interface ResourceRequirementRow {
+  requirement_id: string;
   operation_code: string;
   operation_name: string;
   routing_code: string;
-  resource_code: string;
-  resource_name: string;
   resource_type: string;
   capability: string;
-  qualification: string | null;
-  setup_constraint: string | null;
+  quantity_required: number;
+  notes: string | null;
   status: string;
 }
 
-const mockRequirements: ResourceRequirement[] = [
-  {
-    req_id: "RR-001",
-    operation_code: "OP-TURN-01",
-    operation_name: "CNC Turning",
-    routing_code: "RT-SHAFT-001",
-    resource_code: "ST-CNC-01",
-    resource_name: "CNC Lathe Station 01",
-    resource_type: "CNC_LATHE",
-    capability: "TURNING_40MM",
-    qualification: "ISO_TURNING_LVL2",
-    setup_constraint: "Min 15 min setup, tool change required between jobs",
-    status: "ACTIVE",
-  },
-  {
-    req_id: "RR-002",
-    operation_code: "OP-GRIND-01",
-    operation_name: "Cylindrical Grinding",
-    routing_code: "RT-SHAFT-001",
-    resource_code: "ST-GRIND-01",
-    resource_name: "Cylindrical Grinder Station 01",
-    resource_type: "CYLINDRICAL_GRINDER",
-    capability: "GRINDING_H6_TOLERANCE",
-    qualification: "GRINDER_CERT_LVL3",
-    setup_constraint: "Wheel dressing required before run",
-    status: "ACTIVE",
-  },
-  {
-    req_id: "RR-003",
-    operation_code: "OP-MILL-01",
-    operation_name: "Keyway Milling",
-    routing_code: "RT-SHAFT-001",
-    resource_code: "ST-MILL-01",
-    resource_name: "Milling Station 01",
-    resource_type: "CNC_MILL",
-    capability: "KEYWAY_6MM",
-    qualification: null,
-    setup_constraint: null,
-    status: "ACTIVE",
-  },
-  {
-    req_id: "RR-004",
-    operation_code: "OP-HEAT-01",
-    operation_name: "Heat Treatment",
-    routing_code: "RT-SHAFT-001",
-    resource_code: "OUTSOURCE-HT",
-    resource_name: "External Heat Treatment (Outsource)",
-    resource_type: "OUTSOURCE",
-    capability: "CASE_HARDENING_58HRC",
-    qualification: "HT_SUPPLIER_CERT",
-    setup_constraint: "3-day lead time, batch size min 10 pcs",
-    status: "PENDING",
-  },
-];
-
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
+    DRAFT: "bg-yellow-100 text-yellow-800 border-yellow-200",
+    RELEASED: "bg-green-100 text-green-800 border-green-200",
+    RETIRED: "bg-gray-100 text-gray-600 border-gray-200",
     ACTIVE: "bg-green-100 text-green-800 border-green-200",
     PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
     INACTIVE: "bg-gray-100 text-gray-600 border-gray-200",
@@ -88,13 +36,143 @@ function StatusBadge({ status }: { status: string }) {
 
 export function ResourceRequirements() {
   const { t } = useI18n();
-  const [reqs] = useState(mockRequirements);
+  const [searchParams] = useSearchParams();
+  const [reqs, setReqs] = useState<ResourceRequirementRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const routeId = searchParams.get("routeId") ?? searchParams.get("routingId");
+  const operationId = searchParams.get("operationId");
+
+  const resolveErrorMessage = (error: unknown): string => {
+    if (error instanceof HttpError && typeof error.message === "string" && error.message.trim().length > 0) {
+      return error.message;
+    }
+    return t("common.error.load_failed");
+  };
+
+  const toRow = (
+    requirement: ResourceRequirementItemFromAPI,
+    routing: RoutingItemFromAPI,
+    operation: RoutingOperationItemFromAPI,
+  ): ResourceRequirementRow => ({
+    requirement_id: requirement.requirement_id,
+    operation_code: operation.operation_code,
+    operation_name: operation.operation_name,
+    routing_code: routing.routing_code,
+    resource_type: requirement.required_resource_type,
+    capability: requirement.required_capability_code,
+    quantity_required: requirement.quantity_required,
+    notes: requirement.notes ?? requirement.metadata_json ?? null,
+    status: routing.lifecycle_status,
+  });
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadRequirements = async () => {
+      setLoading(true);
+      setErrorMessage(null);
+
+      try {
+        // Guard impossible filter combinations early.
+        if (operationId && !routeId) {
+          setReqs([]);
+          setErrorMessage(t("resourceReqs.error.invalidFilter"));
+          return;
+        }
+
+        // Filtered mode: a specific routing and operation.
+        if (routeId && operationId) {
+          const routing = await routingApi.getRouting(routeId, controller.signal);
+          const operation = routing.operations.find((item) => item.operation_id === operationId);
+
+          if (!operation) {
+            setReqs([]);
+            return;
+          }
+
+          const requirements = await routingApi.listResourceRequirements(routeId, operationId, controller.signal);
+          setReqs(requirements.map((item) => toRow(item, routing, operation)));
+          return;
+        }
+
+        // Filtered mode: all operations in a specific routing.
+        if (routeId) {
+          const routing = await routingApi.getRouting(routeId, controller.signal);
+          const nested = await Promise.all(
+            routing.operations.map(async (operation) => {
+              const requirements = await routingApi.listResourceRequirements(
+                routing.routing_id,
+                operation.operation_id,
+                controller.signal,
+              );
+              return requirements.map((item) => toRow(item, routing, operation));
+            }),
+          );
+          setReqs(nested.flat());
+          return;
+        }
+
+        // Global mode: collect requirements for all operations in all routings.
+        const routings = await routingApi.listRoutings(controller.signal);
+        const nested = await Promise.all(
+          routings.flatMap((routing) =>
+            routing.operations.map(async (operation) => {
+              const requirements = await routingApi.listResourceRequirements(
+                routing.routing_id,
+                operation.operation_id,
+                controller.signal,
+              );
+              return requirements.map((item) => toRow(item, routing, operation));
+            }),
+          ),
+        );
+
+        const rows = nested.flat().sort((a, b) => {
+          const byRouting = a.routing_code.localeCompare(b.routing_code);
+          if (byRouting !== 0) {
+            return byRouting;
+          }
+          const byOperation = a.operation_code.localeCompare(b.operation_code);
+          if (byOperation !== 0) {
+            return byOperation;
+          }
+          return a.requirement_id.localeCompare(b.requirement_id);
+        });
+        setReqs(rows);
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setReqs([]);
+        setErrorMessage(resolveErrorMessage(error));
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadRequirements();
+    return () => controller.abort();
+  }, [routeId, operationId, t]);
+
+  const scopeText = useMemo(() => {
+    if (routeId && operationId) {
+      return `${t("resourceReqs.scope.routing")}: ${routeId} | ${t("resourceReqs.scope.operation")}: ${operationId}`;
+    }
+    if (routeId) {
+      return `${t("resourceReqs.scope.routing")}: ${routeId}`;
+    }
+    return t("resourceReqs.scope.global");
+  }, [operationId, routeId, t]);
 
   return (
     <div className="h-full flex flex-col bg-white">
       <MockWarningBanner
-        phase="SHELL"
-        note="Resource applicability, capability, and qualification are managed by backend manufacturing master data system."
+        phase="PARTIAL"
+        note="Resource applicability and capability requirements are read from backend MMD APIs. Mutation actions remain backend-governed."
       />
       <div className="flex-1 flex flex-col p-6 overflow-auto">
         {/* Header */}
@@ -102,7 +180,7 @@ export function ResourceRequirements() {
           <div className="flex items-center gap-3">
             <Server className="w-6 h-6 text-slate-600" />
             <h1 className="text-2xl font-bold text-slate-900">{t("resourceReqs.title")}</h1>
-            <ScreenStatusBadge phase="SHELL" />
+            <ScreenStatusBadge phase="PARTIAL" />
           </div>
           <button
             disabled
@@ -114,11 +192,23 @@ export function ResourceRequirements() {
           </button>
         </div>
 
-        <BackendRequiredNotice message={t("resourceReqs.notice.shell")} tone="blue" />
+        <BackendRequiredNotice message={t("resourceReqs.notice.read")} tone="blue" />
+
+        {loading && (
+          <div className="rounded-lg border border-gray-200 bg-white px-4 py-10 text-center text-sm text-gray-500 shadow-sm mb-4">
+            {t("resourceReqs.loading")}
+          </div>
+        )}
+
+        {!loading && errorMessage && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-800 shadow-sm mb-4">
+            {errorMessage}
+          </div>
+        )}
 
         {/* Summary info */}
         <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-          <strong>Scope:</strong> This view shows the operation ↔ station/equipment resource requirement mapping. Capability, qualification, and setup constraints are visualized for product owner review. Backend MMD system remains source of truth for resource applicability.
+          <strong>{t("resourceReqs.scope.label")}:</strong> {scopeText}
         </div>
 
         {/* Table */}
@@ -129,35 +219,33 @@ export function ResourceRequirements() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("resourceReqs.col.operation")}</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("resourceReqs.col.resource")}</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("resourceReqs.col.capability")}</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("resourceReqs.col.qualification")}</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("resourceReqs.col.setupConstraint")}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("resourceReqs.col.quantity")}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("resourceReqs.col.notes")}</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("resourceReqs.col.status")}</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {reqs.length === 0 ? (
+              {!loading && reqs.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-gray-400">{t("resourceReqs.empty")}</td>
                 </tr>
               ) : (
                 reqs.map((r) => (
-                  <tr key={r.req_id} className="hover:bg-gray-50">
+                  <tr key={r.requirement_id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <div className="font-medium text-slate-900">{r.operation_name}</div>
                       <div className="text-xs text-gray-400 font-mono">{r.operation_code}</div>
                       <div className="text-xs text-gray-400">{r.routing_code}</div>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-slate-900">{r.resource_name}</div>
-                      <div className="text-xs text-gray-400 font-mono">{r.resource_code}</div>
-                      <div className="text-xs text-blue-600">{r.resource_type}</div>
+                      <div className="text-slate-900">{r.resource_type}</div>
                     </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex px-2 py-0.5 rounded border text-xs bg-purple-50 text-purple-700 border-purple-200">{r.capability}</span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-600">{r.qualification ?? "—"}</td>
-                    <td className="px-4 py-3 text-xs text-gray-600 max-w-[200px]">{r.setup_constraint ?? "—"}</td>
+                    <td className="px-4 py-3 text-xs text-gray-600">{r.quantity_required}</td>
+                    <td className="px-4 py-3 text-xs text-gray-600 max-w-[240px]">{r.notes ?? "—"}</td>
                     <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
                     <td className="px-4 py-3">
                       <button disabled className="inline-flex items-center gap-1 text-xs text-gray-400 cursor-not-allowed" title="Backend MMD governance workflow required">
@@ -173,7 +261,7 @@ export function ResourceRequirements() {
         </div>
 
         <p className="mt-4 text-xs text-gray-400">
-          Resource requirement data is for visualization only. Backend MMD system manages all resource-to-operation assignments, capability validation, and qualification checks.
+          {t("resourceReqs.footer.readonly")}
         </p>
       </div>
     </div>

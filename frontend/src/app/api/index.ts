@@ -47,7 +47,7 @@ export { productApi } from "./productApi";
 export type { ProductItemFromAPI } from "./productApi";
 
 export { routingApi } from "./routingApi";
-export type { RoutingItemFromAPI, RoutingOperationItemFromAPI } from "./routingApi";
+export type { RoutingItemFromAPI, RoutingOperationItemFromAPI, ResourceRequirementItemFromAPI } from "./routingApi";
 
 export { stationApi } from "./stationApi";
 export type {

@@ -236,9 +236,9 @@ export const SCREEN_STATUS_REGISTRY: Record<string, ScreenStatusEntry> = {
   },
   resourceRequirements: {
     routePattern: "/resource-requirements",
-    phase: "SHELL",
-    dataSource: "MOCK_FIXTURE",
-    notes: "Resource requirement mapping is a shell for visualization. Backend MMD and resource systems manage actual applicability.",
+    phase: "PARTIAL",
+    dataSource: "BACKEND_API",
+    notes: "Read integration active via routing + operation resource requirement endpoints. Mutation actions remain disabled and backend-governed.",
   },
   reasonCodes: {
     routePattern: "/reason-codes",
