@@ -175,6 +175,74 @@ if (!logInHttpClient) {
   fail("test_refresh_token_is_never_logged_in_httpClient", "Raw refresh_token found in a console.log/debug/warn/error in httpClient.ts");
 }
 
+// ─── FE-P0A-04: Extended static invariants (runtime gap mitigations) ─────────
+//
+// These checks close the static portion of the runtime gap identified in the
+// FE-P0A-04 stop report. They verify structural guarantees that runtime E2E
+// tests would also verify, but at the source-code level only.
+// A runtime gap remains (see fe-p0a-04 stop report for options).
+
+// ─── 15. refreshInFlight is reset to null after use (.finally) ───────────────
+
+if (/refreshInFlight\s*=\s*null/.test(httpClient) && /\.finally\(/.test(httpClient)) {
+  pass("test_refresh_in_flight_is_reset_after_completion");
+} else {
+  fail("test_refresh_in_flight_is_reset_after_completion", "httpClient.ts refreshInFlight is not reset to null in a .finally() block");
+}
+
+// ─── 16. refreshHandler result is awaited (not fire-and-forget) ──────────────
+
+// Check that refresh in the 401 branch awaits the result
+if (/await refreshInFlight/.test(httpClient)) {
+  pass("test_refresh_result_is_awaited_not_fire_and_forget");
+} else {
+  fail("test_refresh_result_is_awaited_not_fire_and_forget", "httpClient.ts 401 branch does not await refreshInFlight — refresh is fire-and-forget");
+}
+
+// ─── 17. Retry guard checks BOTH retried flag AND excluded path ───────────────
+
+// The condition must be: !options.retried AND !isExcludedFromRefresh AND refreshHandler
+if (/!options\.retried/.test(httpClient) && /isExcludedFromRefresh/.test(httpClient)) {
+  pass("test_retry_guard_checks_retried_flag_and_excluded_path");
+} else {
+  fail("test_retry_guard_checks_retried_flag_and_excluded_path", "httpClient.ts 401 branch does not check both !options.retried and isExcludedFromRefresh");
+}
+
+// ─── 18. No direct fetch() call in retry path ────────────────────────────────
+
+// Retry must call request() (not fetch()) so buildHeaders re-runs with new token.
+// Count fetch() calls — should be exactly one (the main request, not in retry).
+const fetchCallCount = (httpClient.match(/\bfetch\s*\(/g) || []).length;
+if (fetchCallCount === 1) {
+  pass("test_retry_path_does_not_call_fetch_directly");
+} else if (fetchCallCount === 0) {
+  fail("test_retry_path_does_not_call_fetch_directly", "No fetch() call found in httpClient.ts — unexpected");
+} else {
+  fail("test_retry_path_does_not_call_fetch_directly", `Multiple fetch() calls found (${fetchCallCount}) — retry may be calling fetch() directly instead of request()`);
+}
+
+// ─── 19. isExcludedFromRefresh normalizes path (uses normalizePath) ───────────
+
+if (/normalizePath/.test(httpClient) && /isExcludedFromRefresh/.test(httpClient)) {
+  // Check that isExcludedFromRefresh uses normalizePath
+  const funcBody = httpClient.match(/function isExcludedFromRefresh[\s\S]*?\}/)?.[0] ?? "";
+  if (/normalizePath/.test(funcBody)) {
+    pass("test_excluded_path_check_normalizes_path");
+  } else {
+    fail("test_excluded_path_check_normalizes_path", "isExcludedFromRefresh does not call normalizePath — path comparison may fail for relative paths");
+  }
+} else {
+  fail("test_excluded_path_check_normalizes_path", "httpClient.ts missing normalizePath usage in exclusion check");
+}
+
+// ─── 20. logout-all is also excluded ─────────────────────────────────────────
+
+if (/\/v1\/auth\/logout-all/.test(httpClient)) {
+  pass("test_logout_all_endpoint_is_excluded_from_refresh_retry");
+} else {
+  fail("test_logout_all_endpoint_is_excluded_from_refresh_retry", "httpClient.ts REFRESH_EXCLUDED_PATHS missing /v1/auth/logout-all");
+}
+
 // ─── Report ───────────────────────────────────────────────────────────────────
 
 const passed = results.filter((r) => r.status === "PASS").length;
