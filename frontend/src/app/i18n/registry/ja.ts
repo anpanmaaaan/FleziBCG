@@ -707,6 +707,16 @@ export const jaRegistry: I18nRegistry = {
   "productDetail.notFound": "製品が見つかりません。",
   "productDetail.missingProductId": "ルートに製品IDが含まれていません。",
   "productDetail.action.retry": "再試行",
+  "productDetail.section.versions": "製品バージョン",
+  "productDetail.versions.loading": "製品バージョンを読み込み中...",
+  "productDetail.versions.error": "製品バージョンの読み込みに失敗しました。",
+  "productDetail.versions.empty": "製品バージョンが見つかりません。",
+  "productDetail.versions.col.versionCode": "バージョンコード",
+  "productDetail.versions.col.versionName": "名称",
+  "productDetail.versions.col.lifecycle": "ライフサイクル",
+  "productDetail.versions.col.isCurrent": "現行",
+  "productDetail.versions.col.effectiveFrom": "有効開始日",
+  "productDetail.versions.col.effectiveTo": "有効終了日",
 
   // ── routeList ──
   "routeList.title": "工順一覧",

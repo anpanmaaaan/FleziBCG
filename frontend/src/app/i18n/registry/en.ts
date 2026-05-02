@@ -717,6 +717,16 @@ export const enRegistry: I18nRegistry = {
   "productDetail.notFound": "Product not found.",
   "productDetail.missingProductId": "Product ID is missing from the route.",
   "productDetail.action.retry": "Retry",
+  "productDetail.section.versions": "Product Versions",
+  "productDetail.versions.loading": "Loading product versions...",
+  "productDetail.versions.error": "Failed to load product versions.",
+  "productDetail.versions.empty": "No product versions found.",
+  "productDetail.versions.col.versionCode": "Version Code",
+  "productDetail.versions.col.versionName": "Name",
+  "productDetail.versions.col.lifecycle": "Lifecycle",
+  "productDetail.versions.col.isCurrent": "Current",
+  "productDetail.versions.col.effectiveFrom": "Effective From",
+  "productDetail.versions.col.effectiveTo": "Effective To",
 
   // ── routeList ──
   "routeList.title": "Route list",
