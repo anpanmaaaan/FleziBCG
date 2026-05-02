@@ -15,7 +15,8 @@
     "check:govadmin:persona": "node scripts/govadmin-persona-route-guard-check.mjs",
     "check:auth:contract": "node scripts/auth-contract-smoke.mjs",
     "check:auth:retry": "node scripts/auth-retry-smoke.mjs",
-    "test:e2e:auth": "playwright test e2e/auth-refresh-retry.spec.ts"
+    "test:e2e:auth": "playwright test e2e/auth-refresh-retry.spec.ts",
+    "check:mmd:read": "node scripts/mmd-read-integration-regression-check.mjs"
   },
   "dependencies": {
     "react": "18.3.1",
