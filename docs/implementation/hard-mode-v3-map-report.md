@@ -308,6 +308,717 @@ CANONICAL
 ### Verdict
 ALLOW_IMPLEMENTATION_COMPLETE
 
+## HM3-042 — P0-C-08H15B Claim Service / Schema Dead-Code Removal Implementation
+
+## Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Single-Slice Implementation
+- Hard Mode MOM: v3
+- Reason: Claim service/schema retirement changes execution-adjacent compatibility surfaces and requires controlled invariant-safe cleanup.
+
+### Design Evidence Extract
+| Fact | Evidence | Confirmed |
+|---|---|---|
+| Claim runtime APIs already removed from station routes | H14B implementation + station router state | ✅ |
+| Dead claim service functions have no app-layer callers | repo grep shows definition-only references | ✅ |
+| Queue/detail runtime paths must stay unchanged | `get_station_queue` + `get_station_scoped_operation` active route dependencies | ✅ |
+| Queue claim field must remain compatibility nullable | service returns `claim: None`; schema keeps nullable field | ✅ |
+| Model/table deletion remains deferred | H15 contract boundary + db init model registration | ✅ |
+
+### Event Map
+| Event | Change |
+|---|---|
+| Execution events | Unchanged |
+| Station session events | Unchanged |
+| Claim events | No new emissions; dead claim service APIs removed |
+
+### Invariant Map
+| Invariant | Status |
+|---|---|
+| Backend is source of execution truth | Preserved |
+| Frontend sends intent only | Preserved |
+| Queue returns active statuses from runtime projection | Preserved |
+| Queue compatibility claim field remains null-only | Preserved |
+| No model/table/migration drift in H15B | Preserved |
+
+### Test Matrix
+| Test ID | Scenario | Result |
+|---|---|---|
+| HM3-042-T1 | queue/session/reopen regression subset | `43 passed` |
+| HM3-042-T2 | projection/downtime/auth regression subset | `46 passed` |
+| HM3-042-T3 | dead-code symbol sweep | `0 matches` |
+| HM3-042-T4 | frontend lint/build/route smoke | all exit 0 |
+
+### Verification Results
+- `H15B_EXEC_QUEUE_REOPEN_EXIT:0`
+- `H15B_PROJECTION_DOWNTIME_EXIT:0`
+- `H15B_DEAD_CODE_SWEEP:0_MATCHES`
+- `H15B_FRONTEND_LINT_EXIT:0`
+- `H15B_FRONTEND_BUILD_EXIT:0`
+- `H15B_FRONTEND_ROUTE_SMOKE_EXIT:0`
+
+### Implementation Report Artifact
+- `docs/implementation/p0-c-08h15b-claim-service-schema-dead-code-removal-implementation-report.md`
+
+### Verdict
+ALLOW_IMPLEMENTATION_COMPLETE
+`P0_C_08H15B_COMPLETE_VERIFICATION_CLEAN`
+
+## HM3-043 — P0-C-08H16 Claim Model / Table Drop Migration Contract
+
+## Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Single-Slice Contract-Only Review
+- Hard Mode MOM: v3
+- Reason: claim model and table retirement requires migration-order safety, metadata dependency closure, and execution-governance boundary preservation.
+
+### Design Evidence Extract
+| Fact | Evidence | Confirmed |
+|---|---|---|
+| StationSession remains ownership truth | execution ownership contracts | ✅ |
+| Claim runtime APIs already retired | H14B/H15B baselines | ✅ |
+| Claim models still referenced by tests/scripts/init registry | repo inventory sweep | ✅ |
+| Table drop requires FK-safe order | 0009 claim DDL (`claim_id` FK to parent claim table) | ✅ |
+
+### Audit / History Map
+| Audit Surface | Current State | H16/H17 Decision |
+|---|---|---|
+| claim audit event history | historical only | retire with controlled table-drop migration |
+| StationSession/execution events | active | unchanged (out of scope) |
+
+### ORM / Metadata Dependency Map
+| Artifact | Current Dependency | Removal Readiness |
+|---|---|---|
+| station_claim ORM models | init_db + tests/scripts imports | not ready for immediate removal |
+| init_db claim imports | metadata registration path | remove only after dependency burn-down |
+
+### Migration Impact Map
+| Item | Decision |
+|---|---|
+| migration approach | new Alembic forward revision |
+| old SQL migration edits | prohibited (keep historical) |
+| drop order | `operation_claim_audit_logs` then `operation_claims` |
+| downgrade | recreate both tables and indexes |
+
+### Test Matrix
+| Test ID | Scenario | Result |
+|---|---|---|
+| HM3-043-T1 | execution/queue/reopen focused subset | `43 passed` |
+| HM3-043-T2 | operation detail/projection subset | `35 passed` |
+| HM3-043-T3 | frontend lint/build/route smoke | all exit 0 |
+
+### Verdict before contract recommendation
+ALLOW_CONTRACT_REVIEW
+
+### Contract Artifact
+- `docs/implementation/p0-c-08h16-claim-model-table-drop-migration-contract.md`
+
+### Final Verdict
+READY_FOR_P0_C_08H16B_CLAIM_MODEL_TEST_DEPENDENCY_BURN_DOWN
+
+## HM3-041 — P0-C-08H15 Claim Service / Schema / Model Removal Contract
+
+## Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Single-Slice Contract-Only Review
+- Hard Mode MOM: v3
+- Reason: Claim retirement readiness review spans execution ownership migration debt, audit/event remnants, ORM metadata loading, test dependency graph, and migration sequencing boundaries.
+
+### Design Evidence Extract
+| Fact | Evidence | Confirmed |
+|---|---|---|
+| StationSession is ownership truth | execution ownership contracts + current queue ownership block | ✅ |
+| Claim runtime surfaces removed in H14B | station routes/client/queue path removed in prior slice | ✅ |
+| Claim service functions remain in file only | backend app-layer caller sweep found no active callers outside service file | ✅ |
+| Queue claim field remains compatibility null-only | service returns `"claim": None`; schema still nullable | ✅ |
+| Claim models still registry/test/script dependent | `db/init_db.py` import + repo-wide test/script references | ✅ |
+| Table drop must be staged and FK-ordered | `0009_station_claims.sql` child FK `operation_claim_audit_logs.claim_id -> operation_claims.id` | ✅ |
+| No canonical API/system-invariants docs found at requested paths | file search shows absent files; fallback to execution contracts + coding rules | ✅ |
+
+### Runtime / Dead-Code Surface Map
+| Surface | Runtime Active? | H15B Candidate? | Risk |
+|---|---:|---:|---|
+| `claim_operation` / `release_operation_claim` / `get_operation_claim_status` | No | Yes | Low |
+| `_expire_claim_if_needed` / `_log_claim_event` / `_to_claim_state` | No (dead-path only) | Yes | Low |
+| `get_station_queue` / `get_station_scoped_operation` | Yes | Keep | High |
+
+### ORM / Migration Boundary
+| Artifact | Current Dependency | Decision |
+|---|---|---|
+| `OperationClaim`, `OperationClaimAuditLog` models | db init import + multiple tests/scripts | Defer model deletion unless dependency cleanup is included |
+| `operation_claims`, `operation_claim_audit_logs` tables | physical schema + FK dependency | H16/H17 migration only (child drop first) |
+
+### Test Matrix
+| Test ID | Scenario | Result |
+|---|---|---|
+| HM3-041-T1 | claim-service smoke (`test_claim_single_active_per_operator.py`, `test_release_claim_active_states.py`) | `20 passed`, exit 0 |
+| HM3-041-T2 | execution/queue/reopen regression subset (6 files) | `44 passed`, exit 0 |
+| HM3-041-T3 | frontend lint/build/route smoke | all exit 0 |
+
+### Verdict
+ALLOW_CONTRACT_REVIEW
+`READY_FOR_P0_C_08H15B_WITH_MODEL_DEFERRED_TO_MIGRATION`
+
+---
+
+## HM3-040 — P0-C-08H14B Claim Route / Frontend Client / Queue-Loop Removal Implementation
+
+## Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Single-Slice Implementation
+- Hard Mode MOM: v3
+- Reason: Claim API route removal, frontend claim client removal, queue-loop CLAIM_EXPIRED emission removal, execution ownership truth, legacy operational audit event retirement — all v3 trigger zones.
+
+### Design Evidence Extract
+[Same as HM3-039 — StationSession is truth; claim API was disabled; queue null-only; reopen restoration removed; H13 approved; H14 contract approved]
+
+### Implementation Boundary Held
+- 3 claim routes removed from `station.py` (POST /claim, POST /release, GET /claim).
+- Dead helpers removed: `_raise_claim_api_disabled()`, `_CLAIM_DISABLED_HEADERS`, `add_claim_api_deprecation_headers()`.
+- Queue expiry block removed from `get_station_queue()`: `active_operation_ids`, `claims = {}`, `_expire_claim_if_needed()` call.
+- CLAIM_EXPIRED no longer emitted from queue read path — H16 blocker resolved.
+- Frontend claim stubs + types + re-exports removed — zero callers/consumers confirmed.
+- `test_claim_api_deprecation_lock.py` deleted.
+- 2 test teardown suites cleaned of no-op claim delete stmts.
+- `test_execution_route_claim_guard_removal.py` UNTOUCHED — `_insert_active_claim()` + FK teardown retained until H16.
+- Model/schema/service/table: NO CHANGE. Deferred to H15/H16.
+- DB migration: NOT ADDED.
+- Audit history: NOT DELETED.
+
+### Verification Results (H14B)
+- Claim service tests: `20 passed`, `H14B_CLAIM_SERVICE_EXIT:0`
+- Execution/queue/reopen regression: `44 passed`, `H14B_EXEC_QUEUE_REOPEN_EXIT:0`
+- Frontend lint: `H14B_FRONTEND_LINT_EXIT:0`
+- Frontend build: `H14B_FRONTEND_BUILD_EXIT:0`
+- Frontend route smoke: `H14B_FRONTEND_ROUTE_SMOKE_EXIT:0`
+- Full backend suite: `420 passed`, 4 pre-existing failures (Unicode/FK), `H14B_FULL_BACKEND_EXIT:1`
+- Claim sweep: CLEAN (zero public API claim references)
+
+### Event Naming Status
+NO NEW EVENTS. CLAIM_EXPIRED emission from queue read path stopped in H14B.
+
+### Verdict
+ALLOW_IMPLEMENTATION_COMPLETE
+`P0_C_08H14B_COMPLETE_VERIFICATION_CLEAN`
+
+---
+
+## HM3-039 — P0-C-08H14 Claim Route / Frontend Client / Queue-Loop Removal Contract
+
+## Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Contract-Only Review
+- Hard Mode MOM: v3
+- Reason: Task touches legacy claim API route removal, frontend API client removal, queue-loop expiration cleanup, audit event retirement, execution ownership truth, and staged hard-removal of legacy operational data — all v3 trigger zones.
+
+### Design Evidence Extract
+| Fact | Evidence | Confirmed |
+|---|---|---|
+| StationSession is target ownership truth | Queue returns `ownership` block; components use `item.ownership?.owner_state` | ✅ |
+| Claim API runtime-disabled (HTTP 410) | H12B; `_raise_claim_api_disabled()` on all 3 routes | ✅ |
+| Queue claim payload null-only | H10; `"claim": None` hardcoded in `get_station_queue()` item dict | ✅ |
+| Reopen claim restoration removed | H11B | ✅ |
+| H13 approved `CLAIM_RETENTION_POLICY_DEV_HARD_DROP_APPROVED` | H13 policy document | ✅ |
+| `_expire_claim_if_needed()` still active in queue loop | Source confirmed; writes `CLAIM_EXPIRED` to `operation_claim_audit_logs` | ✅ BLOCKER |
+| Frontend claim functions/types: zero active callers | Full frontend grep confirms zero consumers outside stationApi.ts/index.ts | ✅ |
+| `station.claim.*` i18n keys: NOT claim type dependencies | Components use i18n string keys driven by `item.ownership`, not `item.claim` | ✅ |
+| `ensure_operation_claim_owned_by_identity()`: zero callers in production | Backend app grep: 1 match (definition only) | ✅ |
+| `add_claim_api_deprecation_headers()`: never called in any route | Station.py defines it; no route body calls it | ✅ (dead code) |
+| H14 is contract-only | No code changes | ✅ |
+
+### Runtime Surface Map
+| Surface | Current State | H14B Action |
+|---|---|---|
+| 3 claim API routes | HTTP 410; zero consumers | REMOVE in H14B |
+| `_raise_claim_api_disabled()` | Only called by 3 routes | REMOVE with routes |
+| `_CLAIM_DISABLED_HEADERS` | Only used by helper | REMOVE |
+| `add_claim_api_deprecation_headers()` | Dead — never called | REMOVE |
+| `ClaimRequest/ReleaseClaimRequest/ClaimResponse` imports in station.py | Route type annotations only | REMOVE imports |
+| Queue claim expiry block | Active; writes CLAIM_EXPIRED | REMOVE in H14B |
+| `_expire_claim_if_needed()` call | BLOCKER for H16 | REMOVE in H14B |
+| `stationApi.claim/release/getClaim` | Zero frontend callers | REMOVE in H14B |
+| `ClaimSummary/QueueClaimState/ClaimResponse` | Zero consumers | REMOVE in H14B |
+| `StationQueueItem.claim` field | Null-only; zero component readers | REMOVE in H14B |
+| claim type re-exports in index.ts | Zero downstream imports | REMOVE in H14B |
+| `OperationClaim/OperationClaimAuditLog` model | Still registered; defer | H15 |
+| `operation_claims/operation_claim_audit_logs` tables | SQLAlchemy-mapped; defer | H16 |
+| `claim_operation/release_operation_claim/get_operation_claim_status` | Dead service code; tests still import | H15 |
+
+### API / Client Removal Impact Map
+| Artifact | Consumer | H14B? | Test Change |
+|---|---|---|---|
+| `POST .../claim` (410) | None | YES | Delete `test_claim_api_deprecation_lock.py` |
+| `POST .../release` (410) | None | YES | Same |
+| `GET .../claim` (410) | None | YES | Same |
+| `stationApi.claim/release/getClaim` | Zero callers | YES | None |
+| `ClaimSummary/QueueClaimState/ClaimResponse` | Zero consumers | YES | None |
+| `StationQueueItem.claim` | Zero component reads | YES | None |
+
+### Queue-Loop Dependency Map
+| Function / Block | Active? | H14B Action |
+|---|---|---|
+| `active_operation_ids` list (claim query feed) | YES (only used for claim query) | REMOVE |
+| `claims = {}` dict | YES | REMOVE |
+| `select(OperationClaim)` in queue | YES | REMOVE |
+| `_expire_claim_if_needed()` call | YES — BLOCKER | REMOVE |
+| `_to_claim_state()` call | Not in item dict (already H10) | N/A; function defers to H15 |
+| `get_station_queue()` function body | ACTIVE | RETAIN |
+| `"claim": None` in item dict | Stability | RETAIN |
+| `db.commit()` | Keep as no-op | RETAIN |
+
+### Data / Migration Boundary Map
+| Object | H14B? | Future Slice |
+|---|---|---|
+| `OperationClaim` ORM model | NO | H15 |
+| `OperationClaimAuditLog` ORM model | NO | H15 |
+| `operation_claims` table | NO | H16 |
+| `operation_claim_audit_logs` table | NO | H16 |
+| Test teardown claim delete stmts (no-op) | REMOVE stmts | H14B |
+| `test_claim_single_active_per_operator.py` | NO | H15 |
+| `test_release_claim_active_states.py` | NO | H15 |
+
+### Test Matrix
+| Test File | H14B Action |
+|---|---|
+| `test_claim_api_deprecation_lock.py` | DELETE entire file |
+| `test_station_queue_active_states.py` | RETAIN; verify `"claim": null` still in response |
+| `test_execution_route_claim_guard_removal.py` | RETAIN body; remove teardown claim deletes |
+| `test_operation_detail_allowed_actions.py` | Remove teardown claim deletes |
+| `test_operation_status_projection_reconcile.py` | Remove teardown claim deletes |
+| `test_claim_single_active_per_operator.py` | DEFER DELETE to H15 |
+| `test_release_claim_active_states.py` | DEFER DELETE to H15 |
+| Reopen suites | RETAIN unmodified |
+
+### Baseline Verification (H14 Contract Smoke)
+- Backend compat smoke: `27 passed`, `H14_COMPAT_SMOKE_EXIT:0`
+- Backend reopen smoke: `22 passed`, `H14_REOPEN_SMOKE_EXIT:0`
+- Frontend lint: `H14_FRONTEND_LINT_EXIT:0`
+- Frontend build: `H14_FRONTEND_BUILD_EXIT:0`
+- Frontend route smoke: `H14_FRONTEND_ROUTE_SMOKE_EXIT:0`
+
+### Event Naming Status
+NO NEW EVENTS — contract review only; queue-loop CLAIM_EXPIRED emission removed in H14B (implementation).
+
+### Verdict
+ALLOW_CONTRACT_REVIEW
+`READY_FOR_P0_C_08H14B_ROUTE_CLIENT_QUEUE_LOOP_REMOVAL_IMPLEMENTATION`
+
+---
+
+## HM3-038 — P0-C-08H13 Audit Retention Decision / Claim Historical Data Policy
+
+## Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Contract-Only Review
+- Hard Mode MOM: v3
+- Reason: Task touches audit/history retention, legacy claim table removal, execution ownership truth, DB migration boundary, and governance risk — all v3 trigger zones.
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| H12B report | 3 claim APIs disabled (HTTP 410); service/model/table intact | H13 must decide what happens to the intact legacy data |
+| H11B report | `_restore_claim_continuity_for_reopen` removed; `CLAIM_RESTORED_ON_REOPEN` no longer emitted | Historical rows may exist in `operation_claim_audit_logs` |
+| H10 report | Queue claim payload null-only | `_expire_claim_if_needed()` still active in queue loop — still writes rows |
+| `0009_station_claims.sql` | FK: `operation_claim_audit_logs.claim_id → operation_claims.id` | Child must be dropped before parent |
+| Alembic `versions/` | Head = `0003`; all revisions additive; no drops | H16 will be first destructive Alembic migration |
+| `docker-compose.yml` | Local dev-only setup | Project is confirmed pre-production |
+| No retention policy document | No legal/compliance requirement found | Dev/test hard drop is safe |
+
+### Audit / History Map
+| Data / Event | Source Table / Model | Producer Before Retirement | Producer Now | Audit Value | H13 Decision |
+|---|---|---|---|---|---|
+| `OperationClaim` row | `operation_claims` | `claim_operation()` via POST /claim | NONE since H12B | LOW — dev execution lock | DROP approved |
+| `OperationClaimAuditLog` row | `operation_claim_audit_logs` | `_log_claim_event()` | Still written by `_expire_claim_if_needed()` in queue loop | LOW — debug data | DROP approved after H14 |
+| `CLAIM_CREATED` | `operation_claim_audit_logs` | `claim_operation()` | NONE since H12B | LOW | DROP with table |
+| `CLAIM_RELEASED` | `operation_claim_audit_logs` | `release_operation_claim()` | NONE since H12B | LOW | DROP with table |
+| `CLAIM_EXPIRED` | `operation_claim_audit_logs` | `_expire_claim_if_needed()` queue loop | STILL ACTIVE | LOW | Stop in H14, then DROP |
+| `CLAIM_RESTORED_ON_REOPEN` | `operation_claim_audit_logs` | REMOVED H11B | NONE | LOW (retired) | DROP with table |
+| StationSession events | `security_event_logs` | `station_session_service` | ACTIVE | HIGH | RETAIN — not in scope |
+
+### Data Retention Risk Map
+| Data Object | Risk If Dropped | Severity | Mitigation | Decision |
+|---|---|---|---|---|
+| `operation_claims` rows | Loss of dev claim history | LOW | Document in migration | APPROVED H16 |
+| `operation_claim_audit_logs` rows | Loss of CLAIM_* event history | LOW — dev data only | Document in migration | APPROVED H16 |
+| Historical CLAIM_EXPIRED rows | Still being written until H14 | LOW | Remove writer in H14 first | APPROVED — sequenced |
+| Test teardown | Fails after table drop | MEDIUM | Update teardown in H14 | REQUIRED PRECONDITION |
+
+### Migration Impact Map
+| Object | Current Dependency | Required Before Removal |
+|---|---|---|
+| `OperationClaim` model | Teardown in 3 test suites | Delete model (H15) before H16 migration |
+| `OperationClaimAuditLog` model | Teardown in same suites | Same as above |
+| `_expire_claim_if_needed()` in queue loop | Still writes claim rows | Must be removed in H14 before H16 |
+| `test_claim_single_active_per_operator.py` | Directly calls `claim_operation()` | Delete in H15 before removing service |
+| `test_release_claim_active_states.py` | Directly calls `release_operation_claim()` | Delete in H15 |
+| FK constraint | `audit_logs.claim_id → operation_claims.id` | H16 must drop child table first |
+
+### Test Matrix
+| Test Area | Existing Test | Current Claim Dependency | Future Removal Test |
+|---|---|---|---|
+| Claim API disabled | `test_claim_api_deprecation_lock.py` | 3 tests assert 410 | H14: update to 404 or delete after route removal |
+| Service-level claim | `test_claim_single_active_per_operator.py` | Calls `claim_operation()` directly | H15: delete entire file |
+| Service-level release | `test_release_claim_active_states.py` | Calls `release_operation_claim()` | H15: delete entire file |
+| Execution route guard | `test_execution_route_claim_guard_removal.py` teardown | Deletes OperationClaim/AuditLog rows | H14: remove claim deletes from teardown |
+| Allowed actions | `test_operation_detail_allowed_actions.py` teardown | Deletes OperationClaim/AuditLog rows | H14: remove claim deletes from teardown |
+| Status projection | `test_operation_status_projection_reconcile.py` teardown | Deletes OperationClaim/AuditLog rows | H14: remove claim deletes from teardown |
+| Full backend suite | `pytest -q` | 391 passed pre-H13 | H-I: recount after file deletions; sweep for 0 claim references |
+
+### Final Verification Result (H13 Baseline Smoke)
+- Backend compat smoke: `27 passed`, `H13_COMPAT_SMOKE_EXIT:0`
+- Backend reopen smoke: `22 passed`, `H13_REOPEN_SMOKE_EXIT:0` (first run had transient DB errors; second run clean)
+- Frontend lint: `H13_FRONTEND_LINT_EXIT:0`
+- Frontend build: `H13_FRONTEND_BUILD_EXIT:0`
+- Frontend route smoke: `H13_FRONTEND_ROUTE_SMOKE_EXIT:0` (24 PASS, 77/78 covered)
+
+### Scope Guard Confirmation
+- No code changes.
+- No model removal.
+- No service removal.
+- No migration.
+- No table drop.
+- No frontend change.
+- No deletion of audit rows.
+
+### Event Naming Status
+NO NEW EVENTS — governance/policy review only.
+
+### Verdict
+ALLOW_GOVERNANCE_POLICY_REVIEW
+`CLAIM_RETENTION_POLICY_DEV_HARD_DROP_APPROVED`
+
+---
+
+## HM3-037 — P0-C-08H12B Claim API Runtime Disablement Implementation
+
+## Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Single-Slice Backend Implementation
+- Hard Mode MOM: v3
+- Reason: Touches deprecated claim APIs, execution ownership compatibility, canonical error path, tenant/scope/auth boundary. v3 trigger zones active.
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| H12 contract (HM3-036) | Contract approved `READY_FOR_P0_C_08H12B_WITH_CANONICAL_ERROR_ADDITION` | H12B is authorized to proceed |
+| `canonical-error-code-registry.md` | No `CLAIM_API_DISABLED` prior to H12B | Must add before disabling endpoints |
+| `station.py` — 3 claim routes | Routes exist with `add_claim_api_deprecation_headers(response)` calls | H12B disables route bodies only; route definitions retained |
+| H4 decoupled | `ensure_operation_claim_owned_by_identity` removed from 7 command routes | Execution commands do not depend on claim API routes |
+| H8/H10 | Claim block null-only; no frontend fallback reads claim for affordance | Safe to disable claim API |
+| H11B | `_restore_claim_continuity_for_reopen` removed | Reopen is claim-free |
+| H6/H6-V1 | No active callers of `stationApi.claim/release/getClaim` in frontend production code | Disablement produces zero UX regression |
+| `operations.py:64` | Plain `HTTPException(detail="STATION_SESSION_REQUIRED")` precedent | UPPER_SNAKE_CASE canonical codes use plain `HTTPException`, not `I18nHTTPException` |
+| Starlette exception handler | `exc.headers` included in error response | `HTTPException(headers=...)` is the correct mechanism for deprecation header propagation |
+
+### Event Map
+| Event | Before H12B | After H12B | Decision |
+|---|---|---|---|
+| `CLAIM_CREATED` | Produced by `claim_operation()` via POST /claim | No longer produced (route disabled, no service call) | Retired from public API path |
+| `CLAIM_RELEASED` | Produced by `release_operation_claim()` via POST /release | No longer produced (route disabled) | Retired from public API path |
+| `CLAIM_EXPIRED` | Produced by `_expire_claim_if_needed()` in queue loop | Unchanged — queue lazy expiry path untouched until H14 | Active until H14 |
+| StationSession events | Produced by session lifecycle | Unchanged | No impact |
+| Execution command events | Produced by operation_service | Unchanged | No impact |
+
+### Invariant Map
+| Invariant | Status |
+|---|---|
+| Disabled endpoint must return 410 Gone | ✅ ENFORCED — `HTTPException(status_code=410)` |
+| Error code must be canonical UPPER_SNAKE_CASE | ✅ ENFORCED — `CLAIM_API_DISABLED` in `detail` field |
+| Deprecation headers must be preserved on 410 response | ✅ ENFORCED — `HTTPException(headers=_CLAIM_DISABLED_HEADERS)` |
+| Route definitions must not be removed in H12B | ✅ SATISFIED — definitions retained |
+| Claim service/model/table must not be modified | ✅ SATISFIED — service functions untouched |
+| Audit history must not be deleted | ✅ SATISFIED — no table/data changes |
+| Frontend must not be changed | ✅ SATISFIED — no FE files modified |
+| DB migration must not be added | ✅ SATISFIED — no migration |
+| Execution command behavior must not change | ✅ SATISFIED — no operation_service changes |
+
+### State Transition Map
+No business state transitions changed. Route disablement returns early before any state machine logic is reached.
+
+### Test Matrix
+| Test ID | Scenario | Suite | Input | Action | Expected | Assertion | Guard Condition |
+|---|---|---|---|---|---|---|---|
+| HM3-037-T1 | Disabled claim POST returns 410 | `test_claim_api_deprecation_lock.py` | POST /claim | call endpoint | 410 + `CLAIM_API_DISABLED` + headers | `status_code==410`, `json.detail==CLAIM_API_DISABLED` | route disabled |
+| HM3-037-T2 | Disabled release POST returns 410 | `test_claim_api_deprecation_lock.py` | POST /release | call endpoint | 410 + `CLAIM_API_DISABLED` + headers | `status_code==410` | route disabled |
+| HM3-037-T3 | Disabled claim status GET returns 410 | `test_claim_api_deprecation_lock.py` | GET /claim-status | call endpoint | 410 + `CLAIM_API_DISABLED` + headers | `status_code==410` | route disabled |
+| HM3-037-T4 | Service-level claim tests unchanged | `test_claim_single_active_per_operator.py` | claim service direct | service calls | pass (no HTTP route needed) | `6 passed` | service untouched |
+| HM3-037-T5 | Service-level release tests unchanged | `test_release_claim_active_states.py` | release service direct | service calls | pass | `14 passed` | service untouched |
+| HM3-037-T6 | Execution/queue/reopen regression | all exec+queue+reopen suites | 6-suite batch | run subset | 44 passed | `H12B_EXEC_QUEUE_REOPEN_EXIT:0` | no command drift |
+| HM3-037-T7 | Frontend lint | frontend source | no FE changes | `npm run lint` | 0 errors | `H12B_FRONTEND_LINT_EXIT:0` | no FE change |
+| HM3-037-T8 | Frontend build | frontend source | no FE changes | `npm run build` | 0 errors | `H12B_FRONTEND_BUILD_EXIT:0` | no FE change |
+| HM3-037-T9 | Frontend route smoke | frontend routes | no FE changes | `check:routes` | 24 PASS, 77/78 covered | `H12B_FRONTEND_ROUTE_SMOKE_EXIT:0` | no FE change |
+| HM3-037-T10 | Full backend suite | all tests | merged changes | `pytest -q` | 391 passed, 3 skipped | `H12B_FULL_BACKEND_EXIT:0` | no system drift |
+
+### Final Verification Result
+- Claim API suite (`test_claim_api_deprecation_lock.py` + service suites): `25 passed`, `H12B_CLAIM_API_EXIT:0`
+- Execution/queue/reopen regression: `44 passed`, `H12B_EXEC_QUEUE_REOPEN_EXIT:0`
+- Frontend lint: `H12B_FRONTEND_LINT_EXIT:0`
+- Frontend build: `H12B_FRONTEND_BUILD_EXIT:0` (3408 modules)
+- Frontend route smoke: `H12B_FRONTEND_ROUTE_SMOKE_EXIT:0` (24 PASS, 77/78 covered)
+- Full backend suite: `391 passed, 3 skipped`, `H12B_FULL_BACKEND_EXIT:0`
+
+### Scope Guard Confirmation
+- No claim route definition removed.
+- No claim service function removed.
+- No `OperationClaim` or `OperationClaimAuditLog` removed.
+- No DB migration.
+- No queue payload change.
+- No StationSession enforcement change.
+- No frontend change.
+- No reopen/close behavior change.
+
+### Event Naming Status
+NO NEW EVENTS — runtime disablement requires no new domain events. `CLAIM_API_DISABLED` is an HTTP error code only (canonical registry entry), not a domain event.
+
+### Verdict
+ALLOW_IMPLEMENTATION_COMPLETE
+`P0_C_08H12B_COMPLETE_VERIFICATION_CLEAN`
+
+---
+
+## HM3-036 — P0-C-08H12 Claim API Runtime Disablement Contract
+
+## Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Contract-Only Review
+- Hard Mode MOM: v3
+- Reason: Task touches deprecated claim APIs, execution ownership compatibility, audit/event history, tenant/scope/auth boundary, and staged removal of a legacy operational truth path — all v3 trigger zones.
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| `station-session-ownership-contract.md` | StationSession is target ownership truth; claim is compatibility debt | Claim APIs no longer required for execution ownership |
+| H9/F deprecation lock | Claim APIs have `Deprecation: true` headers; `compatibility-only` status | APIs already marked deprecated; disablement is the next step |
+| H11B complete | `_restore_claim_continuity_for_reopen` removed; `CLAIM_RESTORED_ON_REOPEN` no longer emitted | Reopen is claim-free |
+| H10 queue null-only | `claim: null` always returned in queue | No frontend reader of claim for affordance |
+| H6/H6-V1 frontend | No active callers of `stationApi.claim/release/getClaim` | Frontend execution flows are claim-independent |
+| H4 command guard | `ensure_operation_claim_owned_by_identity` removed from 7 command routes | Execution commands do not depend on claim APIs |
+| Canonical error registry (H12 review) | No `CLAIM_API_DISABLED` or similar disabled/retired API code | H12B must add canonical error code before disablement |
+
+### Event Map
+| Event | Current Producer | H12 Contract Decision | H12B Impact |
+|---|---|---|---|
+| `CLAIM_CREATED` | `claim_operation()` | No change | Stop producing (disabled route → no service call) |
+| `CLAIM_RELEASED` | `release_operation_claim()` | No change | Stop producing in H12B |
+| `CLAIM_EXPIRED` | `_expire_claim_if_needed()` (queue loop) | Remains active; queue still queries claims until H14 | Continues until H14 claim DB query removal |
+| `CLAIM_RESTORED_ON_REOPEN` | REMOVED in H11B | RETIRED | No change needed |
+| StationSession lifecycle events | `station_session_service` | No change | Unchanged |
+| Execution command events | `operation_service` | No change | Unchanged |
+| Disabled API attempt audit | Does NOT exist | NOT required | Do not invent; not a governance event |
+
+### Invariant Map
+| Invariant | Status |
+|---|---|
+| Claim API must not become ownership truth again | ✅ ENFORCED |
+| Claim API disablement must not affect StationSession command flow | ✅ SAFE (H4 decoupled) |
+| Claim API disablement must not affect queue ownership/read model | ✅ SAFE (H8/H10) |
+| Claim API disablement must not affect reopen/resume | ✅ SAFE (H11B/H4) |
+| No DB migration in H12/H12B | ✅ SATISFIED |
+| Backend error response must follow canonical format | ✅ REQUIRED — needs new canonical code |
+
+### Test Matrix
+| Test ID | Scenario | Suite | Input | Action | Expected | Assertion | Guard Condition |
+|---|---|---|---|---|---|---|---|
+| HM3-036-T1 | Compat smoke baseline | `test_claim_api_deprecation_lock.py` and related | pre-H12B state | run subset | 27 passed | `H12_COMPAT_SMOKE_EXIT:0` | no code changes |
+| HM3-036-T2 | Reopen smoke baseline | reopen + continuity files | pre-H12B state | run subset | 22 passed | `H12_REOPEN_SMOKE_EXIT:0` | no code changes |
+| HM3-036-T3 | Frontend lint | frontend lint | no claim API calls in frontend | lint | 0 errors | `H12_FRONTEND_LINT_EXIT:0` | no FE change |
+| HM3-036-T4 | Frontend build | frontend build | no claim type changes | build | 0 errors | `H12_FRONTEND_BUILD_EXIT:0` | no FE change |
+| HM3-036-T5 | Route smoke | frontend routes | 78 routes registered | check:routes | 24 PASS | `H12_FRONTEND_ROUTE_SMOKE_EXIT:0` | no FE change |
+| HM3-036-T6 (H12B) | Disabled claim POST returns 410 | `test_claim_api_deprecation_lock.py` | POST /claim | call endpoint | 410 + `CLAIM_API_DISABLED` + deprecation headers | status_code == 410, detail == CLAIM_API_DISABLED | H12B implementation |
+| HM3-036-T7 (H12B) | Disabled release POST returns 410 | `test_claim_api_deprecation_lock.py` | POST /release | call endpoint | 410 + `CLAIM_API_DISABLED` + deprecation headers | status_code == 410 | H12B implementation |
+| HM3-036-T8 (H12B) | Disabled claim status GET returns 410 | `test_claim_api_deprecation_lock.py` | GET /claim | call endpoint | 410 + `CLAIM_API_DISABLED` + deprecation headers | status_code == 410 | H12B implementation |
+
+### Final Verification Result (H12 Contract Baseline)
+- Compat smoke: `27 passed`, `H12_COMPAT_SMOKE_EXIT:0`
+- Reopen smoke: `22 passed`, `H12_REOPEN_SMOKE_EXIT:0`
+- Frontend lint: `H12_FRONTEND_LINT_EXIT:0`
+- Frontend build: `H12_FRONTEND_BUILD_EXIT:0` (3408 modules)
+- Frontend route smoke: `H12_FRONTEND_ROUTE_SMOKE_EXIT:0` (24 PASS, 77/78 covered)
+
+### Event Naming Status
+NEW CANONICAL CODE REQUIRED: `CLAIM_API_DISABLED` (HTTP 410) — not yet in registry; must be added by H12B.
+
+### Verdict
+CONTRACT_APPROVED — H12 contract approved. H12B may proceed after `CLAIM_API_DISABLED` canonical error code is registered.
+`READY_FOR_P0_C_08H12B_WITH_CANONICAL_ERROR_ADDITION`
+
+---
+
+## HM3-035 — P0-C-08H11B Reopen Claim Compatibility Retirement Implementation
+
+## Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Autonomous Implementation
+- Hard Mode MOM: v3
+- Reason: Task touches reopen execution behavior, StationSession ownership continuity, claim compatibility retirement, execution audit/event history, and command/resume invariants — all v3 trigger zones.
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| `station-session-command-guard-enforcement-contract.md` | Resume is in the H4 enforced subset; guarded by `ensure_open_station_session_for_command` | Claim restoration is not needed for resume continuity; removal is safe |
+| `station-session-ownership-contract.md` | StationSession is target ownership truth; claim is compatibility debt | Reopen must not depend on claim for ownership continuity |
+| `p0-c-08h11-reopen-claim-compatibility-retirement-contract.md` | H11 approved retirement; risk LOW; 3 assertion updates | H11B scope confirmed; boundary defined |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| `reopen_operation` success | `operation_reopened` | domain_event | CANONICAL | operation_id, reason, actor, tenant | projection to PAUSED | state-matrix v4 |
+| `CLAIM_RESTORED_ON_REOPEN` | REMOVED | N/A | RETIRED | N/A | No longer produced | H11B |
+| `resume_execution` success | `execution_resumed` | domain_event | CANONICAL | operation_id, actor, tenant | projection to IN_PROGRESS | state-matrix v4 |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---:|---|---|
+| Reopen must not create/restore claim rows | claim_retirement | service (helper removed) | no | yes | H11 contract |
+| Resume after reopen requires StationSession | ownership | service guard (unchanged) | no | yes | 08C enforcement contract |
+| Claim APIs remain active/deprecated | compatibility | route headers (unchanged) | no | yes | H9/F lock |
+| Historical claim audit rows retained | audit_retention | no code change (table unchanged) | no | no | H13 deferred |
+| No DB migration | migration_boundary | implementation scope guard | no | no | H11 contract |
+
+### State Transition Map
+| Entity | Current State | Command | Allowed? | Event | Next Projection State | Source |
+|---|---|---|---:|---|---|---|
+| Operation | `CLOSED + COMPLETED` | `reopen_operation` | yes | `operation_reopened` | `OPEN + PAUSED` | REOPEN-001 |
+| OperationClaim | any | `reopen_operation` | NOT TOUCHED | none | unchanged | H11B |
+| Operation | `OPEN + PAUSED` | `resume_execution` with OPEN StationSession | yes | `execution_resumed` | `IN_PROGRESS` | RESUME-001 + H4 guard |
+| Operation | `OPEN + PAUSED` | `resume_execution` without StationSession | no | none | unchanged | H4 guard |
+
+### Test Matrix
+| Test ID | Scenario | Type | Given | When | Then | Claim Assertion | Session Assertion |
+|---|---|---|---|---|---|---|---|
+| HM3-035-T1 | reopen does not create claim | claim_retirement | closed op with released claim | reopen | no new claim row | `active_claim_after_reopen is None` | resume succeeds with StationSession |
+| HM3-035-T2 | reopen with active claim — no TTL extension | compatibility | reopen with pre-existing claim | reopen | existing claim untouched | count unchanged | reopen succeeds |
+| HM3-035-T3 | reopen when owner has other claim — no restoration | claim_retirement | op_reopen released; owner has other claim | reopen | no new claim | `active_claims_for_reopened == []` | reopen succeeds |
+| HM3-035-T4 | claim hardening regression | regression | 13 hardening tests | run subset | all pass | teardown only | all pass |
+| HM3-035-T5 | full backend regression | regression | 391 tests | `pytest --tb=no -q` | 391 passed, 3 skipped | n/a | n/a |
+
+### Final Verification Result
+- Reopen + continuity suite: `26 passed`, `H11B_REOPEN_EXIT:0`
+- Compat suite: `27 passed`, `H11B_COMPAT_EXIT:0`
+- Full backend suite: `391 passed, 3 skipped`, `H11B_FULLSUITE_EXIT:0`
+- Frontend lint: `H11B_FRONTEND_LINT_EXIT:0`
+- Frontend build: `H11B_FRONTEND_BUILD_EXIT:0`
+- Frontend route smoke: `H11B_FRONTEND_ROUTE_SMOKE_EXIT:0` (24 PASS, 0 FAIL)
+
+### Event Naming Status
+CANONICAL (retirement of CLAIM_RESTORED_ON_REOPEN)
+
+### Verdict
+ALLOW_IMPLEMENTATION — H11B implementation approved and complete.
+`P0_C_08H11B_COMPLETE_VERIFICATION_CLEAN`
+
+---
+
+## HM3-034 — P0-C-08H11 Reopen Claim Compatibility Retirement Contract
+
+## Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Contract-Only Review
+- Hard Mode MOM: v3
+- Reason: Task touches reopen execution behavior, StationSession ownership continuity, claim compatibility boundary, execution audit/event history, and claim retirement sequencing — all v3 trigger zones.
+
+### Design Evidence Extract
+- StationSession is target ownership truth; resume is guarded by StationSession (H4).
+- Claim is deprecated compatibility-only; frontend no longer reads claim (H8).
+- Queue claim payload is null-only; claim never populated (H10).
+- Reopen claim restoration (`_restore_claim_continuity_for_reopen`) is legacy compatibility.
+- Backend remains source of execution state transitions.
+- H11 is contract-only; no runtime behavior change (H11B follows with implementation).
+- Audit retention remains unresolved (H13 decision).
+
+### Event Map
+
+| Event Type | Current Producer | H11 Contract Decision | H11B Runtime Change | Notes |
+|---|---|---|---|---|
+| `CLAIM_RESTORED_ON_REOPEN` | `_restore_claim_continuity_for_reopen` | STOP producing | Remove from H11B | Historical records remain until H13 |
+| `CLAIM_CREATED` | `claim_operation` | No change | No change | Claim APIs remain active until H12 |
+| `CLAIM_RELEASED` | `release_operation_claim` | No change | No change | Claim APIs remain active until H12 |
+| `OPERATION_REOPENED` | `reopen_operation` | No change | No change | Core reopen event unchanged |
+
+### Invariant Map
+
+| Invariant | Status | Notes |
+|---|---|---|
+| Reopen must not reintroduce claim as ownership truth | ✅ ENFORCED | Queue is null-only; ownership is StationSession-only |
+| Reopen must not create/restore claim rows for command readiness | ✅ ENFORCED (post-H11B) | Resume depends on StationSession, not claim |
+| Resume after reopen must rely on StationSession guard | ✅ ENFORCED | `ensure_open_station_session_for_command` guards resume |
+| Queue must remain claim null-only | ✅ ENFORCED | H10 changed; H11B doesn't affect queue |
+| Claim APIs remain deprecated/active until H12 | ✅ ENFORCED | Deprecation headers present; no removal in H11B |
+| Claim audit history is not deleted | ✅ ENFORCED | H11B stops production; retention decision in H13 |
+| No DB migration in H11/H11B | ✅ SATISFIED | H11 contract only; H11B removes code, no schema change |
+
+### Test Matrix Results
+
+| Test Suite | Result | Status | Notes |
+|---|---|---|---|
+| Reopen smoke (26 tests) | PASS — EXIT:0 | Baseline ✅ | 4 reopen-session + 4 claim-continuity + 13 hardening + 4 foundation |
+| Compat smoke (27 tests) | PASS — EXIT:0 | Baseline ✅ | 8 guard + 8 deprecation + 5 queue + 6 migration |
+| Frontend lint | PASS — EXIT:0 | Baseline ✅ | eslint src/ |
+| Frontend build | PASS — EXIT:0 | Baseline ✅ | vite, 3408 modules |
+| Frontend route smoke | PASS — EXIT:0 | Baseline ✅ | 78 routes, 77/78 covered, 24 PASS |
+
+### Verdict
+ALLOW_CONTRACT_REVIEW — H11 contract complete; H11B ready for implementation.
+`READY_FOR_P0_C_08H11B_REOPEN_CLAIM_COMPATIBILITY_RETIREMENT_IMPLEMENTATION` — 10 review tasks complete; scope clear; risk LOW.
+
+---
+
+## HM3-033 — P0-C-08H10 Backend Queue Claim Payload Null-Only Implementation
+
+## Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Autonomous Implementation
+- Hard Mode MOM: v3
+- Reason: Task touches backend station queue read model projection, ownership/claim payload boundary, frontend consumer type contract, and backend test alignment — all v3 trigger zones.
+
+### Design Evidence Extract
+- H9 contract approved null-only payload for H10.
+- H8 proved no frontend claim reads — frontend tolerates `claim: null`.
+- `_to_claim_state()` no longer called in queue loop.
+- `claim: None` is the only value produced by `get_station_queue`.
+- `ownership_migration_status` updated to `"TARGET_SESSION_OWNER"` (compat string retired).
+- No DB migration; no claim API/service/table changes.
+
+### Event Map
+
+| Area | H10 Change? | Notes |
+|---|---|---|
+| Claim audit events | No | Claim service / table unchanged |
+| Queue ownership read model | No | Ownership block unchanged |
+| Queue claim read model | YES — now null-only | `claim: None` replaces populated dict |
+| `canExecute` / command auth | No | H6-V1 — never reads claim |
+
+### Invariant Map
+
+| Invariant | Status | Notes |
+|---|---|---|
+| Queue ownership must be StationSession-derived | ✅ ENFORCED | Ownership block unchanged |
+| Claim fields must not drive command authorization | ✅ ENFORCED | No claim reads |
+| Null-only claim must not affect command authorization | ✅ VERIFIED | No code path reads claim |
+| Frontend tolerates claim: null | ✅ VERIFIED | Type updated to nullable; lint + build + routes passed |
+| Backend claim APIs remain active | ✅ RETAINED | Deprecation headers unchanged |
+| No DB migration | ✅ SATISFIED | Schema/table unchanged; projection only |
+
+### Test Matrix Results
+
+| Test | Result | Notes |
+|---|---|---|
+| `test_station_queue_claim_payload_is_null_only_compatibility` | PASS — EXIT:0 | Asserts `claim is None`; 10 tests passed |
+| `test_station_queue_session_aware_migration` | PASS — EXIT:0 | Asserts `"TARGET_SESSION_OWNER"` |
+| Route guard + deprecation + reopen suite | PASS — EXIT:0 | 22 tests passed (smoke batch) |
+| Reopen resumability + hardening | PASS — EXIT:0 | 17 tests passed; 1 test assertion updated for H10 null-only queue claim |
+| Frontend lint | PASS — EXIT:0 | `eslint src/` |
+| Frontend build | PASS — EXIT:0 | vite, 3408 modules, 7.28s |
+| Frontend route smoke | PASS — EXIT:0 | 24 PASS, 77/78 covered |
+
+**Backend DB recovery note:** Docker/PostgreSQL was brought up post-verification. All 49 backend tests (queue 10 + smoke 22 + reopen 17) passed cleanly on recovery run. Test assertion in `test_reopen_resumability_claim_continuity.py::test_reopen_restores_last_claim_owner_path_and_resume_is_reachable` was updated to remove queue claim payload read (now null-only) — assertion now correct per H10 contract.
+
+### Verdict
+ALLOW_IMPLEMENTATION — H10 implementation approved and complete with full verification.
+`P0_C_08H10_COMPLETE_VERIFICATION_CLEAN` — all frontend and backend tests passing.
+
+---
+
 ## HM3-032 — P0-C-08H9 Backend Queue Claim Payload Null-Only Contract
 
 ## Routing
