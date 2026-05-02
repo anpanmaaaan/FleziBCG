@@ -146,6 +146,7 @@ jobs:
               tests/test_refresh_token_foundation.py \
               tests/test_refresh_token_rotation.py \
               tests/test_plant_hierarchy_orm_foundation.py \
+              tests/test_tenant_lifecycle_anchor.py \
               tests/test_pr_gate_workflow_config.py || python -m pytest -q
           elif [ -d tests ]; then
             python -m pytest -q
