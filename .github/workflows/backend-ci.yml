@@ -224,7 +224,7 @@ jobs:
           echo "## Backend CI — Foundation + Alembic Gate" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Postgres: postgres:16 (disposable CI container)" >> "$GITHUB_STEP_SUMMARY"
-          echo "Alembic head: linear chain to 0007" >> "$GITHUB_STEP_SUMMARY"
+          echo "Alembic head: linear chain to 0010" >> "$GITHUB_STEP_SUMMARY"
           echo "P0-A foundation test suite: alembic + auth + tenant (02A anchor + 02B/02C enforcement + 02D seed bootstrap) + security + CORS" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Excluded (pre-existing, unrelated to P0-A):" >> "$GITHUB_STEP_SUMMARY"

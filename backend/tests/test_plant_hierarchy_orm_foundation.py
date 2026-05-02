@@ -395,7 +395,7 @@ def test_plant_hierarchy_migration_down_revision_is_0004():
 
 def _get_migration_ast_calls() -> list[tuple[str, str, list]]:
     """Parse 0005 migration and return (func_name, scope, args) for all op calls."""
-    source = MIGRATION_PATH.read_text()
+    source = MIGRATION_PATH.read_text(encoding="utf-8")
     tree = ast.parse(source)
 
     # Find upgrade() and downgrade() function defs
