@@ -191,3 +191,50 @@ def authenticate_user_db(
         role_code=role_code,
         session_id=None,
     )
+
+
+def get_identity_by_user_id(
+    db: Session,
+    user_id: str,
+    tenant_id: str,
+) -> AuthIdentity | None:
+    """Look up a user by user_id and tenant_id, returning their AuthIdentity.
+
+    Used by the /auth/refresh endpoint to reconstruct identity from a persisted
+    refresh token record — the identity is derived from the DB, NOT from client
+    input, ensuring the JWT cannot be inflated by a malicious refresh request.
+
+    INVARIANT: tenant_id is always authoritative from the persisted token record.
+    """
+    from app.models.rbac import Role, UserRole
+    from app.models.user import User
+
+    user = db.scalar(
+        select(User).where(
+            User.user_id == user_id,
+            User.tenant_id == tenant_id,
+            User.is_active.is_(True),
+        )
+    )
+    if user is None:
+        return None
+
+    user_role = db.scalar(
+        select(UserRole)
+        .join(Role, Role.id == UserRole.role_id)
+        .where(
+            UserRole.user_id == user_id,
+            UserRole.tenant_id == tenant_id,
+            UserRole.is_active.is_(True),
+        )
+    )
+    role_code = user_role.role.code if user_role else None
+
+    return AuthIdentity(
+        user_id=user.user_id,
+        username=user.username,
+        email=user.email,
+        tenant_id=tenant_id,
+        role_code=role_code,
+        session_id=None,
+    )
