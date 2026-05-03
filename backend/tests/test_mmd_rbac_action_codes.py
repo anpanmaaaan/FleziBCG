@@ -217,29 +217,41 @@ def test_bom_read_endpoints_do_not_require_manage_action():
         )
 
 
-def test_no_bom_write_routes_exist_yet():
-    """Scope guard: BOM write endpoints must not be implemented before MMD-BE-12."""
-    bom_write_markers = [
-        '@router.post("/{product_id}/boms"',
-        '@router.patch("/{product_id}/boms/',
-        '@router.post("/{product_id}/boms/',
-        '@router.delete("/{product_id}/boms/',
+def test_bom_write_routes_implemented_by_mmd_be_12():
+    """MMD-BE-12: BOM write endpoints must be present and use admin.master_data.bom.manage."""
+    required_paths = [
+        "/{product_id}/boms",
+        "/{product_id}/boms/{bom_id}",
+        "/{product_id}/boms/{bom_id}/release",
+        "/{product_id}/boms/{bom_id}/retire",
+        "/{product_id}/boms/{bom_id}/items",
+        "/{product_id}/boms/{bom_id}/items/{bom_item_id}",
     ]
-    # Only POST /boms/... for release/retire/items counts — exclude GET
-    for marker in bom_write_markers:
-        assert marker not in PRODUCTS_SRC, (
-            f"Unexpected BOM write route found before MMD-BE-12: {marker}"
-        )
+    for path in required_paths:
+        assert path in PRODUCTS_SRC, f"Expected BOM write route path missing: {path}"
+    assert PRODUCTS_SRC.count("@router.post") >= 4, "Expected at least 4 POST routes"
+    assert PRODUCTS_SRC.count("@router.patch") >= 3, "Expected at least 3 PATCH routes"
+    assert PRODUCTS_SRC.count("@router.delete") >= 1, "Expected at least 1 DELETE route"
 
 
-def test_no_bom_item_write_routes_exist_yet():
-    """Scope guard: BOM item mutation endpoints must not be implemented before MMD-BE-12."""
-    bom_item_write_markers = [
-        '@router.post("/{product_id}/boms/{bom_id}/items"',
-        '@router.patch("/{product_id}/boms/{bom_id}/items/',
-        '@router.delete("/{product_id}/boms/{bom_id}/items/',
+def test_bom_write_routes_use_bom_manage_action_code():
+    """All BOM write route blocks must reference admin.master_data.bom.manage."""
+    assert PRODUCTS_SRC.count('admin.master_data.bom.manage') >= 7, (
+        "Expected at least 7 occurrences of admin.master_data.bom.manage (one per write endpoint)"
+    )
+
+
+def test_no_bom_forbidden_endpoints_exist():
+    """Boundary guard: delete bom, reactivate, clone, bind product version must not exist."""
+    forbidden_markers = [
+        '@router.delete("/{product_id}/boms/{bom_id}"',
+        '@router.post("/{product_id}/boms/{bom_id}/reactivate"',
+        '@router.post("/{product_id}/boms/{bom_id}/clone"',
+        '@router.post("/{product_id}/boms/{bom_id}/bind-product-version"',
+        '@router.post("/{product_id}/boms/{bom_id}/bulk-import"',
+        '@router.post("/{product_id}/boms/{bom_id}/replace-items"',
+        '@router.post("/{product_id}/boms/{bom_id}/backflush"',
+        '@router.post("/{product_id}/boms/{bom_id}/erp-post"',
     ]
-    for marker in bom_item_write_markers:
-        assert marker not in PRODUCTS_SRC, (
-            f"Unexpected BOM item write route found before MMD-BE-12: {marker}"
-        )
+    for marker in forbidden_markers:
+        assert marker not in PRODUCTS_SRC, f"Forbidden BOM route found: {marker}"
