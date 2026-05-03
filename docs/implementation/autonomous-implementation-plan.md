@@ -309,6 +309,37 @@ Contract artifact:
 Contract verdict:
 - `READY_FOR_P0_C_08I_B_WITH_MIGRATION_HISTORY_EXCEPTIONS`
 
+### P0-C-08I-C StationSession Ownership Wording / Migration Label Cleanup Contract
+
+Status: Complete (contract-only).
+
+Completed scope:
+- Produced strict Hard Mode MOM v3 pre-contract evidence set (design evidence, event map, invariant map, state transition map, test matrix, verdict-before-recommendation).
+- Completed ownership/session-control reference inventory and migration-label classification from generated sweep artifacts:
+  - `h08ic_ownership_reference_sweep.txt` (`299` matches)
+  - `h08ic_target_file_ownership_map.txt` (`109` matches, `0` missing targets)
+  - `h08ic_backend_tests_ownership_refs.txt` (`28` matches)
+- Documented required path mismatch handling:
+  - `docs/design/00_platform/system-invariants.md` missing; used closest canonical source `docs/design/00_platform/system-overview-and-target-state.md`
+  - `docs/design/00_platform/canonical-api-contract.md` missing; used `docs/design/05_application/canonical-api-contract.md`
+- Delivered option analysis (A-E) and recommendation boundary:
+  - Keep runtime `ownership` projection now
+  - Remove transitional `ownership_migration_status` / `TARGET_SESSION_OWNER` in H08I-D
+  - Defer any breaking API rename (`ownership` -> `session_control`) to optional H08I-E contract
+
+Verification checks run (review-safe):
+- Backend import smoke: `H08IC_BACKEND_IMPORT_OK True`, `H08IC_BACKEND_IMPORT_EXIT:0`
+- Frontend lint: `H08IC_FRONTEND_LINT_EXIT:0`
+- Frontend build: `H08IC_FRONTEND_BUILD_EXIT:0`
+- Frontend route smoke: `H08IC_FRONTEND_ROUTE_SMOKE_EXIT:0` (`PASS:24`, `FAIL:0`, `77/78 covered`)
+- Optional backend pytest batch: deferred (contract-only slice; prior DB lock contention history)
+
+Contract artifact:
+- `docs/implementation/p0-c-08i-c-station-session-ownership-wording-migration-label-cleanup-contract.md`
+
+Contract verdict:
+- `READY_FOR_P0_C_08I_D_STATIONSESSION_CONTROL_WORDING_CLEANUP`
+
 ## Current Slice Ledger
 
 ### Completed Slices
