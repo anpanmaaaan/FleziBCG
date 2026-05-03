@@ -230,6 +230,43 @@ Implementation artifact
 Verdict
 - `READY_FOR_P0_C_08I_B_WITH_MIGRATION_HISTORY_EXCEPTIONS`
 
+## Addendum — P0-C-08I-C StationSession Ownership Wording / Migration Label Cleanup Contract
+
+Routing
+- Selected brain: MOM Brain
+- Selected mode: SINGLE-SLICE / CONTRACT-ONLY
+- Hard Mode MOM: v3 ON
+- Reason: ownership/session-control wording and migration-label cleanup boundary touches execution projection contract, UI wording safety, and governed compatibility constraints.
+
+Summary
+- Contract-only slice completed with no runtime code behavior changes.
+- Hard Mode v3 evidence produced in contract artifact, including design evidence, maps, and verdict-before-recommendation.
+- Transitional labels identified as removal candidates for H08I-D:
+	- `ownership_migration_status`
+	- `TARGET_SESSION_OWNER`
+- Runtime queue projection `ownership` retained by contract to avoid breaking frontend/test compatibility.
+
+Verification results (review-safe checks)
+- Backend import smoke:
+	- `H08IC_BACKEND_IMPORT_OK True`
+	- `H08IC_BACKEND_IMPORT_EXIT:0`
+- Frontend lint:
+	- `H08IC_FRONTEND_LINT_EXIT:0`
+- Frontend build:
+	- `H08IC_FRONTEND_BUILD_EXIT:0`
+- Frontend route smoke:
+	- `H08IC_FRONTEND_ROUTE_SMOKE_EXIT:0`
+	- `PASS: 24`, `FAIL: 0`, `77/78 covered`, `1 excluded redirect-only`
+
+Operational note
+- Direct `npm` invocations were blocked by PowerShell execution policy (`npm.ps1`); checks were executed via `npm.cmd` to obtain valid deterministic exits.
+
+Implementation artifact
+- `docs/implementation/p0-c-08i-c-station-session-ownership-wording-migration-label-cleanup-contract.md`
+
+Verdict
+- `READY_FOR_P0_C_08I_D_STATIONSESSION_CONTROL_WORDING_CLEANUP`
+
 ## Addendum — P0-C-08H15 Claim Service / Schema / Model Removal Contract
 
 Routing

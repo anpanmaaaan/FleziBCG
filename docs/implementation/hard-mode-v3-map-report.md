@@ -733,6 +733,64 @@ ALLOW_CONTRACT_REVIEW
 ### Final Verdict
 READY_FOR_P0_C_08I_B_WITH_MIGRATION_HISTORY_EXCEPTIONS
 
+## HM3-049 — P0-C-08I-C StationSession Ownership Wording / Migration Label Cleanup Contract
+
+## Routing
+- Selected brain: MOM Brain
+- Selected mode: Strict / Contract-Only Review
+- Hard Mode MOM: v3
+- Reason: Task touches queue ownership/session-control projection contract, migration-label boundary, UI wording semantics, and API compatibility constraints.
+
+### Design Evidence Extract
+| Fact | Evidence | Confirmed |
+|---|---|---|
+| StationSession remains ownership/control truth | execution ownership + command-guard contracts | ✅ |
+| Backend is source of truth; frontend intent-only | coding rules + system overview canonical note | ✅ |
+| Queue payload currently exposes `ownership` block as active runtime contract | backend queue service + station schema + frontend station API type | ✅ |
+| `ownership_migration_status` and `TARGET_SESSION_OWNER` are transitional labels | queue service/schema and queue migration tests | ✅ |
+| No required canonical files at requested `00_platform` paths | file search results; canonical equivalents in `05_application` and `system-overview-and-target-state` | ✅ |
+| Contract-only boundary requested | slice scope and artifact type | ✅ |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|
+| H08I-C contract review | none | none_required | n/a | none | contract-only |
+| Future H08I-D wording cleanup | none expected (wording-only) | none_required | n/a | label-only projection/docs impact | H08I-C contract |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---:|---|---|
+| Backend remains execution/authorization truth | governance | backend service/routes | no | yes | coding rules |
+| Frontend must not derive ownership truth | governance | FE boundary + backend payload | no | yes | system overview |
+| StationSession command guards remain authoritative | execution_guard | operation service | no | yes | command-guard contract |
+| Queue ownership projection remains until compatible replacement exists | projection_contract | backend schema + FE type | no | yes | queue service/schema/API type |
+| Transitional migration labels can be removed with synchronized contracts/tests | migration_boundary | schema/type/test coordination | no | yes | H08I-C evidence |
+
+### State Transition Map
+- No state transition changes in H08I-C. Contract-only analysis; command/event/state-machine behavior unchanged.
+
+### Test Matrix
+| ID | Check | Result |
+|---|---|---|
+| HM3-049-T1 | backend import smoke | `H08IC_BACKEND_IMPORT_EXIT:0` |
+| HM3-049-T2 | frontend lint | `H08IC_FRONTEND_LINT_EXIT:0` |
+| HM3-049-T3 | frontend build | `H08IC_FRONTEND_BUILD_EXIT:0` |
+| HM3-049-T4 | frontend route smoke | `H08IC_FRONTEND_ROUTE_SMOKE_EXIT:0` |
+| HM3-049-T5 | ownership/reference sweeps | `299` global, `109` target map, `28` backend test refs |
+
+### Verification Notes
+- PowerShell execution policy blocked `npm.ps1`; frontend checks were executed using `npm.cmd` to capture real exits.
+- Optional backend pytest batch intentionally deferred due known environment lock-contention history and contract-only scope.
+
+### Verdict Before Recommendation
+ALLOW_CONTRACT_REVIEW
+
+### Implementation Artifact
+- `docs/implementation/p0-c-08i-c-station-session-ownership-wording-migration-label-cleanup-contract.md`
+
+### Final Verdict
+READY_FOR_P0_C_08I_D_STATIONSESSION_CONTROL_WORDING_CLEANUP
+
 ## HM3-041 — P0-C-08H15 Claim Service / Schema / Model Removal Contract
 
 ## Routing
