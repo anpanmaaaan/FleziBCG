@@ -88,17 +88,18 @@ def test_alembic_baseline_is_root_revision():
 def test_alembic_head_is_baseline():
     """HEAD must resolve to the latest revision in the chain.
 
-    Updated: 0010 (reason_codes) is now head;
+    Updated: 0011 (governed_resource_identity) is now head;
     chain is 0001 -> 0002 (add_refresh_tokens) -> 0003 (routing_operation_extended_fields)
     -> 0004 (add_user_lifecycle_status) -> 0005 (add_plant_hierarchy)
     -> 0006 (add_tenant_lifecycle_anchor) -> 0007 (product_versions)
-    -> 0008 (boms) -> 0009 (drop_station_claims) -> 0010 (reason_codes).
+    -> 0008 (boms) -> 0009 (drop_station_claims) -> 0010 (reason_codes)
+    -> 0011 (add_governed_resource_identity_to_approvals).
     This test validates the migration chain is linear and has a single head.
     """
     script_dir = _get_script_dir()
     heads = script_dir.get_heads()
     assert len(heads) == 1, f"Expected exactly one head, got: {heads}"
-    assert "0010" in heads, f"Expected 0010 as head, got: {heads}"
+    assert "0011" in heads, f"Expected 0011 as head, got: {heads}"
 
 
 def test_alembic_upgrade_head_live(db_engine):

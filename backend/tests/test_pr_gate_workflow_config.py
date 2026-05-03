@@ -31,3 +31,10 @@ def test_approval_security_event_tests_are_in_pr_gate() -> None:
     # If this assertion fails, re-add tests/test_approval_security_events.py to pr-gate.yml.
     text = _workflow_text()
     assert "test_approval_security_events.py" in text
+
+
+def test_approval_governed_resource_identity_tests_are_in_pr_gate() -> None:
+    # P0-A-13: governed resource identity schema test must stay in PR gate.
+    # If this assertion fails, re-add tests/test_approval_governed_resource_identity_schema.py to pr-gate.yml.
+    text = _workflow_text()
+    assert "test_approval_governed_resource_identity_schema.py" in text

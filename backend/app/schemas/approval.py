@@ -56,6 +56,13 @@ class ApprovalRequestResponse(BaseModel):
     requester_role_code: str | None
     subject_type: str | None
     subject_ref: str | None
+    # P0-A-13: Governed resource identity fields (optional, for future generic approval adoption)
+    governed_resource_type: str | None
+    governed_resource_id: str | None
+    governed_resource_display_ref: str | None
+    governed_resource_tenant_id: str | None
+    governed_resource_scope_ref: str | None
+    governed_action_type: str | None
     reason: str
     status: str
     created_at: datetime

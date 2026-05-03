@@ -39,6 +39,13 @@ class ApprovalRequest(Base):
     requester_role_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
     subject_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     subject_ref: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    # P0-A-13: Governed resource identity fields (optional, for future generic approval adoption)
+    governed_resource_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    governed_resource_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    governed_resource_display_ref: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    governed_resource_tenant_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    governed_resource_scope_ref: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    governed_action_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     reason: Mapped[str] = mapped_column(String(512), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="PENDING")
     created_at: Mapped[datetime] = mapped_column(
