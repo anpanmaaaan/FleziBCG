@@ -375,6 +375,62 @@ CANONICAL
 ### Verdict
 ALLOW_IMPLEMENTATION_COMPLETE
 
+---
+
+## Slice HM3-050
+Name: P0-C-08I-D StationSession Control Wording Cleanup Implementation
+
+### Design Evidence Extract
+| Doc | Evidence | Impact |
+|---|---|---|
+| docs/implementation/p0-c-08i-c-station-session-ownership-wording-migration-label-cleanup-contract.md | Transitional labels `ownership_migration_status` and `TARGET_SESSION_OWNER` are removable in H08I-D while preserving `ownership` projection | Remove transitional labels only; keep runtime contract |
+| docs/governance/CODING_RULES.md | Backend remains execution/authorization truth; frontend must not derive state truth | Wording-only UI cleanup must not change guard semantics |
+| docs/design/02_domain/execution/station-session-command-guard-enforcement-contract.md | Command guard enforcement is backend-owned invariant | No command behavior edits allowed |
+
+### Event Map
+| Command / Action | Required Event | Event Type | Event Name Status | Payload Minimum | Projection Impact | Source |
+|---|---|---|---|---|---|---|
+| H08I-D wording/label cleanup | none | none_required | N/A | n/a | remove transitional projection labels only | H08I-C contract |
+
+### Invariant Map
+| Invariant | Category | Enforcement Layer | DB Constraint Needed? | Test Required | Source |
+|---|---|---|---|---|---|
+| backend command guards unchanged | state_machine | service layer | no | yes | command-guard contract |
+| queue `ownership` object remains active contract | projection_consistency | service + schema + frontend type | no | yes | H08I-C contract |
+| frontend remains intent-only | authorization | FE/BE boundary | no | yes | coding rules |
+| no migration-history edits | migration_boundary | scope guard | no | yes | governance |
+
+### State Transition Map
+No business state transition changes. H08I-D is payload/wording cleanup only.
+
+### Test Matrix
+| Test ID | Scenario | Type | Given | When | Then | Event Assertion | Invariant Assertion |
+|---|---|---|---|---|---|---|---|
+| HM3-050-T1 | transitional labels removed from direct target files | contract | updated BE/FE/test files | run sweep | 0 matches | none | migration labels removed |
+| HM3-050-T2 | queue/session regression stability | regression | focused backend test set | run pytest | 23 passed | none | guard/projection behavior preserved |
+| HM3-050-T3 | frontend quality gates | regression | updated FE wording values | lint/build/routes | pass | none | FE compatibility preserved |
+
+### Final verification result
+- Backend import smoke: `H08ID_BACKEND_IMPORT_OK True`
+- Focused backend tests: `23 passed in 10.27s`
+- Frontend lint: pass
+- Frontend build: pass (`built in 8.27s`)
+- Frontend route smoke: `PASS:24`, `FAIL:0`, `77/78 covered`
+- Transitional-label sweep: `H08ID_TARGET_TRANSITIONAL_LABEL_MATCHES:0`
+- Legacy-wording sweep: `H08ID_LEGACY_WORDING_MATCHES:0`
+
+### Scope guard confirmation
+- No API route/command behavior changes.
+- No state-machine changes.
+- No migration history changes.
+- `ownership` compatibility field retained.
+
+### Event naming status
+none_required - no new events introduced.
+
+### Verdict
+ALLOW_IMPLEMENTATION_COMPLETE
+
 ## HM3-042 — P0-C-08H15B Claim Service / Schema Dead-Code Removal Implementation
 
 ## Routing

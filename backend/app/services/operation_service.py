@@ -755,7 +755,7 @@ def _derive_progress(operation_quantity: int, completed_qty: int) -> int:
 
 # Mirrors the guards in start_operation / report_quantity / pause_operation /
 # resume_operation / complete_operation / start_downtime / end_downtime.
-# Identity-scoped guards (session ownership, station-busy competition) are NOT
+# Identity-scoped guards (session control, station-busy competition) are NOT
 # encoded — the command handlers still enforce those at request time.
 # Canonical names per station-execution-command-event-contracts.md §3.
 _CLOSED_STATUSES = frozenset(

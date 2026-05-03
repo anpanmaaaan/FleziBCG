@@ -340,6 +340,33 @@ Contract artifact:
 Contract verdict:
 - `READY_FOR_P0_C_08I_D_STATIONSESSION_CONTROL_WORDING_CLEANUP`
 
+### P0-C-08I-D StationSession Control Wording Cleanup Implementation
+
+Status: Complete.
+
+Completed scope:
+- Removed transitional labels from active queue contract surfaces:
+  - `ownership_migration_status`
+  - `TARGET_SESSION_OWNER`
+- Updated backend/frontend active-source wording from ownership-migration framing to StationSession session-control framing.
+- Updated queue migration tests to remove transitional-label assertions.
+- Preserved runtime/API compatibility boundary:
+  - kept `ownership` projection object
+  - kept command guard/state-machine behavior unchanged
+
+Verification summary:
+- Backend import smoke: pass (`H08ID_BACKEND_IMPORT_OK True`)
+- Focused backend tests: `23 passed`
+- Frontend lint/build/route smoke: pass (`PASS 24`, `FAIL 0`)
+- Post-cleanup transitional-label sweep: `H08ID_TARGET_TRANSITIONAL_LABEL_MATCHES:0`
+- Post-cleanup legacy-wording sweep: `H08ID_LEGACY_WORDING_MATCHES:0`
+
+Implementation artifact:
+- `docs/implementation/p0-c-08i-d-stationsession-control-wording-cleanup-report.md`
+
+Implementation verdict:
+- `P0_C_08I_D_COMPLETE_VERIFICATION_CLEAN`
+
 ## Current Slice Ledger
 
 ### Completed Slices

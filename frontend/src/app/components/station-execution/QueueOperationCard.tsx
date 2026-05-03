@@ -17,7 +17,7 @@ interface QueueOperationCardProps {
 export function QueueOperationCard({ item, active, hasOwnedSessionInQueue, onSelect }: QueueOperationCardProps) {
   const { t } = useI18n();
 
-  // H8: Ownership-only
+  // Session-control-only.
   const lockedByOther = item.ownership?.owner_state === "other" && item.ownership?.has_open_session === true;
   const isMine = item.ownership?.owner_state === "mine" && item.ownership?.has_open_session === true;
   const isActionableByStatus = isBackendActionableQueueStatus(item.status);
@@ -29,8 +29,7 @@ export function QueueOperationCard({ item, active, hasOwnedSessionInQueue, onSel
       ? "border-amber-200 bg-amber-50"
       : "border-gray-200 bg-white";
 
-  // H8: Ownership-only
-  const ownershipHint =
+  const sessionControlHint =
     item.ownership?.owner_state === "mine" && item.ownership?.has_open_session
       ? t("station.ownership.ownedBadge")
       : item.ownership?.owner_state === "other" && item.ownership?.has_open_session
@@ -39,7 +38,7 @@ export function QueueOperationCard({ item, active, hasOwnedSessionInQueue, onSel
       ? t("station.queue.readyToAssign")
       : null;
 
-  const ownershipHintTone =
+  const sessionControlHintTone =
     item.ownership?.owner_state === "mine" && item.ownership?.has_open_session
       ? "text-blue-700"
       : item.ownership?.owner_state === "other" && item.ownership?.has_open_session
@@ -83,7 +82,7 @@ export function QueueOperationCard({ item, active, hasOwnedSessionInQueue, onSel
             {t("station.queue.blockedByDowntime")}
           </span>
         )}
-        {ownershipHint && <span className={`text-xs font-medium ${ownershipHintTone}`}>{ownershipHint}</span>}
+        {sessionControlHint && <span className={`text-xs font-medium ${sessionControlHintTone}`}>{sessionControlHint}</span>}
       </div>
     </button>
   );

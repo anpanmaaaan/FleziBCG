@@ -2,13 +2,11 @@ import { request } from "./httpClient";
 import type { OperationDetail, OperationExecutionStatus } from "./operationApi";
 
 /**
- * StationSession ownership context for queue item.
- * Target ownership truth (introduced in 08D, consumed in 08H2+).
- * Session-based ownership model.
+ * StationSession control context for queue item.
+ * Backend-projected session-control truth used by queue UI.
  */
 export interface SessionOwnershipSummary {
   target_owner_type: string;
-  ownership_migration_status: string;
   session_id: string | null;
   station_id: string | null;
   session_status: string | null;
@@ -26,7 +24,7 @@ export interface StationQueueItem {
   status: OperationExecutionStatus;
   planned_start: string | null;
   planned_end: string | null;
-  /** Target ownership truth (H2+): ownership block from StationSession context */
+  /** Session-control projection from StationSession context. */
   ownership: SessionOwnershipSummary;
   downtime_open: boolean;
 }

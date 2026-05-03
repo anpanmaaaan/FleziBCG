@@ -175,7 +175,6 @@ def get_station_queue(db: Session, identity: RequestIdentity) -> tuple[str, list
                 "planned_end": operation.planned_end,
                 "ownership": {
                     "target_owner_type": "station_session",
-                    "ownership_migration_status": "TARGET_SESSION_OWNER",
                     "session_id": (
                         active_station_session.session_id
                         if active_station_session is not None

@@ -275,22 +275,22 @@ export function StationExecution() {
   const selectedQueueItem = operation
     ? queueItems.find((item) => item.operation_id === operation.id) ?? null
     : null;
-  // H2+: Ownership-first logic
+  // Session-control-first logic.
   const ownershipState = selectedQueueItem?.ownership;
   const ownerState = ownershipState?.owner_state ?? "none";
   const hasOpenSession = ownershipState?.has_open_session ?? false;
   
-  // Detect if current user owns a session (H2+: ownership block primary)
+  // Detect if current user has an active station session in queue context.
   const ownedSessionOperationId =
     queueItems.find((item) => item.ownership?.owner_state === "mine" && item.ownership?.has_open_session)?.operation_id ?? null;
   const ownsAnotherSession =
     ownedSessionOperationId !== null && ownedSessionOperationId !== operation?.id;
 
   
-  // H6-V1: execution readiness is ownership/session-only.
+  // Execution readiness is session-control-only.
   // Resume and write commands require a valid open station session.
-  const canExecuteByOwnership = ownerState === "mine" && hasOpenSession;
-  const canExecute = canExecuteByOwnership;
+  const canExecuteBySessionControl = ownerState === "mine" && hasOpenSession;
+  const canExecute = canExecuteBySessionControl;
   
   const canReportProduction = canExecute && canDo("report_production");
   const canPauseExecution = canExecute && canDo("pause_execution");
@@ -300,7 +300,7 @@ export function StationExecution() {
   const canEndDowntimeAction = canExecute && canDo("end_downtime");
   const canCloseOperation = canDo("close_operation") && operation?.closure_status === "OPEN";
   const canReopenOperation = canDo("reopen_operation") && operation?.closure_status === "CLOSED";
-  // Mode B = operator is assigned to this operation (H2+: ownership-based), unless user explicitly
+  // Mode B = operator has active session control for this operation, unless user explicitly
   // navigates back to the full selection surface.
   const isExecutionMode = canExecute && !forceSelectionMode;
 
@@ -728,7 +728,7 @@ export function StationExecution() {
             </div>
           )}
 
-          {/* Operation owned by someone else (H2+: ownership-first display) */}
+          {/* Operation currently controlled by another operator session. */}
           {operation && ownerState === "other" && (
             <div className="mb-4 bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center gap-2 text-orange-800">
               <Lock className="w-4 h-4 shrink-0" />

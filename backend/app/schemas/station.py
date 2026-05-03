@@ -4,7 +4,6 @@ from pydantic import BaseModel
 
 class SessionOwnershipSummary(BaseModel):
     target_owner_type: str
-    ownership_migration_status: str
     session_id: str | None = None
     station_id: str | None = None
     session_status: str | None = None
