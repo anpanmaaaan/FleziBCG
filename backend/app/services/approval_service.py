@@ -16,6 +16,7 @@ from app.repositories.approval_repository import (
     get_request_by_id,
 )
 from app.schemas.approval import ApprovalCreateRequest, ApprovalDecideRequest
+from app.services.security_event_service import record_security_event
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +125,22 @@ def create_approval_request(
         detail=f"action_type={action_type}",
     )
 
+    record_security_event(
+        db,
+        tenant_id=tenant_id,
+        actor_user_id=requester_id,
+        event_type="APPROVAL.REQUESTED",
+        resource_type="APPROVAL_REQUEST",
+        resource_id=str(appr_req.id),
+        detail=(
+            f"action_type={action_type}"
+            f" requester_role={requester_role_code}"
+            f" subject_type={request_data.subject_type}"
+            f" subject_ref={request_data.subject_ref}"
+        ),
+        commit=False,
+    )
+
     db.commit()
     db.refresh(appr_req)
 
@@ -200,6 +217,21 @@ def decide_approval_request(
         role_code=decider_role_code,
         event_type="DECISION_MADE",
         detail=f"decision={decision_value} session={impersonation_session_id}",
+    )
+
+    record_security_event(
+        db,
+        tenant_id=tenant_id,
+        actor_user_id=decider_user_id,
+        event_type=f"APPROVAL.{decision_value}",
+        resource_type="APPROVAL_REQUEST",
+        resource_id=str(appr_req.id),
+        detail=(
+            f"action_type={appr_req.action_type}"
+            f" decider_role={decider_role_code}"
+            f" impersonation_session={impersonation_session_id}"
+        ),
+        commit=False,
     )
 
     db.commit()

@@ -12,6 +12,7 @@ from app.models.approval import (
     ApprovalRule,
 )
 from app.models.impersonation import ImpersonationSession
+from app.models.security_event import SecurityEventLog
 from app.schemas.approval import (
     ApprovalCreateRequest,
     ApprovalDecideRequest,
@@ -31,6 +32,7 @@ def _make_session() -> Session:
     ApprovalRequest.__table__.create(bind=engine)
     ApprovalDecision.__table__.create(bind=engine)
     ApprovalAuditLog.__table__.create(bind=engine)
+    SecurityEventLog.__table__.create(bind=engine)
     session_local = sessionmaker(bind=engine, autoflush=False, autocommit=False)
     return session_local()
 
