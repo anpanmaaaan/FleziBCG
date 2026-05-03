@@ -63,6 +63,8 @@ _EXPECTED_ADMIN_MMD_CODES = frozenset({
     "admin.master_data.product.manage",
     "admin.master_data.routing.manage",
     "admin.master_data.resource_requirement.manage",
+    # Added by MMD-BE-08A (2026-05-03): product version write governance
+    "admin.master_data.product_version.manage",
 })
 
 _EXPECTED_ADMIN_CONFIG_CODES = frozenset({
