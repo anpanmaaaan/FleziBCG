@@ -1,5 +1,9 @@
 import { request } from "./httpClient";
 
+export interface ProductVersionProductCapabilities {
+  can_create: boolean;
+}
+
 export interface ProductItemFromAPI {
   product_id: string;
   tenant_id: string;
@@ -11,6 +15,7 @@ export interface ProductItemFromAPI {
   display_metadata?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
+  product_version_capabilities: ProductVersionProductCapabilities;
 }
 
 export interface ProductVersionAllowedActions {

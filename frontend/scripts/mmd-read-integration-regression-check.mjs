@@ -525,6 +525,41 @@ if (/disabled=\{[^}]*v\.is_current[^}]*\}/.test(productDetail)) {
   pass("pv_product_detail_no_is_current_only_button_guard");
 }
 
+// G20 — ProductVersionProductCapabilities type defined in productApi.ts (MMD-FULLSTACK-11C)
+if (/interface ProductVersionProductCapabilities/.test(productApi)) {
+  pass("pv_api_product_caps_type_defined");
+} else {
+  fail("pv_api_product_caps_type_defined", "productApi.ts missing ProductVersionProductCapabilities interface (MMD-FULLSTACK-11C)");
+}
+
+// G21 — ProductItemFromAPI includes product_version_capabilities field (MMD-FULLSTACK-11C)
+if (/product_version_capabilities\s*:\s*ProductVersionProductCapabilities/.test(productApi)) {
+  pass("pv_api_product_item_has_capabilities");
+} else {
+  fail("pv_api_product_item_has_capabilities", "productApi.ts ProductItemFromAPI missing product_version_capabilities field (MMD-FULLSTACK-11C)");
+}
+
+// G22 — ProductDetail uses product-level can_create for create button (MMD-FULLSTACK-11C)
+if (/product\.product_version_capabilities\.can_create/.test(productDetail)) {
+  pass("pv_product_detail_uses_product_level_can_create");
+} else {
+  fail("pv_product_detail_uses_product_level_can_create", "ProductDetail.tsx does not use product.product_version_capabilities.can_create for create button (MMD-FULLSTACK-11C)");
+}
+
+// G23 — ProductDetail does NOT use versions[0].allowed_actions.can_create_sibling as primary create gate (MMD-FULLSTACK-11C)
+if (/versions\[0\]\.allowed_actions\.can_create_sibling/.test(productDetail)) {
+  fail("pv_product_detail_no_version0_create_gate", "ProductDetail.tsx still uses versions[0].allowed_actions.can_create_sibling as create gate — must use product-level capability (MMD-FULLSTACK-11C)");
+} else {
+  pass("pv_product_detail_no_version0_create_gate");
+}
+
+// G24 — No persona-based create inference in ProductDetail (MMD-FULLSTACK-11C)
+if (/role_code.*can_create|can_create.*role_code/.test(productDetail)) {
+  fail("pv_product_detail_no_persona_create_inference", "ProductDetail.tsx infers create permission from role_code — must use server-derived capability (MMD-FULLSTACK-11C)");
+} else {
+  pass("pv_product_detail_no_persona_create_inference");
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // H. BOM FE read integration lock (MMD-FULLSTACK-07)
 // ═══════════════════════════════════════════════════════════════════════════════
