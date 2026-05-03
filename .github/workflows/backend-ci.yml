@@ -243,6 +243,15 @@ jobs:
             tests/test_rbac_seed_alignment.py \
             --tb=short
 
+      # ── P0-A-09: IEP CONFIGURE family boundary lock ─────────────────────
+      - name: P0-A-09 tests — IEP CONFIGURE family boundary lock
+        shell: bash
+        run: |
+          cd backend
+          python -m pytest -q \
+            tests/test_rbac_configure_family_boundary.py \
+            --tb=short
+
       # ── Step summary ──────────────────────────────────────────────────────
       - name: CI gate summary
         if: always()
@@ -252,7 +261,7 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Postgres: postgres:16 (disposable CI container)" >> "$GITHUB_STEP_SUMMARY"
           echo "Alembic head: linear chain to 0010" >> "$GITHUB_STEP_SUMMARY"
-          echo "P0-A foundation test suite: alembic + auth + tenant (02A anchor + 02B/02C enforcement + 02D seed bootstrap) + security + CORS + RBAC action registry (07A) + RBAC seed alignment (08)" >> "$GITHUB_STEP_SUMMARY"
+          echo "P0-A foundation test suite: alembic + auth + tenant (02A anchor + 02B/02C enforcement + 02D seed bootstrap) + security + CORS + RBAC action registry (07A) + RBAC seed alignment (08) + IEP CONFIGURE boundary lock (09)" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Excluded (pre-existing, unrelated to P0-A):" >> "$GITHUB_STEP_SUMMARY"
           echo "- test_station_queue_session_aware_migration.py" >> "$GITHUB_STEP_SUMMARY"
