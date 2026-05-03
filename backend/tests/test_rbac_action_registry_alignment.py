@@ -64,6 +64,8 @@ _EXPECTED_ADMIN_MMD_CODES = frozenset({
     "admin.master_data.resource_requirement.manage",
     # Added by MMD-BE-08A (2026-05-03): product version write governance
     "admin.master_data.product_version.manage",
+    # Added by MMD-BE-09A (2026-05-03): BOM action code registered as prerequisite for MMD-BE-12
+    "admin.master_data.bom.manage",
 })
 
 _EXPECTED_ADMIN_CONFIG_CODES = frozenset({

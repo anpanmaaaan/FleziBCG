@@ -128,6 +128,7 @@ CONFIGURE-family action codes are intentionally reserved pending the IEP configu
 | 2026-05-03 | P0-A-10B | MMD action boundary decision — Option B (document future draft/lifecycle split); no runtime code added |
 | 2026-05-03 | P0-A-10A | Process configuration entity contract created — entity design deferred to Phase 11; no runtime code added |
 | 2026-05-03 | P0-A-10 | Reserved `configure.process.manage`; CONFIGURE-family contract created — no runtime code added |
+| 2026-05-03 | MMD-BE-09A | Added `admin.master_data.bom.manage` — prerequisite for BOM write API (MMD-BE-12); no write endpoints added in this slice |
 | 2026-05-03 | MMD-BE-08A | Added `admin.master_data.product_version.manage` |
 | 2026-05-02 | MMD-BE-02 | Added `admin.master_data.product.manage`, `admin.master_data.routing.manage`, `admin.master_data.resource_requirement.manage` |
 | 2026-05-02 | P0-A-07B | Added `admin.downtime_reason.manage` — resolves GAP-1 from P0-A-07A |
