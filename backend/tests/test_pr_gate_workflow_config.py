@@ -24,3 +24,10 @@ def test_hard_mode_v3_required_reports_are_checked() -> None:
     text = _workflow_text()
     assert "docs/implementation/hard-mode-v3-map-report.md" in text
     assert "docs/implementation/design-gap-report.md" in text
+
+
+def test_approval_security_event_tests_are_in_pr_gate() -> None:
+    # P0-A-12A: approval SecurityEventLog test must stay in PR gate.
+    # If this assertion fails, re-add tests/test_approval_security_events.py to pr-gate.yml.
+    text = _workflow_text()
+    assert "test_approval_security_events.py" in text
