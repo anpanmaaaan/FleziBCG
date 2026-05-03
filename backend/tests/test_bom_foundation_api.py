@@ -48,13 +48,21 @@ def _make_session():
     return session_local
 
 
-def _build_app(identity: RequestIdentity, session_local) -> FastAPI:
+def _build_app(
+    identity: RequestIdentity,
+    session_local,
+    *,
+    has_bom_manage: bool = False,
+) -> FastAPI:
     from app.api.v1.products import get_db
 
     app = FastAPI()
     app.include_router(product_router_module.router, prefix="/api/v1")
     app.dependency_overrides[require_authenticated_identity] = lambda: identity
     app.dependency_overrides[get_db] = lambda: session_local()
+    # BOM read endpoints now project capability fields via has_action().
+    # In this lightweight SQLite harness, patch has_action to avoid RBAC table dependency.
+    product_router_module.has_action = lambda db, ident, action_code, *a, **kw: has_bom_manage
     return app
 
 
@@ -126,6 +134,8 @@ def test_list_boms_returns_boms_for_product():
     response = client.get(f"/api/v1/products/{product_id}/boms")
     assert response.status_code == 200
     assert len(response.json()) == 2
+    assert "allowed_actions" in response.json()[0]
+    assert response.json()[0]["allowed_actions"]["can_update"] is False
 
 
 def test_list_boms_returns_empty_for_product_with_no_boms():
@@ -174,6 +184,8 @@ def test_get_bom_returns_detail_with_items():
     payload = response.json()
     assert payload["bom_id"] == bom_id
     assert [item["line_no"] for item in payload["items"]] == [10, 20]
+    assert "allowed_actions" in payload
+    assert payload["allowed_actions"]["can_update"] is False
 
 
 def test_get_bom_returns_404_for_wrong_product():
@@ -325,6 +337,8 @@ def _make_managed_app(identity: RequestIdentity, session_local) -> FastAPI:
     app.include_router(product_router_module.router, prefix="/api/v1")
     app.dependency_overrides[require_authenticated_identity] = lambda: identity
     app.dependency_overrides[get_db] = lambda: session_local()
+    # Managed fixture path: capability projection should evaluate as has_manage=True.
+    product_router_module.has_action = lambda db, ident, action_code, *a, **kw: True
 
     write_routes = [
         ("/api/v1/products/{product_id}/boms", "POST"),
