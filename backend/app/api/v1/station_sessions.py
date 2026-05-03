@@ -138,6 +138,8 @@ def close_station_session_route(
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+    except StationSessionConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
     except ValueError as exc:

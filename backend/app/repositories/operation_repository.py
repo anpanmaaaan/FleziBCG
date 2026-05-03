@@ -76,6 +76,42 @@ def get_in_progress_operations_by_station(
     return list(db.scalars(statement))
 
 
+# Active non-terminal statuses that block station session closure (SS-CLOSE-001).
+# IN_PROGRESS: actively running; PAUSED: not terminal, needs completion;
+# BLOCKED: open downtime, needs end_downtime first.
+_CLOSE_SESSION_BLOCKER_STATUSES = frozenset(
+    [
+        StatusEnum.in_progress.value,
+        StatusEnum.paused.value,
+        StatusEnum.blocked.value,
+    ]
+)
+
+
+def get_active_non_terminal_operations_by_station(
+    db: Session,
+    *,
+    tenant_id: str,
+    station_scope_value: str,
+) -> list[Operation]:
+    """Return open operations with non-terminal active status for the given station.
+
+    Used by close_station_session to enforce SS-CLOSE-001: a session must not close
+    while active work would be orphaned.
+    """
+    statement = (
+        select(Operation)
+        .where(
+            Operation.tenant_id == tenant_id,
+            Operation.station_scope_value == station_scope_value,
+            Operation.status.in_(_CLOSE_SESSION_BLOCKER_STATUSES),
+            Operation.closure_status == ClosureStatusEnum.open.value,
+        )
+        .order_by(Operation.id.asc())
+    )
+    return list(db.scalars(statement))
+
+
 def count_operations(db: Session) -> int:
     statement = select(func.count()).select_from(Operation)
     return db.scalar(statement) or 0

@@ -235,6 +235,7 @@ export function StationExecution() {
   const [loading, setLoading] = useState(false);
   const [queueLoading, setQueueLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [sessionLoading, setSessionLoading] = useState(false);
   const [goodQty, setGoodQty] = useState<number>(0);
   const [scrapQty, setScrapQty] = useState<number>(0);
   const [stationScope, setStationScope] = useState<string>("-");
@@ -695,7 +696,38 @@ export function StationExecution() {
       await refreshQueue();
     }
   };
+  const openStationSession = async () => {
+    if (!stationScope || stationScope === "-") return;
+    setSessionLoading(true);
+    try {
+      await stationApi.openSession({
+        station_id: stationScope,
+      });
+      await refreshQueue();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("station.toast.actionFailed"));
+    } finally {
+      setSessionLoading(false);
+    }
+  };
 
+  const closeStationSession = async () => {
+    const sessionId = ownershipState?.session_id;
+    if (!sessionId) return;
+    setSessionLoading(true);
+    try {
+      await stationApi.closeSession(sessionId);
+      await refreshQueue();
+    } catch (err) {
+      if (err instanceof HttpError && err.status === 409) {
+        toast.error(t("station.session.closeBlockedActiveExecution"));
+      } else {
+        toast.error(err instanceof Error ? err.message : t("station.toast.actionFailed"));
+      }
+    } finally {
+      setSessionLoading(false);
+    }
+  };
   // ── MODE A  EOperation Selection ──────────────────────────────────────────
   if (!isExecutionMode) {
     return (
@@ -735,6 +767,43 @@ export function StationExecution() {
               <p className="text-sm font-medium">
                 {t("station.ownership.takenWarning")}
               </p>
+            </div>
+          )}
+
+          {/* Session control: open/close station session. */}
+          {ownerState !== "other" && (
+            <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4 flex items-center justify-between gap-3">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-slate-700">
+                  {t("station.session.heading")}
+                </span>
+                <span className="text-xs text-slate-500">
+                  {hasOpenSession
+                    ? ownerState === "mine"
+                      ? t("station.ownership.ownedBadge")
+                      : t("stationSession.operator.unassigned")
+                    : t("stationSession.session.noActive")}
+                </span>
+              </div>
+              {!hasOpenSession ? (
+                <button
+                  type="button"
+                  onClick={() => void openStationSession()}
+                  disabled={sessionLoading || stationScope === "-"}
+                  className="min-h-10 px-4 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 active:scale-95 transition disabled:opacity-50"
+                >
+                  {t("stationSession.action.openSession")}
+                </button>
+              ) : ownerState === "mine" ? (
+                <button
+                  type="button"
+                  onClick={() => void closeStationSession()}
+                  disabled={sessionLoading}
+                  className="min-h-10 px-4 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 active:scale-95 transition disabled:opacity-50"
+                >
+                  {t("stationSession.action.closeSession")}
+                </button>
+              ) : null}
             </div>
           )}
 
