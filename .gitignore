@@ -93,3 +93,23 @@ frontend/.env.*.local
 ############################
 tmp/
 temp/
+
+############################
+# Scratch / Analysis files (root-level)
+############################
+h08ib_*.txt
+h08ic_*.txt
+_h16_*.txt
+fullsuite_*.txt
+backend/_check_import.py
+backend/_p0c08e_fullsuite.txt
+
+############################
+# Test output artifacts
+############################
+backend/pytest_results.txt
+backend/test_output.txt
+backend/test_results.txt
+frontend/test-results/
+frontend/package-lock.json.bak
+package-lock.json

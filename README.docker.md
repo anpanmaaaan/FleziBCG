@@ -20,6 +20,26 @@ cd /workspaces/FleziBCG
 docker compose up --build
 ```
 
+Windows one-command recovery start (with precheck + ordered startup + health wait):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\dev-start.ps1
+```
+
+This script automatically:
+
+- checks Docker daemon availability
+- stops containers that are already publishing host port `5432` (except `flezibcg-db-1`)
+- starts services in order: `db` -> `backend` -> `frontend`
+- waits until each service is healthy before moving to the next one
+- prints `docker compose ps` at the end
+
+Optional timeout override:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\dev-start.ps1 -TimeoutSeconds 300
+```
+
 If Docker Hub is timing out when pulling base images (`python:3.12-slim`, `node:20-alpine`, or `nginx:alpine`), set alternate mirrors before build:
 
 ```bash
