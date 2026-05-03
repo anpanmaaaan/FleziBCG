@@ -19,6 +19,7 @@ from app.schemas.product import (
     ProductCreateRequest,
     ProductItem,
     ProductUpdateRequest,
+    ProductVersionProductCapabilities,
     validate_product_type,
 )
 from app.services.security_event_service import record_security_event
@@ -36,7 +37,7 @@ def _deserialize_display_metadata(value: str | None) -> dict[str, Any] | None:
     return json.loads(value)
 
 
-def _to_item(row: Product) -> ProductItem:
+def _to_item(row: Product, has_manage: bool = False) -> ProductItem:
     return ProductItem(
         product_id=row.product_id,
         tenant_id=row.tenant_id,
@@ -48,6 +49,7 @@ def _to_item(row: Product) -> ProductItem:
         display_metadata=_deserialize_display_metadata(row.display_metadata),
         created_at=row.created_at,
         updated_at=row.updated_at,
+        product_version_capabilities=ProductVersionProductCapabilities(can_create=has_manage),
     )
 
 
@@ -89,15 +91,17 @@ def _emit_product_event(
     )
 
 
-def list_products(db: Session, *, tenant_id: str) -> list[ProductItem]:
-    return [_to_item(row) for row in list_products_by_tenant(db, tenant_id=tenant_id)]
+def list_products(db: Session, *, tenant_id: str, has_manage_permission: bool = False) -> list[ProductItem]:
+    return [_to_item(row, has_manage=has_manage_permission) for row in list_products_by_tenant(db, tenant_id=tenant_id)]
 
 
-def get_product_by_id(db: Session, *, tenant_id: str, product_id: str) -> ProductItem | None:
+def get_product_by_id(
+    db: Session, *, tenant_id: str, product_id: str, has_manage_permission: bool = False
+) -> ProductItem | None:
     row = get_product_row(db, tenant_id=tenant_id, product_id=product_id)
     if row is None:
         return None
-    return _to_item(row)
+    return _to_item(row, has_manage=has_manage_permission)
 
 
 def create_product(
@@ -106,6 +110,7 @@ def create_product(
     tenant_id: str,
     actor_user_id: str,
     payload: ProductCreateRequest,
+    has_pv_manage: bool = False,
 ) -> ProductItem:
     product_code = payload.product_code.strip()
     if not product_code:
@@ -147,7 +152,7 @@ def create_product(
             "lifecycle_status",
         ],
     )
-    return _to_item(row)
+    return _to_item(row, has_manage=has_pv_manage)
 
 
 def update_product(
@@ -157,6 +162,7 @@ def update_product(
     actor_user_id: str,
     product_id: str,
     payload: ProductUpdateRequest,
+    has_pv_manage: bool = False,
 ) -> ProductItem:
     row = get_product_row(db, tenant_id=tenant_id, product_id=product_id)
     if row is None:
@@ -207,7 +213,7 @@ def update_product(
             changed_fields.append("display_metadata")
 
     if not changed_fields:
-        return _to_item(row)
+        return _to_item(row, has_manage=has_pv_manage)
 
     row = update_product_row(db, row=row)
     _emit_product_event(
@@ -218,7 +224,7 @@ def update_product(
         row=row,
         changed_fields=changed_fields,
     )
-    return _to_item(row)
+    return _to_item(row, has_manage=has_pv_manage)
 
 
 def release_product(
@@ -227,6 +233,7 @@ def release_product(
     tenant_id: str,
     actor_user_id: str,
     product_id: str,
+    has_pv_manage: bool = False,
 ) -> ProductItem:
     row = get_product_row(db, tenant_id=tenant_id, product_id=product_id)
     if row is None:
@@ -245,7 +252,7 @@ def release_product(
         row=row,
         changed_fields=["lifecycle_status"],
     )
-    return _to_item(row)
+    return _to_item(row, has_manage=has_pv_manage)
 
 
 def retire_product(
@@ -254,6 +261,7 @@ def retire_product(
     tenant_id: str,
     actor_user_id: str,
     product_id: str,
+    has_pv_manage: bool = False,
 ) -> ProductItem:
     row = get_product_row(db, tenant_id=tenant_id, product_id=product_id)
     if row is None:
@@ -272,4 +280,4 @@ def retire_product(
         row=row,
         changed_fields=["lifecycle_status"],
     )
-    return _to_item(row)
+    return _to_item(row, has_manage=has_pv_manage)

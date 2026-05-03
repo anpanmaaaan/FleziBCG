@@ -48,7 +48,8 @@ def list_products(
     db: Session = Depends(get_db),
     identity: RequestIdentity = Depends(require_authenticated_identity),
 ) -> list[ProductItem]:
-    return list_products_service(db, tenant_id=identity.tenant_id)
+    has_manage = has_action(db, identity, "admin.master_data.product_version.manage")
+    return list_products_service(db, tenant_id=identity.tenant_id, has_manage_permission=has_manage)
 
 
 @router.get("/{product_id}", response_model=ProductItem)
@@ -57,10 +58,12 @@ def get_product_by_id(
     db: Session = Depends(get_db),
     identity: RequestIdentity = Depends(require_authenticated_identity),
 ) -> ProductItem:
+    has_manage = has_action(db, identity, "admin.master_data.product_version.manage")
     row = get_product_by_id_service(
         db,
         tenant_id=identity.tenant_id,
         product_id=product_id,
+        has_manage_permission=has_manage,
     )
     if row is None:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -73,12 +76,14 @@ def create_product(
     db: Session = Depends(get_db),
     identity: RequestIdentity = Depends(require_action("admin.master_data.product.manage")),
 ) -> ProductItem:
+    has_pv_manage = has_action(db, identity, "admin.master_data.product_version.manage")
     try:
         return create_product_service(
             db,
             tenant_id=identity.tenant_id,
             actor_user_id=identity.user_id,
             payload=payload,
+            has_pv_manage=has_pv_manage,
         )
     except ValueError as exc:
         if str(exc) == "Duplicate product_code in tenant":
@@ -93,6 +98,7 @@ def update_product(
     db: Session = Depends(get_db),
     identity: RequestIdentity = Depends(require_action("admin.master_data.product.manage")),
 ) -> ProductItem:
+    has_pv_manage = has_action(db, identity, "admin.master_data.product_version.manage")
     try:
         return update_product_service(
             db,
@@ -100,6 +106,7 @@ def update_product(
             actor_user_id=identity.user_id,
             product_id=product_id,
             payload=payload,
+            has_pv_manage=has_pv_manage,
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
@@ -115,12 +122,14 @@ def release_product(
     db: Session = Depends(get_db),
     identity: RequestIdentity = Depends(require_action("admin.master_data.product.manage")),
 ) -> ProductItem:
+    has_pv_manage = has_action(db, identity, "admin.master_data.product_version.manage")
     try:
         return release_product_service(
             db,
             tenant_id=identity.tenant_id,
             actor_user_id=identity.user_id,
             product_id=product_id,
+            has_pv_manage=has_pv_manage,
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
@@ -294,12 +303,14 @@ def retire_product(
     db: Session = Depends(get_db),
     identity: RequestIdentity = Depends(require_action("admin.master_data.product.manage")),
 ) -> ProductItem:
+    has_pv_manage = has_action(db, identity, "admin.master_data.product_version.manage")
     try:
         return retire_product_service(
             db,
             tenant_id=identity.tenant_id,
             actor_user_id=identity.user_id,
             product_id=product_id,
+            has_pv_manage=has_pv_manage,
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
