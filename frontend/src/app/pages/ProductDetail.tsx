@@ -507,7 +507,7 @@ export function ProductDetail() {
                   <button
                     type="button"
                     onClick={() => void createVersion()}
-                    disabled={mutationBusyKey !== null || (versions.length > 0 && !versions[0].allowed_actions.can_create_sibling)}
+                    disabled={mutationBusyKey !== null || !product.product_version_capabilities.can_create}
                     className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-gray-400"
                   >
                     {t("productDetail.versions.action.create")}

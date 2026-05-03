@@ -25,6 +25,10 @@ class ProductUpdateRequest(BaseModel):
     display_metadata: dict[str, Any] | None = None
 
 
+class ProductVersionProductCapabilities(BaseModel):
+    can_create: bool
+
+
 class ProductItem(BaseModel):
     product_id: str
     tenant_id: str
@@ -36,6 +40,7 @@ class ProductItem(BaseModel):
     display_metadata: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime
+    product_version_capabilities: ProductVersionProductCapabilities
 
 
 def validate_product_type(value: str) -> str:

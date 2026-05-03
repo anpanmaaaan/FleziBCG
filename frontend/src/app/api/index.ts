@@ -49,6 +49,7 @@ export type {
   ProductVersionAllowedActions,
   ProductVersionCreateRequest,
   ProductVersionItemFromAPI,
+  ProductVersionProductCapabilities,
   ProductVersionUpdateRequest,
 } from "./productApi";
 
