@@ -685,6 +685,87 @@ if (/\bcomponent_code\b/.test(bomDetail) || /\bcomponent_name\b/.test(bomDetail)
   pass("bom_no_rejected_fields");
 }
 
+// H16 — BOM write helpers exist in productApi.ts (MMD-FULLSTACK-12)
+const bomWriteHelpers = [
+  "createProductBom",
+  "updateProductBom",
+  "releaseProductBom",
+  "retireProductBom",
+  "addProductBomItem",
+  "updateProductBomItem",
+  "removeProductBomItem",
+];
+for (const helper of bomWriteHelpers) {
+  if (new RegExp(`\\b${helper}\\b`).test(productApi)) {
+    pass(`bom_write_helper_${helper}`);
+  } else {
+    fail(`bom_write_helper_${helper}`, `productApi.ts missing ${helper} helper`);
+  }
+}
+
+// H17 — BOM create payload contract excludes forbidden lifecycle/version fields
+const bomCreateRequestBlock = productApi.match(/interface\s+BomCreateRequest\s*\{[\s\S]*?\n\}/);
+if (!bomCreateRequestBlock) {
+  fail("bom_create_request_contract_exists", "productApi.ts missing BomCreateRequest interface");
+} else {
+  const block = bomCreateRequestBlock[0];
+  if (/\blifecycle_status\b/.test(block) || /\bproduct_version_id\b/.test(block)) {
+    fail("bom_create_request_forbidden_fields_absent", "BomCreateRequest contains forbidden fields (lifecycle_status/product_version_id)");
+  } else {
+    pass("bom_create_request_forbidden_fields_absent");
+  }
+}
+
+// H18 — BOM item update payload excludes immutable fields (line_no/component_product_id)
+const bomItemUpdateBlock = productApi.match(/interface\s+BomItemUpdateRequest\s*\{[\s\S]*?\n\}/);
+if (!bomItemUpdateBlock) {
+  fail("bom_item_update_request_contract_exists", "productApi.ts missing BomItemUpdateRequest interface");
+} else {
+  const block = bomItemUpdateBlock[0];
+  if (/\bline_no\b/.test(block) || /\bcomponent_product_id\b/.test(block)) {
+    fail("bom_item_update_request_immutable_fields_absent", "BomItemUpdateRequest contains immutable fields (line_no/component_product_id)");
+  } else {
+    pass("bom_item_update_request_immutable_fields_absent");
+  }
+}
+
+// H19 — BomDetail references governed write controls
+const bomDetailWriteReferences = [
+  "updateProductBom",
+  "releaseProductBom",
+  "retireProductBom",
+  "addProductBomItem",
+  "updateProductBomItem",
+  "removeProductBomItem",
+];
+for (const ref of bomDetailWriteReferences) {
+  if (new RegExp(`\\b${ref}\\b`).test(bomDetail)) {
+    pass(`bom_detail_has_${ref}`);
+  } else {
+    fail(`bom_detail_has_${ref}`, `BomDetail.tsx missing ${ref} usage`);
+  }
+}
+
+// H20 — Forbidden BOM controls remain absent in FE surfaces
+const forbiddenBomControlPattern = /hard\s*delete|reactivate|clone\s*bom|bulk\s*(replace|update|edit)|reorder\s*(items|components)|bind\s*product\s*version|material\s*allocation|inventory|backflush|erp|traceability|quality\s*hold|aps|digital\s*twin/i;
+if (forbiddenBomControlPattern.test(bomList) || forbiddenBomControlPattern.test(bomDetail)) {
+  fail("bom_write_forbidden_controls_absent", "BomList.tsx or BomDetail.tsx appears to include forbidden BOM controls/terms");
+} else {
+  pass("bom_write_forbidden_controls_absent");
+}
+
+// H21 — Governance notice and explicit 403 handling remain present
+const bomListGovernance = /bomWrite\.notice\.backendAuth/.test(bomList) && /status\s*===\s*403/.test(bomList);
+const bomDetailGovernance = /bomWrite\.notice\.backendAuth/.test(bomDetail) && /status\s*===\s*403/.test(bomDetail);
+if (bomListGovernance && bomDetailGovernance) {
+  pass("bom_write_governance_notice_and_403_handling");
+} else {
+  fail(
+    "bom_write_governance_notice_and_403_handling",
+    "BomList.tsx and BomDetail.tsx must both include backend-auth governance notice and explicit 403 handling",
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // I. Reason Codes FE read integration lock (MMD-FULLSTACK-08)
 // ═══════════════════════════════════════════════════════════════════════════════

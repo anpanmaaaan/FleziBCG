@@ -89,6 +89,39 @@ export interface BomFromAPI extends BomItemFromAPI {
   items: BomComponentItemFromAPI[];
 }
 
+export interface BomCreateRequest {
+  bom_code: string;
+  bom_name: string;
+  effective_from?: string | null;
+  effective_to?: string | null;
+  description?: string | null;
+}
+
+export interface BomUpdateRequest {
+  bom_name?: string | null;
+  effective_from?: string | null;
+  effective_to?: string | null;
+  description?: string | null;
+}
+
+export interface BomItemCreateRequest {
+  component_product_id: string;
+  line_no: number;
+  quantity: number;
+  unit_of_measure: string;
+  scrap_factor?: number | null;
+  reference_designator?: string | null;
+  notes?: string | null;
+}
+
+export interface BomItemUpdateRequest {
+  quantity?: number;
+  unit_of_measure?: string;
+  scrap_factor?: number | null;
+  reference_designator?: string | null;
+  notes?: string | null;
+}
+
 const BASE_PATH = "/v1/products";
 
 export const productApi = {
@@ -172,6 +205,86 @@ export const productApi = {
     return request<BomFromAPI>(
       `${BASE_PATH}/${encodeURIComponent(productId)}/boms/${encodeURIComponent(bomId)}`,
       { signal },
+    );
+  },
+
+  createProductBom(productId: string, payload: BomCreateRequest, signal?: AbortSignal) {
+    return request<BomItemFromAPI>(
+      `${BASE_PATH}/${encodeURIComponent(productId)}/boms`,
+      {
+        method: "POST",
+        body: payload,
+        signal,
+      },
+    );
+  },
+
+  updateProductBom(productId: string, bomId: string, payload: BomUpdateRequest, signal?: AbortSignal) {
+    return request<BomItemFromAPI>(
+      `${BASE_PATH}/${encodeURIComponent(productId)}/boms/${encodeURIComponent(bomId)}`,
+      {
+        method: "PATCH",
+        body: payload,
+        signal,
+      },
+    );
+  },
+
+  releaseProductBom(productId: string, bomId: string, signal?: AbortSignal) {
+    return request<BomItemFromAPI>(
+      `${BASE_PATH}/${encodeURIComponent(productId)}/boms/${encodeURIComponent(bomId)}/release`,
+      {
+        method: "POST",
+        signal,
+      },
+    );
+  },
+
+  retireProductBom(productId: string, bomId: string, signal?: AbortSignal) {
+    return request<BomItemFromAPI>(
+      `${BASE_PATH}/${encodeURIComponent(productId)}/boms/${encodeURIComponent(bomId)}/retire`,
+      {
+        method: "POST",
+        signal,
+      },
+    );
+  },
+
+  addProductBomItem(productId: string, bomId: string, payload: BomItemCreateRequest, signal?: AbortSignal) {
+    return request<BomComponentItemFromAPI>(
+      `${BASE_PATH}/${encodeURIComponent(productId)}/boms/${encodeURIComponent(bomId)}/items`,
+      {
+        method: "POST",
+        body: payload,
+        signal,
+      },
+    );
+  },
+
+  updateProductBomItem(
+    productId: string,
+    bomId: string,
+    bomItemId: string,
+    payload: BomItemUpdateRequest,
+    signal?: AbortSignal,
+  ) {
+    return request<BomComponentItemFromAPI>(
+      `${BASE_PATH}/${encodeURIComponent(productId)}/boms/${encodeURIComponent(bomId)}/items/${encodeURIComponent(bomItemId)}`,
+      {
+        method: "PATCH",
+        body: payload,
+        signal,
+      },
+    );
+  },
+
+  removeProductBomItem(productId: string, bomId: string, bomItemId: string, signal?: AbortSignal) {
+    return request<void>(
+      `${BASE_PATH}/${encodeURIComponent(productId)}/boms/${encodeURIComponent(bomId)}/items/${encodeURIComponent(bomItemId)}`,
+      {
+        method: "DELETE",
+        signal,
+      },
     );
   },
 };
