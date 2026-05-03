@@ -15,7 +15,6 @@ from app.repositories.bom_repository import get_bom_by_id as get_bom_row
 from app.schemas.bom import (
     BomCreateRequest,
     BomItemCreateRequest,
-    BomItemUpdateRequest,
     BomUpdateRequest,
     _ALLOWED_BOM_LIFECYCLE_STATUSES,
 )
@@ -26,10 +25,8 @@ from app.services.bom_service import (
     get_bom,
     list_boms,
     release_bom,
-    remove_bom_item,
     retire_bom,
     update_bom,
-    update_bom_item,
 )
 from app.services.product_service import create_product
 
@@ -269,7 +266,7 @@ def test_create_bom_enforces_unique_code_per_product():
 
 def test_effective_date_range_validation():
     db = _make_session()
-    product_id = _mk_product(db, "tenant_a")
+    _mk_product(db, "tenant_a")
     from datetime import date
 
     with pytest.raises(Exception):
