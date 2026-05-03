@@ -151,7 +151,8 @@ jobs:
               tests/test_tenant_seed_bootstrap.py \
               tests/test_scope_rbac_foundation_alignment.py \
               tests/test_pr_gate_workflow_config.py \
-              tests/test_rbac_action_registry_alignment.py || python -m pytest -q
+              tests/test_rbac_action_registry_alignment.py \
+              tests/test_impersonation_routes.py || python -m pytest -q
           elif [ -d tests ]; then
             python -m pytest -q
           else

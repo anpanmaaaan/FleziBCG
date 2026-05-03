@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
 from app.schemas.impersonation import ImpersonationCreateRequest, ImpersonationResponse
-from app.security.dependencies import RequestIdentity, require_authenticated_identity
+from app.security.dependencies import RequestIdentity, require_action, require_authenticated_identity
 from app.services.impersonation_service import (
     create_impersonation_session,
     get_current_session_for_user,
@@ -40,7 +40,7 @@ def _to_response(session) -> ImpersonationResponse:
 def create_session(
     request_data: ImpersonationCreateRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_authenticated_identity),
+    identity: RequestIdentity = Depends(require_action("admin.impersonation.create")),
 ):
     """
     Create a temporary impersonation session.
@@ -84,7 +84,7 @@ def get_current(
 def revoke_session(
     session_id: int,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_authenticated_identity),
+    identity: RequestIdentity = Depends(require_action("admin.impersonation.revoke")),
 ):
     """
     Revoke an impersonation session.
