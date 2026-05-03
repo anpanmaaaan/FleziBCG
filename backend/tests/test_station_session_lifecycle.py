@@ -145,7 +145,6 @@ def station_session_fixture():
         db.commit()
         yield db
     finally:
-        db.rollback()
         _purge(db)
         db.close()
 
@@ -159,7 +158,7 @@ def test_open_station_session_happy_path_emits_candidate_event(station_session_f
     assert session.tenant_id == _TENANT_ID
     assert session.station_id == _STATION_A
     assert session.status == "OPEN"
-    assert session.operator_user_id is None
+    assert session.operator_user_id == _ACTOR_MULTI  # auto-derived from identity (BT-AGG-002)
 
     event = db.scalar(
         select(SecurityEventLog)
