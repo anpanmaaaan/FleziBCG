@@ -48,6 +48,13 @@ def validate_product_type(value: str) -> str:
 _ALLOWED_VERSION_LIFECYCLE_STATUSES = {"DRAFT", "RELEASED", "RETIRED"}
 
 
+class ProductVersionAllowedActions(BaseModel):
+    can_update: bool
+    can_release: bool
+    can_retire: bool
+    can_create_sibling: bool
+
+
 class ProductVersionItem(BaseModel):
     product_version_id: str
     tenant_id: str
@@ -61,6 +68,7 @@ class ProductVersionItem(BaseModel):
     description: str | None = None
     created_at: datetime
     updated_at: datetime
+    allowed_actions: ProductVersionAllowedActions
 
 
 class ProductVersionCreateRequest(BaseModel):

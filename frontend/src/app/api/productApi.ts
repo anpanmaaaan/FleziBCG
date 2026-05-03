@@ -13,6 +13,13 @@ export interface ProductItemFromAPI {
   updated_at: string;
 }
 
+export interface ProductVersionAllowedActions {
+  can_update: boolean;
+  can_release: boolean;
+  can_retire: boolean;
+  can_create_sibling: boolean;
+}
+
 export interface ProductVersionItemFromAPI {
   product_version_id: string;
   tenant_id: string;
@@ -26,6 +33,7 @@ export interface ProductVersionItemFromAPI {
   description?: string | null;
   created_at: string;
   updated_at: string;
+  allowed_actions: ProductVersionAllowedActions;
 }
 
 export interface ProductVersionCreateRequest {

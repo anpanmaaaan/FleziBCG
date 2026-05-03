@@ -12,6 +12,7 @@ from app.schemas.product import (
     ProductVersionUpdateRequest,
 )
 from app.security.dependencies import RequestIdentity, require_action, require_authenticated_identity
+from app.security.rbac import has_action
 from app.services.bom_service import get_bom as get_bom_service
 from app.services.bom_service import list_boms as list_boms_service
 from app.services.product_service import (
@@ -133,11 +134,13 @@ def list_product_versions(
     db: Session = Depends(get_db),
     identity: RequestIdentity = Depends(require_authenticated_identity),
 ) -> list[ProductVersionItem]:
+    has_manage = has_action(db, identity, "admin.master_data.product_version.manage")
     try:
         return list_product_versions_service(
             db,
             tenant_id=identity.tenant_id,
             product_id=product_id,
+            has_manage_permission=has_manage,
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
@@ -272,12 +275,14 @@ def get_product_version(
     db: Session = Depends(get_db),
     identity: RequestIdentity = Depends(require_authenticated_identity),
 ) -> ProductVersionItem:
+    has_manage = has_action(db, identity, "admin.master_data.product_version.manage")
     try:
         return get_product_version_service(
             db,
             tenant_id=identity.tenant_id,
             product_id=product_id,
             product_version_id=version_id,
+            has_manage_permission=has_manage,
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
