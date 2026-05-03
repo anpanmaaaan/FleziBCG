@@ -56,6 +56,13 @@ the code to its family and evaluates DB-backed role→permission rows.
 
 ### Manufacturing Master Data (MMD) — Added by MMD-BE-02
 
+> **Note (P0-A-10B):** Current `admin.master_data.*.manage` codes are intentionally
+> coarse-grained — they cover both draft create/update and governed lifecycle transitions
+> (release/retire) under a single ADMIN-family code. A lifecycle-aware split into
+> `draft_manage` + `lifecycle_manage` is deferred to Phase C (MMD Mutation Enablement)
+> pending approval workflow implementation and a Phase 7+ role-family design gate.
+> See `docs/audit/p0-a-10b-iep-mmd-action-boundary-decision-report.md`.
+
 | Action Code | Family | Description |
 |---|---|---|
 | `admin.master_data.product.manage` | ADMIN | Create, update, release, or retire a Product definition |
@@ -117,6 +124,7 @@ CONFIGURE-family action codes are intentionally reserved pending the IEP configu
 
 | Date | Slice | Change |
 |---|---|---|
+| 2026-05-03 | P0-A-10B | MMD action boundary decision — Option B (document future draft/lifecycle split); no runtime code added |
 | 2026-05-03 | P0-A-10A | Process configuration entity contract created — entity design deferred to Phase 11; no runtime code added |
 | 2026-05-03 | P0-A-10 | Reserved `configure.process.manage`; CONFIGURE-family contract created — no runtime code added |
 | 2026-05-03 | MMD-BE-08A | Added `admin.master_data.product_version.manage` |
