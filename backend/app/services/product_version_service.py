@@ -16,6 +16,7 @@ from app.repositories.product_version_repository import (
     update_product_version as update_product_version_row,
 )
 from app.schemas.product import (
+    ProductVersionAllowedActions,
     ProductVersionCreateRequest,
     ProductVersionItem,
     ProductVersionUpdateRequest,
@@ -27,7 +28,29 @@ def _version_not_found() -> LookupError:
     return LookupError("Product version not found")
 
 
-def _to_version_item(row: ProductVersion) -> ProductVersionItem:
+def _compute_allowed_actions(row: ProductVersion, has_manage: bool) -> ProductVersionAllowedActions:
+    """Compute server-derived write capabilities for a Product Version.
+
+    All capabilities are False if the user lacks manage permission.
+    Lifecycle state and is_current flags further restrict capabilities.
+    """
+    if not has_manage:
+        return ProductVersionAllowedActions(
+            can_update=False,
+            can_release=False,
+            can_retire=False,
+            can_create_sibling=False,
+        )
+    status = row.lifecycle_status
+    return ProductVersionAllowedActions(
+        can_update=(status == "DRAFT"),
+        can_release=(status == "DRAFT"),
+        can_retire=(status in ("DRAFT", "RELEASED") and not row.is_current),
+        can_create_sibling=True,
+    )
+
+
+def _to_version_item(row: ProductVersion, has_manage: bool = False) -> ProductVersionItem:
     return ProductVersionItem(
         product_version_id=row.product_version_id,
         tenant_id=row.tenant_id,
@@ -41,6 +64,7 @@ def _to_version_item(row: ProductVersion) -> ProductVersionItem:
         description=row.description,
         created_at=row.created_at,
         updated_at=row.updated_at,
+        allowed_actions=_compute_allowed_actions(row, has_manage),
     )
 
 
@@ -87,6 +111,7 @@ def list_product_versions(
     *,
     tenant_id: str,
     product_id: str,
+    has_manage_permission: bool = False,
 ) -> list[ProductVersionItem]:
     """Return all versions for a product within the tenant.
 
@@ -97,7 +122,7 @@ def list_product_versions(
     if product is None:
         raise LookupError("Product not found")
     rows = list_product_versions_by_product(db, tenant_id=tenant_id, product_id=product_id)
-    return [_to_version_item(r) for r in rows]
+    return [_to_version_item(r, has_manage_permission) for r in rows]
 
 
 def get_product_version(
@@ -106,6 +131,7 @@ def get_product_version(
     tenant_id: str,
     product_id: str,
     product_version_id: str,
+    has_manage_permission: bool = False,
 ) -> ProductVersionItem:
     """Return a single product version by ID.
 
@@ -120,7 +146,7 @@ def get_product_version(
     )
     if row is None:
         raise _version_not_found()
-    return _to_version_item(row)
+    return _to_version_item(row, has_manage_permission)
 
 
 def create_product_version(
@@ -179,7 +205,7 @@ def create_product_version(
             "is_current",
         ],
     )
-    return _to_version_item(row)
+    return _to_version_item(row, has_manage=True)
 
 
 def update_product_version(
@@ -230,7 +256,7 @@ def update_product_version(
         changed_fields.append("description")
 
     if not changed_fields:
-        return _to_version_item(row)
+        return _to_version_item(row, has_manage=True)
 
     row = update_product_version_row(db, row=row)
     _emit_product_version_event(
@@ -241,7 +267,7 @@ def update_product_version(
         row=row,
         changed_fields=changed_fields,
     )
-    return _to_version_item(row)
+    return _to_version_item(row, has_manage=True)
 
 
 def release_product_version(
@@ -278,7 +304,7 @@ def release_product_version(
         row=row,
         changed_fields=["lifecycle_status"],
     )
-    return _to_version_item(row)
+    return _to_version_item(row, has_manage=True)
 
 
 def retire_product_version(
@@ -321,4 +347,4 @@ def retire_product_version(
         row=row,
         changed_fields=["lifecycle_status"],
     )
-    return _to_version_item(row)
+    return _to_version_item(row, has_manage=True)

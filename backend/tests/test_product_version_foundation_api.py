@@ -59,6 +59,9 @@ def _build_app(identity: RequestIdentity, session_local) -> FastAPI:
     app.include_router(product_router_module.router, prefix="/api/v1")
     app.dependency_overrides[require_authenticated_identity] = lambda: identity
     app.dependency_overrides[get_db] = lambda: session_local()
+    # Patch has_action to return False in isolated SQLite tests: no RBAC tables seeded.
+    # Capability tests use _build_app_with_manage to override this patch.
+    product_router_module.has_action = lambda db, ident, action_code, *a, **kw: False
     return app
 
 
@@ -595,3 +598,215 @@ def test_read_endpoints_do_not_require_manage_action():
     assert len(version_get_blocks) == 2
     for block in version_get_blocks:
         assert 'require_action("admin.master_data.product_version.manage")' not in block
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MMD-FULLSTACK-11B: Server-derived capability / allowed-actions tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _build_app_with_manage(session_local, has_manage: bool) -> tuple:
+    """Build a test app with has_action patched to return the requested manage bool."""
+    import app.api.v1.products as products_module
+    from app.api.v1.products import get_db
+
+    identity = _make_identity()
+    test_app = FastAPI()
+    test_app.include_router(product_router_module.router, prefix="/api/v1")
+    test_app.dependency_overrides[require_authenticated_identity] = lambda: identity
+    test_app.dependency_overrides[get_db] = lambda: session_local()
+
+    original = products_module.has_action
+
+    def _patched_has_action(db, ident, action_code, *args, **kwargs):
+        if action_code == "admin.master_data.product_version.manage":
+            return has_manage
+        return False
+
+    products_module.has_action = _patched_has_action
+    return test_app, identity, original, products_module
+
+
+def test_list_versions_includes_allowed_actions_field():
+    """Read list response must include allowed_actions field."""
+    identity = _make_identity()
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    _mk_version(db, "tenant_a", product_id, "v1.0")
+    db.close()
+
+    app = _build_app(identity, session_local)
+    client = TestClient(app)
+
+    response = client.get(f"/api/v1/products/{product_id}/versions")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert "allowed_actions" in data[0], "allowed_actions field must be present in list response"
+
+
+def test_get_version_includes_allowed_actions_field():
+    """Read single response must include allowed_actions field."""
+    identity = _make_identity()
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    v = _mk_version(db, "tenant_a", product_id, "v1.0")
+    db.close()
+
+    app = _build_app(identity, session_local)
+    client = TestClient(app)
+
+    response = client.get(f"/api/v1/products/{product_id}/versions/{v.product_version_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert "allowed_actions" in data, "allowed_actions field must be present in get response"
+
+
+def test_allowed_actions_all_false_for_user_without_manage():
+    """User without manage permission must get all capabilities False."""
+    import app.api.v1.products as products_module
+
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    _mk_version(db, "tenant_a", product_id, "v1")
+    db.close()
+
+    identity = _make_identity()
+    test_app, _, original, products_module = _build_app_with_manage(session_local, has_manage=False)
+    try:
+        client = TestClient(test_app)
+        response = client.get(f"/api/v1/products/{product_id}/versions")
+        assert response.status_code == 200
+        data = response.json()
+        aa = data[0]["allowed_actions"]
+        assert aa["can_update"] is False
+        assert aa["can_release"] is False
+        assert aa["can_retire"] is False
+        assert aa["can_create_sibling"] is False
+    finally:
+        products_module.has_action = original
+
+
+def test_allowed_actions_draft_with_manage():
+    """DRAFT version with manage permission must have can_update/release/retire/create_sibling all True."""
+    import app.api.v1.products as products_module
+
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    _mk_version(db, "tenant_a", product_id, "v1", lifecycle_status="DRAFT", is_current=False)
+    db.close()
+
+    identity = _make_identity()
+    test_app, _, original, products_module = _build_app_with_manage(session_local, has_manage=True)
+    try:
+        client = TestClient(test_app)
+        response = client.get(f"/api/v1/products/{product_id}/versions")
+        assert response.status_code == 200
+        aa = response.json()[0]["allowed_actions"]
+        assert aa["can_update"] is True
+        assert aa["can_release"] is True
+        assert aa["can_retire"] is True
+        assert aa["can_create_sibling"] is True
+    finally:
+        products_module.has_action = original
+
+
+def test_allowed_actions_released_not_current_with_manage():
+    """RELEASED, not is_current: can_retire True; can_update/release False."""
+    import app.api.v1.products as products_module
+
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    _mk_version(db, "tenant_a", product_id, "v1", lifecycle_status="RELEASED", is_current=False)
+    db.close()
+
+    identity = _make_identity()
+    test_app, _, original, products_module = _build_app_with_manage(session_local, has_manage=True)
+    try:
+        client = TestClient(test_app)
+        response = client.get(f"/api/v1/products/{product_id}/versions")
+        assert response.status_code == 200
+        aa = response.json()[0]["allowed_actions"]
+        assert aa["can_update"] is False
+        assert aa["can_release"] is False
+        assert aa["can_retire"] is True
+        assert aa["can_create_sibling"] is True
+    finally:
+        products_module.has_action = original
+
+
+def test_allowed_actions_released_is_current_with_manage():
+    """RELEASED + is_current=True: can_retire must be False (current version cannot be retired)."""
+    import app.api.v1.products as products_module
+
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    _mk_version(db, "tenant_a", product_id, "v1", lifecycle_status="RELEASED", is_current=True)
+    db.close()
+
+    identity = _make_identity()
+    test_app, _, original, products_module = _build_app_with_manage(session_local, has_manage=True)
+    try:
+        client = TestClient(test_app)
+        response = client.get(f"/api/v1/products/{product_id}/versions")
+        assert response.status_code == 200
+        aa = response.json()[0]["allowed_actions"]
+        assert aa["can_update"] is False
+        assert aa["can_release"] is False
+        assert aa["can_retire"] is False
+        assert aa["can_create_sibling"] is True
+    finally:
+        products_module.has_action = original
+
+
+def test_allowed_actions_retired_with_manage():
+    """RETIRED version: all mutation capabilities False; can_create_sibling True."""
+    import app.api.v1.products as products_module
+
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    _mk_version(db, "tenant_a", product_id, "v1", lifecycle_status="RETIRED", is_current=False)
+    db.close()
+
+    identity = _make_identity()
+    test_app, _, original, products_module = _build_app_with_manage(session_local, has_manage=True)
+    try:
+        client = TestClient(test_app)
+        response = client.get(f"/api/v1/products/{product_id}/versions")
+        assert response.status_code == 200
+        aa = response.json()[0]["allowed_actions"]
+        assert aa["can_update"] is False
+        assert aa["can_release"] is False
+        assert aa["can_retire"] is False
+        assert aa["can_create_sibling"] is True
+    finally:
+        products_module.has_action = original
+
+
+def test_read_endpoints_return_200_for_non_manage_user():
+    """Read endpoints must remain accessible to authenticated users without manage permission."""
+    import app.api.v1.products as products_module
+
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    v = _mk_version(db, "tenant_a", product_id, "v1")
+    db.close()
+
+    identity = _make_identity()
+    test_app, _, original, products_module = _build_app_with_manage(session_local, has_manage=False)
+    try:
+        client = TestClient(test_app)
+        list_resp = client.get(f"/api/v1/products/{product_id}/versions")
+        get_resp = client.get(f"/api/v1/products/{product_id}/versions/{v.product_version_id}")
+        assert list_resp.status_code == 200
+        assert get_resp.status_code == 200
+    finally:
+        products_module.has_action = original

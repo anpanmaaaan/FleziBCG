@@ -471,6 +471,60 @@ if (/deleteProductVersion|reactivateProductVersion|setCurrentProductVersion|clon
   pass("pv_product_detail_excludes_forbidden_write_intents");
 }
 
+// ─── MMD-FULLSTACK-11B: Server-derived capability guard ───────────────────────
+
+// G13 — ProductVersionAllowedActions type defined in productApi.ts
+if (/interface ProductVersionAllowedActions/.test(productApi)) {
+  pass("pv_api_allowed_actions_type_defined");
+} else {
+  fail("pv_api_allowed_actions_type_defined", "productApi.ts missing ProductVersionAllowedActions interface (MMD-FULLSTACK-11B)");
+}
+
+// G14 — ProductVersionItemFromAPI includes allowed_actions field
+const pvItemBlock = productApi.match(/interface ProductVersionItemFromAPI\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+if (/allowed_actions/.test(pvItemBlock)) {
+  pass("pv_api_item_includes_allowed_actions");
+} else {
+  fail("pv_api_item_includes_allowed_actions", "ProductVersionItemFromAPI in productApi.ts missing allowed_actions field (MMD-FULLSTACK-11B)");
+}
+
+// G15 — ProductDetail consumes backend-derived capabilities for update button
+if (/allowed_actions\.can_update/.test(productDetail)) {
+  pass("pv_product_detail_consumes_can_update");
+} else {
+  fail("pv_product_detail_consumes_can_update", "ProductDetail.tsx does not consume allowed_actions.can_update — frontend is not gated by backend capability (MMD-FULLSTACK-11B)");
+}
+
+// G16 — ProductDetail consumes backend-derived capabilities for release button
+if (/allowed_actions\.can_release/.test(productDetail)) {
+  pass("pv_product_detail_consumes_can_release");
+} else {
+  fail("pv_product_detail_consumes_can_release", "ProductDetail.tsx does not consume allowed_actions.can_release — frontend is not gated by backend capability (MMD-FULLSTACK-11B)");
+}
+
+// G17 — ProductDetail consumes backend-derived capabilities for retire button
+if (/allowed_actions\.can_retire/.test(productDetail)) {
+  pass("pv_product_detail_consumes_can_retire");
+} else {
+  fail("pv_product_detail_consumes_can_retire", "ProductDetail.tsx does not consume allowed_actions.can_retire — frontend is not gated by backend capability (MMD-FULLSTACK-11B)");
+}
+
+// G18 — ProductDetail does NOT use raw lifecycle_status check to enable write buttons
+// Specifically: must not have `lifecycle_status !== "DRAFT"` as the sole button guard
+// This detects the old pattern: disabled={... || v.lifecycle_status !== "DRAFT"}
+if (/disabled=\{[^}]*v\.lifecycle_status\s*!==\s*["']DRAFT["'][^}]*\}/.test(productDetail)) {
+  fail("pv_product_detail_no_lifecycle_only_button_guard", "ProductDetail.tsx uses raw lifecycle_status to gate write buttons — must use allowed_actions instead (MMD-FULLSTACK-11B)");
+} else {
+  pass("pv_product_detail_no_lifecycle_only_button_guard");
+}
+
+// G19 — ProductDetail does not gate write buttons by v.is_current alone (retired lifecycle-only pattern)
+if (/disabled=\{[^}]*v\.is_current[^}]*\}/.test(productDetail)) {
+  fail("pv_product_detail_no_is_current_only_button_guard", "ProductDetail.tsx uses raw v.is_current to gate write buttons — must use allowed_actions.can_retire instead (MMD-FULLSTACK-11B)");
+} else {
+  pass("pv_product_detail_no_is_current_only_button_guard");
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // H. BOM FE read integration lock (MMD-FULLSTACK-07)
 // ═══════════════════════════════════════════════════════════════════════════════

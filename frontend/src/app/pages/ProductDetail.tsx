@@ -507,7 +507,7 @@ export function ProductDetail() {
                   <button
                     type="button"
                     onClick={() => void createVersion()}
-                    disabled={mutationBusyKey !== null}
+                    disabled={mutationBusyKey !== null || (versions.length > 0 && !versions[0].allowed_actions.can_create_sibling)}
                     className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-gray-400"
                   >
                     {t("productDetail.versions.action.create")}
@@ -575,7 +575,7 @@ export function ProductDetail() {
                               <button
                                 type="button"
                                 onClick={() => beginEditVersion(v)}
-                                disabled={mutationBusyKey !== null || v.lifecycle_status !== "DRAFT"}
+                                disabled={mutationBusyKey !== null || !v.allowed_actions.can_update}
                                 className="rounded border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
                               >
                                 {t("productDetail.versions.action.edit")}
@@ -583,7 +583,7 @@ export function ProductDetail() {
                               <button
                                 type="button"
                                 onClick={() => void releaseVersion(v)}
-                                disabled={mutationBusyKey !== null || v.lifecycle_status !== "DRAFT"}
+                                disabled={mutationBusyKey !== null || !v.allowed_actions.can_release}
                                 className="rounded border border-blue-300 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-400"
                               >
                                 {t("productDetail.versions.action.release")}
@@ -591,7 +591,7 @@ export function ProductDetail() {
                               <button
                                 type="button"
                                 onClick={() => void retireVersion(v)}
-                                disabled={mutationBusyKey !== null || v.is_current || !["DRAFT", "RELEASED"].includes(v.lifecycle_status)}
+                                disabled={mutationBusyKey !== null || !v.allowed_actions.can_retire}
                                 className="rounded border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-400"
                               >
                                 {t("productDetail.versions.action.retire")}
