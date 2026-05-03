@@ -1,0 +1,42 @@
+# Ruff lint configuration — FleziBCG backend
+# BACKEND-QA-BASELINE-02: minimal conservative lint gate.
+#
+# Rules: E (pycodestyle errors) + F (pyflakes).
+# Format check (ruff format) is explicitly NOT included in this baseline.
+# Mass reformatting deferred to BACKEND-QA-BASELINE-03.
+
+target-version = "py312"
+
+exclude = [
+    ".venv",
+    # Migration version files are auto-generated; lint issues there are deferred.
+    "alembic/versions",
+]
+
+[lint]
+# Use ruff's default selection (E4, E7, E9, F) — avoids E501 line-length and
+# other stylistic rules that would trigger a mass reformat requirement.
+select = ["E4", "E7", "E9", "F"]
+
+[lint.per-file-ignores]
+# alembic/env.py must manipulate sys.path before importing app modules.
+# E402 is intentional here — do not change this pattern.
+"alembic/env.py" = ["E402"]
+
+# test_user_lifecycle_status.py imports app models after a module-level
+# conditional setup block. E402 is structural/intentional in this test file.
+"tests/test_user_lifecycle_status.py" = ["E402"]
+
+# SQLAlchemy ORM boolean column comparison. `== True` is an explicit ORM filter
+# expression; replacing with the bare column changes SQLAlchemy clause behavior.
+"app/repositories/reason_code_repository.py" = ["E712"]
+
+# Pytest fixture imported via re-import pattern so pytest discovers it as a
+# fixture from the legacy test module. F811 redefinition is intentional.
+"tests/test_station_queue_session_aware_migration.py" = ["F811"]
+
+# Pre-existing WIP file from the product-version feature slice. This file has
+# unused variable assignments (F841) and duplicate local import patterns (F811)
+# introduced during active development. Clean-up is deferred to the
+# product-version feature slice (not in scope for BACKEND-QA-BASELINE-02).
+"tests/test_product_version_foundation_api.py" = ["F841", "F811"]

@@ -123,6 +123,14 @@ jobs:
             exit 1
           fi
 
+      - name: Backend lint (ruff check)
+        shell: bash
+        run: |
+          if [ -d backend ]; then
+            cd backend
+            python -m ruff check .
+          fi
+
       - name: Run backend tests
         shell: bash
         run: |
