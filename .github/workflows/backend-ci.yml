@@ -249,6 +249,15 @@ jobs:
             tests/test_rbac_seed_alignment.py \
             --tb=short
 
+      # ── P0-A-11A: Approval current behavior regression tests ────────────
+      - name: P0-A-11A tests — approval service current behavior regression
+        shell: bash
+        run: |
+          cd backend
+          python -m pytest -q \
+            tests/test_approval_service_current_behavior.py \
+            --tb=short
+
       # ── P0-A-09: IEP CONFIGURE family boundary lock ─────────────────────
       - name: P0-A-09 tests — IEP CONFIGURE family boundary lock
         shell: bash
