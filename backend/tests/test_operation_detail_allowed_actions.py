@@ -464,6 +464,7 @@ def running_operation():
 
         yield db, op
     finally:
+        db.rollback()
         _purge(db)
         db.close()
 

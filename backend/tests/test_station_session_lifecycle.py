@@ -145,6 +145,7 @@ def station_session_fixture():
         db.commit()
         yield db
     finally:
+        db.rollback()
         _purge(db)
         db.close()
 

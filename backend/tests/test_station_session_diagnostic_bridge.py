@@ -221,6 +221,7 @@ def bridge_fixture():
         _seed_station_scope(db)
         yield db
     finally:
+        db.rollback()
         _purge(db)
         db.close()
 

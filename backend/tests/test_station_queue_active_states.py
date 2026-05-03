@@ -250,6 +250,7 @@ def station_queue_fixture():
             },
         )
     finally:
+        db.rollback()
         _purge(db)
         db.close()
 
