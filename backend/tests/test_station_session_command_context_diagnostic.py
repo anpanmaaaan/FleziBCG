@@ -221,7 +221,9 @@ def _seed_running_op(db, suffix: str) -> Operation:
     )
     # Re-load ORM object
     from app.repositories.operation_repository import get_operation_by_id
-    return get_operation_by_id(db, op.id)
+    reloaded = get_operation_by_id(db, op.id)
+    assert reloaded is not None
+    return reloaded
 
 
 @pytest.fixture
@@ -340,6 +342,7 @@ def test_start_operation_rejection_unchanged_with_no_session(cmd_fixture):
     start_operation(db, op, OperationStartRequest(operator_id=None), tenant_id=_TENANT_ID)
     from app.repositories.operation_repository import get_operation_by_id
     op = get_operation_by_id(db, op.id)
+    assert op is not None
     assert op.status == StatusEnum.in_progress.value
 
     # Attempting to start an IN_PROGRESS op must raise the same conflict (unchanged rejection)
