@@ -69,6 +69,7 @@ the code to its family and evaluates DB-backed role→permission rows.
 | `admin.master_data.product_version.manage` | ADMIN | Create, update, release, or retire a Product Version definition (when write APIs are enabled by governance slice) |
 | `admin.master_data.routing.manage` | ADMIN | Create, update, add/remove operations, release, or retire a Routing |
 | `admin.master_data.resource_requirement.manage` | ADMIN | Create, update, or delete a Resource Requirement on a Routing Operation |
+| `admin.master_data.bom.manage` | ADMIN | Create, update, add/remove items, release, or retire a BOM (when write APIs are enabled by MMD-BE-12) |
 
 ### Configuration Administration — Added by P0-A-07B
 
