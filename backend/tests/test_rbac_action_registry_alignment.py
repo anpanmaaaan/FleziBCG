@@ -20,12 +20,11 @@ GAP-2: RESOLVED in P0-A-07C.
   admin.security_event.read action code added. security_events.py updated
   to use dedicated code. See audit report p0-a-07c-dedicated-security-event-read-action-report.md.
 
-GAP-3: impersonations.py uses require_authenticated_identity (not require_action)
-  for create/revoke routes. admin.impersonation.create and
-  admin.impersonation.revoke exist in ACTION_CODE_REGISTRY but the routes
-  delegate authorization to the service layer (create_impersonation_session
-  checks real_role_code against allowed callers internally). The registry
-  entries exist for future route-level gating if needed.
+GAP-3: RESOLVED in P0-A-07D.
+  impersonations.py create and revoke routes now use route-level require_action
+  guards (admin.impersonation.create, admin.impersonation.revoke). Service-layer
+  business checks remain intact. GET /current remains require_authenticated_identity.
+  See audit report p0-a-07d-route-level-impersonation-action-guard-alignment-report.md.
 """
 
 from pathlib import Path
@@ -290,28 +289,47 @@ def test_known_gap_security_events_resolved_uses_dedicated_action_code() -> None
     )
 
 
-def test_known_gap_impersonation_routes_use_require_authenticated_identity() -> None:
-    """GAP-3: impersonations.py uses require_authenticated_identity (not require_action).
+def test_known_gap_impersonation_routes_resolved_use_dedicated_action_codes() -> None:
+    """GAP-3 RESOLVED (P0-A-07D): impersonations.py create and revoke routes
+    now use route-level require_action guards.
 
-    admin.impersonation.create and admin.impersonation.revoke exist in
-    ACTION_CODE_REGISTRY but the routes delegate to service-layer checks.
-    This test locks the current state. If route-level gating is added later,
-    remove this test and add a require_action assertion.
+    admin.impersonation.create must be used for the create route.
+    admin.impersonation.revoke must be used for the revoke route.
+    GET /current must remain require_authenticated_identity (read/status — not privileged mutation).
     """
     import re
 
     src = (BACKEND_ROOT / "app" / "api" / "v1" / "impersonations.py").read_text(encoding="utf-8")
-    action_calls = re.findall(r'require_action\("([^"]+)"\)', src)
-    assert not action_calls, (
-        f"impersonations.py now uses require_action: {action_calls}. "
-        "If GAP-3 was resolved, remove this test and add a dedicated code check."
+    used_codes = re.findall(r'require_action\("([^"]+)"\)', src)
+    assert "admin.impersonation.create" in used_codes, (
+        "impersonations.py does not use admin.impersonation.create. "
+        "GAP-3 resolution may have been reverted."
+    )
+    assert "admin.impersonation.revoke" in used_codes, (
+        "impersonations.py does not use admin.impersonation.revoke. "
+        "GAP-3 resolution may have been reverted."
     )
 
 
-def test_impersonation_codes_exist_in_registry_for_future_gating() -> None:
-    """GAP-3 companion: impersonation codes are registered even though routes do not use them.
+def test_impersonation_current_route_uses_authenticated_identity_only() -> None:
+    """GET /current (status/read) must NOT use require_action.
 
-    These codes exist to support future route-level gating without a registry change.
+    Read/status routes should use require_authenticated_identity per governance rule.
+    The create and revoke routes use dedicated action codes; /current is read-only.
+    """
+    import re
+
+    src = (BACKEND_ROOT / "app" / "api" / "v1" / "impersonations.py").read_text(encoding="utf-8")
+    assert "require_authenticated_identity" in src, (
+        "impersonations.py no longer uses require_authenticated_identity. "
+        "GET /current route guard may have been incorrectly removed."
+    )
+
+
+def test_impersonation_codes_in_registry_with_admin_family() -> None:
+    """Impersonation action codes exist in registry with ADMIN family.
+
+    Registry was pre-populated in P0-A-07A; this test is the stable positive lock.
     """
     assert "admin.impersonation.create" in ACTION_CODE_REGISTRY
     assert "admin.impersonation.revoke" in ACTION_CODE_REGISTRY
