@@ -129,6 +129,23 @@ def check_db_connectivity() -> Check:
         )
 
 
+def check_ruff_lint() -> Check:
+    """Run ruff check . and return pass/fail. Requires ruff in PATH or PYTHONPATH."""
+    cmd = [sys.executable, "-m", "ruff", "check", "."]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    output = (result.stdout + result.stderr).strip()
+    passed = result.returncode == 0
+    if passed:
+        return Check("Ruff lint (ruff check .)", True, "")
+    # Find summary line
+    summary = ""
+    for line in reversed(output.splitlines()):
+        if "error" in line or "warning" in line or "All checks" in line:
+            summary = line.strip()
+            break
+    return Check("Ruff lint (ruff check .)", False, summary or output[:200])
+
+
 def check_pytest(args: list[str], label: str) -> Check:
     """Run pytest with given args and return pass/fail."""
     cmd = [sys.executable, "-m", "pytest"] + args
@@ -165,7 +182,7 @@ def main() -> int:
     args = parser.parse_args()
 
     print("=" * 60)
-    print("FleziBCG Backend Verification (BACKEND-QA-BASELINE-01)")
+    print("FleziBCG Backend Verification (BACKEND-QA-BASELINE-02)")
     print("=" * 60)
     print()
     print("Compose file:  docker/docker-compose.db.yml")
@@ -175,11 +192,15 @@ def main() -> int:
     results: list[Check] = []
 
     # 1. Import check
-    print("[1/4] Backend import check ...")
+    print("[1/5] Backend import check ...")
     results.append(check_backend_import())
 
-    # 2. DB connectivity
-    print("[2/4] DB connectivity check ...")
+    # 2. Ruff lint
+    print("[2/5] Ruff lint check ...")
+    results.append(check_ruff_lint())
+
+    # 3. DB connectivity
+    print("[3/5] DB connectivity check ...")
     db_check = check_db_connectivity()
     results.append(db_check)
     if not db_check.passed:
@@ -189,8 +210,8 @@ def main() -> int:
         print(_DEV_DB_START_HINT)
         return 1
 
-    # 3. Focused testenv tests
-    print("[3/4] Focused testenv tests ...")
+    # 4. Focused testenv tests
+    print("[4/5] Focused testenv tests ...")
     results.append(
         check_pytest(
             [
@@ -212,7 +233,7 @@ def main() -> int:
             print("FAIL: one or more checks failed.")
         return 0 if all_passed else 1
 
-    # 4. Full backend pytest suite
+    # 5. Full backend pytest suite
     runs = 2 if args.full_suite_twice else 1
     for i in range(1, runs + 1):
         label = (
@@ -220,7 +241,7 @@ def main() -> int:
             if runs > 1
             else "Full backend suite"
         )
-        print(f"[4/4] {label} ...")
+        print(f"[5/5] {label} ...")
         results.append(check_pytest(["tests/", "-q", "--tb=short"], label))
 
     _print_results(results)

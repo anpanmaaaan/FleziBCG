@@ -81,6 +81,12 @@ jobs:
           cd backend
           python -c "import app.main; print('import ok')"
 
+      - name: Backend lint (ruff check)
+        shell: bash
+        run: |
+          cd backend
+          python -m ruff check .
+
       # ── Alembic head check ────────────────────────────────────────────────
       # Reads migration files only — does not require a live DB connection.
       # Fails the build if multiple heads are detected (branched chain).
