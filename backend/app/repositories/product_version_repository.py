@@ -41,3 +41,32 @@ def get_product_version_by_id(
             ProductVersion.product_version_id == product_version_id,
         )
     )
+
+
+def get_product_version_by_code(
+    db: Session,
+    *,
+    tenant_id: str,
+    product_id: str,
+    version_code: str,
+) -> ProductVersion | None:
+    return db.scalar(
+        select(ProductVersion).where(
+            ProductVersion.tenant_id == tenant_id,
+            ProductVersion.product_id == product_id,
+            ProductVersion.version_code == version_code,
+        )
+    )
+
+
+def create_product_version(db: Session, *, row: ProductVersion) -> ProductVersion:
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def update_product_version(db: Session, *, row: ProductVersion) -> ProductVersion:
+    db.commit()
+    db.refresh(row)
+    return row

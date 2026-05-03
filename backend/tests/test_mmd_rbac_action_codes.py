@@ -155,15 +155,32 @@ def test_product_version_read_endpoints_do_not_require_manage_action():
         assert "require_action" not in block, "Product Version GET route must not require action code"
 
 
-def test_no_product_version_write_routes_exist_yet():
-    """Scope guard: Product Version write routes are deferred in this slice."""
-    write_route_markers = [
+def test_product_version_write_routes_use_product_version_action_code():
+    required_markers = [
         '@router.post("/{product_id}/versions"',
         '@router.patch("/{product_id}/versions/{version_id}"',
-        '@router.put("/{product_id}/versions/{version_id}"',
-        '@router.delete("/{product_id}/versions/{version_id}"',
         '@router.post("/{product_id}/versions/{version_id}/release"',
         '@router.post("/{product_id}/versions/{version_id}/retire"',
     ]
-    for marker in write_route_markers:
-        assert marker not in PRODUCTS_SRC, f"Unexpected Product Version write route marker found: {marker}"
+    for marker in required_markers:
+        assert marker in PRODUCTS_SRC, f"Missing Product Version write route marker: {marker}"
+
+    count = PRODUCTS_SRC.count('"admin.master_data.product_version.manage"')
+    assert count >= 4, (
+        "Expected Product Version write routes to require admin.master_data.product_version.manage"
+    )
+
+
+def test_no_product_version_delete_reactivate_set_current_clone_binding_routes_exist():
+    """Scope guard: keep deferred Product Version commands out of this slice."""
+    forbidden_markers = [
+        '@router.delete("/{product_id}/versions/{version_id}"',
+        '@router.post("/{product_id}/versions/{version_id}/reactivate"',
+        '@router.post("/{product_id}/versions/{version_id}/set-current"',
+        '@router.post("/{product_id}/versions/{version_id}/clone"',
+        '@router.post("/{product_id}/versions/{version_id}/bind-bom"',
+        '@router.post("/{product_id}/versions/{version_id}/bind-routing"',
+        '@router.post("/{product_id}/versions/{version_id}/bind-resource-requirement"',
+    ]
+    for marker in forbidden_markers:
+        assert marker not in PRODUCTS_SRC, f"Unexpected deferred Product Version route marker found: {marker}"
