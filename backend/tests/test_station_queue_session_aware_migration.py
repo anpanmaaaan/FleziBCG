@@ -72,7 +72,6 @@ def _setup_no_session_station(db):
     from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
     from app.models.rbac import Role, Scope, UserRoleAssignment
     from app.models.station_session import StationSession
-    from app.security.dependencies import RequestIdentity
 
     init_db()
 
