@@ -28,7 +28,6 @@ GAP-3: RESOLVED in P0-A-07D.
 """
 
 from pathlib import Path
-from typing import Literal
 
 from app.security.rbac import ACTION_CODE_REGISTRY
 
@@ -319,7 +318,6 @@ def test_impersonation_current_route_uses_authenticated_identity_only() -> None:
     Read/status routes should use require_authenticated_identity per governance rule.
     The create and revoke routes use dedicated action codes; /current is read-only.
     """
-    import re
 
     src = (BACKEND_ROOT / "app" / "api" / "v1" / "impersonations.py").read_text(encoding="utf-8")
     assert "require_authenticated_identity" in src, (

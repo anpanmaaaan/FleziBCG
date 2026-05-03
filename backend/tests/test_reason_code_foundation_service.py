@@ -162,7 +162,7 @@ class TestListReasonCodes:
 
     def test_list_reason_codes_tenant_scoped(self, db: Session):
         """Results are scoped by tenant_id."""
-        codes = _populate_test_codes(db)
+        _populate_test_codes(db)
         
         # Add codes for a different tenant
         other_codes = [

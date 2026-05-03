@@ -144,7 +144,6 @@ def db_session():
         _purge(db)
         yield db
     finally:
-        db.rollback()
         _purge(db)
         db.close()
 
@@ -245,7 +244,7 @@ def _seed_operation(
     return op
 
 
-def _reopen_request(reason: str | None = "quality recheck required") -> OperationReopenRequest:
+def _reopen_request(reason: str = "quality recheck required") -> OperationReopenRequest:
     return OperationReopenRequest(reason=reason)
 
 

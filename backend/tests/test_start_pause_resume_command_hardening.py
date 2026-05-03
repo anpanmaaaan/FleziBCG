@@ -28,7 +28,6 @@ from app.services.operation_service import (
     start_operation,
 )
 from app.services.station_session_service import (
-    close_station_session,
     get_current_station_session,
     identify_operator_at_station,
     open_station_session,

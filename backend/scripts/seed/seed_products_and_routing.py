@@ -15,7 +15,6 @@ Database: localhost:5432/mes (Docker postgres_data volume)
 import uuid
 from sqlalchemy import select
 
-from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.product import Product
 from app.models.routing import Routing, RoutingOperation
@@ -485,7 +484,7 @@ def main():
     init_db = None
     try:
         from app.db.init_db import init_db as init_db_func
-        init_db = init_db_func
+        init_db = init_db_func  # noqa: F841
     except ImportError:
         pass
 

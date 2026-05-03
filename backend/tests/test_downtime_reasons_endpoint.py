@@ -13,12 +13,11 @@ Scope:
 from __future__ import annotations
 
 from typing import Any, cast
-from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException, Request
 from fastapi.testclient import TestClient
-from sqlalchemy import delete, select
+from sqlalchemy import delete
 
 from app.db.init_db import init_db
 from app.db.session import SessionLocal

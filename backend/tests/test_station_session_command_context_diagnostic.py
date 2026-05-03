@@ -26,7 +26,7 @@ from sqlalchemy import delete, select
 
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
-from app.models.execution import ExecutionEvent, ExecutionEventType
+from app.models.execution import ExecutionEvent
 from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.rbac import Role, Scope, UserRoleAssignment
 from app.models.station_session import StationSession
@@ -216,7 +216,7 @@ def _seed_running_op(db, suffix: str) -> Operation:
     """Seeds a PLANNED op then starts it; returns the refreshed operation."""
     op = _seed_planned_op(db, suffix)
     _ensure_open_station_session(db)
-    detail = start_operation(
+    start_operation(
         db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID
     )
     # Re-load ORM object
@@ -234,7 +234,6 @@ def cmd_fixture():
         _seed_station_scope(db)
         yield db
     finally:
-        db.rollback()
         _purge(db)
         db.close()
 

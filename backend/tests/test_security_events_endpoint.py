@@ -48,8 +48,6 @@ def test_security_events_endpoint_delegates_with_tenant_and_limit(monkeypatch):
     fake_db = object()
     app.dependency_overrides[security_events_router_module.get_db] = lambda: fake_db
 
-    captured = {}
-
     monkeypatch.setattr(
         security_events_router_module,
         "get_security_events",

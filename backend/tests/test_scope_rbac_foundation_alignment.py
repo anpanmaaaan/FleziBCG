@@ -34,7 +34,7 @@ def test_scope_is_tenant_aware_and_hierarchical() -> None:
 
 def test_scope_uniqueness_constraint_exists() -> None:
     unique_names = {
-        c.name for c in Scope.__table__.constraints if getattr(c, "name", None)
+        c.name for c in Scope.__table__.constraints if getattr(c, "name", None)  # type: ignore[attr-defined]
     }
     assert "uq_scope_tenant_type_value" in unique_names
 

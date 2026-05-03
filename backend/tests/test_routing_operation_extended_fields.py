@@ -18,7 +18,6 @@ Out of scope (verified by negative tests below):
   - required_skill / required_skill_level / qc_checkpoint_count are NOT on
     RoutingOperation (deferred / rejected per contract Section 10).
 """
-from typing import Any, cast
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
