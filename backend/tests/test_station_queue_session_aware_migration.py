@@ -1,8 +1,8 @@
 """
 08D station queue migration tests.
 
-These tests lock additive session-aware ownership fields while preserving
-legacy claim compatibility shape.
+These tests lock session-aware control fields while preserving
+queue compatibility shape.
 """
 
 from __future__ import annotations
@@ -24,7 +24,6 @@ def test_station_queue_includes_session_ownership_summary(station_queue_fixture)
     ownership = by_id[ops["planned"].id]["ownership"]
 
     assert ownership["target_owner_type"] == "station_session"
-    assert ownership["ownership_migration_status"] == "TARGET_SESSION_OWNER"
     assert ownership["has_open_session"] is True
     assert ownership["station_id"] == legacy_queue._STATION_SCOPE_VALUE
     assert ownership["session_status"] == "OPEN"

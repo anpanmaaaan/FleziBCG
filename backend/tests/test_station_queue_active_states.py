@@ -250,7 +250,6 @@ def station_queue_fixture():
             },
         )
     finally:
-        db.rollback()
         _purge(db)
         db.close()
 
@@ -412,7 +411,3 @@ def test_station_queue_includes_session_ownership_summary_fields(station_queue_f
         item = by_id[ops[op_key].id]
         ownership = item["ownership"]
         assert ownership["target_owner_type"] == "station_session"
-        assert (
-            ownership["ownership_migration_status"]
-            == "TARGET_SESSION_OWNER"
-        )

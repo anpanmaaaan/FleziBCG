@@ -267,6 +267,44 @@ Implementation artifact
 Verdict
 - `READY_FOR_P0_C_08I_D_STATIONSESSION_CONTROL_WORDING_CLEANUP`
 
+## Addendum — P0-C-08I-D StationSession Control Wording Cleanup Implementation
+
+Routing
+- Selected brain: MOM Brain
+- Selected mode: SINGLE-SLICE IMPLEMENTATION
+- Hard Mode MOM: v3 ON
+- Reason: remove transitional ownership migration labels and normalize active-source session-control wording without runtime behavior drift.
+
+Implementation Summary
+- Removed `ownership_migration_status` from backend queue payload/schema and frontend queue API type.
+- Removed `TARGET_SESSION_OWNER` literal dependency from active tests.
+- Updated active-source wording/comments from ownership-migration framing to session-control framing in backend/frontend touched files.
+- Updated EN/JA operator-facing text values for session-control clarity while keeping existing i18n keys.
+- Preserved behavior boundary: queue/runtime semantics, command guards, and API route contracts unchanged.
+
+Verification Results (H08I-D)
+- Backend import smoke:
+	- `H08ID_BACKEND_IMPORT_OK True`
+- Focused backend regression suite:
+	- `23 passed in 10.27s`
+- Frontend lint:
+	- `npm.cmd run lint` PASS
+- Frontend build:
+	- `npm.cmd run build` PASS (`built in 8.27s`)
+- Frontend route smoke:
+	- `PASS: 24`
+	- `FAIL: 0`
+	- `77/78 covered`, `1 excluded redirect-only`
+- Post-cleanup sweep markers:
+	- `H08ID_TARGET_TRANSITIONAL_LABEL_MATCHES:0`
+	- `H08ID_LEGACY_WORDING_MATCHES:0`
+
+Implementation artifact
+- `docs/implementation/p0-c-08i-d-stationsession-control-wording-cleanup-report.md`
+
+Verdict
+- `P0_C_08I_D_COMPLETE_VERIFICATION_CLEAN`
+
 ## Addendum — P0-C-08H15 Claim Service / Schema / Model Removal Contract
 
 Routing
