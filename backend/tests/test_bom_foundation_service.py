@@ -1,9 +1,10 @@
-"""Tests for BOM foundation service/repository layer (MMD-BE-05)."""
+"""Tests for BOM foundation service/repository layer (MMD-BE-05, MMD-BE-12)."""
 
 from __future__ import annotations
 
 import uuid
 
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -11,9 +12,25 @@ from app.models.bom import Bom, BomItem
 from app.models.product import Product
 from app.models.security_event import SecurityEventLog
 from app.repositories.bom_repository import get_bom_by_id as get_bom_row
-from app.schemas.bom import _ALLOWED_BOM_LIFECYCLE_STATUSES
+from app.schemas.bom import (
+    BomCreateRequest,
+    BomItemCreateRequest,
+    BomItemUpdateRequest,
+    BomUpdateRequest,
+    _ALLOWED_BOM_LIFECYCLE_STATUSES,
+)
 from app.schemas.product import ProductCreateRequest
-from app.services.bom_service import get_bom, list_boms
+from app.services.bom_service import (
+    add_bom_item,
+    create_bom,
+    get_bom,
+    list_boms,
+    release_bom,
+    remove_bom_item,
+    retire_bom,
+    update_bom,
+    update_bom_item,
+)
 from app.services.product_service import create_product
 
 
@@ -200,3 +217,251 @@ def test_bom_model_has_no_backflush_or_erp_fields():
         "material_consumption",
     }
     assert columns.isdisjoint(forbidden)
+
+
+# ─── MMD-BE-12 service write tests ───────────────────────────────────────────
+
+def test_create_bom_validates_product_exists():
+    db = _make_session()
+    with pytest.raises(LookupError, match="Product not found"):
+        create_bom(
+            db,
+            tenant_id="tenant_a",
+            actor_user_id="admin-a",
+            product_id="nonexistent-product",
+            payload=BomCreateRequest(bom_code="X", bom_name="X"),
+        )
+
+
+def test_create_bom_sets_draft_default():
+    db = _make_session()
+    product_id = _mk_product(db, "tenant_a")
+    result = create_bom(
+        db,
+        tenant_id="tenant_a",
+        actor_user_id="admin-a",
+        product_id=product_id,
+        payload=BomCreateRequest(bom_code="BOM-CREATE", bom_name="Create BOM"),
+    )
+    assert result.lifecycle_status == "DRAFT"
+    assert result.product_id == product_id
+
+
+def test_create_bom_enforces_unique_code_per_product():
+    db = _make_session()
+    product_id = _mk_product(db, "tenant_a")
+    create_bom(
+        db,
+        tenant_id="tenant_a",
+        actor_user_id="admin-a",
+        product_id=product_id,
+        payload=BomCreateRequest(bom_code="BOM-DUP", bom_name="BOM"),
+    )
+    with pytest.raises(ValueError, match="Duplicate bom_code"):
+        create_bom(
+            db,
+            tenant_id="tenant_a",
+            actor_user_id="admin-a",
+            product_id=product_id,
+            payload=BomCreateRequest(bom_code="BOM-DUP", bom_name="BOM"),
+        )
+
+
+def test_effective_date_range_validation():
+    db = _make_session()
+    product_id = _mk_product(db, "tenant_a")
+    from datetime import date
+
+    with pytest.raises(Exception):
+        BomCreateRequest(
+            bom_code="X",
+            bom_name="X",
+            effective_from=date(2026, 12, 31),
+            effective_to=date(2026, 1, 1),
+        )
+
+
+def test_update_bom_only_draft():
+    db = _make_session()
+    product_id = _mk_product(db, "tenant_a")
+    bom_released = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="U-REL")
+    bom_released.lifecycle_status = "RELEASED"
+    db.commit()
+
+    with pytest.raises(ValueError, match="RELEASED BOM"):
+        update_bom(
+            db,
+            tenant_id="tenant_a",
+            actor_user_id="admin-a",
+            product_id=product_id,
+            bom_id=bom_released.bom_id,
+            payload=BomUpdateRequest(bom_name="Changed"),
+        )
+
+
+def test_release_only_draft():
+    db = _make_session()
+    product_id = _mk_product(db, "tenant_a")
+    comp_id = _mk_product(db, "tenant_a")
+    bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="R-SVC")
+    _mk_bom_item(
+        db,
+        tenant_id="tenant_a",
+        bom_id=bom.bom_id,
+        component_product_id=comp_id,
+        line_no=10,
+        quantity=1.0,
+    )
+
+    result = release_bom(
+        db,
+        tenant_id="tenant_a",
+        actor_user_id="admin-a",
+        product_id=product_id,
+        bom_id=bom.bom_id,
+    )
+    assert result.lifecycle_status == "RELEASED"
+
+    with pytest.raises(ValueError, match="Only DRAFT"):
+        release_bom(
+            db,
+            tenant_id="tenant_a",
+            actor_user_id="admin-a",
+            product_id=product_id,
+            bom_id=bom.bom_id,
+        )
+
+
+def test_retire_draft_or_released():
+    db = _make_session()
+    product_id = _mk_product(db, "tenant_a")
+    bom_draft = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="RT-D")
+    bom_released = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="RT-R")
+    bom_released.lifecycle_status = "RELEASED"
+    db.commit()
+
+    r1 = retire_bom(
+        db, tenant_id="tenant_a", actor_user_id="admin-a", product_id=product_id, bom_id=bom_draft.bom_id
+    )
+    assert r1.lifecycle_status == "RETIRED"
+
+    r2 = retire_bom(
+        db, tenant_id="tenant_a", actor_user_id="admin-a", product_id=product_id, bom_id=bom_released.bom_id
+    )
+    assert r2.lifecycle_status == "RETIRED"
+
+    with pytest.raises(ValueError, match="already RETIRED"):
+        retire_bom(
+            db,
+            tenant_id="tenant_a",
+            actor_user_id="admin-a",
+            product_id=product_id,
+            bom_id=bom_draft.bom_id,
+        )
+
+
+def test_add_update_remove_item_only_draft_parent():
+    db = _make_session()
+    product_id = _mk_product(db, "tenant_a")
+    comp_id = _mk_product(db, "tenant_a")
+    bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="ITEM-DRAFT")
+    bom.lifecycle_status = "RELEASED"
+    db.commit()
+
+    with pytest.raises(ValueError, match="DRAFT"):
+        add_bom_item(
+            db,
+            tenant_id="tenant_a",
+            actor_user_id="admin-a",
+            product_id=product_id,
+            bom_id=bom.bom_id,
+            payload=BomItemCreateRequest(
+                component_product_id=comp_id, line_no=10, quantity=1.0, unit_of_measure="PCS"
+            ),
+        )
+
+
+def test_component_product_must_exist():
+    db = _make_session()
+    product_id = _mk_product(db, "tenant_a")
+    bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="COMP-EXIST")
+
+    with pytest.raises(LookupError, match="Component product not found"):
+        add_bom_item(
+            db,
+            tenant_id="tenant_a",
+            actor_user_id="admin-a",
+            product_id=product_id,
+            bom_id=bom.bom_id,
+            payload=BomItemCreateRequest(
+                component_product_id="does-not-exist", line_no=10, quantity=1.0, unit_of_measure="PCS"
+            ),
+        )
+
+
+def test_component_product_cannot_equal_parent_product():
+    db = _make_session()
+    product_id = _mk_product(db, "tenant_a")
+    bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="CIRCULAR")
+
+    with pytest.raises(ValueError, match="parent product_id"):
+        add_bom_item(
+            db,
+            tenant_id="tenant_a",
+            actor_user_id="admin-a",
+            product_id=product_id,
+            bom_id=bom.bom_id,
+            payload=BomItemCreateRequest(
+                component_product_id=product_id, line_no=10, quantity=1.0, unit_of_measure="PCS"
+            ),
+        )
+
+
+def test_quantity_positive():
+    db = _make_session()
+    product_id = _mk_product(db, "tenant_a")
+    comp_id = _mk_product(db, "tenant_a")
+    bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="QTY-POS")
+
+    with pytest.raises(ValueError, match="quantity must be greater than zero"):
+        add_bom_item(
+            db,
+            tenant_id="tenant_a",
+            actor_user_id="admin-a",
+            product_id=product_id,
+            bom_id=bom.bom_id,
+            payload=BomItemCreateRequest(
+                component_product_id=comp_id, line_no=10, quantity=0.0, unit_of_measure="PCS"
+            ),
+        )
+
+
+def test_scrap_factor_non_negative():
+    db = _make_session()
+    product_id = _mk_product(db, "tenant_a")
+    comp_id = _mk_product(db, "tenant_a")
+    bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="SCRAP-NEG")
+
+    with pytest.raises(ValueError, match="scrap_factor must be non-negative"):
+        add_bom_item(
+            db,
+            tenant_id="tenant_a",
+            actor_user_id="admin-a",
+            product_id=product_id,
+            bom_id=bom.bom_id,
+            payload=BomItemCreateRequest(
+                component_product_id=comp_id,
+                line_no=10,
+                quantity=1.0,
+                unit_of_measure="PCS",
+                scrap_factor=-0.05,
+            ),
+        )
+
+
+def test_no_product_version_binding_field_or_behavior():
+    columns = set(Bom.__table__.columns.keys())
+    assert "product_version_id" not in columns
+    # BomCreateRequest must not accept product_version_id
+    with pytest.raises(Exception):
+        BomCreateRequest(bom_code="X", bom_name="X", product_version_id="pv-x")
