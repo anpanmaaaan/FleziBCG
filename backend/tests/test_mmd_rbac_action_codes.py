@@ -59,6 +59,31 @@ def test_resource_requirement_action_code_is_admin_family():
     )
 
 
+def test_product_version_manage_action_code_exists():
+    assert "admin.master_data.product_version.manage" in ACTION_CODE_REGISTRY, (
+        "admin.master_data.product_version.manage is missing from ACTION_CODE_REGISTRY"
+    )
+
+
+def test_product_version_manage_action_code_is_domain_specific():
+    assert ACTION_CODE_REGISTRY.get("admin.master_data.product_version.manage") == "ADMIN", (
+        "admin.master_data.product_version.manage must map to ADMIN family"
+    )
+    assert "admin.master_data.product_version.manage" != "admin.user.manage", (
+        "Product Version action code must remain domain-specific and distinct from IAM"
+    )
+
+
+def test_existing_mmd_action_codes_still_exist():
+    expected_codes = {
+        "admin.master_data.product.manage",
+        "admin.master_data.routing.manage",
+        "admin.master_data.resource_requirement.manage",
+    }
+    missing_codes = sorted(code for code in expected_codes if code not in ACTION_CODE_REGISTRY)
+    assert missing_codes == [], f"Existing MMD action codes missing: {missing_codes}"
+
+
 # ─── Placeholder code absence checks ─────────────────────────────────────────
 
 def test_admin_user_manage_not_in_product_mutations():
@@ -116,3 +141,29 @@ def test_read_endpoints_do_not_require_mutation_action_code():
         assert "require_action" not in block, (
             f"A GET handler unexpectedly uses require_action: {block[:200]!r}"
         )
+
+
+def test_product_version_read_endpoints_do_not_require_manage_action():
+    """Product Version read routes must remain authenticated-read only."""
+    version_get_blocks = re.findall(
+        r'@router\.get\("/\{product_id\}/versions(?:/\{version_id\})?".*?\)[^@]+?(?=@router\.|$)',
+        PRODUCTS_SRC,
+        flags=re.DOTALL,
+    )
+    assert len(version_get_blocks) == 2, "Expected 2 Product Version GET route blocks"
+    for block in version_get_blocks:
+        assert "require_action" not in block, "Product Version GET route must not require action code"
+
+
+def test_no_product_version_write_routes_exist_yet():
+    """Scope guard: Product Version write routes are deferred in this slice."""
+    write_route_markers = [
+        '@router.post("/{product_id}/versions"',
+        '@router.patch("/{product_id}/versions/{version_id}"',
+        '@router.put("/{product_id}/versions/{version_id}"',
+        '@router.delete("/{product_id}/versions/{version_id}"',
+        '@router.post("/{product_id}/versions/{version_id}/release"',
+        '@router.post("/{product_id}/versions/{version_id}/retire"',
+    ]
+    for marker in write_route_markers:
+        assert marker not in PRODUCTS_SRC, f"Unexpected Product Version write route marker found: {marker}"

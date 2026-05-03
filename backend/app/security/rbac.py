@@ -56,6 +56,7 @@ ACTION_CODE_REGISTRY: dict[str, PermissionFamily] = {
     # MMD master data mutation action codes — scoped per domain to avoid
     # conflating manufacturing definition mutations with IAM user management.
     "admin.master_data.product.manage": "ADMIN",
+    "admin.master_data.product_version.manage": "ADMIN",
     "admin.master_data.routing.manage": "ADMIN",
     "admin.master_data.resource_requirement.manage": "ADMIN",
     # Configuration administration action codes — govern platform-administered
