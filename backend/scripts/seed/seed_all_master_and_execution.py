@@ -51,7 +51,7 @@ def main():
     print("  2. Routings (3 total) with Operations")
     print("  3. Resource Requirements")
     print("  4. Production Orders linked to Master Data")
-    print("  5. Execution Test Data (Operations & Claims)")
+    print("  5. Execution Test Data (Operations & Sessions)")
     print("  6. Users & Roles")
 
     results = []
@@ -76,7 +76,7 @@ def main():
     results.append(
         run_seed_script(
             "seed_test_data.py",
-            "STEP 3: Execution Test Data (Operations & Claims)",
+            "STEP 3: Execution Test Data (Operations & Sessions)",
         )
     )
 
@@ -87,7 +87,7 @@ def main():
         print("=" * 60)
         print("\n✓ Master Data: 6 products, 3 routings with operations")
         print("✓ Production Orders: 3 POs with 9 operations total")
-        print("✓ Execution Data: 3 scenarios with operations and claims")
+        print("✓ Execution Data: 3 scenarios with operations and session states")
         print("✓ Multi-station setup: STATION-A through STATION-E")
         print("\nDatabase ready for testing:")
         print("  - Frontend: http://localhost (demo/demo123)")

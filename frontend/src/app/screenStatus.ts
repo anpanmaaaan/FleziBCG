@@ -130,7 +130,7 @@ export const SCREEN_STATUS_REGISTRY: Record<string, ScreenStatusEntry> = {
     phase: "PARTIAL",
     dataSource: "BACKEND_API",
     notes:
-      "Execution actions are connected to the real API. This screen uses the compatibility claim model. Target design is session-owned execution (STX-000/001/002 v4.0).",
+      "Execution actions are connected to the real API. Session-owned execution model (STX-000/001/002 v4.0).",
   },
   qcCheckpoints: {
     routePattern: "/quality",

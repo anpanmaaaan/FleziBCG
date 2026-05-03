@@ -19,7 +19,7 @@ export const isBackendActionableQueueStatus = (status: StationQueueItem["status"
 const matchesQueueFilter = (item: StationQueueItem, filter: QueueFilter): boolean => {
   switch (filter) {
     case "mine":
-      // H8: Ownership-only; claim fallback retired
+      // H8: Ownership-only
       return item.ownership?.owner_state === "mine" && item.ownership?.has_open_session === true;
     case "ready":
       return isBackendActionableQueueStatus(item.status) && !item.downtime_open;
@@ -44,7 +44,7 @@ export function StationQueuePanel({
   onSelect,
 }: StationQueuePanelProps) {
   const { t } = useI18n();
-  // H8: Ownership-only; claim fallback retired
+  // H8: Ownership-only
   const hasOwnedSessionInQueue = items.some(
     (item) => item.ownership?.owner_state === "mine" && item.ownership?.has_open_session === true,
   );
@@ -64,7 +64,7 @@ export function StationQueuePanel({
         if (item.downtime_open) {
           acc.downtime += 1;
         }
-        // H8: Ownership-only; claim fallback retired
+        // H8: Ownership-only
         if (item.ownership?.owner_state === "mine" && item.ownership?.has_open_session === true) {
           acc.mine += 1;
         }

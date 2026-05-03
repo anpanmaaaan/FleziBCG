@@ -4,7 +4,7 @@ import type { OperationDetail, OperationExecutionStatus } from "./operationApi";
 /**
  * StationSession ownership context for queue item.
  * Target ownership truth (introduced in 08D, consumed in 08H2+).
- * Replaces claim-based ownership logic in frontend.
+ * Session-based ownership model.
  */
 export interface SessionOwnershipSummary {
   target_owner_type: string;

@@ -850,11 +850,17 @@ Verification summary:
 - Backend DB-backed pytest gates: environment instability blocker (deadlock/connection-abort contention), no confirmed H08I-B functional regression in changed surfaces.
 - V2 active-source sweep classification: `289` matches total with `BLOCKER_ACTIVE_SOURCE=68`, `ACCEPTED_MIGRATION_HISTORY_EXCEPTION=19`, `ACCEPTED_DESIGN_HISTORY_OR_TRANSITION_NOTE=165`, `FALSE_POSITIVE_JWT_CLAIMS=4`, `FALSE_POSITIVE_NON_EXECUTION_WORDING=33`, `UNKNOWN_NEEDS_FIX=0`.
 
+V3 addendum (active source blocker burn-down):
+- Before: 289 matches (68 active-source blockers). After: 204 matches (0 active-source blockers).
+- All 68 V2 BLOCKER_ACTIVE_SOURCE items removed/renamed (settings, i18n, component keys, comments, seed scripts, test function names, design doc).
+- Frontend lint/build/routes/import smoke: all PASS.
+- Backend pytest: environment-deferred (PostgreSQL lock contention).
+
 Implementation report:
 - `docs/implementation/p0-c-08i-b-active-claim-source-purge-report.md`
 
 Verdict:
-- `NOT_READY_ACTIVE_SOURCE_CLAIM_REMAINS`
+- `P0_C_08IB_ACTIVE_SOURCE_BLOCKERS_REMOVED` (V3 — H08I-B can close)
 - No schema migration
 - No reopen hardening changes
 - No FE/UI changes

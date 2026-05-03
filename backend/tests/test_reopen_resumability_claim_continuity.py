@@ -29,7 +29,7 @@ from app.services.station_session_service import (
     open_station_session,
 )
 
-_PREFIX = "TEST-REOPEN-CLAIM-CONTINUITY"
+_PREFIX = "TEST-REOPEN-SESSION-CONTINUITY"
 _TENANT_ID = "default"
 _STATION_SCOPE = f"{_PREFIX}-STATION-01"
 _OWNER_USER_ID = f"{_PREFIX}-OWNER"
@@ -206,7 +206,7 @@ def _mark_operation_completed(db, op: Operation) -> Operation:
     return op
 
 
-def test_reopen_restores_last_claim_owner_path_and_resume_is_reachable(db_session):
+def test_reopen_restores_paused_state_and_session_resume_is_reachable(db_session):
     db = db_session
     op = _seed_operation(db, "RESTORE")
 
@@ -245,7 +245,7 @@ def test_reopen_restores_last_claim_owner_path_and_resume_is_reachable(db_sessio
     assert resumed.status == StatusEnum.in_progress.value
 
 
-def test_reopen_preserves_active_claim_continuity_when_claim_still_exists(db_session):
+def test_reopen_preserves_paused_state_after_reopen(db_session):
     db = db_session
     op = _seed_operation(db, "CONTINUITY")
     _mark_operation_completed(db, op)
@@ -268,7 +268,7 @@ def test_reopen_preserves_active_claim_continuity_when_claim_still_exists(db_ses
     assert reopened.closure_status == ClosureStatusEnum.open.value
 
 
-def test_reopen_skips_claim_restoration_when_owner_has_other_active_claim(db_session):
+def test_reopen_succeeds_without_session_restoration_dependency(db_session):
     db = db_session
     op_reopen = _seed_operation(db, "CONFLICT-REOPEN")
     _mark_operation_completed(db, op_reopen)
@@ -284,7 +284,7 @@ def test_reopen_skips_claim_restoration_when_owner_has_other_active_claim(db_ses
     reopened = reopen_operation(
         db,
         op_reopen,
-        OperationReopenRequest(reason="reopen should stay claim-independent"),
+        OperationReopenRequest(reason="reopen is session-independent"),
         actor_user_id=_SUP_USER_ID,
         tenant_id=_TENANT_ID,
     )

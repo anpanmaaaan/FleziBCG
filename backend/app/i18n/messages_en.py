@@ -25,9 +25,9 @@ EN_MESSAGES: dict[str, str] = {
     "operation.start_conflict": "Operation start conflicts with current state",
     # ── station ──
     "station.not_found": "Workstation not found",
-    "station.already_claimed": "Workstation is already claimed by another operator",
-    "station.not_claimed": "Workstation is not claimed",
-    "station.claim_not_owned": "You do not own this workstation claim",
+    "station.already_owned": "Workstation session is already owned by another operator",
+    "station.not_owned": "Workstation does not have an active session owner",
+    "station.session_not_owned": "You do not own this workstation session",
     # ── work orders ──
     "work_order.not_found": "Work order not found",
     # ── production orders ──

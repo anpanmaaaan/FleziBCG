@@ -190,18 +190,18 @@ def seed_test_dataset_1():
 
 def seed_test_dataset_2():
     """
-    Scenario 2: Operation in progress with claim.
+    Scenario 2: Operation in progress (session-owned).
 
     Structure:
     - ProductionOrder: TEST-DEMO-S2-PO
       - WorkOrder: TEST-DEMO-S2-WO
-        - Operation 1: TEST-DEMO-S2-OP-001 (IN_PROGRESS) + claim by alice
+        - Operation 1: TEST-DEMO-S2-OP-001 (IN_PROGRESS) owned by alice session
         - Operation 2: TEST-DEMO-S2-OP-002 (PLANNED)
     - Users: alice (OPR), supervisor (SUP) @ STATION-B
     """
     db = SessionLocal()
     try:
-        print("=== SCENARIO 2: Operation In-Progress with Claim ===")
+        print("=== SCENARIO 2: Operation In-Progress (Session-Owned) ===")
 
         init_db()
         _ensure_roles(db)

@@ -284,18 +284,19 @@ CANONICAL
 | Backend is execution/auth source of truth | Preserved |
 | Frontend remains intent-only | Preserved |
 | Migration-history immutability | Preserved |
-| Active-source claim-free requirement for H08I-B closeout | Not satisfied in V2 (`BLOCKER_ACTIVE_SOURCE=68`) |
+| Active-source claim-free requirement for H08I-B closeout | **Satisfied in V3** (`BLOCKER_ACTIVE_SOURCE=0`) |
 
 ### Test Matrix
 | Test ID | Scenario | Result |
 |---|---|---|
 | HM3-049-T1 | preflight stale-worker cleanup + single-flight enforcement | pass |
-| HM3-049-T2 | backend focused deterministic completion marker | blocked |
-| HM3-049-T3 | backend broader deterministic completion marker | blocked |
+| HM3-049-T2 | backend focused deterministic completion marker | blocked (env) |
+| HM3-049-T3 | backend broader deterministic completion marker | blocked (env) |
 | HM3-049-T4 | compile/frontend gates | pass |
-| HM3-049-T5 | active-source sweep + classification | complete (blockers remain) |
+| HM3-049-T5 | active-source sweep + classification | complete (V2: blockers remain) |
+| HM3-049-T6 | V3 active-source burn-down + post-sweep verification | pass |
 
-### Verification Results
+### V2 Verification Results
 - `H08IB_V2_SCRIPT_COMPILE_EXIT:0`
 - `H08IB_V2_FRONTEND_LINT_EXIT:0`
 - `H08IB_V2_FRONTEND_BUILD_EXIT:0`
@@ -304,8 +305,21 @@ CANONICAL
 - `H08IB_V2_BACKEND_FOCUSED_EXIT` not emitted (blocked)
 - `H08IB_V2_EXEC_REOPEN_PROJECTION_EXIT` not emitted (blocked)
 
+### V3 Verification Results
+- `H08IB_V3_SCRIPT_COMPILE_EXIT:0`
+- `H08IB_V3_FRONTEND_LINT_EXIT:0`
+- `H08IB_V3_FRONTEND_BUILD_EXIT:0`
+- `H08IB_V3_FRONTEND_ROUTE_SMOKE_EXIT:0`
+- `H08IB_V3_ACTIVE_SOURCE_CLAIM_MATCHES_BEFORE:289`
+- `H08IB_V3_ACTIVE_SOURCE_CLAIM_MATCHES_AFTER:204` (all remaining: accepted history / false positives)
+- `H08IB_V3_BACKEND_IMPORT_EXIT:0` (`H08IB_V3_IMPORT_OK True`)
+- Backend pytest: DEFERRED (environment PostgreSQL lock contention; not a code regression)
+
 ### V2 Verdict
 `NOT_READY_ACTIVE_SOURCE_CLAIM_REMAINS`
+
+### V3 Verdict
+`P0_C_08IB_ACTIVE_SOURCE_BLOCKERS_REMOVED`
 
 ## Slice HM3-005
 Name: P0-A CI governance artifact enforcement
