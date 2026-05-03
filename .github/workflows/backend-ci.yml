@@ -258,6 +258,15 @@ jobs:
             tests/test_approval_service_current_behavior.py \
             --tb=short
 
+      # ── P0-A-12: Approval SecurityEventLog emission tests ─────────────────
+      - name: P0-A-12 tests — approval SecurityEventLog emission
+        shell: bash
+        run: |
+          cd backend
+          python -m pytest -q \
+            tests/test_approval_security_events.py \
+            --tb=short
+
       # ── P0-A-09: IEP CONFIGURE family boundary lock ─────────────────────
       - name: P0-A-09 tests — IEP CONFIGURE family boundary lock
         shell: bash
