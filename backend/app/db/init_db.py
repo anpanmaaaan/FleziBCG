@@ -56,6 +56,7 @@ from app.models.tenant import Tenant  # noqa: F401
 from app.security.rbac import seed_rbac_core
 from app.services.approval_service import seed_approval_rules
 from app.services.user_service import seed_demo_users
+from scripts.seed_default_tenant import seed_tenant_row
 
 # ---------------------------------------------------------------------------
 # Alembic live migration driver
@@ -197,7 +198,9 @@ def init_db(*, bootstrap_schema: bool = False, _use_sql_runner: bool = False) ->
 
     # INTENT: Seed order matters — RBAC roles/permissions first, then approval
     # rules (which reference role codes), then demo users (which reference roles).
+    # Tenant row is seeded first so all subsequent auth checks can pass.
     with SessionLocal() as db:
+        seed_tenant_row(db, tenant_id="default", tenant_code="DEFAULT", tenant_name="Default Tenant")
         seed_rbac_core(db)
         seed_approval_rules(db)
         seed_demo_users(db)

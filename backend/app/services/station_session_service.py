@@ -17,9 +17,7 @@ from app.repositories.station_session_repository import (
     update_station_session,
 )
 from app.schemas.station_session import (
-    BindEquipmentRequest,
     OpenStationSessionRequest,
-    IdentifyOperatorRequest,
 )
 from app.security.dependencies import RequestIdentity
 from app.services.security_event_service import record_security_event
@@ -160,12 +158,23 @@ def open_station_session(
             operator_user_id,
             field_name="operator_user_id",
         )
-        _require_operator_eligible_for_station(
-            db,
-            tenant_id=identity.tenant_id,
-            station_id=normalized_station,
-            operator_user_id=operator_user_id,
-        )
+        # Spoofing guard: operator must be the authenticated user.
+        # Re-assignment of operator to a different person must go through the
+        # identify_operator command which has its own authorization path.
+        if operator_user_id != identity.user_id:
+            raise PermissionError(
+                "operator_user_id must match the authenticated user when provided at session open"
+            )
+    else:
+        # Derive operator from authenticated user identity (BT-AGG-002 / BT-CORE-001).
+        operator_user_id = identity.user_id
+
+    _require_operator_eligible_for_station(
+        db,
+        tenant_id=identity.tenant_id,
+        station_id=normalized_station,
+        operator_user_id=operator_user_id,
+    )
 
     session = StationSession(
         session_id=uuid.uuid4().hex,
