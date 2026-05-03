@@ -34,6 +34,23 @@ export interface StationQueueResponse {
   station_scope_value: string;
 }
 
+export interface OpenStationSessionPayload {
+  station_id: string;
+  equipment_id?: string | null;
+  current_operation_id?: number | null;
+}
+
+export interface StationSessionItem {
+  session_id: string;
+  tenant_id: string;
+  station_id: string;
+  operator_user_id: string | null;
+  equipment_id: string | null;
+  status: string;
+  opened_at: string;
+  closed_at: string | null;
+}
+
 const STATION_BASE_PATH = "/v1/station/queue";
 
 export const stationApi = {
@@ -43,5 +60,19 @@ export const stationApi = {
 
   getOperationDetail(operationId: number) {
     return request<OperationDetail>(`${STATION_BASE_PATH}/${operationId}/detail`);
+  },
+
+  openSession(payload: OpenStationSessionPayload) {
+    return request<StationSessionItem>("/v1/station/sessions", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  closeSession(sessionId: string) {
+    return request<StationSessionItem>(`/v1/station/sessions/${sessionId}/close`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
   },
 };
