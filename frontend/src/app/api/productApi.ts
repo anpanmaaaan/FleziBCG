@@ -28,6 +28,21 @@ export interface ProductVersionItemFromAPI {
   updated_at: string;
 }
 
+export interface ProductVersionCreateRequest {
+  version_code: string;
+  version_name?: string;
+  effective_from?: string;
+  effective_to?: string;
+  description?: string;
+}
+
+export interface ProductVersionUpdateRequest {
+  version_name?: string;
+  effective_from?: string;
+  effective_to?: string;
+  description?: string;
+}
+
 export interface BomItemFromAPI {
   bom_id: string;
   tenant_id: string;
@@ -83,6 +98,53 @@ export const productApi = {
     return request<ProductVersionItemFromAPI>(
       `${BASE_PATH}/${encodeURIComponent(productId)}/versions/${encodeURIComponent(versionId)}`,
       { signal },
+    );
+  },
+
+  createProductVersion(productId: string, payload: ProductVersionCreateRequest, signal?: AbortSignal) {
+    return request<ProductVersionItemFromAPI>(
+      `${BASE_PATH}/${encodeURIComponent(productId)}/versions`,
+      {
+        method: "POST",
+        body: payload,
+        signal,
+      },
+    );
+  },
+
+  updateProductVersion(
+    productId: string,
+    versionId: string,
+    payload: ProductVersionUpdateRequest,
+    signal?: AbortSignal,
+  ) {
+    return request<ProductVersionItemFromAPI>(
+      `${BASE_PATH}/${encodeURIComponent(productId)}/versions/${encodeURIComponent(versionId)}`,
+      {
+        method: "PATCH",
+        body: payload,
+        signal,
+      },
+    );
+  },
+
+  releaseProductVersion(productId: string, versionId: string, signal?: AbortSignal) {
+    return request<ProductVersionItemFromAPI>(
+      `${BASE_PATH}/${encodeURIComponent(productId)}/versions/${encodeURIComponent(versionId)}/release`,
+      {
+        method: "POST",
+        signal,
+      },
+    );
+  },
+
+  retireProductVersion(productId: string, versionId: string, signal?: AbortSignal) {
+    return request<ProductVersionItemFromAPI>(
+      `${BASE_PATH}/${encodeURIComponent(productId)}/versions/${encodeURIComponent(versionId)}/retire`,
+      {
+        method: "POST",
+        signal,
+      },
     );
   },
 

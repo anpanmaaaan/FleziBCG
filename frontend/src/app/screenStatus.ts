@@ -83,7 +83,7 @@ export const SCREEN_STATUS_REGISTRY: Record<string, ScreenStatusEntry> = {
     routePattern: "/products/:productId",
     phase: "PARTIAL",
     dataSource: "BACKEND_API",
-    notes: "Product detail reads backend API. Lifecycle mutation actions remain disabled in FE-4A.",
+    notes: "Product detail reads backend API. Product Version create/update/release/retire intent is connected; product lifecycle actions remain disabled.",
   },
   dispatchQueue: {
     routePattern: "/dispatch",
