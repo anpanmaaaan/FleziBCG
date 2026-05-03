@@ -4,6 +4,10 @@ export interface ProductVersionProductCapabilities {
   can_create: boolean;
 }
 
+export interface ProductBomCapabilities {
+  can_create: boolean;
+}
+
 export interface ProductItemFromAPI {
   product_id: string;
   tenant_id: string;
@@ -16,6 +20,7 @@ export interface ProductItemFromAPI {
   created_at: string;
   updated_at: string;
   product_version_capabilities: ProductVersionProductCapabilities;
+  bom_capabilities: ProductBomCapabilities;
 }
 
 export interface ProductVersionAllowedActions {
@@ -56,6 +61,16 @@ export interface ProductVersionUpdateRequest {
   description?: string;
 }
 
+export interface BomAllowedActions {
+  can_update: boolean;
+  can_release: boolean;
+  can_retire: boolean;
+  can_add_item: boolean;
+  can_update_item: boolean;
+  can_remove_item: boolean;
+  can_create_sibling: boolean;
+}
+
 export interface BomItemFromAPI {
   bom_id: string;
   tenant_id: string;
@@ -68,6 +83,7 @@ export interface BomItemFromAPI {
   description?: string | null;
   created_at: string;
   updated_at: string;
+  allowed_actions: BomAllowedActions;
 }
 
 export interface BomComponentItemFromAPI {

@@ -29,6 +29,10 @@ class ProductVersionProductCapabilities(BaseModel):
     can_create: bool
 
 
+class ProductBomCapabilities(BaseModel):
+    can_create: bool
+
+
 class ProductItem(BaseModel):
     product_id: str
     tenant_id: str
@@ -41,6 +45,7 @@ class ProductItem(BaseModel):
     created_at: datetime
     updated_at: datetime
     product_version_capabilities: ProductVersionProductCapabilities
+    bom_capabilities: ProductBomCapabilities
 
 
 def validate_product_type(value: str) -> str:

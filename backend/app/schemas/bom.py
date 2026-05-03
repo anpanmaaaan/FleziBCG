@@ -123,7 +123,18 @@ class BomItem(BaseModel):
     description: str | None = None
     created_at: datetime
     updated_at: datetime
+    allowed_actions: BomAllowedActions
 
 
 class BomDetail(BomItem):
     items: list[BomComponentItem]
+
+
+class BomAllowedActions(BaseModel):
+    can_update: bool
+    can_release: bool
+    can_retire: bool
+    can_add_item: bool
+    can_update_item: bool
+    can_remove_item: bool
+    can_create_sibling: bool = True

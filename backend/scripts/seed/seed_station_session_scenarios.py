@@ -35,6 +35,7 @@ from app.models.master import (
 )
 from app.models.rbac import Role, Scope, UserRoleAssignment
 from app.models.station_session import StationSession
+from app.models.tenant import TENANT_STATUS_ACTIVE, Tenant
 from app.models.user import User
 from app.schemas.operation import OperationStartRequest
 from app.security.dependencies import RequestIdentity
@@ -101,6 +102,19 @@ def _ensure_role(db: Session, code: str, name: str) -> Role:
 
 def _ensure_tenant_b_operator(db: Session) -> User:
     """Tạo hoặc lấy user cho Tenant B (không tồn tại trong demo mặc định)."""
+    # Đảm bảo Tenant row tồn tại — bắt buộc để login được
+    tenant = db.scalar(select(Tenant).where(Tenant.tenant_id == _TENANT_B))
+    if tenant is None:
+        tenant = Tenant(
+            tenant_id=_TENANT_B,
+            tenant_code="TENANT-B",
+            tenant_name="Tenant B Demo",
+            lifecycle_status=TENANT_STATUS_ACTIVE,
+            is_active=True,
+        )
+        db.add(tenant)
+        db.flush()
+
     user = get_or_create_user(
         db,
         user_id=_TENANT_B_OPERATOR_ID,

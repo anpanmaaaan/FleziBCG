@@ -22,6 +22,7 @@ from app.repositories.bom_repository import (
 )
 from app.repositories.product_repository import get_product_by_id as get_product_row
 from app.schemas.bom import (
+    BomAllowedActions,
     BomComponentItem,
     BomCreateRequest,
     BomDetail,
@@ -31,6 +32,61 @@ from app.schemas.bom import (
     BomUpdateRequest,
 )
 from app.services.security_event_service import record_security_event
+
+
+def _compute_allowed_actions(has_manage: bool, lifecycle_status: str) -> BomAllowedActions:
+    """
+    Compute BOM allowed actions based on user permission and BOM lifecycle state.
+    
+    Rules:
+    - If user lacks admin.master_data.bom.manage, all actions are false
+    - If user has manage permission:
+      - DRAFT: all mutations allowed
+      - RELEASED: can_retire and can_create_sibling only
+      - RETIRED: can_create_sibling only
+    """
+    if not has_manage:
+        return BomAllowedActions(
+            can_update=False,
+            can_release=False,
+            can_retire=False,
+            can_add_item=False,
+            can_update_item=False,
+            can_remove_item=False,
+            can_create_sibling=False,
+        )
+    
+    # User has manage permission; check lifecycle state
+    if lifecycle_status == "DRAFT":
+        return BomAllowedActions(
+            can_update=True,
+            can_release=True,
+            can_retire=True,
+            can_add_item=True,
+            can_update_item=True,
+            can_remove_item=True,
+            can_create_sibling=True,
+        )
+    elif lifecycle_status == "RELEASED":
+        return BomAllowedActions(
+            can_update=False,
+            can_release=False,
+            can_retire=True,
+            can_add_item=False,
+            can_update_item=False,
+            can_remove_item=False,
+            can_create_sibling=True,
+        )
+    else:  # RETIRED
+        return BomAllowedActions(
+            can_update=False,
+            can_release=False,
+            can_retire=False,
+            can_add_item=False,
+            can_update_item=False,
+            can_remove_item=False,
+            can_create_sibling=True,
+        )
 
 
 def _to_component_item(row: BomItemRow) -> BomComponentItem:
@@ -50,7 +106,7 @@ def _to_component_item(row: BomItemRow) -> BomComponentItem:
     )
 
 
-def _to_bom_item(row: Bom) -> BomItem:
+def _to_bom_item(row: Bom, has_manage: bool = False) -> BomItem:
     return BomItem(
         bom_id=row.bom_id,
         tenant_id=row.tenant_id,
@@ -63,10 +119,11 @@ def _to_bom_item(row: Bom) -> BomItem:
         description=row.description,
         created_at=row.created_at,
         updated_at=row.updated_at,
+        allowed_actions=_compute_allowed_actions(has_manage, row.lifecycle_status),
     )
 
 
-def _to_bom_detail(row: Bom) -> BomDetail:
+def _to_bom_detail(row: Bom, has_manage: bool = False) -> BomDetail:
     ordered_items = sorted(row.items, key=lambda x: (x.line_no, x.bom_item_id))
     return BomDetail(
         bom_id=row.bom_id,
@@ -81,6 +138,7 @@ def _to_bom_detail(row: Bom) -> BomDetail:
         items=[_to_component_item(item) for item in ordered_items],
         created_at=row.created_at,
         updated_at=row.updated_at,
+        allowed_actions=_compute_allowed_actions(has_manage, row.lifecycle_status),
     )
 
 
@@ -89,13 +147,14 @@ def list_boms(
     *,
     tenant_id: str,
     product_id: str,
+    has_manage_permission: bool = False,
 ) -> list[BomItem]:
     product = get_product_row(db, tenant_id=tenant_id, product_id=product_id)
     if product is None:
         raise LookupError("Product not found")
 
     rows = list_boms_by_product(db, tenant_id=tenant_id, product_id=product_id)
-    return [_to_bom_item(row) for row in rows]
+    return [_to_bom_item(row, has_manage=has_manage_permission) for row in rows]
 
 
 def get_bom(
@@ -104,6 +163,7 @@ def get_bom(
     tenant_id: str,
     product_id: str,
     bom_id: str,
+    has_manage_permission: bool = False,
 ) -> BomDetail:
     product = get_product_row(db, tenant_id=tenant_id, product_id=product_id)
     if product is None:
@@ -113,7 +173,7 @@ def get_bom(
     if row is None:
         raise LookupError("BOM not found")
 
-    return _to_bom_detail(row)
+    return _to_bom_detail(row, has_manage=has_manage_permission)
 
 
 # ─── Private helpers ──────────────────────────────────────────────────────────
@@ -238,7 +298,7 @@ def create_bom(
         row=row,
         changed_fields=["bom_code", "bom_name", "lifecycle_status"],
     )
-    return _to_bom_item(row)
+    return _to_bom_item(row, has_manage=True)
 
 
 def update_bom(
@@ -279,7 +339,7 @@ def update_bom(
             changed_fields.append("description")
 
     if not changed_fields:
-        return _to_bom_item(row)
+        return _to_bom_item(row, has_manage=True)
 
     row = update_bom_row(db, row=row)
     _emit_bom_event(
@@ -290,7 +350,7 @@ def update_bom(
         row=row,
         changed_fields=changed_fields,
     )
-    return _to_bom_item(row)
+    return _to_bom_item(row, has_manage=True)
 
 
 def release_bom(
@@ -321,7 +381,7 @@ def release_bom(
         row=row,
         changed_fields=["lifecycle_status"],
     )
-    return _to_bom_item(row)
+    return _to_bom_item(row, has_manage=True)
 
 
 def retire_bom(
@@ -347,7 +407,7 @@ def retire_bom(
         row=row,
         changed_fields=["lifecycle_status"],
     )
-    return _to_bom_item(row)
+    return _to_bom_item(row, has_manage=True)
 
 
 # ─── BOM Item write commands ──────────────────────────────────────────────────
