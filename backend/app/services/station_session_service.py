@@ -10,6 +10,9 @@ from sqlalchemy.orm import Session
 
 from app.models.rbac import Scope, UserRoleAssignment
 from app.models.station_session import StationSession
+from app.repositories.operation_repository import (
+    get_active_non_terminal_operations_by_station,
+)
 from app.repositories.station_session_repository import (
     create_station_session,
     get_active_station_session_for_station,
@@ -207,11 +210,13 @@ def open_station_session(
             "current_operation_id",
         ],
     )
-    return get_station_session_by_id(
+    result = get_station_session_by_id(
         db,
         tenant_id=identity.tenant_id,
         session_id=session.session_id,
     )
+    assert result is not None
+    return result
 
 
 def get_current_station_session(
@@ -266,11 +271,13 @@ def identify_operator_at_station(
         session=row,
         changed_fields=["operator_user_id"],
     )
-    return get_station_session_by_id(
+    result = get_station_session_by_id(
         db,
         tenant_id=identity.tenant_id,
         session_id=row.session_id,
     )
+    assert result is not None
+    return result
 
 
 def bind_equipment_to_station_session(
@@ -304,11 +311,13 @@ def bind_equipment_to_station_session(
         session=row,
         changed_fields=["equipment_id"],
     )
-    return get_station_session_by_id(
+    result = get_station_session_by_id(
         db,
         tenant_id=identity.tenant_id,
         session_id=row.session_id,
     )
+    assert result is not None
+    return result
 
 
 def close_station_session(
@@ -329,6 +338,18 @@ def close_station_session(
     if row.status == "CLOSED" or row.closed_at is not None:
         raise ValueError("Station session is already CLOSED")
 
+    # SS-CLOSE-001 guard: reject close if active execution would be orphaned.
+    # Blocker states: IN_PROGRESS, PAUSED, BLOCKED (non-terminal, closure_status=OPEN).
+    active_blockers = get_active_non_terminal_operations_by_station(
+        db,
+        tenant_id=identity.tenant_id,
+        station_scope_value=row.station_id,
+    )
+    if active_blockers:
+        raise StationSessionConflictError(
+            "STATION_SESSION_ACTIVE_EXECUTION"
+        )
+
     row.status = "CLOSED"
     row.closed_at = datetime.now(timezone.utc)
     row = update_station_session(db, row=row)
@@ -339,8 +360,10 @@ def close_station_session(
         session=row,
         changed_fields=["status", "closed_at"],
     )
-    return get_station_session_by_id(
+    result = get_station_session_by_id(
         db,
         tenant_id=identity.tenant_id,
         session_id=row.session_id,
     )
+    assert result is not None
+    return result

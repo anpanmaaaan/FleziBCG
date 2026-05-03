@@ -271,6 +271,7 @@ export const jaRegistry: I18nRegistry = {
   "station.hint.nextAction.endDowntime": "次の操作：発生中のダウンタイムを終了してください。",
   "station.hint.nextAction.clockOn": "次の操作：作業開始を押してください。",
   "station.session.heading": "セッション",
+  "station.session.closeBlockedActiveExecution": "セッションを閉じられません：先にすべてのアクティブな作業を完了または終了してください。",
   "station.action.completeOperation": "工程完了",
 
   // ── home ──

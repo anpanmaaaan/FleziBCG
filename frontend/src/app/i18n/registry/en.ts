@@ -306,6 +306,7 @@ export const enRegistry: I18nRegistry = {
   "station.hint.nextAction.endDowntime": "Next: end the open downtime.",
   "station.hint.nextAction.clockOn": "Next: clock on to start the operation.",
   "station.session.heading": "Session",
+  "station.session.closeBlockedActiveExecution": "Cannot close session: complete or pause/end all active operations first.",
   "station.action.completeOperation": "Complete Operation",
 
   // ── home ──
