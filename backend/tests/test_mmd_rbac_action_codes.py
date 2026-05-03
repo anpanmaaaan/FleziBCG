@@ -184,3 +184,62 @@ def test_no_product_version_delete_reactivate_set_current_clone_binding_routes_e
     ]
     for marker in forbidden_markers:
         assert marker not in PRODUCTS_SRC, f"Unexpected deferred Product Version route marker found: {marker}"
+
+
+# ─── MMD-BE-09A: BOM action code registry checks ─────────────────────────────
+
+def test_bom_manage_action_code_exists():
+    assert "admin.master_data.bom.manage" in ACTION_CODE_REGISTRY, (
+        "admin.master_data.bom.manage is missing from ACTION_CODE_REGISTRY — required by MMD-BE-09A"
+    )
+
+
+def test_bom_manage_action_code_is_domain_specific():
+    assert ACTION_CODE_REGISTRY.get("admin.master_data.bom.manage") == "ADMIN", (
+        "admin.master_data.bom.manage must map to ADMIN family"
+    )
+    assert "admin.master_data.bom.manage" != "admin.user.manage", (
+        "BOM action code must remain domain-specific and distinct from IAM user management"
+    )
+
+
+def test_bom_read_endpoints_do_not_require_manage_action():
+    """BOM read routes must use authenticated-read only — not require_action."""
+    bom_get_blocks = re.findall(
+        r'@router\.get\("/\{product_id\}/boms[^"]*".*?\)[^@]+?(?=@router\.|$)',
+        PRODUCTS_SRC,
+        flags=re.DOTALL,
+    )
+    assert len(bom_get_blocks) >= 2, "Expected at least 2 BOM GET route blocks in products.py"
+    for block in bom_get_blocks:
+        assert "require_action" not in block, (
+            "BOM GET route must not use require_action — authenticated-read only"
+        )
+
+
+def test_no_bom_write_routes_exist_yet():
+    """Scope guard: BOM write endpoints must not be implemented before MMD-BE-12."""
+    bom_write_markers = [
+        '@router.post("/{product_id}/boms"',
+        '@router.patch("/{product_id}/boms/',
+        '@router.post("/{product_id}/boms/',
+        '@router.delete("/{product_id}/boms/',
+    ]
+    # Only POST /boms/... for release/retire/items counts — exclude GET
+    for marker in bom_write_markers:
+        assert marker not in PRODUCTS_SRC, (
+            f"Unexpected BOM write route found before MMD-BE-12: {marker}"
+        )
+
+
+def test_no_bom_item_write_routes_exist_yet():
+    """Scope guard: BOM item mutation endpoints must not be implemented before MMD-BE-12."""
+    bom_item_write_markers = [
+        '@router.post("/{product_id}/boms/{bom_id}/items"',
+        '@router.patch("/{product_id}/boms/{bom_id}/items/',
+        '@router.delete("/{product_id}/boms/{bom_id}/items/',
+    ]
+    for marker in bom_item_write_markers:
+        assert marker not in PRODUCTS_SRC, (
+            f"Unexpected BOM item write route found before MMD-BE-12: {marker}"
+        )
