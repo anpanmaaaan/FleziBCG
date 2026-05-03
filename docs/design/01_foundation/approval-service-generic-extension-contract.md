@@ -109,6 +109,8 @@ Current `subject_type` and `subject_ref` may remain as compatibility/display fie
 
 Future generic approval must not accept arbitrary unmanaged action strings.
 
+See also: `docs/design/01_foundation/governed-action-approval-applicability-contract.md` for the governed action registry and RBAC mapping decision.
+
 Future governed action types must be:
 
 - registry-controlled
