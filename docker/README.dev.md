@@ -14,13 +14,33 @@ docker compose -f docker/docker-compose.db.yml up -d
 
 ```bash
 docker compose -f docker/docker-compose.db.yml down
+## Stale container — port binding lost after host restart
 ```
+If the DB container exists from a previous run but was not started via
+`docker compose up` (e.g., auto-started by Docker Desktop, or started via
+`docker start`), Docker does **not** re-read the `ports:` spec.  The container
+will show only `5432/tcp` (EXPOSE only) instead of `0.0.0.0:5432->5432/tcp`
+(host-bound), and the backend/pytest will get `Connection refused`.
 
+**Fix:**
 ## Reset DB completely
-
 ```bash
-docker compose -f docker/docker-compose.db.yml down -v
+docker compose -f docker/docker-compose.db.yml up -d --force-recreate db
 ```
+
+This tears down and recreates **only the `db` container** (data volume is
+preserved), binding port 5432 to all host interfaces.
+```bash
+**Verify:**
+docker compose -f docker/docker-compose.db.yml down -v
+```bash
+docker ps   # should show 0.0.0.0:5432->5432/tcp next to flezi-dev-db
+```
+```
+> Note: the root `docker-compose.yml` creates a container named
+> `flezibcg-db-1`.  The dev-tools compose (`docker/docker-compose.db.yml`)
+> creates `flezi-dev-db` with a custom `container_name`.  Either container
+> binds port 5432 to the host when started via `docker compose up`.
 
 This removes the PostgreSQL named volume and resets database contents.
 

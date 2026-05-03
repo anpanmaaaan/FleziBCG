@@ -278,10 +278,12 @@ export function BomDetail() {
     );
   };
 
-  const canEditMetadata = bom?.lifecycle_status === "DRAFT";
-  const canRelease = bom?.lifecycle_status === "DRAFT";
-  const canRetire = bom?.lifecycle_status === "DRAFT" || bom?.lifecycle_status === "RELEASED";
-  const canMutateItems = bom?.lifecycle_status === "DRAFT";
+  const canEditMetadata = bom?.allowed_actions?.can_update ?? false;
+  const canRelease = bom?.allowed_actions?.can_release ?? false;
+  const canRetire = bom?.allowed_actions?.can_retire ?? false;
+  const canAddItem = bom?.allowed_actions?.can_add_item ?? false;
+  const canEditItem = bom?.allowed_actions?.can_update_item ?? false;
+  const canRemoveItem = bom?.allowed_actions?.can_remove_item ?? false;
 
   return (
     <div className="h-full flex flex-col bg-white">
@@ -483,23 +485,23 @@ export function BomDetail() {
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">{t("bomDetail.section.components")}</h2>
                 <button
-                  disabled={!canMutateItems || actionBusy}
+                  disabled={!canAddItem || actionBusy}
                   onClick={() => {
                     setItemCreateOpen((v) => !v);
                     setActionError(null);
                   }}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm border ${
-                    !canMutateItems || actionBusy
+                    !canAddItem || actionBusy
                       ? "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200"
                       : "bg-blue-600 text-white hover:bg-blue-700 border-blue-700"
                   }`}
                 >
-                  {!canMutateItems ? <Lock className="w-3.5 h-3.5" /> : null}
+                  {!canAddItem ? <Lock className="w-3.5 h-3.5" /> : null}
                   {t("bomDetail.action.addComponent")}
                 </button>
               </div>
 
-              {itemCreateOpen && canMutateItems && (
+              {itemCreateOpen && canAddItem && (
                 <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
                   <h3 className="text-sm font-semibold text-blue-900 mb-3">{t("bomWrite.action.addItem")}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -601,22 +603,26 @@ export function BomDetail() {
                           <td className="px-4 py-3 text-slate-600">{c.unit_of_measure}</td>
                           <td className="px-4 py-3 text-slate-600">{c.scrap_factor != null ? `${c.scrap_factor}%` : "-"}</td>
                           <td className="px-4 py-3">
-                            {canMutateItems ? (
+                            {canEditItem || canRemoveItem ? (
                               <div className="flex gap-2">
-                                <button
-                                  onClick={() => startItemEdit(c)}
-                                  disabled={actionBusy}
-                                  className="rounded border border-blue-200 bg-white px-2 py-1 text-xs text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed"
-                                >
-                                  {t("bomWrite.action.editItem")}
-                                </button>
-                                <button
-                                  onClick={() => void removeItem(c.bom_item_id)}
-                                  disabled={actionBusy}
-                                  className="rounded border border-red-200 bg-white px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:cursor-not-allowed"
-                                >
-                                  {t("bomWrite.action.removeItem")}
-                                </button>
+                                {canEditItem && (
+                                  <button
+                                    onClick={() => startItemEdit(c)}
+                                    disabled={actionBusy}
+                                    className="rounded border border-blue-200 bg-white px-2 py-1 text-xs text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed"
+                                  >
+                                    {t("bomWrite.action.editItem")}
+                                  </button>
+                                )}
+                                {canRemoveItem && (
+                                  <button
+                                    onClick={() => void removeItem(c.bom_item_id)}
+                                    disabled={actionBusy}
+                                    className="rounded border border-red-200 bg-white px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:cursor-not-allowed"
+                                  >
+                                    {t("bomWrite.action.removeItem")}
+                                  </button>
+                                )}
                               </div>
                             ) : (
                               <span className="inline-flex items-center gap-1 text-xs text-gray-400">
@@ -632,7 +638,7 @@ export function BomDetail() {
                 </table>
               </div>
 
-              {editingItemId && canMutateItems && (
+              {editingItemId && canEditItem && (
                 <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
                   <h3 className="text-sm font-semibold text-blue-900 mb-3">{t("bomWrite.action.updateItem")}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

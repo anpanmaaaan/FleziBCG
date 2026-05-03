@@ -902,6 +902,98 @@ if (/reasonCodes\.filter\.includeInactive/.test(i18nJa)) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// J. BOM Server-Derived Capability Guard lock (MMD-FULLSTACK-12B)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// J1 — ProductBomCapabilities type exists in productApi.ts (MMD-FULLSTACK-12B)
+if (/ProductBomCapabilities/.test(productApi)) {
+  pass("bom_api_capability_type_exists");
+} else {
+  fail("bom_api_capability_type_exists", "productApi.ts missing ProductBomCapabilities interface");
+}
+
+// J2 — ProductItemFromAPI includes bom_capabilities field
+if (/bom_capabilities\s*:\s*ProductBomCapabilities/.test(productApi)) {
+  pass("bom_api_product_item_has_bom_capabilities");
+} else {
+  fail("bom_api_product_item_has_bom_capabilities", "productApi.ts ProductItemFromAPI missing bom_capabilities: ProductBomCapabilities");
+}
+
+// J3 — BomAllowedActions type exists in productApi.ts
+if (/BomAllowedActions/.test(productApi)) {
+  pass("bom_api_allowed_actions_type_exists");
+} else {
+  fail("bom_api_allowed_actions_type_exists", "productApi.ts missing BomAllowedActions interface");
+}
+
+// J4 — BomItemFromAPI includes allowed_actions field
+if (/allowed_actions\s*:\s*BomAllowedActions/.test(productApi)) {
+  pass("bom_api_bom_item_has_allowed_actions");
+} else {
+  fail("bom_api_bom_item_has_allowed_actions", "productApi.ts BomItemFromAPI missing allowed_actions: BomAllowedActions");
+}
+
+// J5 — BomList.tsx computes canCreateBom from selectedProduct.bom_capabilities.can_create
+if (/selectedProduct\?.bom_capabilities\?.can_create/.test(bomList)) {
+  pass("bom_list_uses_capability_can_create");
+} else {
+  fail("bom_list_uses_capability_can_create", "BomList.tsx does not reference selectedProduct?.bom_capabilities?.can_create");
+}
+
+// J6 — BomList.tsx does not infer create permission from !selectedProductId alone
+// Check that it's NOT just checking selectedProductId without capabilities
+const bomListNoCapabilityCheck = bomList.match(/disabled=\{![^}]*selectedProductId\s*\|\|/);
+if (bomListNoCapabilityCheck && !bomList.match(/selectedProduct\?\.bom_capabilities\?\.can_create/)) {
+  fail("bom_list_uses_capability_not_just_product_id", "BomList.tsx appears to gate create button on !selectedProductId only, not on bom_capabilities");
+} else {
+  pass("bom_list_uses_capability_not_just_product_id");
+}
+
+// J7 — BomDetail.tsx derives canEditMetadata from bom.allowed_actions.can_update
+if (/canEditMetadata.*bom\?\.allowed_actions\?\.can_update/.test(bomDetail)) {
+  pass("bom_detail_can_edit_uses_allowed_actions");
+} else {
+  fail("bom_detail_can_edit_uses_allowed_actions", "BomDetail.tsx canEditMetadata does not derive from bom?.allowed_actions?.can_update");
+}
+
+// J8 — BomDetail.tsx derives canRelease from bom.allowed_actions.can_release
+if (/canRelease.*bom\?\.allowed_actions\?\.can_release/.test(bomDetail)) {
+  pass("bom_detail_can_release_uses_allowed_actions");
+} else {
+  fail("bom_detail_can_release_uses_allowed_actions", "BomDetail.tsx canRelease does not derive from bom?.allowed_actions?.can_release");
+}
+
+// J9 — BomDetail.tsx derives canRetire from bom.allowed_actions.can_retire
+if (/canRetire.*bom\?\.allowed_actions\?\.can_retire/.test(bomDetail)) {
+  pass("bom_detail_can_retire_uses_allowed_actions");
+} else {
+  fail("bom_detail_can_retire_uses_allowed_actions", "BomDetail.tsx canRetire does not derive from bom?.allowed_actions?.can_retire");
+}
+
+// J10 — BomDetail.tsx derives canAddItem from bom.allowed_actions.can_add_item
+if (/canAddItem.*bom\?\.allowed_actions\?\.can_add_item/.test(bomDetail)) {
+  pass("bom_detail_can_add_item_uses_allowed_actions");
+} else {
+  fail("bom_detail_can_add_item_uses_allowed_actions", "BomDetail.tsx canAddItem does not derive from bom?.allowed_actions?.can_add_item");
+}
+
+// J11 — BomDetail.tsx does not gate controls on lifecycle_status alone
+const bomDetailLifecycleOnlyGates = /bom\?\.lifecycle_status\s*===\s*["']DRAFT["']/.test(bomDetail);
+if (bomDetailLifecycleOnlyGates) {
+  fail("bom_detail_not_lifecycle_only_gates", "BomDetail.tsx still gates write controls on lifecycle_status === 'DRAFT' only; must use allowed_actions");
+} else {
+  pass("bom_detail_not_lifecycle_only_gates");
+}
+
+// J12 — Backend-required notice present in BomList and BomDetail (governance reminder)
+const bomBackendNotices = /bomWrite\.notice\.backendAuth/.test(bomList) && /bomWrite\.notice\.backendAuth/.test(bomDetail);
+if (bomBackendNotices) {
+  pass("bom_backend_required_notices_present");
+} else {
+  fail("bom_backend_required_notices_present", "BomList.tsx and/or BomDetail.tsx missing bomWrite.notice.backendAuth governance notice");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Final summary
 // ═══════════════════════════════════════════════════════════════════════════════
 

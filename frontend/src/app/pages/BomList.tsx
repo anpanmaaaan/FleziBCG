@@ -46,6 +46,9 @@ export function BomList() {
     description: "",
   });
 
+  const selectedProduct = selectedProductId ? products.find((p) => p.product_id === selectedProductId) : undefined;
+  const canCreateBom = selectedProduct?.bom_capabilities?.can_create ?? false;
+
   const mapWriteError = (error: unknown): string => {
     if (error instanceof HttpError) {
       if (error.status === 401) return t("bomWrite.error.unauthorized");
@@ -183,18 +186,18 @@ export function BomList() {
               {t("bomList.action.import")}
             </button>
             <button
-              disabled={!selectedProductId || createSubmitting}
+              disabled={!canCreateBom || createSubmitting}
               onClick={() => {
                 setCreateOpen((v) => !v);
                 setCreateError(null);
                 setCreateMessage(null);
               }}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm border ${
-                !selectedProductId || createSubmitting
+                !canCreateBom || createSubmitting
                   ? "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200"
                   : "bg-blue-600 text-white hover:bg-blue-700 border-blue-700"
               }`}
-              title={!selectedProductId ? t("bomWrite.notice.selectProductFirst") : t("bomWrite.action.create")}
+              title={!canCreateBom ? t("bomWrite.notice.selectProductFirst") : t("bomWrite.action.create")}
             >
               <Plus className="w-3.5 h-3.5" />
               {t("bomList.action.create")}
