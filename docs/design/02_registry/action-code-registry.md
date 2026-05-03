@@ -59,6 +59,7 @@ the code to its family and evaluates DB-backed role→permission rows.
 | Action Code | Family | Description |
 |---|---|---|
 | `admin.master_data.product.manage` | ADMIN | Create, update, release, or retire a Product definition |
+| `admin.master_data.product_version.manage` | ADMIN | Create, update, release, or retire a Product Version definition (when write APIs are enabled by governance slice) |
 | `admin.master_data.routing.manage` | ADMIN | Create, update, add/remove operations, release, or retire a Routing |
 | `admin.master_data.resource_requirement.manage` | ADMIN | Create, update, or delete a Resource Requirement on a Routing Operation |
 
@@ -102,6 +103,7 @@ Examples:
 
 | Date | Slice | Change |
 |---|---|---|
+| 2026-05-03 | MMD-BE-08A | Added `admin.master_data.product_version.manage` |
 | 2026-05-02 | MMD-BE-02 | Added `admin.master_data.product.manage`, `admin.master_data.routing.manage`, `admin.master_data.resource_requirement.manage` |
 | 2026-05-02 | P0-A-07B | Added `admin.downtime_reason.manage` — resolves GAP-1 from P0-A-07A |
 | 2026-05-02 | P0-A-07C | Added `admin.security_event.read` — resolves GAP-2 from P0-A-07A |
