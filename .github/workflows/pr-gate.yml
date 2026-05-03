@@ -164,6 +164,7 @@ jobs:
               tests/test_rbac_seed_alignment.py \
               tests/test_approval_service_current_behavior.py \
               tests/test_approval_security_events.py \
+              tests/test_approval_governed_resource_identity_schema.py \
               tests/test_rbac_configure_family_boundary.py || python -m pytest -q
           elif [ -d tests ]; then
             python -m pytest -q
