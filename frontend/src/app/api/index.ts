@@ -44,7 +44,12 @@ export type {
 } from "./productionOrderApi";
 
 export { productApi } from "./productApi";
-export type { ProductItemFromAPI, ProductVersionItemFromAPI } from "./productApi";
+export type {
+  ProductItemFromAPI,
+  ProductVersionCreateRequest,
+  ProductVersionItemFromAPI,
+  ProductVersionUpdateRequest,
+} from "./productApi";
 
 export { routingApi } from "./routingApi";
 export type { RoutingItemFromAPI, RoutingOperationItemFromAPI, ResourceRequirementItemFromAPI } from "./routingApi";

@@ -400,12 +400,75 @@ if (/listProductVersions/.test(productDetail)) {
   fail("pv_product_detail_consumes_list", "ProductDetail.tsx does not call listProductVersions — backend read integration missing");
 }
 
-// G5 — No Product Version create/update/delete UI in ProductDetail
-// Check that no write-style action for versions exists in the UI
-if (/createVersion|updateVersion|deleteVersion|addVersion|editVersion/.test(productDetail)) {
-  fail("pv_no_write_ui_in_product_detail", "ProductDetail.tsx contains Product Version write UI — must be read-only in MMD-FULLSTACK-06");
+// G5 — Product Version create helper exists in productApi.ts
+if (/createProductVersion/.test(productApi)) {
+  pass("pv_api_create_helper_exists");
 } else {
-  pass("pv_no_write_ui_in_product_detail");
+  fail("pv_api_create_helper_exists", "productApi.ts missing createProductVersion method");
+}
+
+// G6 — Product Version update helper exists in productApi.ts
+if (/updateProductVersion/.test(productApi)) {
+  pass("pv_api_update_helper_exists");
+} else {
+  fail("pv_api_update_helper_exists", "productApi.ts missing updateProductVersion method");
+}
+
+// G7 — Product Version release helper exists in productApi.ts
+if (/releaseProductVersion/.test(productApi)) {
+  pass("pv_api_release_helper_exists");
+} else {
+  fail("pv_api_release_helper_exists", "productApi.ts missing releaseProductVersion method");
+}
+
+// G8 — Product Version retire helper exists in productApi.ts
+if (/retireProductVersion/.test(productApi)) {
+  pass("pv_api_retire_helper_exists");
+} else {
+  fail("pv_api_retire_helper_exists", "productApi.ts missing retireProductVersion method");
+}
+
+// G9 — FE write request types exist and exclude forbidden fields
+if (/interface ProductVersionCreateRequest/.test(productApi) && /interface ProductVersionUpdateRequest/.test(productApi)) {
+  pass("pv_api_write_request_types_exist");
+} else {
+  fail("pv_api_write_request_types_exist", "productApi.ts missing ProductVersionCreateRequest and/or ProductVersionUpdateRequest");
+}
+
+const pvCreateRequestBlock = productApi.match(/interface ProductVersionCreateRequest\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+const pvUpdateRequestBlock = productApi.match(/interface ProductVersionUpdateRequest\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+
+if (/lifecycle_status/.test(pvCreateRequestBlock) || /lifecycle_status/.test(pvUpdateRequestBlock)) {
+  fail("pv_api_write_requests_exclude_lifecycle_status", "Product Version write request types must not include lifecycle_status");
+} else {
+  pass("pv_api_write_requests_exclude_lifecycle_status");
+}
+
+if (/is_current/.test(pvCreateRequestBlock) || /is_current/.test(pvUpdateRequestBlock)) {
+  fail("pv_api_write_requests_exclude_is_current", "Product Version write request types must not include is_current");
+} else {
+  pass("pv_api_write_requests_exclude_is_current");
+}
+
+// G10 — ProductDetail uses governed write intent controls
+if (/createVersion|saveVersionEdit|releaseVersion|retireVersion/.test(productDetail)) {
+  pass("pv_product_detail_has_write_intent_controls");
+} else {
+  fail("pv_product_detail_has_write_intent_controls", "ProductDetail.tsx missing Product Version write intent handlers");
+}
+
+// G11 — ProductDetail keeps governance / backend-truth disclosure
+if (/versions\.notice\.governance|manageForbidden|resolveVersionActionError/.test(productDetail)) {
+  pass("pv_product_detail_keeps_governance_notice");
+} else {
+  fail("pv_product_detail_keeps_governance_notice", "ProductDetail.tsx missing governance notice or backend-truth error handling for Product Version writes");
+}
+
+// G12 — Forbidden Product Version commands remain absent from ProductDetail
+if (/deleteProductVersion|reactivateProductVersion|setCurrentProductVersion|cloneProductVersion|bindBom|bindRouting|bindResourceRequirement/i.test(productDetail)) {
+  fail("pv_product_detail_excludes_forbidden_write_intents", "ProductDetail.tsx references out-of-scope Product Version commands");
+} else {
+  pass("pv_product_detail_excludes_forbidden_write_intents");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
