@@ -32,7 +32,7 @@ export interface StationExecutionHeaderProps {
  * Renders station scope, operation identity, status badges, and navigation /
  * control buttons. All data is passed as props — no data fetching inside this
  * component. Execution action legality is backend-derived by the parent and
- * passed in as `canExecute` (ownership/session-derived, not claim-derived).
+ * passed in as `canExecute` (ownership/session-derived).
  */
 export function StationExecutionHeader({
   stationScope,
@@ -74,9 +74,9 @@ export function StationExecutionHeader({
 
       {/* Control row: ownership badge + nav/view controls + release command */}
       <div className="flex w-full flex-wrap items-center gap-2 sm:gap-3 shrink-0 lg:w-auto lg:flex-nowrap lg:justify-end">
-        {/* Ownership indicator (H2+: ownership-focused, fallback to claim for compatibility) */}
+        {/* Ownership indicator (H2+: session ownership) */}
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-sm font-semibold order-first sm:order-none">
-          {t("station.claim.ownedBadge")}
+          {t("station.ownership.ownedBadge")}
         </span>
 
         {/* Nav / view controls */}

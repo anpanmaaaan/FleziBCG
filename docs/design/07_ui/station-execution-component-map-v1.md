@@ -22,7 +22,7 @@ This was intentionally fixed in shell components (`Layout.tsx` and `TopBar.tsx`)
 | File | Role | Status |
 |---|---|---|
 | `frontend/src/app/pages/StationExecution.tsx` | Monolithic page component | Active — all logic, sub-components, and rendering in one file (~1 700 lines) |
-| `frontend/src/app/api/stationApi.ts` | Station queue and claim API client | Active — connected |
+| `frontend/src/app/api/stationApi.ts` | Station queue and session ownership API client | Active — connected |
 | `frontend/src/app/api/operationApi.ts` | Execution command API client | Active — connected |
 | `frontend/src/app/components/PageHeader.tsx` | Reusable page header shell | Active — used in Mode A |
 | `frontend/src/app/components/StatusBadge.tsx` | Status chip component | Active — used throughout |
@@ -60,9 +60,9 @@ Target extraction plan — ordered by priority and safety. Each row is a potenti
 |---|---|---|---|---|---|
 | `StationExecutionPage` | Top-level page shell; routes between Mode A/B/C/D | Operation state, session state | Session validity (future) | No — page-specific | Current (refactor host) |
 | `StationExecutionHeader` | Mode C compact header: station scope, operation name, status badges, controls | `operation`, `stationScope`, handlers | `operation.status`, `operation.closure_status` | No — execution-specific | FE-UI-04 (safe slice) — **EXTRACTED 2026-04-30** into `frontend/src/app/components/station-execution/StationExecutionHeader.tsx`. All props typed. No behavior change. Build/lint/routes PASS. |
-| `StationQueuePanel` | Full Mode B queue page: summary stats + filter bar + operation card list | `queueItems`, `filter`, `onSelect` | `item.status`, `item.claim` | No — station-specific | FE-SE-UX-02B — **EXTRACTED 2026-04-30** into `frontend/src/app/components/station-execution/StationQueuePanel.tsx` |
+| `StationQueuePanel` | Full Mode B queue page: summary stats + filter bar + operation card list | `queueItems`, `filter`, `onSelect` | `item.status`, `item.ownership` | No — station-specific | FE-SE-UX-02B — **EXTRACTED 2026-04-30** into `frontend/src/app/components/station-execution/StationQueuePanel.tsx` |
 | `QueueFilterBar` | Filter chip row for queue | `filter`, `onFilterChange`, summary counts | None (local filter state) | Yes — queue-scoped | FE-SE-UX-02B — **EXTRACTED 2026-04-30** into `frontend/src/app/components/station-execution/QueueFilterBar.tsx` |
-| `QueueOperationCard` | Single queue row: name, number, status badge, claim hint | `StationQueueItem` | `item.status`, `item.claim.state` | Yes — queue-specific | FE-SE-UX-02B — **EXTRACTED 2026-04-30** into `frontend/src/app/components/station-execution/QueueOperationCard.tsx` |
+| `QueueOperationCard` | Single queue row: name, number, status badge, ownership hint | `StationQueueItem` | `item.status`, `item.ownership.owner_state` | Yes — queue-specific | FE-SE-UX-02B — **EXTRACTED 2026-04-30** into `frontend/src/app/components/station-execution/QueueOperationCard.tsx` |
 | `ExecutionStateHero` | Block 1: operation name, status, downtime banner, closed overlay | `operation`, `getStatusLabel` | `operation.status`, `operation.closure_status`, `operation.downtime_open` | No — execution-specific | FE-SE-UX-02C — **EXTRACTED 2026-04-30** into `frontend/src/app/components/station-execution/ExecutionStateHero.tsx` |
 | `AllowedActionZone` | Block 4: renders correct action buttons from allowed_actions | `operation`, `canDo`, all action handlers, loading states | `operation.allowed_actions`, `operation.status` | No — critical execution | FE-SE-UX-02C — **EXTRACTED 2026-04-30** into `frontend/src/app/components/station-execution/AllowedActionZone.tsx` |
 | `QuantitySummaryPanel` | Totals display: good_qty, scrap_qty, remaining | `operation` | `operation.good_qty`, `operation.scrap_qty`, `operation.quantity` | Potentially | FE-SE-UX-02C — **EXTRACTED 2026-04-30** into `frontend/src/app/components/station-execution/QuantitySummaryPanel.tsx` |

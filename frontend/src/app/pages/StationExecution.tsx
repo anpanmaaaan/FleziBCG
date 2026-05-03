@@ -181,7 +181,7 @@ function Stepper({
           disabled={disabled}
           className="min-h-14 min-w-14 rounded-2xl bg-gray-100 text-2xl font-bold text-gray-700 hover:bg-gray-200 active:scale-95 transition select-none sm:min-h-16 sm:min-w-16 sm:text-3xl md:min-h-20 md:min-w-20 md:text-4xl disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-300"
         >
-          −
+          ∁E
         </button>
         <button
           type="button"
@@ -248,7 +248,7 @@ export function StationExecution() {
   };
 
   // Backend-derived capability check. Missing allowed_actions (e.g. detail not
-  // yet loaded) means no actions are offered by the client — backend still
+  // yet loaded) means no actions are offered by the client  Ebackend still
   // enforces on request.
   const canDo = (action: string) =>
     Array.isArray(operation?.allowed_actions) && operation!.allowed_actions.includes(action);
@@ -275,7 +275,7 @@ export function StationExecution() {
   const selectedQueueItem = operation
     ? queueItems.find((item) => item.operation_id === operation.id) ?? null
     : null;
-  // H2+: Ownership-first logic; claim is compatibility-only fallback
+  // H2+: Ownership-first logic
   const ownershipState = selectedQueueItem?.ownership;
   const ownerState = ownershipState?.owner_state ?? "none";
   const hasOpenSession = ownershipState?.has_open_session ?? false;
@@ -287,8 +287,8 @@ export function StationExecution() {
     ownedSessionOperationId !== null && ownedSessionOperationId !== operation?.id;
 
   
-  // H6-V1: execution readiness is ownership/session-only; claim remains
-  // compatibility display data elsewhere.
+  // H6-V1: execution readiness is ownership/session-only.
+  // Resume and write commands require a valid open station session.
   const canExecuteByOwnership = ownerState === "mine" && hasOpenSession;
   const canExecute = canExecuteByOwnership;
   
@@ -363,7 +363,7 @@ export function StationExecution() {
     if (operation?.closure_status === "CLOSED") {
       return t("station.closed.guidance");
     }
-    if (!canExecute) return t("station.claim.required");
+    if (!canExecute) return t("station.ownership.required");
     if (operation?.status === "BLOCKED" && operation.downtime_open) {
       return t("station.hint.nextAction.endDowntime");
     }
@@ -457,7 +457,7 @@ export function StationExecution() {
     try {
       const data = await stationApi.getOperationDetail(Number(trimmedId));
       setOperation(data);
-      // Quantity fields are deltas for the *next* report, not cumulative totals —
+      // Quantity fields are deltas for the *next* report, not cumulative totals  E
       // reset to 0 whenever the selected operation changes.
       setGoodQty(0);
       setScrapQty(0);
@@ -492,7 +492,7 @@ export function StationExecution() {
       toast.success(t("station.toast.clockedOn") + getStatusLabel(data.status));
     } catch (err) {
       if (err instanceof HttpError && err.status === 403) {
-        toast.error(t("station.claim.required"));
+        toast.error(t("station.ownership.required"));
       } else if (err instanceof HttpError && err.status === 409) {
         toast.error(t("station.toast.alreadyStarted"));
       } else {
@@ -566,7 +566,7 @@ export function StationExecution() {
         const code = err.detail.trim();
         if (code.startsWith("STATE_")) msg = t(`station.reject.${code}` as never);
       } else if (err instanceof HttpError && err.status === 403) {
-        msg = t("station.claim.required");
+        msg = t("station.ownership.required");
       }
       toast.error(msg);
     } finally {
@@ -589,7 +589,7 @@ export function StationExecution() {
       toast.success(t("station.toast.paused") + getStatusLabel(data.status));
     } catch (err) {
       if (err instanceof HttpError && err.status === 403) {
-        toast.error(t("station.claim.required"));
+        toast.error(t("station.ownership.required"));
       } else if (err instanceof HttpError && err.status === 409) {
         const key = rejectReasonKey(err.detail);
         toast.error(key ? t(key as never) : t("station.toast.pauseFailed"));
@@ -611,7 +611,7 @@ export function StationExecution() {
       toast.success(t("station.toast.resumed") + getStatusLabel(data.status));
     } catch (err) {
       if (err instanceof HttpError && err.status === 403) {
-        toast.error(t("station.claim.required"));
+        toast.error(t("station.ownership.required"));
       } else if (err instanceof HttpError && err.status === 409) {
         const key = rejectReasonKey(err.detail);
         toast.error(key ? t(key as never) : t("station.toast.resumeFailed"));
@@ -638,7 +638,7 @@ export function StationExecution() {
       toast.success(t("station.toast.clockedOff") + getStatusLabel(data.status));
     } catch (err) {
       if (err instanceof HttpError && err.status === 403) {
-        toast.error(t("station.claim.required"));
+        toast.error(t("station.ownership.required"));
       } else if (err instanceof HttpError && err.status === 409) {
         toast.error(t("station.toast.alreadyCompleted"));
       } else {
@@ -696,7 +696,7 @@ export function StationExecution() {
     }
   };
 
-  // ── MODE A — Operation Selection ──────────────────────────────────────────
+  // ── MODE A  EOperation Selection ──────────────────────────────────────────
   if (!isExecutionMode) {
     return (
       <div className="h-full flex flex-col bg-white">
@@ -724,7 +724,7 @@ export function StationExecution() {
         <div className="flex-1 overflow-auto p-4 max-w-2xl mx-auto w-full">
           {operation && ownsAnotherSession && (
             <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
-              <p className="text-xs text-amber-700">{t("station.claim.singleActiveHint")}</p>
+              <p className="text-xs text-amber-700">{t("station.ownership.singleActiveHint")}</p>
             </div>
           )}
 
@@ -733,7 +733,7 @@ export function StationExecution() {
             <div className="mb-4 bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center gap-2 text-orange-800">
               <Lock className="w-4 h-4 shrink-0" />
               <p className="text-sm font-medium">
-                {t("station.claim.takenWarning")}
+                {t("station.ownership.takenWarning")}
               </p>
             </div>
           )}
@@ -780,7 +780,7 @@ export function StationExecution() {
     );
   }
 
-  // ── MODE B — Execution Mode (iPad landscape, no scroll) ──────────────────
+  // ── MODE B  EExecution Mode (iPad landscape, no scroll) ──────────────────
   // Logically guaranteed: operation is non-null when isExecutionMode is true
   if (!operation) return null;
 
@@ -833,10 +833,10 @@ export function StationExecution() {
         </div>
       )}
 
-      {/* Compatibility path notice — always visible in execution mode */}
+      {/* Compatibility path notice  Ealways visible in execution mode */}
       <MockWarningBanner phase="PARTIAL" note={t("screenStatus.banner.deprecation.body" as any)} />
 
-      {/* Execution body — must not scroll on iPad landscape */}
+      {/* Execution body  Emust not scroll on iPad landscape */}
       <div className="flex-1 min-h-0 flex flex-col p-3 sm:p-4 gap-3 sm:gap-4 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-50">
         <ExecutionStateHero
           operation={operation}

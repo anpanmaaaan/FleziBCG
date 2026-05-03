@@ -52,7 +52,7 @@ class OperationDetail(OperationListItem):
     # Per-operation command capabilities derived from current backend guards
     # (status + downtime_open). Canonical command names per
     # station-execution-command-event-contracts.md §3. Identity-scoped guards
-    # (claim ownership, station-busy) are NOT encoded here — callers must
+    # (session ownership, station-busy) are NOT encoded here — callers must
     # still enforce those. Missing action ⇒ backend will reject the command.
     allowed_actions: list[str] = []
     # Accumulated runtime durations derived from append-only events.

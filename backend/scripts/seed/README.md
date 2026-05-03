@@ -235,7 +235,7 @@ python -m backend.scripts.seed.seed_all.py
 python -m scripts.seed.seed_station_execution_opr
   → Create dedicated Station Execution demo dataset for OPR user `operator`
   → Seeds operations scoped to `STATION_01` with mixed states (PLANNED + IN_PROGRESS + PAUSED + BLOCKED + COMPLETED)
-  → Immediately runs PH6-STATION seed verification and exits non-zero if the reseed is not claim-ready
+  → Immediately runs PH6-STATION seed verification and exits non-zero if the reseed is not session-ready
 
 # Shortcut: shell wrapper (reseed + verify from workspace root)
 ./backend/scripts/seed_station.sh

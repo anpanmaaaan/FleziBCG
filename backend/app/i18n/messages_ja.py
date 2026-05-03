@@ -25,9 +25,9 @@ JA_MESSAGES: dict[str, str] = {
     "operation.start_conflict": "工程の開始が現在の状態と競合しています",
     # ── station（ステーション）──
     "station.not_found": "ワークステーションが見つかりません",
-    "station.already_claimed": "ワークステーションは他のオペレーターが取得中です",
-    "station.not_claimed": "ワークステーションは取得されていません",
-    "station.claim_not_owned": "このワークステーションの取得権限がありません",
+    "station.already_owned": "ワークステーションのセッションは他のオペレーターが担当中です",
+    "station.not_owned": "ワークステーションに有効なセッション担当者がいません",
+    "station.session_not_owned": "このワークステーションのセッション担当権限がありません",
     # ── work orders（作業指示）──
     "work_order.not_found": "作業指示が見つかりません",
     # ── production orders（製造指図）──

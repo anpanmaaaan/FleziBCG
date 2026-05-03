@@ -128,7 +128,7 @@ export function StationSession() {
         </div>
         <p className="text-sm text-gray-400 italic">{t("stationSession.session.noActive")}</p>
         <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700">
-          Session state ownership, claim validity, and operator authorization are backend execution truths. Frontend cannot create or close sessions.
+          Session state ownership and operator authorization are backend execution truths. Frontend cannot create or close sessions.
         </div>
       </div>
     </div>

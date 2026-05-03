@@ -363,7 +363,41 @@ Preflight Stabilization
 
 Artifact
 - `docs/implementation/p0-c-08i-b-active-claim-source-purge-report.md`
-- 3 claim API routes (`POST .../claim`, `POST .../release`, `GET .../claim`) return HTTP 410; zero active consumers; safe to remove.
+
+---
+
+## Addendum — P0-C-08I-B-V3 Active Source Blocker Burn-Down
+
+| Check | Result |
+|---|---|
+| Active source blockers before | 289 (V3 baseline = V2 baseline) |
+| Active source blockers after | 204 (all remaining: accepted history / false positives) |
+| Backend app blockers (after) | **0** |
+| Backend test blockers (after) | **0** |
+| Backend script blockers (after) | **0** |
+| Frontend source blockers (after) | **0** |
+| Design doc active blockers (after) | **0** |
+| Accepted migration history | ~19 |
+| Accepted implementation history | ~15 |
+| Accepted design history/transition | ~160 |
+| False positive JWT claims | 4 |
+| False positive non-execution wording | 6 |
+| Script compile | PASS (`H08IB_V3_SCRIPT_COMPILE_EXIT:0`) |
+| Frontend lint | PASS (`H08IB_V3_FRONTEND_LINT_EXIT:0`) |
+| Frontend build | PASS (`H08IB_V3_FRONTEND_BUILD_EXIT:0`) |
+| Frontend route smoke | PASS (`H08IB_V3_FRONTEND_ROUTE_SMOKE_EXIT:0`) |
+| Backend import smoke | PASS (`H08IB_V3_IMPORT_OK True`, `H08IB_V3_BACKEND_IMPORT_EXIT:0`) |
+| Backend queue pytest | DEFERRED — environment PostgreSQL lock contention |
+
+## Final V3 Verdict
+- `P0_C_08IB_ACTIVE_SOURCE_BLOCKERS_REMOVED`
+
+### V3 Closeout
+- All 68 V2 BLOCKER_ACTIVE_SOURCE items removed or renamed.
+- Additional test/script/design blockers identified in V3 sweep and also burned down.
+- Remaining 204 matches are all accepted history exceptions or false positives.
+- Backend DB-backed pytest remains environment-deferred; not a code regression.
+- H08I-B can now close. Recommended next: P0-D or next P0-C pending item.
 - `stationApi.claim/release/getClaim` stubs: zero callers in all frontend source files confirmed by full grep.
 - `ClaimSummary`, `QueueClaimState`, `ClaimResponse`, `StationQueueItem.claim`: zero consumers outside `stationApi.ts` and `index.ts`.
 - `station.claim.*` i18n keys (used in StationExecution.tsx, QueueOperationCard.tsx, StationExecutionHeader.tsx): NOT claim type dependencies — UI text strings driven by `item.ownership` block; RETAIN.

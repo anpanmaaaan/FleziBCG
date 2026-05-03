@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Reseed the PH6-STATION demo dataset and immediately verify the seed
-# contract (claimable PLANNED op + IN_PROGRESS op present).
+# contract (session-ready PLANNED op + IN_PROGRESS op present).
 #
 # Usage (from workspace root):
 #   ./backend/scripts/seed_station.sh

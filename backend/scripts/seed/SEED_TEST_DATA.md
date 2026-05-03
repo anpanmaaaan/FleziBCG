@@ -8,7 +8,7 @@ cd backend
 .venv\Scripts\python scripts/seed/seed_products_and_routing.py
 ```
 
-**Execution Test Data (Operations & Claims):**
+**Execution Test Data (Operations & Sessions):**
 ```bash
 .venv\Scripts\python scripts/seed/seed_test_data.py
 ```
@@ -46,16 +46,16 @@ Products (6):
 
 ---
 
-## Execution Test Data: Operations & Claims
+## Execution Test Data: Operations & Sessions
 
 ### Scenario 1: Station Queue (3 Operations)
 - **Nơi:** STATION-A
 - **Users:** alice, bob (Operators)
 - **Data:**
   - 3 operations (OP-001, OP-002, OP-003) - all PLANNED
-  - Có sẵn trong queue để claim/execute
+  - Có sẵn trong queue để execute
 
-### Scenario 2: In-Progress with Claim  
+### Scenario 2: In-Progress (Session-Owned)
 - **Nơi:** STATION-B
 - **Users:** alice-b (Operator), supervisor (Supervisor)
 - **Data:**
@@ -117,9 +117,6 @@ Login với user `demo` / `demo123`, sau đó chọn station và xem queue
 cd backend
 psql -h localhost -U mes -d mes -W << EOF
 -- Xóa seed data TEST-DEMO-*
-DELETE FROM operation_claims WHERE operation_id IN (
-  SELECT id FROM operations WHERE operation_number LIKE 'TEST-DEMO-%'
-);
 DELETE FROM execution_events WHERE operation_id IN (
   SELECT id FROM operations WHERE operation_number LIKE 'TEST-DEMO-%'
 );
@@ -153,4 +150,3 @@ Mỗi scenario tạo:
 
 Không tạo:
 - ExecutionEvents (manual hoặc qua UI)
-- OperationClaims (manual hoặc qua API claim endpoint)

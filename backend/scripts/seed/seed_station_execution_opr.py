@@ -19,7 +19,7 @@ what a live session would produce.
 Seeding uses operator_id=None on start_operation so the "one-operation per
 operator per station" guard is skipped — the seed creates multiple
 simultaneous executions at the same station on purpose. The test user
-(`operator`, user_id `opr-001`) is expected to claim operations via the UI
+(`operator`, user_id `opr-001`) is expected to select operations via the UI
 to exercise the cockpit.
 """
 

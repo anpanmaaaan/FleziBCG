@@ -17,7 +17,7 @@ interface QueueOperationCardProps {
 export function QueueOperationCard({ item, active, hasOwnedSessionInQueue, onSelect }: QueueOperationCardProps) {
   const { t } = useI18n();
 
-  // H8: Ownership-only; claim fallback retired
+  // H8: Ownership-only
   const lockedByOther = item.ownership?.owner_state === "other" && item.ownership?.has_open_session === true;
   const isMine = item.ownership?.owner_state === "mine" && item.ownership?.has_open_session === true;
   const isActionableByStatus = isBackendActionableQueueStatus(item.status);
@@ -29,14 +29,14 @@ export function QueueOperationCard({ item, active, hasOwnedSessionInQueue, onSel
       ? "border-amber-200 bg-amber-50"
       : "border-gray-200 bg-white";
 
-  // H8: Ownership-only; claim fallback retired
+  // H8: Ownership-only
   const ownershipHint =
     item.ownership?.owner_state === "mine" && item.ownership?.has_open_session
-      ? t("station.claim.ownedBadge")
+      ? t("station.ownership.ownedBadge")
       : item.ownership?.owner_state === "other" && item.ownership?.has_open_session
-      ? t("station.queue.claimedByOther")
+      ? t("station.queue.ownedByOther")
       : isActionableByStatus && !hasOwnedSessionInQueue
-      ? t("station.queue.readyToClaim")
+      ? t("station.queue.readyToAssign")
       : null;
 
   const ownershipHintTone =
