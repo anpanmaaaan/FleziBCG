@@ -17,7 +17,6 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import pytest
 
 from app.models.user import (
     LIFECYCLE_STATUS_ACTIVE,
@@ -168,7 +167,7 @@ def test_user_status_migration_backfills_from_is_active():
     Verifies: active users → ACTIVE, inactive users → DISABLED.
     Uses raw SQLite to simulate pre-0004 state and the migration SQL.
     """
-    from sqlalchemy import create_engine, text
+    from sqlalchemy import create_engine
     from sqlalchemy.pool import StaticPool
 
     engine = create_engine(

@@ -22,7 +22,6 @@ from app.services.operation_service import (
     ClosedRecordConflictError,
     ReopenOperationConflictError,
     close_operation,
-    derive_operation_detail,
     pause_operation,
     reopen_operation,
     resume_operation,

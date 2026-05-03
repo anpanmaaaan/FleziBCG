@@ -23,7 +23,6 @@ from app.schemas.operation import (
 )
 from app.services.operation_service import (
     ClosedRecordConflictError,
-    CompleteOperationConflictError,
     PauseExecutionConflictError,
     ResumeExecutionConflictError,
     StartDowntimeConflictError,

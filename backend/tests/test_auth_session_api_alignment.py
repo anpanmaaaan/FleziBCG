@@ -6,7 +6,6 @@ from fastapi.testclient import TestClient
 import app.api.v1.auth as auth_router_module
 from app.models.refresh_token import RefreshToken
 from app.security.auth import AuthIdentity
-from app.security.dependencies import RequestIdentity, require_authenticated_identity
 from datetime import datetime, timezone
 
 

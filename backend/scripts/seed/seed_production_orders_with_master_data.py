@@ -18,7 +18,6 @@ Database: localhost:5432/mes (Docker postgres_data volume)
 from datetime import datetime
 from sqlalchemy import select
 
-from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.master import Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.product import Product

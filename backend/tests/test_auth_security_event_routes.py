@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from datetime import datetime, timezone, timedelta
 
 import app.api.v1.auth as auth_router_module
 from app.security.dependencies import RequestIdentity, require_authenticated_identity

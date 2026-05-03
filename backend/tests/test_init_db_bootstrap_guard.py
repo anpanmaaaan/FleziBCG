@@ -38,6 +38,7 @@ def _common_patches(monkeypatch, *, alembic_stub=None, sql_stub=None):
     monkeypatch.setattr(init_db_module, "seed_rbac_core", lambda db: None)
     monkeypatch.setattr(init_db_module, "seed_approval_rules", lambda db: None)
     monkeypatch.setattr(init_db_module, "seed_demo_users", lambda db: None)
+    monkeypatch.setattr(init_db_module, "seed_tenant_row", lambda db, **kw: None)
     monkeypatch.setattr(init_db_module, "SessionLocal", lambda: _DummySessionContext())
 
 

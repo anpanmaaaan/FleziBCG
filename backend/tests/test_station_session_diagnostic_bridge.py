@@ -18,7 +18,7 @@ from sqlalchemy import delete, select
 
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
-from app.models.execution import ExecutionEvent, ExecutionEventType
+from app.models.execution import ExecutionEvent
 from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
 from app.models.rbac import Role, Scope, UserRoleAssignment
 from app.models.station_session import StationSession
@@ -221,7 +221,6 @@ def bridge_fixture():
         _seed_station_scope(db)
         yield db
     finally:
-        db.rollback()
         _purge(db)
         db.close()
 
@@ -352,9 +351,9 @@ def test_diagnostic_result_has_operator_context_when_identified(bridge_fixture):
 
     session = open_station_session(db, _identity(), station_id=_STATION)
     # Seed operator scope so identify works
-    opr_role = _ensure_opr_role(db)
+    _ensure_opr_role(db)
     # Reuse existing scope for _ACTOR as operator (simplification)
-    scope = db.scalar(
+    db.scalar(
         select(Scope).where(
             Scope.tenant_id == _TENANT_ID,
             Scope.scope_value == _STATION,

@@ -23,8 +23,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-import pytest
-from sqlalchemy import create_engine, inspect as sa_inspect, text
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 

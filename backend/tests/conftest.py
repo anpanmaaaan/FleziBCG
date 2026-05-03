@@ -94,6 +94,51 @@ def assert_test_db_url(url: str) -> None:
         )
 
 
+def _to_psycopg_url(url: str) -> str:
+    """Strip SQLAlchemy dialect qualifier for use with psycopg.connect().
+
+    SQLAlchemy uses 'postgresql+psycopg://...' but psycopg.connect() expects
+    plain 'postgresql://...' (libpq URI format).
+    """
+    for prefix in ("postgresql+psycopg://", "postgres+psycopg://"):
+        if url.startswith(prefix):
+            return "postgresql://" + url[len(prefix):]
+    return url
+
+
+_DEV_DB_START_HINT = (
+    "  To start the dev/test DB:\n"
+    "    docker compose -f docker/docker-compose.db.yml up -d db\n"
+    "  Compose file: docker/docker-compose.db.yml  (service: db, port: 5432)\n"
+    "  Backend env:  backend/.env  (POSTGRES_HOST=localhost, POSTGRES_PORT=5432)\n"
+    "  If the container exists but port is not bound, use --force-recreate:\n"
+    "    docker compose -f docker/docker-compose.db.yml up -d --force-recreate db"
+)
+
+
+def check_test_db_readiness(url: str) -> tuple[bool, str]:
+    """Probe whether the test DB is reachable.
+
+    Returns:
+        (True, "")           — DB is reachable and accepts connections.
+        (False, message)     — DB is unreachable; message explains what to do.
+                               Password is redacted in all message text.
+    """
+    try:
+        import psycopg
+
+        psycopg.connect(_to_psycopg_url(url), connect_timeout=2).close()
+        return True, ""
+    except Exception as exc:
+        msg = (
+            "TEST DB NOT REACHABLE\n"
+            f"  URL (masked): {_mask_db_url(url)}\n"
+            f"  Error: {type(exc).__name__}: {str(exc)}\n"
+            f"{_DEV_DB_START_HINT}"
+        )
+        return False, msg
+
+
 def pg_show_active_connections(url: str, *, dbname: str | None = None) -> list[dict]:
     """Return active PostgreSQL connections for diagnostic purposes.
 
@@ -167,9 +212,21 @@ def _init_db_once() -> Generator[None, None, None]:
         from app.config.settings import settings
 
         url = settings.database_url or ""
-        psycopg.connect(url, connect_timeout=2).close()
+        psycopg.connect(_to_psycopg_url(url), connect_timeout=2).close()
     except Exception:
         # DB not available — live DB tests will skip themselves.
+        try:
+            from app.config.settings import settings as _s
+
+            _url = _s.database_url or ""
+        except Exception:
+            _url = "<url-unavailable>"
+        warnings.warn(
+            "TEST DB NOT REACHABLE — live DB tests will be skipped or fail.\n"
+            f"  URL (masked): {_mask_db_url(_url)}\n"
+            f"{_DEV_DB_START_HINT}",
+            stacklevel=1,
+        )
         yield
         return
 
