@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 _ALLOWED_PRODUCT_TYPES = {"FINISHED_GOOD", "SEMI_FINISHED", "COMPONENT"}
@@ -61,3 +61,22 @@ class ProductVersionItem(BaseModel):
     description: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class ProductVersionCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    version_code: str
+    version_name: str | None = None
+    effective_from: date | None = None
+    effective_to: date | None = None
+    description: str | None = None
+
+
+class ProductVersionUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    version_name: str | None = None
+    effective_from: date | None = None
+    effective_to: date | None = None
+    description: str | None = None
