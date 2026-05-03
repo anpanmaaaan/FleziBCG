@@ -160,6 +160,7 @@ def test_reconcile_runtime_repair_event_updates_snapshot_projection():
         )
         assert mismatches_after == []
     finally:
+        db.rollback()
         _purge(db)
         db.close()
 
@@ -267,6 +268,7 @@ def test_projection_parity_reopen_resume_complete_is_completed():
             expected_downtime_open=False,
         )
     finally:
+        db.rollback()
         _purge(db)
         db.close()
 
@@ -291,6 +293,7 @@ def test_projection_parity_aborted_is_consistent():
             expected_downtime_open=False,
         )
     finally:
+        db.rollback()
         _purge(db)
         db.close()
 
@@ -315,6 +318,7 @@ def test_projection_parity_downtime_open_is_blocked():
             expected_downtime_open=True,
         )
     finally:
+        db.rollback()
         _purge(db)
         db.close()
 
@@ -340,6 +344,7 @@ def test_projection_parity_downtime_ended_is_paused_until_resume():
             expected_downtime_open=False,
         )
     finally:
+        db.rollback()
         _purge(db)
         db.close()
 
@@ -368,5 +373,6 @@ def test_projection_parity_closed_detail_actions_are_reopen_only():
         assert detail.status == bulk_projection.status == StatusEnum.completed.value
         assert detail.allowed_actions == ["reopen_operation"]
     finally:
+        db.rollback()
         _purge(db)
         db.close()

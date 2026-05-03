@@ -135,6 +135,7 @@ def db_session():
         )
         yield db
     finally:
+        db.rollback()
         _purge(db)
         db.close()
 

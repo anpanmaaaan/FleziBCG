@@ -150,6 +150,7 @@ def test_reconcile_command_detect_only_reports_without_mutating_snapshot():
         assert op.status == StatusEnum.paused.value
         assert "mismatches:" in out.getvalue()
     finally:
+        db.rollback()
         _purge(db)
         db.close()
 
@@ -178,6 +179,7 @@ def test_reconcile_command_apply_mode_reconciles_and_clears_mismatch():
         after = run_status_projection_reconcile(tenant_id=_TENANT_A, apply=False)
         assert after["mismatch_count"] == 0
     finally:
+        db.rollback()
         _purge(db)
         db.close()
 
@@ -198,6 +200,7 @@ def test_reconcile_command_clean_dataset_returns_zero_mismatch():
         assert result["mismatch_count"] == 0
         assert result["reconciled_count"] == 0
     finally:
+        db.rollback()
         _purge(db)
         db.close()
 
@@ -229,6 +232,7 @@ def test_reconcile_command_respects_tenant_scope():
         tenant_b_detect = run_status_projection_reconcile(tenant_id=_TENANT_B, apply=False)
         assert tenant_b_detect["mismatch_count"] == 1
     finally:
+        db.rollback()
         _purge(db)
         db.close()
 
@@ -264,6 +268,7 @@ def test_reconcile_command_does_not_mutate_event_history():
         db.refresh(op)
         assert op.status == StatusEnum.in_progress.value
     finally:
+        db.rollback()
         _purge(db)
         db.close()
 
@@ -293,5 +298,6 @@ def test_reconcile_command_apply_preserves_detail_bulk_projection_parity():
         assert detail.status == bulk.status == StatusEnum.in_progress.value
         assert detail.downtime_open is bulk.downtime_open is False
     finally:
+        db.rollback()
         _purge(db)
         db.close()
