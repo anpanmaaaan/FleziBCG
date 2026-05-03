@@ -99,10 +99,24 @@ Examples:
 
 ---
 
+## Reserved — CONFIGURE Family
+
+CONFIGURE-family action codes are intentionally reserved pending the IEP configuration contract.
+
+- Current runtime count: **0**
+- Reserved future code: `configure.process.manage` (CONFIGURE, IEP only)
+- Authority: `docs/design/01_foundation/iep-configuration-action-contract.md` (P0-A-10)
+- Addition preconditions: see §12 of the contract above.
+
+> Do not add any CONFIGURE action code to `rbac.py` without (a) the contract doc reviewed, (b) a route/API ready, and (c) the implementation preconditions satisfied.
+
+---
+
 ## History
 
 | Date | Slice | Change |
 |---|---|---|
+| 2026-05-03 | P0-A-10 | Reserved `configure.process.manage`; CONFIGURE-family contract created — no runtime code added |
 | 2026-05-03 | MMD-BE-08A | Added `admin.master_data.product_version.manage` |
 | 2026-05-02 | MMD-BE-02 | Added `admin.master_data.product.manage`, `admin.master_data.routing.manage`, `admin.master_data.resource_requirement.manage` |
 | 2026-05-02 | P0-A-07B | Added `admin.downtime_reason.manage` — resolves GAP-1 from P0-A-07A |
