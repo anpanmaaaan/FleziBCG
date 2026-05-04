@@ -20,6 +20,10 @@ from app.security.rbac import ACTION_CODE_REGISTRY
 BACKEND_ROOT = Path(__file__).parent.parent
 PRODUCTS_SRC = (BACKEND_ROOT / "app" / "api" / "v1" / "products.py").read_text(encoding="utf-8")
 ROUTINGS_SRC = (BACKEND_ROOT / "app" / "api" / "v1" / "routings.py").read_text(encoding="utf-8")
+REASON_CODES_SRC = (BACKEND_ROOT / "app" / "api" / "v1" / "reason_codes.py").read_text(encoding="utf-8")
+REASON_CODE_SVC_SRC = (BACKEND_ROOT / "app" / "services" / "reason_code_service.py").read_text(encoding="utf-8")
+REASON_CODE_REPO_SRC = (BACKEND_ROOT / "app" / "repositories" / "reason_code_repository.py").read_text(encoding="utf-8")
+DOWNTIME_REASONS_SRC = (BACKEND_ROOT / "app" / "api" / "v1" / "downtime_reasons.py").read_text(encoding="utf-8")
 
 # ─── Registry checks ──────────────────────────────────────────────────────────
 
@@ -255,3 +259,102 @@ def test_no_bom_forbidden_endpoints_exist():
     ]
     for marker in forbidden_markers:
         assert marker not in PRODUCTS_SRC, f"Forbidden BOM route found: {marker}"
+
+
+# ─── MMD-BE-10A: Reason Code action code registry checks ─────────────────────
+
+def test_reason_code_manage_action_code_exists():
+    """MMD-BE-10A: admin.master_data.reason_code.manage must be present."""
+    assert "admin.master_data.reason_code.manage" in ACTION_CODE_REGISTRY, (
+        "admin.master_data.reason_code.manage is missing from ACTION_CODE_REGISTRY — required by MMD-BE-10A"
+    )
+
+
+def test_reason_code_manage_action_code_is_domain_specific():
+    """Action code must map to ADMIN and must not equal the IAM manage code."""
+    assert ACTION_CODE_REGISTRY.get("admin.master_data.reason_code.manage") == "ADMIN", (
+        "admin.master_data.reason_code.manage must map to ADMIN family"
+    )
+    assert "admin.master_data.reason_code.manage" != "admin.user.manage", (
+        "Reason Code action code must remain domain-specific and distinct from IAM user management"
+    )
+
+
+def test_existing_mmd_action_codes_unchanged_after_10a():
+    """All pre-existing MMD action codes must remain unchanged after MMD-BE-10A."""
+    expected = {
+        "admin.master_data.product.manage": "ADMIN",
+        "admin.master_data.product_version.manage": "ADMIN",
+        "admin.master_data.routing.manage": "ADMIN",
+        "admin.master_data.resource_requirement.manage": "ADMIN",
+        "admin.master_data.bom.manage": "ADMIN",
+    }
+    for code, family in expected.items():
+        assert code in ACTION_CODE_REGISTRY, f"Pre-existing MMD action code missing after 10A: {code}"
+        assert ACTION_CODE_REGISTRY[code] == family, (
+            f"Pre-existing MMD action code family changed: {code} → {ACTION_CODE_REGISTRY[code]!r}"
+        )
+
+
+def test_reason_code_read_endpoints_do_not_require_manage_action():
+    """Reason Code GET routes must use authenticated-read only — not require_action."""
+    rc_get_blocks = re.findall(
+        r'@router\.get\b[^@]+?(?=@router\.|$)',
+        REASON_CODES_SRC,
+        flags=re.DOTALL,
+    )
+    assert len(rc_get_blocks) >= 2, "Expected at least 2 GET route blocks in reason_codes.py"
+    for block in rc_get_blocks:
+        assert "require_action" not in block, (
+            "Reason Code GET route must not use require_action — authenticated-read only"
+        )
+
+
+def test_no_reason_code_write_routes_exist_yet():
+    """MMD-BE-10A scope guard: Reason Code write routes must not yet exist."""
+    forbidden_markers = [
+        "@router.post(\"\",",
+        "@router.post(\"\")",
+        "@router.patch(",
+        "@router.put(",
+        "@router.delete(",
+        "/release",
+        "/retire",
+        "/activate",
+        "/deactivate",
+        "/clone",
+        "/bulk-import",
+        "/map-downtime",
+        "/bind-policy",
+        "/erp-post",
+        "/reactivate",
+    ]
+    for marker in forbidden_markers:
+        assert marker not in REASON_CODES_SRC, (
+            f"Unexpected Reason Code write route marker found in reason_codes.py: {marker!r}"
+        )
+
+
+def test_reason_code_does_not_modify_downtime_reason_api():
+    """downtime_reasons.py must not import or reference reason_code/reason_codes module."""
+    assert "reason_code" not in DOWNTIME_REASONS_SRC.lower() or (
+        # allow the string 'reason_code' only as a field name inside payload references —
+        # confirm it does NOT import from app.models.reason_code or reason_code_service
+        "from app.models.reason_code" not in DOWNTIME_REASONS_SRC
+        and "from app.services.reason_code" not in DOWNTIME_REASONS_SRC
+        and "from app.repositories.reason_code" not in DOWNTIME_REASONS_SRC
+    ), "downtime_reasons.py must not import from reason_code modules"
+
+
+def test_reason_code_does_not_auto_map_to_downtime_reason():
+    """Reason Code service and repository must not reference downtime_reasons table or model."""
+    for src, name in [
+        (REASON_CODE_SVC_SRC, "reason_code_service.py"),
+        (REASON_CODE_REPO_SRC, "reason_code_repository.py"),
+    ]:
+        assert "downtime_reason" not in src.lower(), (
+            f"{name} must not reference downtime_reason — no automatic mapping allowed"
+        )
+        assert "downtime_reasons" not in src.lower(), (
+            f"{name} must not reference downtime_reasons table — no automatic mapping allowed"
+        )
