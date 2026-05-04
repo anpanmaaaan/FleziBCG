@@ -72,4 +72,9 @@ export type { ImpersonationSession, StartImpersonationPayload } from "./imperson
 export { mapExecutionStatusText, mapExecutionStatusBadgeVariant, getProgressPercentage, getYieldRate } from "./mappers/executionMapper";
 
 export { reasonCodeApi } from "./reasonCodeApi";
-export type { ReasonCodeItemFromAPI, ListReasonCodesParams } from "./reasonCodeApi";
+export type {
+  ReasonCodeItemFromAPI,
+  ListReasonCodesParams,
+  ReasonCodeCreateRequest,
+  ReasonCodeUpdateRequest,
+} from "./reasonCodeApi";
