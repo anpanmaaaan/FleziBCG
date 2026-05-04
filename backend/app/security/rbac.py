@@ -60,6 +60,7 @@ ACTION_CODE_REGISTRY: dict[str, PermissionFamily] = {
     "admin.master_data.routing.manage": "ADMIN",
     "admin.master_data.resource_requirement.manage": "ADMIN",
     "admin.master_data.bom.manage": "ADMIN",
+    "admin.master_data.reason_code.manage": "ADMIN",
     # Configuration administration action codes — govern platform-administered
     # reference/config data (not manufacturing master data, not IAM).
     "admin.downtime_reason.manage": "ADMIN",
