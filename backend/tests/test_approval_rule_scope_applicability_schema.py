@@ -8,6 +8,7 @@ No scope-aware runtime matching is implemented in this slice.
 No governed action type enforcement is implemented.
 No API changes are tested here.
 """
+
 from datetime import datetime, timezone
 
 from sqlalchemy import create_engine, inspect
@@ -28,6 +29,7 @@ def _make_session():
 # ---------------------------------------------------------------------------
 # Field existence tests
 # ---------------------------------------------------------------------------
+
 
 def test_approval_rule_has_governed_action_type_field() -> None:
     """P0-A-15A: ApprovalRule has nullable governed_action_type field."""
@@ -57,7 +59,11 @@ def test_approval_rule_has_governed_resource_type_field() -> None:
     )
     session.add(rule)
     session.commit()
-    fetched = session.query(ApprovalRule).filter_by(governed_resource_type="WORK_ORDER").first()
+    fetched = (
+        session.query(ApprovalRule)
+        .filter_by(governed_resource_type="WORK_ORDER")
+        .first()
+    )
     assert fetched is not None
     assert fetched.governed_resource_type == "WORK_ORDER"
     session.close()
@@ -74,7 +80,11 @@ def test_approval_rule_has_scope_ref_field() -> None:
     )
     session.add(rule)
     session.commit()
-    fetched = session.query(ApprovalRule).filter_by(scope_ref="plant/01/area/02/line/03").first()
+    fetched = (
+        session.query(ApprovalRule)
+        .filter_by(scope_ref="plant/01/area/02/line/03")
+        .first()
+    )
     assert fetched is not None
     assert fetched.scope_ref == "plant/01/area/02/line/03"
     session.close()
@@ -154,6 +164,7 @@ def test_approval_rule_has_effective_to_field() -> None:
 # Nullability / backward compatibility tests
 # ---------------------------------------------------------------------------
 
+
 def test_approval_rule_scope_fields_are_all_nullable() -> None:
     """P0-A-15A: All new scope applicability fields default to None."""
     session, engine = _make_session()
@@ -230,22 +241,29 @@ def test_approval_rule_scope_columns_exist_in_db_schema() -> None:
         "effective_to",
     }
     for col in expected_new:
-        assert col in columns, f"Expected column '{col}' in approval_rules but not found"
+        assert col in columns, (
+            f"Expected column '{col}' in approval_rules but not found"
+        )
 
 
-def test_no_scope_aware_matching_implemented() -> None:
-    """P0-A-15A: Confirm that approval_repository does not perform scope-aware matching.
+def test_scope_aware_matching_is_activated() -> None:
+    """P0-A-15B: Confirm that approval_repository now performs scope-aware matching.
 
-    This is a source-level contract test: inspect that get_rules_for_action
-    only filters by action_type and tenant_id, not scope fields.
+    Updated from the P0-A-15A provisional negative test. P0-A-15B activates
+    scope-aware matching, so scope_ref and governed_action_type are now
+    present in get_rules_for_action matching logic.
     """
     import inspect as pyinspect
     from app.repositories import approval_repository
+
     source = pyinspect.getsource(approval_repository.get_rules_for_action)
-    # scope_ref, governed_action_type, governed_resource_type must NOT appear in matching logic
-    assert "scope_ref" not in source, "scope_ref MUST NOT be in get_rules_for_action in P0-A-15A"
-    assert "governed_action_type" not in source, \
-        "governed_action_type MUST NOT be used in runtime matching in P0-A-15A"
+    # P0-A-15B: scope-aware fields ARE now in matching logic
+    assert "scope_ref" in source, (
+        "scope_ref MUST be in get_rules_for_action after P0-A-15B activation"
+    )
+    assert "governed_action_type" in source, (
+        "governed_action_type MUST be in get_rules_for_action after P0-A-15B activation"
+    )
     # Legacy matching dimensions must still be present
     assert "action_type" in source
     assert "tenant_id" in source

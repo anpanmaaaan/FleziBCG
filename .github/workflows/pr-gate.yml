@@ -131,6 +131,14 @@ jobs:
             python -m ruff check .
           fi
 
+      - name: Backend format check (ruff format --check)
+        shell: bash
+        run: |
+          if [ -d backend ]; then
+            cd backend
+            python -m ruff format --check .
+          fi
+
       - name: Run backend tests
         shell: bash
         run: |
@@ -166,6 +174,7 @@ jobs:
               tests/test_approval_security_events.py \
               tests/test_approval_governed_resource_identity_schema.py \
               tests/test_approval_rule_scope_applicability_schema.py \
+              tests/test_approval_rule_scope_aware_matching.py \
               tests/test_rbac_configure_family_boundary.py || python -m pytest -q
           elif [ -d tests ]; then
             python -m pytest -q

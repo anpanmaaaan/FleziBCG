@@ -87,6 +87,12 @@ jobs:
           cd backend
           python -m ruff check .
 
+      - name: Backend format check (ruff format --check)
+        shell: bash
+        run: |
+          cd backend
+          python -m ruff format --check .
+
       # ── Alembic head check ────────────────────────────────────────────────
       # Reads migration files only — does not require a live DB connection.
       # Fails the build if multiple heads are detected (branched chain).
@@ -283,6 +289,15 @@ jobs:
           cd backend
           python -m pytest -q \
             tests/test_approval_rule_scope_applicability_schema.py \
+            --tb=short
+
+      # ── P0-A-15B: ApprovalRule scope-aware matching runtime activation ───────
+      - name: P0-A-15B tests — approval rule scope-aware matching
+        shell: bash
+        run: |
+          cd backend
+          python -m pytest -q \
+            tests/test_approval_rule_scope_aware_matching.py \
             --tb=short
 
       # ── P0-A-09: IEP CONFIGURE family boundary lock ─────────────────────

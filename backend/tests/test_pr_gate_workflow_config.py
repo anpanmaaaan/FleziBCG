@@ -1,7 +1,9 @@
 from pathlib import Path
 
 
-WORKFLOW_PATH = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "pr-gate.yml"
+WORKFLOW_PATH = (
+    Path(__file__).resolve().parents[2] / ".github" / "workflows" / "pr-gate.yml"
+)
 
 
 def _workflow_text() -> str:
@@ -11,7 +13,7 @@ def _workflow_text() -> str:
 def test_backend_import_check_step_is_present() -> None:
     text = _workflow_text()
     assert "- name: Backend import check" in text
-    assert 'python -c "import app.main; print(\'import ok\')"' in text
+    assert "python -c \"import app.main; print('import ok')\"" in text
 
 
 def test_hard_mode_v3_skill_paths_are_current() -> None:
@@ -45,3 +47,10 @@ def test_approval_rule_scope_applicability_schema_tests_are_in_pr_gate() -> None
     # If this assertion fails, re-add tests/test_approval_rule_scope_applicability_schema.py to pr-gate.yml.
     text = _workflow_text()
     assert "test_approval_rule_scope_applicability_schema.py" in text
+
+
+def test_approval_rule_scope_aware_matching_tests_are_in_pr_gate() -> None:
+    # P0-A-15B: scope-aware matching test must stay in PR gate.
+    # If this assertion fails, re-add tests/test_approval_rule_scope_aware_matching.py to pr-gate.yml.
+    text = _workflow_text()
+    assert "test_approval_rule_scope_aware_matching.py" in text
