@@ -37,6 +37,7 @@ export const I18N_NAMESPACES = {
   bomList: "bomList",
   bomDetail: "bomDetail",
   bomWrite: "bomWrite",
+  rcWrite: "rcWrite",
   routingOpDetail: "routingOpDetail",
   resourceReqs: "resourceReqs",
   reasonCodes: "reasonCodes",

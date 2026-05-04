@@ -827,13 +827,12 @@ if (!rcStatusBlock) {
   }
 }
 
-// I8 — Create/edit/delete/release/retire write actions remain disabled
-// Heuristic: no enabled onClick on write-style buttons
-const rcWriteButtonEnabled = /(?<!disabled[^>]{0,200})<button[^>]+onClick[^>]*>.*?(?:create reason|edit reason|delete reason|release reason|retire reason)/is.test(reasonCodesPage);
-if (rcWriteButtonEnabled) {
-  fail("rc_write_actions_remain_disabled", "ReasonCodes.tsx appears to have an enabled write-action button — read-only contract violated");
+// I8 — Forbidden write controls remain absent from ReasonCodes.tsx (MMD-FULLSTACK-13: write-intent controls enabled, but delete/reactivate/clone/bulk/map remain forbidden)
+const rcForbiddenControlsPattern = /deleteReasonCode|reactivateReasonCode|cloneReasonCode|bulkImportReasonCode|mapDowntimeReason|bindExecutionPolicy|bindQualityPolicy|bindMaterialPolicy|activateReasonCode|deactivateReasonCode/i;
+if (rcForbiddenControlsPattern.test(reasonCodesPage)) {
+  fail("rc_forbidden_controls_absent", "ReasonCodes.tsx contains forbidden Reason Code controls (delete/reactivate/clone/bulk/map-downtime/bind-policy)");
 } else {
-  pass("rc_write_actions_remain_disabled");
+  pass("rc_forbidden_controls_absent");
 }
 
 // I9 — No downtime_reason import or API usage in ReasonCodes.tsx
@@ -991,6 +990,199 @@ if (bomBackendNotices) {
   pass("bom_backend_required_notices_present");
 } else {
   fail("bom_backend_required_notices_present", "BomList.tsx and/or BomDetail.tsx missing bomWrite.notice.backendAuth governance notice");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// K. Reason Code FE write-intent guardrails (MMD-FULLSTACK-13)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// K1 — createReasonCode helper exists in reasonCodeApi.ts
+if (/createReasonCode/.test(reasonCodeApi)) {
+  pass("rc_write_helper_createReasonCode");
+} else {
+  fail("rc_write_helper_createReasonCode", "reasonCodeApi.ts missing createReasonCode method (MMD-FULLSTACK-13)");
+}
+
+// K2 — updateReasonCode helper exists in reasonCodeApi.ts
+if (/updateReasonCode/.test(reasonCodeApi)) {
+  pass("rc_write_helper_updateReasonCode");
+} else {
+  fail("rc_write_helper_updateReasonCode", "reasonCodeApi.ts missing updateReasonCode method (MMD-FULLSTACK-13)");
+}
+
+// K3 — releaseReasonCode helper exists in reasonCodeApi.ts
+if (/releaseReasonCode/.test(reasonCodeApi)) {
+  pass("rc_write_helper_releaseReasonCode");
+} else {
+  fail("rc_write_helper_releaseReasonCode", "reasonCodeApi.ts missing releaseReasonCode method (MMD-FULLSTACK-13)");
+}
+
+// K4 — retireReasonCode helper exists in reasonCodeApi.ts
+if (/retireReasonCode/.test(reasonCodeApi)) {
+  pass("rc_write_helper_retireReasonCode");
+} else {
+  fail("rc_write_helper_retireReasonCode", "reasonCodeApi.ts missing retireReasonCode method (MMD-FULLSTACK-13)");
+}
+
+// K5 — ReasonCodeCreateRequest type exists in reasonCodeApi.ts
+if (/interface ReasonCodeCreateRequest/.test(reasonCodeApi)) {
+  pass("rc_create_request_type_exists");
+} else {
+  fail("rc_create_request_type_exists", "reasonCodeApi.ts missing ReasonCodeCreateRequest interface (MMD-FULLSTACK-13)");
+}
+
+// K6 — ReasonCodeUpdateRequest type exists in reasonCodeApi.ts
+if (/interface ReasonCodeUpdateRequest/.test(reasonCodeApi)) {
+  pass("rc_update_request_type_exists");
+} else {
+  fail("rc_update_request_type_exists", "reasonCodeApi.ts missing ReasonCodeUpdateRequest interface (MMD-FULLSTACK-13)");
+}
+
+// K7 — ReasonCodeCreateRequest does not include lifecycle_status
+const rcCreateRequestBlock = reasonCodeApi.match(/interface\s+ReasonCodeCreateRequest\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+if (/\blifecycle_status\b/.test(rcCreateRequestBlock)) {
+  fail("rc_create_request_excludes_lifecycle_status", "ReasonCodeCreateRequest must not include lifecycle_status");
+} else {
+  pass("rc_create_request_excludes_lifecycle_status");
+}
+
+// K8 — ReasonCodeCreateRequest does not include tenant_id
+if (/\btenant_id\b/.test(rcCreateRequestBlock)) {
+  fail("rc_create_request_excludes_tenant_id", "ReasonCodeCreateRequest must not include tenant_id");
+} else {
+  pass("rc_create_request_excludes_tenant_id");
+}
+
+// K9 — ReasonCodeCreateRequest does not include downtime_reason_id
+if (/\bdowntime_reason_id\b/.test(rcCreateRequestBlock)) {
+  fail("rc_create_request_excludes_downtime_reason_id", "ReasonCodeCreateRequest must not include downtime_reason_id");
+} else {
+  pass("rc_create_request_excludes_downtime_reason_id");
+}
+
+// K10 — ReasonCodeCreateRequest does not include policy-binding fields
+if (/execution_policy_id|quality_policy_id|material_policy_id/.test(rcCreateRequestBlock)) {
+  fail("rc_create_request_excludes_policy_fields", "ReasonCodeCreateRequest must not include execution_policy_id, quality_policy_id, or material_policy_id");
+} else {
+  pass("rc_create_request_excludes_policy_fields");
+}
+
+// K11 — ReasonCodeUpdateRequest does not include lifecycle_status
+const rcUpdateRequestBlock = reasonCodeApi.match(/interface\s+ReasonCodeUpdateRequest\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+if (/\blifecycle_status\b/.test(rcUpdateRequestBlock)) {
+  fail("rc_update_request_excludes_lifecycle_status", "ReasonCodeUpdateRequest must not include lifecycle_status");
+} else {
+  pass("rc_update_request_excludes_lifecycle_status");
+}
+
+// K12 — ReasonCodeUpdateRequest does not include tenant_id
+if (/\btenant_id\b/.test(rcUpdateRequestBlock)) {
+  fail("rc_update_request_excludes_tenant_id", "ReasonCodeUpdateRequest must not include tenant_id");
+} else {
+  pass("rc_update_request_excludes_tenant_id");
+}
+
+// K13 — ReasonCodeUpdateRequest does not include downtime_reason_id
+if (/\bdowntime_reason_id\b/.test(rcUpdateRequestBlock)) {
+  fail("rc_update_request_excludes_downtime_reason_id", "ReasonCodeUpdateRequest must not include downtime_reason_id");
+} else {
+  pass("rc_update_request_excludes_downtime_reason_id");
+}
+
+// K14 — ReasonCodeUpdateRequest does not include policy-binding fields
+if (/execution_policy_id|quality_policy_id|material_policy_id/.test(rcUpdateRequestBlock)) {
+  fail("rc_update_request_excludes_policy_fields", "ReasonCodeUpdateRequest must not include execution_policy_id, quality_policy_id, or material_policy_id");
+} else {
+  pass("rc_update_request_excludes_policy_fields");
+}
+
+// K15 — ReasonCodeUpdateRequest does not include reason_code (immutable)
+if (/\breason_code\b/.test(rcUpdateRequestBlock)) {
+  fail("rc_update_request_excludes_reason_code", "ReasonCodeUpdateRequest must not include reason_code — immutable field");
+} else {
+  pass("rc_update_request_excludes_reason_code");
+}
+
+// K16 — ReasonCodeUpdateRequest does not include reason_domain (immutable)
+if (/\breason_domain\b/.test(rcUpdateRequestBlock)) {
+  fail("rc_update_request_excludes_reason_domain", "ReasonCodeUpdateRequest must not include reason_domain — immutable field");
+} else {
+  pass("rc_update_request_excludes_reason_domain");
+}
+
+// K17 — ReasonCodeUpdateRequest does not include reason_category (immutable)
+if (/\breason_category\b/.test(rcUpdateRequestBlock)) {
+  fail("rc_update_request_excludes_reason_category", "ReasonCodeUpdateRequest must not include reason_category — immutable field");
+} else {
+  pass("rc_update_request_excludes_reason_category");
+}
+
+// K18 — ReasonCodes page references create/update/release/retire write intent controls
+const rcWriteIntentControls = [
+  { key: "rc_page_references_create_intent", pattern: /createReasonCode|handleCreate|createOpen/ },
+  { key: "rc_page_references_update_intent", pattern: /updateReasonCode|handleEdit|editTarget/ },
+  { key: "rc_page_references_release_intent", pattern: /releaseReasonCode|handleRelease|confirmRelease/ },
+  { key: "rc_page_references_retire_intent",  pattern: /retireReasonCode|handleRetire|confirmRetire/ },
+];
+for (const { key, pattern } of rcWriteIntentControls) {
+  if (pattern.test(reasonCodesPage)) {
+    pass(key);
+  } else {
+    fail(key, `ReasonCodes.tsx missing write-intent control matching ${pattern} (MMD-FULLSTACK-13)`);
+  }
+}
+
+// K19 — ReasonCodes page does not reference forbidden controls
+const rcForbiddenWritePattern = /deleteReasonCode|reactivateReasonCode|cloneReasonCode|bulkImportReasonCode|mapDowntimeReason|bindExecutionPolicy|bindQualityPolicy|bindMaterialPolicy/i;
+if (rcForbiddenWritePattern.test(reasonCodesPage)) {
+  fail("rc_page_excludes_forbidden_write_controls", "ReasonCodes.tsx references forbidden write controls (delete/reactivate/clone/bulk/map-downtime/bind-policy)");
+} else {
+  pass("rc_page_excludes_forbidden_write_controls");
+}
+
+// K20 — ReasonCodes page includes governance notice or 403 handling
+const rcHasGovernance = /rcWrite\.notice\.governance|rcWrite\.notice\.backendAuth/.test(reasonCodesPage);
+const rcHas403Handling = /status\s*===\s*403|err\.status\s*===\s*403|rcWrite\.error\.manageForbidden/.test(reasonCodesPage);
+if (rcHasGovernance && rcHas403Handling) {
+  pass("rc_page_has_governance_notice_and_403_handling");
+} else {
+  fail("rc_page_has_governance_notice_and_403_handling",
+    `ReasonCodes.tsx must include governance notice (rcWrite.notice.*) and 403 error handling — governance=${rcHasGovernance}, 403=${rcHas403Handling}`);
+}
+
+// K21 — ReasonCodes page still reads backend Reason Codes (regression guard)
+if (/listReasonCodes/.test(reasonCodesPage)) {
+  pass("rc_page_still_reads_backend");
+} else {
+  fail("rc_page_still_reads_backend", "ReasonCodes.tsx no longer calls listReasonCodes — backend read integration regressed");
+}
+
+// K22 — rcWrite i18n governance keys present in en.ts
+if (/rcWrite\.notice\.governance/.test(i18nEn) && /rcWrite\.notice\.backendAuth/.test(i18nEn)) {
+  pass("i18n_en_rc_write_governance_keys");
+} else {
+  fail("i18n_en_rc_write_governance_keys", "en.ts missing rcWrite.notice.governance or rcWrite.notice.backendAuth key (MMD-FULLSTACK-13)");
+}
+
+// K23 — rcWrite i18n governance keys present in ja.ts
+if (/rcWrite\.notice\.governance/.test(i18nJa) && /rcWrite\.notice\.backendAuth/.test(i18nJa)) {
+  pass("i18n_ja_rc_write_governance_keys");
+} else {
+  fail("i18n_ja_rc_write_governance_keys", "ja.ts missing rcWrite.notice.governance or rcWrite.notice.backendAuth key (MMD-FULLSTACK-13)");
+}
+
+// K24 — rcWrite error keys present in en.ts
+if (/rcWrite\.error\.manageForbidden/.test(i18nEn)) {
+  pass("i18n_en_rc_write_forbidden_error_key");
+} else {
+  fail("i18n_en_rc_write_forbidden_error_key", "en.ts missing rcWrite.error.manageForbidden key (MMD-FULLSTACK-13)");
+}
+
+// K25 — rcWrite error keys present in ja.ts
+if (/rcWrite\.error\.manageForbidden/.test(i18nJa)) {
+  pass("i18n_ja_rc_write_forbidden_error_key");
+} else {
+  fail("i18n_ja_rc_write_forbidden_error_key", "ja.ts missing rcWrite.error.manageForbidden key (MMD-FULLSTACK-13)");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

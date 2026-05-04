@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, Lock, Tag } from "lucide-react";
+import { Search, Tag } from "lucide-react";
 import { ScreenStatusBadge } from "@/app/components";
+import { HttpError } from "@/app/api";
 import { useI18n } from "@/app/i18n";
 import { reasonCodeApi } from "@/app/api/reasonCodeApi";
-import type { ReasonCodeItemFromAPI } from "@/app/api/reasonCodeApi";
+import type { ReasonCodeItemFromAPI, ReasonCodeCreateRequest, ReasonCodeUpdateRequest } from "@/app/api/reasonCodeApi";
 
-// MMD-FULLSTACK-08: Connected to backend /v1/reason-codes read API.
-// Read-only. No write, release, retire, or downtime_reason integration.
+// MMD-FULLSTACK-13: Write-intent controls added.
+// Backend remains authorization truth. Frontend sends intent only.
+// No lifecycle_status, no downtime_reason_id, no execution/quality/material/ERP behavior.
+// No server-derived allowed_actions returned — lifecycle-gated controls + backend 403 enforced.
+// Known gap: MMD-FULLSTACK-13B deferred for server-derived capability guard.
 
 function DomainBadge({ domain }: { domain: string }) {
   const upper = domain.toUpperCase();
@@ -49,6 +53,62 @@ export function ReasonCodes() {
   const [domainFilter, setDomainFilter] = useState<string>("all");
   const [includeInactive, setIncludeInactive] = useState(false);
 
+  // Write-intent state
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    reasonDomain: "",
+    reasonCategory: "",
+    reasonCode: "",
+    reasonName: "",
+    description: "",
+    requiresComment: false,
+    sortOrder: "",
+  });
+
+  const [editTarget, setEditTarget] = useState<ReasonCodeItemFromAPI | null>(null);
+  const [editForm, setEditForm] = useState({
+    reasonName: "",
+    description: "",
+    requiresComment: false,
+    sortOrder: "",
+    isActive: true,
+  });
+
+  const [confirmRelease, setConfirmRelease] = useState<ReasonCodeItemFromAPI | null>(null);
+  const [confirmRetire, setConfirmRetire] = useState<ReasonCodeItemFromAPI | null>(null);
+
+  const resolveWriteError = (err: unknown): string => {
+    if (err instanceof HttpError) {
+      if (err.status === 401) return t("rcWrite.error.unauthorized");
+      if (err.status === 403) return t("rcWrite.error.manageForbidden");
+      if (err.status === 404) return t("rcWrite.error.notFound");
+      if (err.status === 409) return t("rcWrite.error.conflict");
+      if (err.status === 422) return t("rcWrite.error.validation");
+      if (typeof err.message === "string" && err.message.trim().length > 0) return err.message;
+    }
+    return t("rcWrite.error.actionFailed");
+  };
+
+  const refreshCodes = () => {
+    setLoading(true);
+    setError(null);
+    reasonCodeApi
+      .listReasonCodes({ include_inactive: includeInactive })
+      .then((data) => {
+        setCodes(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (err?.name === "AbortError") return;
+        setError(t("reasonCodes.error.load"));
+        setLoading(false);
+      });
+  };
+
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
@@ -69,7 +129,6 @@ export function ReasonCodes() {
     return () => controller.abort();
   }, [includeInactive, t]);
 
-  // Derive domain list from loaded data (backend is source of truth for valid domains).
   const availableDomains = useMemo(() => {
     const seen = new Set<string>();
     for (const c of codes) seen.add(c.reason_domain);
@@ -90,6 +149,109 @@ export function ReasonCodes() {
     });
   }, [codes, domainFilter, search]);
 
+  // ── Write handlers ──────────────────────────────────────────────────────────
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setActionBusy(true);
+    setActionError(null);
+    setActionMessage(null);
+    try {
+      const payload: ReasonCodeCreateRequest = {
+        reason_domain: createForm.reasonDomain.trim(),
+        reason_category: createForm.reasonCategory.trim(),
+        reason_code: createForm.reasonCode.trim(),
+        reason_name: createForm.reasonName.trim(),
+        description: createForm.description.trim() || null,
+        requires_comment: createForm.requiresComment,
+        sort_order: createForm.sortOrder !== "" ? parseInt(createForm.sortOrder, 10) : null,
+      };
+      await reasonCodeApi.createReasonCode(payload);
+      setCreateOpen(false);
+      setCreateForm({ reasonDomain: "", reasonCategory: "", reasonCode: "", reasonName: "", description: "", requiresComment: false, sortOrder: "" });
+      setActionMessage(t("rcWrite.message.created"));
+      refreshCodes();
+    } catch (err) {
+      setActionError(resolveWriteError(err));
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const openEdit = (code: ReasonCodeItemFromAPI) => {
+    setEditTarget(code);
+    setEditForm({
+      reasonName: code.reason_name,
+      description: code.description ?? "",
+      requiresComment: code.requires_comment,
+      sortOrder: String(code.sort_order),
+      isActive: code.is_active,
+    });
+    setActionError(null);
+    setActionMessage(null);
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTarget) return;
+    setActionBusy(true);
+    setActionError(null);
+    setActionMessage(null);
+    try {
+      const payload: ReasonCodeUpdateRequest = {
+        reason_name: editForm.reasonName.trim() || null,
+        description: editForm.description.trim() || null,
+        requires_comment: editForm.requiresComment,
+        sort_order: editForm.sortOrder !== "" ? parseInt(editForm.sortOrder, 10) : null,
+        is_active: editForm.isActive,
+      };
+      await reasonCodeApi.updateReasonCode(editTarget.reason_code_id, payload);
+      setEditTarget(null);
+      setActionMessage(t("rcWrite.message.updated"));
+      refreshCodes();
+    } catch (err) {
+      setActionError(resolveWriteError(err));
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const handleRelease = async () => {
+    if (!confirmRelease) return;
+    setActionBusy(true);
+    setActionError(null);
+    setActionMessage(null);
+    try {
+      await reasonCodeApi.releaseReasonCode(confirmRelease.reason_code_id);
+      setConfirmRelease(null);
+      setActionMessage(t("rcWrite.message.released"));
+      refreshCodes();
+    } catch (err) {
+      setActionError(resolveWriteError(err));
+      setConfirmRelease(null);
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const handleRetire = async () => {
+    if (!confirmRetire) return;
+    setActionBusy(true);
+    setActionError(null);
+    setActionMessage(null);
+    try {
+      await reasonCodeApi.retireReasonCode(confirmRetire.reason_code_id);
+      setConfirmRetire(null);
+      setActionMessage(t("rcWrite.message.retired"));
+      refreshCodes();
+    } catch (err) {
+      setActionError(resolveWriteError(err));
+      setConfirmRetire(null);
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col bg-white">
       <div className="flex-1 flex flex-col p-6 overflow-auto">
@@ -101,14 +263,30 @@ export function ReasonCodes() {
             <ScreenStatusBadge phase="PARTIAL" />
           </div>
           <button
-            disabled
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-            title="Backend MMD governance workflow required"
+            onClick={() => { setCreateOpen(true); setActionError(null); setActionMessage(null); }}
+            disabled={actionBusy}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed border border-blue-700"
           >
-            <Lock className="w-3.5 h-3.5" />
             {t("reasonCodes.action.create")}
           </button>
         </div>
+
+        {/* Governance notice — backend is authorization truth */}
+        <div className="mb-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+          {t("rcWrite.notice.governance")}
+        </div>
+
+        {/* Action feedback */}
+        {actionMessage && (
+          <div className="mb-3 px-3 py-2 bg-green-50 border border-green-200 rounded text-xs text-green-800">
+            {actionMessage}
+          </div>
+        )}
+        {actionError && (
+          <div className="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+            {actionError}
+          </div>
+        )}
 
         {/* Filters */}
         <div className="flex items-center gap-3 mb-4 flex-wrap">
@@ -179,35 +357,55 @@ export function ReasonCodes() {
                     <td colSpan={8} className="px-4 py-8 text-center text-gray-400">{t("reasonCodes.empty")}</td>
                   </tr>
                 ) : (
-                  filtered.map((c) => (
-                    <tr key={c.reason_code_id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-mono text-xs font-medium text-slate-700">{c.reason_code}</td>
-                      <td className="px-4 py-3 text-slate-700 text-xs">{c.reason_name}</td>
-                      <td className="px-4 py-3"><DomainBadge domain={c.reason_domain} /></td>
-                      <td className="px-4 py-3 text-slate-700">{c.reason_category}</td>
-                      <td className="px-4 py-3 text-gray-600 text-xs max-w-[300px]">{c.description ?? ""}</td>
-                      <td className="px-4 py-3"><LifecycleBadge status={c.lifecycle_status} /></td>
-                      <td className="px-4 py-3 text-center">
-                        {c.requires_comment ? (
-                          <span className="inline-block w-4 h-4 rounded-full bg-amber-400" title="Comment required" />
-                        ) : (
-                          <span className="inline-block w-4 h-4 rounded-full bg-gray-200" title="Comment optional" />
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <button disabled className="inline-flex items-center gap-1 text-xs text-gray-400 cursor-not-allowed" title="Backend MMD governance workflow required">
-                            <Lock className="w-3 h-3" />
-                            {t("reasonCodes.action.edit")}
-                          </button>
-                          <button disabled className="inline-flex items-center gap-1 text-xs text-gray-400 cursor-not-allowed" title="Backend MMD governance workflow required">
-                            <Lock className="w-3 h-3" />
-                            {t("reasonCodes.action.retire")}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  filtered.map((c) => {
+                    const isDraft = c.lifecycle_status === "DRAFT";
+                    const isRetired = c.lifecycle_status === "RETIRED";
+                    return (
+                      <tr key={c.reason_code_id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 font-mono text-xs font-medium text-slate-700">{c.reason_code}</td>
+                        <td className="px-4 py-3 text-slate-700 text-xs">{c.reason_name}</td>
+                        <td className="px-4 py-3"><DomainBadge domain={c.reason_domain} /></td>
+                        <td className="px-4 py-3 text-slate-700">{c.reason_category}</td>
+                        <td className="px-4 py-3 text-gray-600 text-xs max-w-[300px]">{c.description ?? ""}</td>
+                        <td className="px-4 py-3"><LifecycleBadge status={c.lifecycle_status} /></td>
+                        <td className="px-4 py-3 text-center">
+                          {c.requires_comment ? (
+                            <span className="inline-block w-4 h-4 rounded-full bg-amber-400" title="Comment required" />
+                          ) : (
+                            <span className="inline-block w-4 h-4 rounded-full bg-gray-200" title="Comment optional" />
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => openEdit(c)}
+                              disabled={!isDraft || actionBusy}
+                              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+                              title={isDraft ? "" : t("rcWrite.tooltip.editDraftOnly")}
+                            >
+                              {t("reasonCodes.action.edit")}
+                            </button>
+                            <button
+                              onClick={() => { setConfirmRelease(c); setActionError(null); setActionMessage(null); }}
+                              disabled={!isDraft || actionBusy}
+                              className="inline-flex items-center gap-1 text-xs text-green-700 hover:text-green-900 disabled:text-gray-400 disabled:cursor-not-allowed"
+                              title={isDraft ? "" : t("rcWrite.tooltip.releaseDraftOnly")}
+                            >
+                              {t("reasonCodes.action.release")}
+                            </button>
+                            <button
+                              onClick={() => { setConfirmRetire(c); setActionError(null); setActionMessage(null); }}
+                              disabled={isRetired || actionBusy}
+                              className="inline-flex items-center gap-1 text-xs text-orange-700 hover:text-orange-900 disabled:text-gray-400 disabled:cursor-not-allowed"
+                              title={isRetired ? t("rcWrite.tooltip.retireNotRetired") : ""}
+                            >
+                              {t("reasonCodes.action.retire")}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -215,9 +413,247 @@ export function ReasonCodes() {
         )}
 
         <p className="mt-4 text-xs text-gray-400">
-          {t("reasonCodes.notice.readonly")}
+          {t("rcWrite.notice.backendAuth")}
         </p>
       </div>
+
+      {/* ── Create Modal ──────────────────────────────────────────────────────── */}
+      {createOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6">
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">{t("rcWrite.modal.create.title")}</h2>
+            <form onSubmit={handleCreate} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="text-xs font-medium text-gray-700">{t("rcWrite.modal.field.reasonDomain")} *</span>
+                  <input
+                    type="text"
+                    required
+                    value={createForm.reasonDomain}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, reasonDomain: e.target.value }))}
+                    className="mt-1 w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-medium text-gray-700">{t("rcWrite.modal.field.reasonCategory")} *</span>
+                  <input
+                    type="text"
+                    required
+                    value={createForm.reasonCategory}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, reasonCategory: e.target.value }))}
+                    className="mt-1 w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="text-xs font-medium text-gray-700">{t("rcWrite.modal.field.reasonCode")} *</span>
+                  <input
+                    type="text"
+                    required
+                    value={createForm.reasonCode}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, reasonCode: e.target.value }))}
+                    className="mt-1 w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-medium text-gray-700">{t("rcWrite.modal.field.reasonName")} *</span>
+                  <input
+                    type="text"
+                    required
+                    value={createForm.reasonName}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, reasonName: e.target.value }))}
+                    className="mt-1 w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </label>
+              </div>
+              <label className="block">
+                <span className="text-xs font-medium text-gray-700">{t("rcWrite.modal.field.description")}</span>
+                <input
+                  type="text"
+                  value={createForm.description}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
+                  className="mt-1 w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </label>
+              <div className="grid grid-cols-2 gap-3 items-center">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={createForm.requiresComment}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, requiresComment: e.target.checked }))}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-xs font-medium text-gray-700">{t("rcWrite.modal.field.requiresComment")}</span>
+                </label>
+                <label className="block">
+                  <span className="text-xs font-medium text-gray-700">{t("rcWrite.modal.field.sortOrder")}</span>
+                  <input
+                    type="number"
+                    value={createForm.sortOrder}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, sortOrder: e.target.value }))}
+                    className="mt-1 w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </label>
+              </div>
+              {actionError && (
+                <p className="text-xs text-red-600">{actionError}</p>
+              )}
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setCreateOpen(false); setActionError(null); }}
+                  className="px-3 py-1.5 rounded text-sm border border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  {t("common.action.cancel")}
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionBusy}
+                  className="px-3 py-1.5 rounded text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {actionBusy ? t("common.loading") : t("common.action.save")}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit Modal ────────────────────────────────────────────────────────── */}
+      {editTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6">
+            <h2 className="text-lg font-semibold text-slate-900 mb-1">{t("rcWrite.modal.edit.title")}</h2>
+            <p className="text-xs text-gray-500 mb-4 font-mono">{editTarget.reason_code}</p>
+            <form onSubmit={handleEdit} className="space-y-3">
+              <label className="block">
+                <span className="text-xs font-medium text-gray-700">{t("rcWrite.modal.field.reasonName")} *</span>
+                <input
+                  type="text"
+                  required
+                  value={editForm.reasonName}
+                  onChange={(e) => setEditForm((f) => ({ ...f, reasonName: e.target.value }))}
+                  className="mt-1 w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-gray-700">{t("rcWrite.modal.field.description")}</span>
+                <input
+                  type="text"
+                  value={editForm.description}
+                  onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+                  className="mt-1 w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </label>
+              <div className="grid grid-cols-2 gap-3 items-center">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editForm.requiresComment}
+                    onChange={(e) => setEditForm((f) => ({ ...f, requiresComment: e.target.checked }))}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-xs font-medium text-gray-700">{t("rcWrite.modal.field.requiresComment")}</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editForm.isActive}
+                    onChange={(e) => setEditForm((f) => ({ ...f, isActive: e.target.checked }))}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-xs font-medium text-gray-700">{t("rcWrite.modal.field.isActive")}</span>
+                </label>
+              </div>
+              <label className="block">
+                <span className="text-xs font-medium text-gray-700">{t("rcWrite.modal.field.sortOrder")}</span>
+                <input
+                  type="number"
+                  value={editForm.sortOrder}
+                  onChange={(e) => setEditForm((f) => ({ ...f, sortOrder: e.target.value }))}
+                  className="mt-1 w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </label>
+              {actionError && (
+                <p className="text-xs text-red-600">{actionError}</p>
+              )}
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setEditTarget(null); setActionError(null); }}
+                  className="px-3 py-1.5 rounded text-sm border border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  {t("common.action.cancel")}
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionBusy}
+                  className="px-3 py-1.5 rounded text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {actionBusy ? t("common.loading") : t("common.action.save")}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Release Confirm ───────────────────────────────────────────────────── */}
+      {confirmRelease && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
+            <h2 className="text-base font-semibold text-slate-900 mb-2">{t("rcWrite.confirm.release.title")}</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              {t("rcWrite.confirm.release.body")} <span className="font-mono font-medium">{confirmRelease.reason_code}</span>?
+            </p>
+            {actionError && <p className="text-xs text-red-600 mb-2">{actionError}</p>}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => { setConfirmRelease(null); setActionError(null); }}
+                className="px-3 py-1.5 rounded text-sm border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                {t("common.action.cancel")}
+              </button>
+              <button
+                onClick={handleRelease}
+                disabled={actionBusy}
+                className="px-3 py-1.5 rounded text-sm bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {actionBusy ? t("common.loading") : t("reasonCodes.action.release")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Retire Confirm ────────────────────────────────────────────────────── */}
+      {confirmRetire && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
+            <h2 className="text-base font-semibold text-slate-900 mb-2">{t("rcWrite.confirm.retire.title")}</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              {t("rcWrite.confirm.retire.body")} <span className="font-mono font-medium">{confirmRetire.reason_code}</span>?
+            </p>
+            {actionError && <p className="text-xs text-red-600 mb-2">{actionError}</p>}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => { setConfirmRetire(null); setActionError(null); }}
+                className="px-3 py-1.5 rounded text-sm border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                {t("common.action.cancel")}
+              </button>
+              <button
+                onClick={handleRetire}
+                disabled={actionBusy}
+                className="px-3 py-1.5 rounded text-sm bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50"
+              >
+                {actionBusy ? t("common.loading") : t("reasonCodes.action.retire")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
