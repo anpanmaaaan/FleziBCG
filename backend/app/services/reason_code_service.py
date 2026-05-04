@@ -168,7 +168,7 @@ def create_reason_code(
         db,
         tenant_id=tenant_id,
         actor_user_id=actor_user_id,
-        event_type="REASONCODE.CREATED",
+        event_type="ReasonCode.CREATED",
         row=row,
         changed_fields=["reason_code", "reason_name", "reason_domain", "lifecycle_status"],
     )
@@ -225,7 +225,7 @@ def update_reason_code(
         db,
         tenant_id=tenant_id,
         actor_user_id=actor_user_id,
-        event_type="REASONCODE.UPDATED",
+        event_type="ReasonCode.UPDATED",
         row=row,
         changed_fields=changed_fields,
     )
@@ -252,7 +252,7 @@ def release_reason_code(
         db,
         tenant_id=tenant_id,
         actor_user_id=actor_user_id,
-        event_type="REASONCODE.RELEASED",
+        event_type="ReasonCode.RELEASED",
         row=row,
         changed_fields=["lifecycle_status"],
     )
@@ -277,7 +277,7 @@ def retire_reason_code(
         db,
         tenant_id=tenant_id,
         actor_user_id=actor_user_id,
-        event_type="REASONCODE.RETIRED",
+        event_type="ReasonCode.RETIRED",
         row=row,
         changed_fields=["lifecycle_status"],
     )

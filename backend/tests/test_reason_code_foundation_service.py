@@ -344,6 +344,11 @@ class TestUpdateReasonCode:
         with pytest.raises(Exception):
             ReasonCodeUpdateRequest(reason_domain="SCRAP")  # type: ignore[call-arg]
 
+    def test_update_reason_code_rejects_immutable_reason_category(self, db: Session):
+        """reason_category field cannot be in UpdateRequest (extra=forbid)."""
+        with pytest.raises(Exception):
+            ReasonCodeUpdateRequest(reason_category="Utilities")  # type: ignore[call-arg]
+
 
 # 笏笏笏 MMD-BE-13: Release Reason Code (service) 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
 
@@ -443,3 +448,20 @@ def test_no_execution_material_quality_erp_side_effects():
     ]
     for term in forbidden_terms:
         assert term not in SRC.lower(), f"reason_code_service must not reference: {term!r}"
+
+
+def test_reason_code_event_names_are_canonical_and_non_operational():
+    """Only canonical ReasonCode.* security events are allowed in reason_code_service."""
+    import app.services.reason_code_service as svc_mod
+
+    src = open(svc_mod.__file__, encoding="utf-8").read()
+    allowed = {
+        'event_type="ReasonCode.CREATED"',
+        'event_type="ReasonCode.UPDATED"',
+        'event_type="ReasonCode.RELEASED"',
+        'event_type="ReasonCode.RETIRED"',
+    }
+    for marker in allowed:
+        assert marker in src, f"Missing canonical ReasonCode event marker: {marker}"
+
+    assert 'event_type="REASONCODE.' not in src, "Legacy REASONCODE.* event naming is forbidden"
