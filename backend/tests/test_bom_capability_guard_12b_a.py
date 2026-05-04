@@ -13,9 +13,7 @@ from app.models.bom import Bom, BomItem
 from app.models.product import Product
 from app.models.product_version import ProductVersion
 from app.models.security_event import SecurityEventLog
-from app.schemas.product import ProductCreateRequest
 from app.security.dependencies import RequestIdentity, require_authenticated_identity
-from app.services.product_service import create_product
 
 
 def _build_app(identity: RequestIdentity, has_manage: bool = False) -> FastAPI:

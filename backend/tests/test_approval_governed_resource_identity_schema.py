@@ -8,12 +8,10 @@ No generic approval runtime behavior is implemented in this slice.
 No scope-aware rule matching is implemented.
 No governed action type enforcement is implemented.
 """
-import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
-from app.models.approval import ApprovalRequest, ApprovalRule, ApprovalDecision, ApprovalAuditLog
-from app.models.impersonation import ImpersonationSession
+from app.models.approval import ApprovalRequest
 from app.db.base import Base
 
 
