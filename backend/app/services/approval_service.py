@@ -180,7 +180,16 @@ def decide_approval_request(
 
     # WHY: Approval rules are DB-driven (ApprovalRule table), not a static map.
     # Tenants can override the default rules without code changes.
-    allowed_roles = get_approver_role_codes(db, appr_req.action_type, tenant_id)
+    # P0-A-15B: Pass governed resource context from the request so scope-aware
+    # rules can be matched. Fields are NULL for legacy requests → legacy fallback.
+    allowed_roles = get_approver_role_codes(
+        db,
+        appr_req.action_type,
+        tenant_id,
+        scope_ref=appr_req.governed_resource_scope_ref,
+        governed_resource_type=appr_req.governed_resource_type,
+        governed_action_type=appr_req.governed_action_type,
+    )
     if not allowed_roles:
         raise ValueError(
             f"No approval rules defined for action_type={appr_req.action_type!r}"
