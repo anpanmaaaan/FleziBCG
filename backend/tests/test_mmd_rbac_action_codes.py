@@ -310,16 +310,21 @@ def test_reason_code_read_endpoints_do_not_require_manage_action():
         )
 
 
-def test_no_reason_code_write_routes_exist_yet():
-    """MMD-BE-10A scope guard: Reason Code write routes must not yet exist."""
-    forbidden_markers = [
+def test_reason_code_write_routes_exist_and_are_scoped():
+    """MMD-BE-13: Reason Code write routes (POST, PATCH /release /retire) must exist and no forbidden routes."""
+    required_markers = [
         "@router.post(\"\",",
-        "@router.post(\"\")",
         "@router.patch(",
-        "@router.put(",
-        "@router.delete(",
         "/release",
         "/retire",
+    ]
+    for marker in required_markers:
+        assert marker in REASON_CODES_SRC, (
+            f"Required Reason Code write route marker not found in reason_codes.py: {marker!r}"
+        )
+
+    forbidden_markers = [
+        "@router.delete(",
         "/activate",
         "/deactivate",
         "/clone",
@@ -331,7 +336,7 @@ def test_no_reason_code_write_routes_exist_yet():
     ]
     for marker in forbidden_markers:
         assert marker not in REASON_CODES_SRC, (
-            f"Unexpected Reason Code write route marker found in reason_codes.py: {marker!r}"
+            f"Unexpected Reason Code forbidden route marker found in reason_codes.py: {marker!r}"
         )
 
 

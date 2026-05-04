@@ -66,3 +66,38 @@ def get_reason_code_by_id(
             ReasonCode.reason_code_id == reason_code_id,
         )
     )
+
+
+def get_reason_code_by_code(
+    db: Session,
+    *,
+    tenant_id: str,
+    reason_domain: str,
+    reason_code: str,
+) -> ReasonCode | None:
+    """
+    Lookup by unique business key (tenant_id, reason_domain, reason_code).
+    Used for duplicate detection before create.
+    """
+    return db.scalar(
+        select(ReasonCode).where(
+            ReasonCode.tenant_id == tenant_id,
+            ReasonCode.reason_domain == reason_domain,
+            ReasonCode.reason_code == reason_code,
+        )
+    )
+
+
+def create_reason_code_row(db: Session, *, row: ReasonCode) -> ReasonCode:
+    """Persist a new ReasonCode row and flush to obtain DB-generated fields."""
+    db.add(row)
+    db.flush()
+    db.refresh(row)
+    return row
+
+
+def update_reason_code_row(db: Session, *, row: ReasonCode) -> ReasonCode:
+    """Flush changes to an existing ReasonCode row."""
+    db.flush()
+    db.refresh(row)
+    return row
