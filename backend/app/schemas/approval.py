@@ -30,6 +30,14 @@ class ApprovalRuleResponse(BaseModel):
     approver_role_code: str
     tenant_id: str
     is_active: bool
+    # P0-A-15A: Scope applicability fields (nullable)
+    governed_action_type: str | None
+    governed_resource_type: str | None
+    scope_ref: str | None
+    scope_type: str | None
+    priority: int | None
+    effective_from: datetime | None
+    effective_to: datetime | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
