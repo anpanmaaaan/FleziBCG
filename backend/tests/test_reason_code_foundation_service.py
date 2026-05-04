@@ -1,13 +1,19 @@
-"""Service layer tests for Reason Code functionality."""
+﻿"""Service layer tests for Reason Code functionality (MMD-BE-07, MMD-BE-13)."""
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.models.reason_code import ReasonCode
+from app.models.security_event import SecurityEventLog
+from app.schemas.reason_code import ReasonCodeCreateRequest, ReasonCodeUpdateRequest
 from app.services.reason_code_service import (
+    create_reason_code,
     get_reason_code,
     list_reason_codes,
+    release_reason_code,
+    retire_reason_code,
+    update_reason_code,
 )
 
 
@@ -21,6 +27,7 @@ def db() -> Session:
         poolclass=StaticPool,
     )
     ReasonCode.__table__.create(bind=engine)
+    SecurityEventLog.__table__.create(bind=engine)
     session_local = sessionmaker(bind=engine, autoflush=False, autocommit=False)
     return session_local()
 
@@ -251,3 +258,188 @@ class TestGetReasonCode:
         
         statuses = {item.lifecycle_status for item in result}
         assert statuses.issubset({"DRAFT", "RELEASED", "RETIRED"})
+
+
+# 笏笏笏 MMD-BE-13: Create Reason Code (service) 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+
+class TestCreateReasonCode:
+
+    def test_create_reason_code_sets_draft_default(self, db: Session):
+        item = create_reason_code(
+            db,
+            tenant_id="tenant-A",
+            actor_user_id="user-admin",
+            payload=ReasonCodeCreateRequest(
+                reason_domain="DOWNTIME",
+                reason_category="Planned",
+                reason_code="DT-SVC-01",
+                reason_name="Service Test Code",
+            ),
+        )
+        assert item.lifecycle_status == "DRAFT"
+        assert item.tenant_id == "tenant-A"
+        assert item.reason_code == "DT-SVC-01"
+        assert item.reason_domain == "DOWNTIME"
+
+    def test_create_reason_code_enforces_unique_code_per_domain(self, db: Session):
+        payload = ReasonCodeCreateRequest(
+            reason_domain="DOWNTIME",
+            reason_category="Planned",
+            reason_code="DT-SVC-DUP",
+            reason_name="Duplicate",
+        )
+        create_reason_code(db, tenant_id="tenant-A", actor_user_id="admin", payload=payload)
+        with pytest.raises(ValueError, match="Duplicate"):
+            create_reason_code(db, tenant_id="tenant-A", actor_user_id="admin", payload=payload)
+
+    def test_create_reason_code_same_code_different_domain_is_allowed(self, db: Session):
+        for domain in ["DOWNTIME", "SCRAP"]:
+            create_reason_code(
+                db,
+                tenant_id="tenant-A",
+                actor_user_id="admin",
+                payload=ReasonCodeCreateRequest(
+                    reason_domain=domain,
+                    reason_category="Cat",
+                    reason_code="SHARED-CODE-01",
+                    reason_name="Shared Code",
+                ),
+            )
+
+
+# 笏笏笏 MMD-BE-13: Update Reason Code (service) 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+
+class TestUpdateReasonCode:
+
+    def test_update_reason_code_only_draft(self, db: Session):
+        _populate_test_codes(db)
+        with pytest.raises(ValueError, match="cannot be updated"):
+            update_reason_code(
+                db,
+                tenant_id="tenant-A",
+                actor_user_id="admin",
+                reason_code_id="RC-001",  # RELEASED
+                payload=ReasonCodeUpdateRequest(reason_name="New Name"),
+            )
+
+    def test_update_draft_updates_mutable_fields(self, db: Session):
+        _populate_test_codes(db)
+        item = update_reason_code(
+            db,
+            tenant_id="tenant-A",
+            actor_user_id="admin",
+            reason_code_id="RC-004",  # DRAFT
+            payload=ReasonCodeUpdateRequest(reason_name="Updated Draft Name", sort_order=99),
+        )
+        assert item.reason_name == "Updated Draft Name"
+        assert item.sort_order == 99
+
+    def test_update_reason_code_rejects_immutable_reason_code(self, db: Session):
+        """reason_code field cannot be in UpdateRequest (extra=forbid)."""
+        with pytest.raises(Exception):
+            ReasonCodeUpdateRequest(reason_code="CHANGED")  # type: ignore[call-arg]
+
+    def test_update_reason_code_rejects_immutable_reason_domain(self, db: Session):
+        """reason_domain field cannot be in UpdateRequest (extra=forbid)."""
+        with pytest.raises(Exception):
+            ReasonCodeUpdateRequest(reason_domain="SCRAP")  # type: ignore[call-arg]
+
+
+# 笏笏笏 MMD-BE-13: Release Reason Code (service) 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+
+class TestReleaseReasonCode:
+
+    def test_release_only_draft(self, db: Session):
+        _populate_test_codes(db)
+        item = release_reason_code(
+            db, tenant_id="tenant-A", actor_user_id="admin", reason_code_id="RC-004"
+        )
+        assert item.lifecycle_status == "RELEASED"
+
+    def test_release_rejects_released(self, db: Session):
+        _populate_test_codes(db)
+        with pytest.raises(ValueError, match="Only DRAFT"):
+            release_reason_code(
+                db, tenant_id="tenant-A", actor_user_id="admin", reason_code_id="RC-001"
+            )
+
+    def test_release_rejects_retired(self, db: Session):
+        item = create_reason_code(
+            db,
+            tenant_id="tenant-A",
+            actor_user_id="admin",
+            payload=ReasonCodeCreateRequest(
+                reason_domain="DOWNTIME",
+                reason_category="Cat",
+                reason_code="DT-RETIRE-PRE",
+                reason_name="Pre-retire",
+            ),
+        )
+        retire_reason_code(
+            db, tenant_id="tenant-A", actor_user_id="admin", reason_code_id=item.reason_code_id
+        )
+        with pytest.raises(ValueError, match="RETIRED"):
+            release_reason_code(
+                db, tenant_id="tenant-A", actor_user_id="admin", reason_code_id=item.reason_code_id
+            )
+
+
+# 笏笏笏 MMD-BE-13: Retire Reason Code (service) 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+
+class TestRetireReasonCode:
+
+    def test_retire_draft_or_released(self, db: Session):
+        _populate_test_codes(db)
+        for rc_id in ["RC-001", "RC-004"]:  # RELEASED, DRAFT
+            item = retire_reason_code(
+                db, tenant_id="tenant-A", actor_user_id="admin", reason_code_id=rc_id
+            )
+            assert item.lifecycle_status == "RETIRED"
+
+    def test_retire_rejects_already_retired(self, db: Session):
+        item = create_reason_code(
+            db,
+            tenant_id="tenant-A",
+            actor_user_id="admin",
+            payload=ReasonCodeCreateRequest(
+                reason_domain="DOWNTIME",
+                reason_category="Cat",
+                reason_code="DT-RETW-01",
+                reason_name="Pre-retire 2",
+            ),
+        )
+        retire_reason_code(
+            db, tenant_id="tenant-A", actor_user_id="admin", reason_code_id=item.reason_code_id
+        )
+        with pytest.raises(ValueError, match="already RETIRED"):
+            retire_reason_code(
+                db, tenant_id="tenant-A", actor_user_id="admin", reason_code_id=item.reason_code_id
+            )
+
+
+# 笏笏笏 MMD-BE-13: Boundary guards (service) 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+
+def test_no_downtime_reason_mapping_field_or_behavior():
+    """reason_code_service.py must not reference downtime_reason anywhere."""
+    import app.services.reason_code_service as svc_mod
+    SRC = open(svc_mod.__file__, encoding="utf-8").read()
+    assert "downtime_reason" not in SRC.lower()
+
+
+def test_no_execution_material_quality_erp_side_effects():
+    """reason_code_service.py must not reference execution, quality, ERP, or material move symbols."""
+    import app.services.reason_code_service as svc_mod
+    SRC = open(svc_mod.__file__, encoding="utf-8").read()
+    forbidden_terms = [
+        "operation_event",
+        "quality_hold",
+        "erp_post",
+        "backflush",
+        "material_move",
+        "start_downtime",
+        "end_downtime",
+        "quality_accept",
+        "inventory_move",
+    ]
+    for term in forbidden_terms:
+        assert term not in SRC.lower(), f"reason_code_service must not reference: {term!r}"
