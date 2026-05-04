@@ -10,6 +10,7 @@ INVARIANTS COVERED:
   7. Strict tenant enforcement still rejects a missing tenant row (regression).
   8. Strict tenant enforcement allows a seeded ACTIVE tenant (integration check).
 """
+
 from __future__ import annotations
 
 import pytest
@@ -89,7 +90,9 @@ def test_seed_default_tenant_is_idempotent():
         from sqlalchemy import select, func
 
         count = db.scalar(
-            select(func.count()).select_from(Tenant).where(Tenant.tenant_id == "default")
+            select(func.count())
+            .select_from(Tenant)
+            .where(Tenant.tenant_id == "default")
         )
         assert count == 1
     finally:

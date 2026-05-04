@@ -55,7 +55,9 @@ def _mk_product(db, tenant_id: str = "tenant_a") -> str:
     return created.product_id
 
 
-def _mk_bom(db, *, tenant_id: str, product_id: str, bom_code: str, bom_name: str = "Main BOM") -> Bom:
+def _mk_bom(
+    db, *, tenant_id: str, product_id: str, bom_code: str, bom_name: str = "Main BOM"
+) -> Bom:
     row = Bom(
         bom_id=uuid.uuid4().hex,
         tenant_id=tenant_id,
@@ -129,7 +131,9 @@ def test_get_bom_returns_detail_with_items():
     component_1 = _mk_product(db, "tenant_a")
     component_2 = _mk_product(db, "tenant_a")
 
-    bom = _mk_bom(db, tenant_id="tenant_a", product_id=parent_product, bom_code="BOM-001")
+    bom = _mk_bom(
+        db, tenant_id="tenant_a", product_id=parent_product, bom_code="BOM-001"
+    )
     _mk_bom_item(
         db,
         tenant_id="tenant_a",
@@ -147,7 +151,9 @@ def test_get_bom_returns_detail_with_items():
         quantity=1.0,
     )
 
-    detail = get_bom(db, tenant_id="tenant_a", product_id=parent_product, bom_id=bom.bom_id)
+    detail = get_bom(
+        db, tenant_id="tenant_a", product_id=parent_product, bom_id=bom.bom_id
+    )
 
     assert detail.bom_id == bom.bom_id
     assert len(detail.items) == 2
@@ -183,12 +189,37 @@ def test_bom_item_order_by_line_no():
     c2 = _mk_product(db, "tenant_a")
     c3 = _mk_product(db, "tenant_a")
 
-    bom = _mk_bom(db, tenant_id="tenant_a", product_id=parent_product, bom_code="BOM-ORDER")
-    _mk_bom_item(db, tenant_id="tenant_a", bom_id=bom.bom_id, component_product_id=c1, line_no=30, quantity=1)
-    _mk_bom_item(db, tenant_id="tenant_a", bom_id=bom.bom_id, component_product_id=c2, line_no=10, quantity=1)
-    _mk_bom_item(db, tenant_id="tenant_a", bom_id=bom.bom_id, component_product_id=c3, line_no=20, quantity=1)
+    bom = _mk_bom(
+        db, tenant_id="tenant_a", product_id=parent_product, bom_code="BOM-ORDER"
+    )
+    _mk_bom_item(
+        db,
+        tenant_id="tenant_a",
+        bom_id=bom.bom_id,
+        component_product_id=c1,
+        line_no=30,
+        quantity=1,
+    )
+    _mk_bom_item(
+        db,
+        tenant_id="tenant_a",
+        bom_id=bom.bom_id,
+        component_product_id=c2,
+        line_no=10,
+        quantity=1,
+    )
+    _mk_bom_item(
+        db,
+        tenant_id="tenant_a",
+        bom_id=bom.bom_id,
+        component_product_id=c3,
+        line_no=20,
+        quantity=1,
+    )
 
-    detail = get_bom(db, tenant_id="tenant_a", product_id=parent_product, bom_id=bom.bom_id)
+    detail = get_bom(
+        db, tenant_id="tenant_a", product_id=parent_product, bom_id=bom.bom_id
+    )
 
     assert [x.line_no for x in detail.items] == [10, 20, 30]
 
@@ -217,6 +248,7 @@ def test_bom_model_has_no_backflush_or_erp_fields():
 
 
 # ─── MMD-BE-12 service write tests ───────────────────────────────────────────
+
 
 def test_create_bom_validates_product_exists():
     db = _make_session()
@@ -281,7 +313,9 @@ def test_effective_date_range_validation():
 def test_update_bom_only_draft():
     db = _make_session()
     product_id = _mk_product(db, "tenant_a")
-    bom_released = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="U-REL")
+    bom_released = _mk_bom(
+        db, tenant_id="tenant_a", product_id=product_id, bom_code="U-REL"
+    )
     bom_released.lifecycle_status = "RELEASED"
     db.commit()
 
@@ -332,18 +366,30 @@ def test_release_only_draft():
 def test_retire_draft_or_released():
     db = _make_session()
     product_id = _mk_product(db, "tenant_a")
-    bom_draft = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="RT-D")
-    bom_released = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="RT-R")
+    bom_draft = _mk_bom(
+        db, tenant_id="tenant_a", product_id=product_id, bom_code="RT-D"
+    )
+    bom_released = _mk_bom(
+        db, tenant_id="tenant_a", product_id=product_id, bom_code="RT-R"
+    )
     bom_released.lifecycle_status = "RELEASED"
     db.commit()
 
     r1 = retire_bom(
-        db, tenant_id="tenant_a", actor_user_id="admin-a", product_id=product_id, bom_id=bom_draft.bom_id
+        db,
+        tenant_id="tenant_a",
+        actor_user_id="admin-a",
+        product_id=product_id,
+        bom_id=bom_draft.bom_id,
     )
     assert r1.lifecycle_status == "RETIRED"
 
     r2 = retire_bom(
-        db, tenant_id="tenant_a", actor_user_id="admin-a", product_id=product_id, bom_id=bom_released.bom_id
+        db,
+        tenant_id="tenant_a",
+        actor_user_id="admin-a",
+        product_id=product_id,
+        bom_id=bom_released.bom_id,
     )
     assert r2.lifecycle_status == "RETIRED"
 
@@ -361,7 +407,9 @@ def test_add_update_remove_item_only_draft_parent():
     db = _make_session()
     product_id = _mk_product(db, "tenant_a")
     comp_id = _mk_product(db, "tenant_a")
-    bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="ITEM-DRAFT")
+    bom = _mk_bom(
+        db, tenant_id="tenant_a", product_id=product_id, bom_code="ITEM-DRAFT"
+    )
     bom.lifecycle_status = "RELEASED"
     db.commit()
 
@@ -373,7 +421,10 @@ def test_add_update_remove_item_only_draft_parent():
             product_id=product_id,
             bom_id=bom.bom_id,
             payload=BomItemCreateRequest(
-                component_product_id=comp_id, line_no=10, quantity=1.0, unit_of_measure="PCS"
+                component_product_id=comp_id,
+                line_no=10,
+                quantity=1.0,
+                unit_of_measure="PCS",
             ),
         )
 
@@ -381,7 +432,9 @@ def test_add_update_remove_item_only_draft_parent():
 def test_component_product_must_exist():
     db = _make_session()
     product_id = _mk_product(db, "tenant_a")
-    bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="COMP-EXIST")
+    bom = _mk_bom(
+        db, tenant_id="tenant_a", product_id=product_id, bom_code="COMP-EXIST"
+    )
 
     with pytest.raises(LookupError, match="Component product not found"):
         add_bom_item(
@@ -391,7 +444,10 @@ def test_component_product_must_exist():
             product_id=product_id,
             bom_id=bom.bom_id,
             payload=BomItemCreateRequest(
-                component_product_id="does-not-exist", line_no=10, quantity=1.0, unit_of_measure="PCS"
+                component_product_id="does-not-exist",
+                line_no=10,
+                quantity=1.0,
+                unit_of_measure="PCS",
             ),
         )
 
@@ -409,7 +465,10 @@ def test_component_product_cannot_equal_parent_product():
             product_id=product_id,
             bom_id=bom.bom_id,
             payload=BomItemCreateRequest(
-                component_product_id=product_id, line_no=10, quantity=1.0, unit_of_measure="PCS"
+                component_product_id=product_id,
+                line_no=10,
+                quantity=1.0,
+                unit_of_measure="PCS",
             ),
         )
 
@@ -428,7 +487,10 @@ def test_quantity_positive():
             product_id=product_id,
             bom_id=bom.bom_id,
             payload=BomItemCreateRequest(
-                component_product_id=comp_id, line_no=10, quantity=0.0, unit_of_measure="PCS"
+                component_product_id=comp_id,
+                line_no=10,
+                quantity=0.0,
+                unit_of_measure="PCS",
             ),
         )
 

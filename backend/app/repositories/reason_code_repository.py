@@ -17,7 +17,7 @@ def list_reason_codes_by_tenant(
 ) -> list[ReasonCode]:
     """
     List reason codes for a tenant with optional filtering.
-    
+
     Default behavior: returns RELEASED codes that are active.
     """
     query = select(ReasonCode).where(ReasonCode.tenant_id == tenant_id)

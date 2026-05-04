@@ -8,7 +8,13 @@ from sqlalchemy import delete, select
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent, ExecutionEventType
-from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.master import (
+    ClosureStatusEnum,
+    Operation,
+    ProductionOrder,
+    StatusEnum,
+    WorkOrder,
+)
 from app.models.rbac import Role, Scope, UserRoleAssignment
 from app.models.station_session import StationSession
 from app.schemas.operation import (
@@ -60,17 +66,29 @@ def _purge(db) -> None:
         db.commit()
         return
     wo_ids = list(
-        db.scalars(select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids)))
+        db.scalars(
+            select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))
+        )
     )
     if wo_ids:
-        op_ids = list(db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids))))
+        op_ids = list(
+            db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids)))
+        )
         if op_ids:
-            db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
+            db.execute(
+                delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids))
+            )
             db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
         db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
     db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
-    db.execute(delete(StationSession).where(StationSession.station_id.like("TEST_CLOSE_REOPEN%")))
-    db.execute(delete(UserRoleAssignment).where(UserRoleAssignment.user_id == "opr-001"))
+    db.execute(
+        delete(StationSession).where(
+            StationSession.station_id.like("TEST_CLOSE_REOPEN%")
+        )
+    )
+    db.execute(
+        delete(UserRoleAssignment).where(UserRoleAssignment.user_id == "opr-001")
+    )
     db.execute(delete(Scope).where(Scope.scope_value.like("TEST_CLOSE_REOPEN%")))
     db.commit()
 
@@ -85,7 +103,9 @@ def _ensure_opr_role(db) -> Role:
     return role
 
 
-def _ensure_open_station_session(db, *, user_id: str, station_id: str) -> StationSession:
+def _ensure_open_station_session(
+    db, *, user_id: str, station_id: str
+) -> StationSession:
     role = _ensure_opr_role(db)
     scope = db.scalar(
         select(Scope).where(
@@ -204,7 +224,9 @@ def _event_count(db, operation_id: int) -> int:
     return len(
         list(
             db.scalars(
-                select(ExecutionEvent.id).where(ExecutionEvent.operation_id == operation_id)
+                select(ExecutionEvent.id).where(
+                    ExecutionEvent.operation_id == operation_id
+                )
             )
         )
     )
@@ -265,7 +287,10 @@ def test_close_operation_success_sets_closed_and_appends_event(db_session):
     assert detail.last_closed_by == "sup-001"
     assert detail.last_closed_at is not None
     assert _event_count(db, op.id) == before_count + 1
-    assert _event_types(db, op.id)[-1] == ExecutionEventType.OPERATION_CLOSED_AT_STATION.value
+    assert (
+        _event_types(db, op.id)[-1]
+        == ExecutionEventType.OPERATION_CLOSED_AT_STATION.value
+    )
 
 
 def test_close_operation_rejects_already_closed_and_non_completed(db_session):
@@ -317,7 +342,9 @@ def test_close_operation_rejects_already_closed_and_non_completed(db_session):
         )
 
 
-def test_reopen_operation_success_updates_metadata_appends_event_and_projects_paused(db_session):
+def test_reopen_operation_success_updates_metadata_appends_event_and_projects_paused(
+    db_session,
+):
     db = db_session
     wo = _seed_wo(db, "REOPEN-OK")
     op = _mk_op(
@@ -360,7 +387,9 @@ def test_reopen_operation_success_updates_metadata_appends_event_and_projects_pa
     assert closed.closure_status == ClosureStatusEnum.closed.value
 
     # Closed invariant blocks execution writes while CLOSED.
-    _ensure_open_station_session(db, user_id="opr-001", station_id="TEST_CLOSE_REOPEN_STATION")
+    _ensure_open_station_session(
+        db, user_id="opr-001", station_id="TEST_CLOSE_REOPEN_STATION"
+    )
     with pytest.raises(ClosedRecordConflictError, match="STATE_CLOSED_RECORD"):
         pause_operation(
             db,
@@ -391,7 +420,9 @@ def test_reopen_operation_success_updates_metadata_appends_event_and_projects_pa
 
     # After reopen, closed invariant no longer blocks execution writes.
     reopened_live = get_operation(db, op.id)
-    _ensure_open_station_session(db, user_id="opr-001", station_id="TEST_CLOSE_REOPEN_STATION")
+    _ensure_open_station_session(
+        db, user_id="opr-001", station_id="TEST_CLOSE_REOPEN_STATION"
+    )
     resumed = resume_operation(
         db,
         reopened_live,

@@ -5,8 +5,26 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 
+class ReasonCodeAllowedActions(BaseModel):
+    """Server-derived Reason Code write capability guard (MMD-FULLSTACK-13B).
+
+    Rules:
+    - If user lacks admin.master_data.reason_code.manage, all actions are false.
+    - DRAFT + manage: can_update, can_release, can_retire, can_create_sibling all true.
+    - RELEASED + manage: can_retire, can_create_sibling true; others false.
+    - RETIRED + manage: can_create_sibling true; others false.
+    can_create_sibling = user can create another Reason Code (NOT clone/copy/bulk).
+    """
+
+    can_update: bool
+    can_release: bool
+    can_retire: bool
+    can_create_sibling: bool
+
+
 class ReasonCodeItem(BaseModel):
     """Read-only response schema for a single reason code."""
+
     reason_code_id: str
     tenant_id: str
     reason_domain: str
@@ -20,6 +38,7 @@ class ReasonCodeItem(BaseModel):
     sort_order: int
     created_at: datetime
     updated_at: datetime
+    allowed_actions: ReasonCodeAllowedActions
 
 
 class ReasonCodeCreateRequest(BaseModel):

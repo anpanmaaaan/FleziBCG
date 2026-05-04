@@ -1,4 +1,5 @@
 """API tests for Reason Code endpoints — read and write (MMD-BE-07, MMD-BE-13)."""
+
 from typing import Any, cast
 
 from fastapi import FastAPI, HTTPException
@@ -59,7 +60,9 @@ def _make_identity(tenant_id: str = "test-tenant") -> RequestIdentity:
     )
 
 
-def _override_rc_manage(app: FastAPI, path: str, method: str, identity: RequestIdentity) -> Any:
+def _override_rc_manage(
+    app: FastAPI, path: str, method: str, identity: RequestIdentity
+) -> Any:
     """Override the require_action dependency for a specific Reason Code write route."""
     route = cast(
         Any,
@@ -83,7 +86,9 @@ def _make_managed_app(identity: RequestIdentity, session_local) -> FastAPI:
     app = FastAPI()
     app.include_router(reason_codes_router_module.router, prefix="/api/v1")
     app.dependency_overrides[require_authenticated_identity] = lambda: identity
-    app.dependency_overrides[reason_codes_router_module.get_db] = lambda: session_local()
+    app.dependency_overrides[reason_codes_router_module.get_db] = lambda: (
+        session_local()
+    )
 
     write_routes = [
         ("/api/v1/reason-codes", "POST"),
@@ -175,9 +180,9 @@ class TestListReasonCodesAPI:
         app = _build_app(identity)
         db = _make_session()
         app.dependency_overrides[reason_codes_router_module.get_db] = lambda: db
-        
+
         _populate_test_codes(db)
-        
+
         client = TestClient(app)
         response = client.get("/api/v1/reason-codes")
 
@@ -202,16 +207,16 @@ class TestListReasonCodesAPI:
         app = _build_app(identity)
         db = _make_session()
         app.dependency_overrides[reason_codes_router_module.get_db] = lambda: db
-        
+
         _populate_test_codes(db)
-        
+
         client = TestClient(app)
         response = client.get("/api/v1/reason-codes?domain=DOWNTIME")
 
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 2  # RC-001, RC-002
-        
+
         ids = {item["reason_code_id"] for item in data}
         assert ids == {"RC-001", "RC-002"}
 
@@ -229,9 +234,9 @@ class TestListReasonCodesAPI:
         app = _build_app(identity)
         db = _make_session()
         app.dependency_overrides[reason_codes_router_module.get_db] = lambda: db
-        
+
         _populate_test_codes(db)
-        
+
         client = TestClient(app)
         response = client.get("/api/v1/reason-codes?category=Unplanned%20Breakdown")
 
@@ -254,9 +259,9 @@ class TestListReasonCodesAPI:
         app = _build_app(identity)
         db = _make_session()
         app.dependency_overrides[reason_codes_router_module.get_db] = lambda: db
-        
+
         _populate_test_codes(db)
-        
+
         client = TestClient(app)
         response = client.get("/api/v1/reason-codes?lifecycle_status=RELEASED")
 
@@ -279,9 +284,9 @@ class TestListReasonCodesAPI:
         app = _build_app(identity)
         db = _make_session()
         app.dependency_overrides[reason_codes_router_module.get_db] = lambda: db
-        
+
         _populate_test_codes(db)
-        
+
         client = TestClient(app)
         response = client.get("/api/v1/reason-codes?include_inactive=true")
 
@@ -295,7 +300,7 @@ class TestListReasonCodesAPI:
     def test_list_reason_codes_requires_auth(self):
         """GET /reason-codes requires authentication."""
         from fastapi import HTTPException
-        
+
         # Create identity with is_authenticated=False (like unauthenticated)
         identity = RequestIdentity(
             user_id=None,
@@ -306,16 +311,16 @@ class TestListReasonCodesAPI:
             is_authenticated=False,
             session_id=None,
         )
-        
+
         # Override dependency to raise 403 if not authenticated
         def check_auth():
             if not identity.is_authenticated:
                 raise HTTPException(status_code=403, detail="Not authenticated")
             return identity
-        
+
         app = _build_app(identity)
         app.dependency_overrides[require_authenticated_identity] = check_auth
-        
+
         client = TestClient(app)
         response = client.get("/api/v1/reason-codes")
 
@@ -340,9 +345,9 @@ class TestGetReasonCodeAPI:
         app = _build_app(identity)
         db = _make_session()
         app.dependency_overrides[reason_codes_router_module.get_db] = lambda: db
-        
+
         _populate_test_codes(db)
-        
+
         client = TestClient(app)
         response = client.get("/api/v1/reason-codes/RC-001")
 
@@ -366,9 +371,9 @@ class TestGetReasonCodeAPI:
         app = _build_app(identity)
         db = _make_session()
         app.dependency_overrides[reason_codes_router_module.get_db] = lambda: db
-        
+
         _populate_test_codes(db)
-        
+
         client = TestClient(app)
         response = client.get("/api/v1/reason-codes/NONEXISTENT")
 
@@ -390,9 +395,9 @@ class TestGetReasonCodeAPI:
         app = _build_app(identity)
         db = _make_session()
         app.dependency_overrides[reason_codes_router_module.get_db] = lambda: db
-        
+
         _populate_test_codes(db)
-        
+
         client = TestClient(app)
         response = client.get("/api/v1/reason-codes/RC-001")
 
@@ -421,6 +426,7 @@ class TestGetReasonCodeAPI:
 
 
 # ─── MMD-BE-13: Create Reason Code ───────────────────────────────────────────
+
 
 def test_create_reason_code_creates_draft():
     identity = _make_identity()
@@ -531,7 +537,9 @@ def test_create_reason_code_requires_manage_action():
     app = FastAPI()
     app.include_router(reason_codes_router_module.router, prefix="/api/v1")
     app.dependency_overrides[require_authenticated_identity] = lambda: identity
-    app.dependency_overrides[reason_codes_router_module.get_db] = lambda: session_local()
+    app.dependency_overrides[reason_codes_router_module.get_db] = lambda: (
+        session_local()
+    )
 
     deny_dep = _override_rc_manage(app, "/api/v1/reason-codes", "POST", identity)
     app.dependency_overrides[deny_dep] = lambda: (_ for _ in ()).throw(
@@ -552,6 +560,7 @@ def test_create_reason_code_requires_manage_action():
 
 
 # ─── MMD-BE-13: Update Reason Code ───────────────────────────────────────────
+
 
 def test_update_reason_code_allows_draft_metadata_update():
     identity = _make_identity()
@@ -607,7 +616,9 @@ def test_update_reason_code_rejects_released():
     app = _make_managed_app(identity, session_local)
     client = TestClient(app)
 
-    response = client.patch("/api/v1/reason-codes/RC-REL", json={"reason_name": "New Name"})
+    response = client.patch(
+        "/api/v1/reason-codes/RC-REL", json={"reason_name": "New Name"}
+    )
     assert response.status_code == 409
 
 
@@ -634,7 +645,9 @@ def test_update_reason_code_rejects_retired():
     app = _make_managed_app(identity, session_local)
     client = TestClient(app)
 
-    response = client.patch("/api/v1/reason-codes/RC-RET", json={"reason_name": "New Name"})
+    response = client.patch(
+        "/api/v1/reason-codes/RC-RET", json={"reason_name": "New Name"}
+    )
     assert response.status_code == 409
 
 
@@ -715,18 +728,26 @@ def test_update_reason_code_requires_manage_action():
     app = FastAPI()
     app.include_router(reason_codes_router_module.router, prefix="/api/v1")
     app.dependency_overrides[require_authenticated_identity] = lambda: identity
-    app.dependency_overrides[reason_codes_router_module.get_db] = lambda: session_local()
+    app.dependency_overrides[reason_codes_router_module.get_db] = lambda: (
+        session_local()
+    )
 
-    deny_dep = _override_rc_manage(app, "/api/v1/reason-codes/{reason_code_id}", "PATCH", identity)
+    deny_dep = _override_rc_manage(
+        app, "/api/v1/reason-codes/{reason_code_id}", "PATCH", identity
+    )
     app.dependency_overrides[deny_dep] = lambda: (_ for _ in ()).throw(
         HTTPException(status_code=403, detail="Forbidden")
     )
 
     client = TestClient(app)
-    assert client.patch("/api/v1/reason-codes/RC-X", json={"reason_name": "X"}).status_code == 403
+    assert (
+        client.patch("/api/v1/reason-codes/RC-X", json={"reason_name": "X"}).status_code
+        == 403
+    )
 
 
 # ─── MMD-BE-13: Release Reason Code ──────────────────────────────────────────
+
 
 def test_release_reason_code_changes_draft_to_released():
     identity = _make_identity()
@@ -760,19 +781,24 @@ def test_release_reason_code_rejects_released_or_retired():
     identity = _make_identity()
     session_local = _make_session_factory()
     db = session_local()
-    for rc_id, status in [("RC-ALREADY-REL", "RELEASED"), ("RC-ALREADY-RET", "RETIRED")]:
-        db.add(ReasonCode(
-            reason_code_id=rc_id,
-            tenant_id="test-tenant",
-            reason_domain="DOWNTIME",
-            reason_category="Planned",
-            reason_code=f"DT-{rc_id}",
-            reason_name="Code",
-            lifecycle_status=status,
-            requires_comment=False,
-            is_active=True,
-            sort_order=0,
-        ))
+    for rc_id, status in [
+        ("RC-ALREADY-REL", "RELEASED"),
+        ("RC-ALREADY-RET", "RETIRED"),
+    ]:
+        db.add(
+            ReasonCode(
+                reason_code_id=rc_id,
+                tenant_id="test-tenant",
+                reason_domain="DOWNTIME",
+                reason_category="Planned",
+                reason_code=f"DT-{rc_id}",
+                reason_name="Code",
+                lifecycle_status=status,
+                requires_comment=False,
+                is_active=True,
+                sort_order=0,
+            )
+        )
     db.commit()
     db.close()
 
@@ -790,7 +816,9 @@ def test_release_reason_code_requires_manage_action():
     app = FastAPI()
     app.include_router(reason_codes_router_module.router, prefix="/api/v1")
     app.dependency_overrides[require_authenticated_identity] = lambda: identity
-    app.dependency_overrides[reason_codes_router_module.get_db] = lambda: session_local()
+    app.dependency_overrides[reason_codes_router_module.get_db] = lambda: (
+        session_local()
+    )
 
     deny_dep = _override_rc_manage(
         app, "/api/v1/reason-codes/{reason_code_id}/release", "POST", identity
@@ -805,23 +833,26 @@ def test_release_reason_code_requires_manage_action():
 
 # ─── MMD-BE-13: Retire Reason Code ───────────────────────────────────────────
 
+
 def test_retire_reason_code_changes_draft_or_released_to_retired():
     identity = _make_identity()
     session_local = _make_session_factory()
     db = session_local()
     for rc_id, status in [("RC-DR-RETIRE", "DRAFT"), ("RC-RE-RETIRE", "RELEASED")]:
-        db.add(ReasonCode(
-            reason_code_id=rc_id,
-            tenant_id="test-tenant",
-            reason_domain="DOWNTIME",
-            reason_category="Planned",
-            reason_code=f"DT-{rc_id}",
-            reason_name="Code",
-            lifecycle_status=status,
-            requires_comment=False,
-            is_active=True,
-            sort_order=0,
-        ))
+        db.add(
+            ReasonCode(
+                reason_code_id=rc_id,
+                tenant_id="test-tenant",
+                reason_domain="DOWNTIME",
+                reason_category="Planned",
+                reason_code=f"DT-{rc_id}",
+                reason_name="Code",
+                lifecycle_status=status,
+                requires_comment=False,
+                is_active=True,
+                sort_order=0,
+            )
+        )
     db.commit()
     db.close()
 
@@ -841,18 +872,20 @@ def test_retire_reason_code_rejects_already_retired():
     identity = _make_identity()
     session_local = _make_session_factory()
     db = session_local()
-    db.add(ReasonCode(
-        reason_code_id="RC-ALREADY-RET2",
-        tenant_id="test-tenant",
-        reason_domain="DOWNTIME",
-        reason_category="Planned",
-        reason_code="DT-ARET-02",
-        reason_name="Already Retired",
-        lifecycle_status="RETIRED",
-        requires_comment=False,
-        is_active=True,
-        sort_order=0,
-    ))
+    db.add(
+        ReasonCode(
+            reason_code_id="RC-ALREADY-RET2",
+            tenant_id="test-tenant",
+            reason_domain="DOWNTIME",
+            reason_category="Planned",
+            reason_code="DT-ARET-02",
+            reason_name="Already Retired",
+            lifecycle_status="RETIRED",
+            requires_comment=False,
+            is_active=True,
+            sort_order=0,
+        )
+    )
     db.commit()
     db.close()
 
@@ -869,7 +902,9 @@ def test_retire_reason_code_requires_manage_action():
     app = FastAPI()
     app.include_router(reason_codes_router_module.router, prefix="/api/v1")
     app.dependency_overrides[require_authenticated_identity] = lambda: identity
-    app.dependency_overrides[reason_codes_router_module.get_db] = lambda: session_local()
+    app.dependency_overrides[reason_codes_router_module.get_db] = lambda: (
+        session_local()
+    )
 
     deny_dep = _override_rc_manage(
         app, "/api/v1/reason-codes/{reason_code_id}/retire", "POST", identity
@@ -883,6 +918,7 @@ def test_retire_reason_code_requires_manage_action():
 
 
 # ─── MMD-BE-13: Scope / boundary guards ──────────────────────────────────────
+
 
 def test_no_reason_code_hard_delete_reactivate_activate_deactivate_clone_bulk_map_policy_routes_exist():
     """Boundary guard: no forbidden routes must be present in the router."""
@@ -917,7 +953,7 @@ def test_reason_code_read_endpoints_do_not_require_manage_action():
 
     REASON_CODES_SRC = open(rc_mod.__file__, encoding="utf-8").read()
     get_blocks = re.findall(
-        r'@router\.get\b[^@]+?(?=@router\.|$)',
+        r"@router\.get\b[^@]+?(?=@router\.|$)",
         REASON_CODES_SRC,
         flags=re.DOTALL,
     )

@@ -4,6 +4,7 @@ These tests verify the Alembic project structure is correctly wired without
 requiring a live database connection.  The DB-level upgrade test uses a
 pytest fixture that skips when psycopg cannot connect.
 """
+
 from pathlib import Path
 
 import pytest
@@ -35,6 +36,7 @@ def db_engine():
         pytest.skip("DB not reachable - skipping live DB test")
 
     from app.db.session import engine
+
     return engine
 
 
@@ -47,12 +49,8 @@ def test_alembic_ini_is_ascii():
     """alembic.ini must be pure ASCII to avoid locale-encoding failures on
     Windows (cp932 / cp1252 environments)."""
     content_bytes = ALEMBIC_INI.read_bytes()
-    non_ascii = [
-        (i, b) for i, b in enumerate(content_bytes) if b > 127
-    ]
-    assert non_ascii == [], (
-        f"Non-ASCII bytes found in alembic.ini: {non_ascii[:5]}"
-    )
+    non_ascii = [(i, b) for i, b in enumerate(content_bytes) if b > 127]
+    assert non_ascii == [], f"Non-ASCII bytes found in alembic.ini: {non_ascii[:5]}"
 
 
 def test_alembic_script_location_resolves():
@@ -112,9 +110,6 @@ def test_alembic_upgrade_head_live(db_engine):
     command.upgrade(cfg, "head")
 
     with db_engine.connect() as conn:
-        result = conn.execute(
-            text("SELECT version_num FROM alembic_version")
-        )
+        result = conn.execute(text("SELECT version_num FROM alembic_version"))
         rows = [r[0] for r in result]
     assert "0010" in rows, f"Expected 0010 in alembic_version, got: {rows}"
-

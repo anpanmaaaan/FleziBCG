@@ -8,7 +8,13 @@ from sqlalchemy import delete, select
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent, ExecutionEventType
-from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.master import (
+    ClosureStatusEnum,
+    Operation,
+    ProductionOrder,
+    StatusEnum,
+    WorkOrder,
+)
 from app.models.rbac import Role, Scope, UserRoleAssignment
 from app.models.station_session import StationSession
 from app.schemas.operation import (
@@ -145,14 +151,22 @@ def _purge(db) -> None:
     )
     if po_ids:
         wo_ids = list(
-            db.scalars(select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids)))
+            db.scalars(
+                select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))
+            )
         )
         if wo_ids:
             op_ids = list(
-                db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids)))
+                db.scalars(
+                    select(Operation.id).where(Operation.work_order_id.in_(wo_ids))
+                )
             )
             if op_ids:
-                db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
+                db.execute(
+                    delete(ExecutionEvent).where(
+                        ExecutionEvent.operation_id.in_(op_ids)
+                    )
+                )
                 db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
             db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
         db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
@@ -238,10 +252,19 @@ def _seed_operation(
     return op
 
 
-def _seed_in_progress_operation(db, *, suffix: str, station_scope_value: str = _STATION) -> Operation:
+def _seed_in_progress_operation(
+    db, *, suffix: str, station_scope_value: str = _STATION
+) -> Operation:
     _ensure_open_station_session(db, station_id=station_scope_value)
-    op = _seed_operation(db, suffix=suffix, status=StatusEnum.planned.value, station_scope_value=station_scope_value)
-    start_operation(db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID)
+    op = _seed_operation(
+        db,
+        suffix=suffix,
+        status=StatusEnum.planned.value,
+        station_scope_value=station_scope_value,
+    )
+    start_operation(
+        db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID
+    )
     db_op = db.scalar(select(Operation).where(Operation.id == op.id))
     assert db_op is not None
     assert db_op.status == StatusEnum.in_progress.value
@@ -260,6 +283,7 @@ def _latest_event_type(db, operation_id: int) -> str | None:
 # ---------------------------------------------------------------------------
 # T1 — Happy path: good_qty only, status stays IN_PROGRESS
 # ---------------------------------------------------------------------------
+
 
 def test_report_quantity_happy_path_good_qty_only(db_session):
     db = db_session
@@ -281,6 +305,7 @@ def test_report_quantity_happy_path_good_qty_only(db_session):
 # T2 — Happy path: mixed good + scrap qty, accumulates in projection
 # ---------------------------------------------------------------------------
 
+
 def test_report_quantity_happy_path_mixed_qty_accumulates(db_session):
     db = db_session
     op = _seed_in_progress_operation(db, suffix="RPT-MIXED")
@@ -301,6 +326,7 @@ def test_report_quantity_happy_path_mixed_qty_accumulates(db_session):
 # T3 — Rejects non-IN_PROGRESS (PLANNED)
 # ---------------------------------------------------------------------------
 
+
 def test_report_quantity_rejects_planned_operation(db_session):
     db = db_session
     _ensure_open_station_session(db)
@@ -318,6 +344,7 @@ def test_report_quantity_rejects_planned_operation(db_session):
 # ---------------------------------------------------------------------------
 # T4 — Rejects non-IN_PROGRESS (PAUSED) — must start then pause first
 # ---------------------------------------------------------------------------
+
 
 def test_report_quantity_rejects_paused_operation(db_session):
     db = db_session
@@ -349,6 +376,7 @@ def test_report_quantity_rejects_paused_operation(db_session):
 # T5 — Rejects CLOSED (closure_status = closed) operation
 # ---------------------------------------------------------------------------
 
+
 def test_report_quantity_rejects_closed_operation(db_session):
     db = db_session
     _ensure_open_station_session(db)
@@ -372,6 +400,7 @@ def test_report_quantity_rejects_closed_operation(db_session):
 # T6 — Rejects negative good_qty
 # ---------------------------------------------------------------------------
 
+
 def test_report_quantity_rejects_negative_good_qty(db_session):
     db = db_session
     op = _seed_in_progress_operation(db, suffix="RPT-NEG-GOOD")
@@ -388,6 +417,7 @@ def test_report_quantity_rejects_negative_good_qty(db_session):
 # ---------------------------------------------------------------------------
 # T7 — Rejects negative scrap_qty
 # ---------------------------------------------------------------------------
+
 
 def test_report_quantity_rejects_negative_scrap_qty(db_session):
     db = db_session
@@ -406,6 +436,7 @@ def test_report_quantity_rejects_negative_scrap_qty(db_session):
 # T8 — Rejects zero-sum (both good_qty=0 and scrap_qty=0)
 # ---------------------------------------------------------------------------
 
+
 def test_report_quantity_rejects_zero_sum(db_session):
     db = db_session
     op = _seed_in_progress_operation(db, suffix="RPT-ZERO-SUM")
@@ -422,6 +453,7 @@ def test_report_quantity_rejects_zero_sum(db_session):
 # ---------------------------------------------------------------------------
 # T9 — Cumulative quantity: two reports accumulate in projection
 # ---------------------------------------------------------------------------
+
 
 def test_report_quantity_cumulative_across_two_reports(db_session):
     db = db_session
@@ -450,16 +482,21 @@ def test_report_quantity_cumulative_across_two_reports(db_session):
     assert detail.status == StatusEnum.in_progress.value
 
     # Two QTY_REPORTED events should exist
-    qty_event_count = db.query(ExecutionEvent).filter(
-        ExecutionEvent.operation_id == op.id,
-        ExecutionEvent.event_type == ExecutionEventType.QTY_REPORTED.value,
-    ).count()
+    qty_event_count = (
+        db.query(ExecutionEvent)
+        .filter(
+            ExecutionEvent.operation_id == op.id,
+            ExecutionEvent.event_type == ExecutionEventType.QTY_REPORTED.value,
+        )
+        .count()
+    )
     assert qty_event_count == 2
 
 
 # ---------------------------------------------------------------------------
 # T10 — Allowed actions after report remain correct
 # ---------------------------------------------------------------------------
+
 
 def test_report_quantity_allowed_actions_after_report(db_session):
     db = db_session
@@ -479,9 +516,12 @@ def test_report_quantity_allowed_actions_after_report(db_session):
 # T11 — No-session outcome parity: missing StationSession does not change outcome
 # ---------------------------------------------------------------------------
 
+
 def test_report_quantity_no_session_rejects(db_session):
     db = db_session
-    op = _seed_operation(db, suffix="RPT-NO-SESSION", status=StatusEnum.in_progress.value)
+    op = _seed_operation(
+        db, suffix="RPT-NO-SESSION", status=StatusEnum.in_progress.value
+    )
 
     with pytest.raises(StationSessionGuardError, match="STATION_SESSION_REQUIRED"):
         report_quantity(
@@ -496,6 +536,7 @@ def test_report_quantity_no_session_rejects(db_session):
 # ---------------------------------------------------------------------------
 # T12 — OPEN-session outcome parity: active StationSession does not change outcome
 # ---------------------------------------------------------------------------
+
 
 def test_report_quantity_open_session_parity(db_session):
     db = db_session

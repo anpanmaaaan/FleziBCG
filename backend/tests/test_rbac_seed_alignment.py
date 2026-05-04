@@ -55,18 +55,13 @@ _APPROVE_FAMILY_ACTION_CODES = frozenset(
 # Expected action-level RolePermission count per role:
 # For each role, count action codes whose family is in that role's allowed families.
 _EXPECTED_ACTION_ROLE_PERMISSION_COUNT: dict[str, int] = {
-    role_code: sum(
-        1
-        for _code, fam in ACTION_CODE_REGISTRY.items()
-        if fam in families
-    )
+    role_code: sum(1 for _code, fam in ACTION_CODE_REGISTRY.items() if fam in families)
     for role_code, families in SYSTEM_ROLE_FAMILIES.items()
 }
 
 # Expected family-level RolePermission count per role:
 _EXPECTED_FAMILY_ROLE_PERMISSION_COUNT: dict[str, int] = {
-    role_code: len(families)
-    for role_code, families in SYSTEM_ROLE_FAMILIES.items()
+    role_code: len(families) for role_code, families in SYSTEM_ROLE_FAMILIES.items()
 }
 
 
@@ -114,9 +109,7 @@ def seeded_db(monkeypatch) -> Session:
 def test_seed_creates_permission_row_for_every_action_code(seeded_db: Session) -> None:
     """Every action code in ACTION_CODE_REGISTRY must have a Permission row."""
     for action_code in ACTION_CODE_REGISTRY:
-        row = seeded_db.scalar(
-            select(Permission).where(Permission.code == action_code)
-        )
+        row = seeded_db.scalar(select(Permission).where(Permission.code == action_code))
         assert row is not None, (
             f"Permission row missing for action code '{action_code}'. "
             f"seed_rbac_core() must create a Permission row for every "
@@ -127,9 +120,7 @@ def test_seed_creates_permission_row_for_every_action_code(seeded_db: Session) -
 def test_seed_permission_family_matches_registry(seeded_db: Session) -> None:
     """Every Permission row's family must match ACTION_CODE_REGISTRY[action_code]."""
     for action_code, expected_family in ACTION_CODE_REGISTRY.items():
-        row = seeded_db.scalar(
-            select(Permission).where(Permission.code == action_code)
-        )
+        row = seeded_db.scalar(select(Permission).where(Permission.code == action_code))
         assert row is not None, f"Permission row missing for '{action_code}'"
         assert row.family == expected_family, (
             f"Permission '{action_code}' has family '{row.family}', "
@@ -140,9 +131,7 @@ def test_seed_permission_family_matches_registry(seeded_db: Session) -> None:
 def test_seed_permission_action_code_field_set(seeded_db: Session) -> None:
     """action_code field on Permission row must equal the code, not None."""
     for action_code in ACTION_CODE_REGISTRY:
-        row = seeded_db.scalar(
-            select(Permission).where(Permission.code == action_code)
-        )
+        row = seeded_db.scalar(select(Permission).where(Permission.code == action_code))
         assert row is not None, f"Permission row missing for '{action_code}'"
         assert row.action_code == action_code, (
             f"Permission '{action_code}' has action_code='{row.action_code}', "
@@ -150,11 +139,15 @@ def test_seed_permission_action_code_field_set(seeded_db: Session) -> None:
         )
 
 
-def test_seed_creates_exactly_one_permission_per_action_code(seeded_db: Session) -> None:
+def test_seed_creates_exactly_one_permission_per_action_code(
+    seeded_db: Session,
+) -> None:
     """Each action code must have exactly one Permission row — no duplicates."""
     for action_code in ACTION_CODE_REGISTRY:
         count = seeded_db.scalar(
-            select(func.count()).select_from(Permission).where(Permission.code == action_code)
+            select(func.count())
+            .select_from(Permission)
+            .where(Permission.code == action_code)
         )
         assert count == 1, (
             f"Expected 1 Permission row for '{action_code}', got {count}. "
@@ -167,7 +160,9 @@ def test_seed_creates_exactly_one_permission_per_action_code(seeded_db: Session)
 # ---------------------------------------------------------------------------
 
 
-def test_seed_p0a07b_downtime_reason_manage_permission_exists(seeded_db: Session) -> None:
+def test_seed_p0a07b_downtime_reason_manage_permission_exists(
+    seeded_db: Session,
+) -> None:
     """GAP-1 (P0-A-07B): admin.downtime_reason.manage must have a Permission row
     with ADMIN family. This code was added in P0-A-07B."""
     row = seeded_db.scalar(
@@ -224,8 +219,12 @@ def test_seed_creates_all_system_roles(seeded_db: Session) -> None:
             f"Role row missing for '{role_code}'. "
             f"seed_rbac_core() must create all system roles."
         )
-        assert row.is_system is True, f"Role '{role_code}' must be marked is_system=True"
-        assert row.is_active is True, f"Role '{role_code}' must be marked is_active=True"
+        assert row.is_system is True, (
+            f"Role '{role_code}' must be marked is_system=True"
+        )
+        assert row.is_active is True, (
+            f"Role '{role_code}' must be marked is_active=True"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -233,7 +232,9 @@ def test_seed_creates_all_system_roles(seeded_db: Session) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_seed_adm_role_gets_all_admin_family_action_permissions(seeded_db: Session) -> None:
+def test_seed_adm_role_gets_all_admin_family_action_permissions(
+    seeded_db: Session,
+) -> None:
     """ADM role must have RolePermission rows for all ADMIN-family action codes."""
     adm_role = seeded_db.scalar(select(Role).where(Role.code == "ADM"))
     assert adm_role is not None
@@ -254,7 +255,9 @@ def test_seed_adm_role_gets_all_admin_family_action_permissions(seeded_db: Sessi
         )
 
 
-def test_seed_ots_role_gets_all_admin_family_action_permissions(seeded_db: Session) -> None:
+def test_seed_ots_role_gets_all_admin_family_action_permissions(
+    seeded_db: Session,
+) -> None:
     """OTS role must have RolePermission rows for all ADMIN-family action codes."""
     ots_role = seeded_db.scalar(select(Role).where(Role.code == "OTS"))
     assert ots_role is not None
@@ -275,7 +278,9 @@ def test_seed_ots_role_gets_all_admin_family_action_permissions(seeded_db: Sessi
         )
 
 
-def test_seed_opr_role_gets_all_execute_family_action_permissions(seeded_db: Session) -> None:
+def test_seed_opr_role_gets_all_execute_family_action_permissions(
+    seeded_db: Session,
+) -> None:
     """OPR role must have RolePermission rows for all EXECUTE-family action codes."""
     opr_role = seeded_db.scalar(select(Role).where(Role.code == "OPR"))
     assert opr_role is not None
@@ -296,7 +301,9 @@ def test_seed_opr_role_gets_all_execute_family_action_permissions(seeded_db: Ses
         )
 
 
-def test_seed_qal_role_gets_all_approve_family_action_permissions(seeded_db: Session) -> None:
+def test_seed_qal_role_gets_all_approve_family_action_permissions(
+    seeded_db: Session,
+) -> None:
     """QAL role must have RolePermission rows for all APPROVE-family action codes."""
     qal_role = seeded_db.scalar(select(Role).where(Role.code == "QAL"))
     assert qal_role is not None
@@ -317,7 +324,9 @@ def test_seed_qal_role_gets_all_approve_family_action_permissions(seeded_db: Ses
         )
 
 
-def test_seed_pmg_role_gets_all_approve_family_action_permissions(seeded_db: Session) -> None:
+def test_seed_pmg_role_gets_all_approve_family_action_permissions(
+    seeded_db: Session,
+) -> None:
     """PMG role must have RolePermission rows for all APPROVE-family action codes."""
     pmg_role = seeded_db.scalar(select(Role).where(Role.code == "PMG"))
     assert pmg_role is not None
@@ -338,7 +347,9 @@ def test_seed_pmg_role_gets_all_approve_family_action_permissions(seeded_db: Ses
         )
 
 
-def test_seed_view_only_roles_get_no_action_level_role_permissions(seeded_db: Session) -> None:
+def test_seed_view_only_roles_get_no_action_level_role_permissions(
+    seeded_db: Session,
+) -> None:
     """Roles with only VIEW family must have 0 action-level RolePermission rows.
 
     VIEW has no action codes in ACTION_CODE_REGISTRY (governance rule). Roles
@@ -346,11 +357,12 @@ def test_seed_view_only_roles_get_no_action_level_role_permissions(seeded_db: Se
     RolePermission rows.
     """
     view_only_roles = [
-        code for code, families in SYSTEM_ROLE_FAMILIES.items()
-        if families == {"VIEW"}
+        code for code, families in SYSTEM_ROLE_FAMILIES.items() if families == {"VIEW"}
     ]
     # Verify our test logic: these should be QCI, EXE, PLN, INV
-    assert len(view_only_roles) > 0, "Expected at least one VIEW-only role in SYSTEM_ROLE_FAMILIES"
+    assert len(view_only_roles) > 0, (
+        "Expected at least one VIEW-only role in SYSTEM_ROLE_FAMILIES"
+    )
 
     for role_code in view_only_roles:
         role = seeded_db.scalar(select(Role).where(Role.code == role_code))
@@ -458,7 +470,9 @@ def test_seed_idempotent_no_duplicate_permission_rows(monkeypatch) -> None:
 
     for action_code in ACTION_CODE_REGISTRY:
         count = db.scalar(
-            select(func.count()).select_from(Permission).where(Permission.code == action_code)
+            select(func.count())
+            .select_from(Permission)
+            .where(Permission.code == action_code)
         )
         assert count == 1, (
             f"Duplicate Permission rows after double seed for '{action_code}': count={count}"

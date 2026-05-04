@@ -3,7 +3,11 @@ from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
 from app.schemas.impersonation import ImpersonationCreateRequest, ImpersonationResponse
-from app.security.dependencies import RequestIdentity, require_action, require_authenticated_identity
+from app.security.dependencies import (
+    RequestIdentity,
+    require_action,
+    require_authenticated_identity,
+)
 from app.services.impersonation_service import (
     create_impersonation_session,
     get_current_session_for_user,

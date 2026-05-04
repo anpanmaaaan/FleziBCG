@@ -144,9 +144,7 @@ def open_station_session(
         for_update=True,
     )
     if active is not None:
-        raise StationSessionConflictError(
-            "Station already has an active OPEN session"
-        )
+        raise StationSessionConflictError("Station already has an active OPEN session")
 
     operator_user_id = None
     equipment_id = None
@@ -346,9 +344,7 @@ def close_station_session(
         station_scope_value=row.station_id,
     )
     if active_blockers:
-        raise StationSessionConflictError(
-            "STATION_SESSION_ACTIVE_EXECUTION"
-        )
+        raise StationSessionConflictError("STATION_SESSION_ACTIVE_EXECUTION")
 
     row.status = "CLOSED"
     row.closed_at = datetime.now(timezone.utc)

@@ -8,7 +8,13 @@ from sqlalchemy import delete, select
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent, ExecutionEventType
-from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.master import (
+    ClosureStatusEnum,
+    Operation,
+    ProductionOrder,
+    StatusEnum,
+    WorkOrder,
+)
 from app.models.rbac import Role, Scope, UserRoleAssignment
 from app.models.station_session import StationSession
 from app.schemas.operation import (
@@ -151,14 +157,22 @@ def _purge(db) -> None:
     )
     if po_ids:
         wo_ids = list(
-            db.scalars(select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids)))
+            db.scalars(
+                select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))
+            )
         )
         if wo_ids:
             op_ids = list(
-                db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids)))
+                db.scalars(
+                    select(Operation.id).where(Operation.work_order_id.in_(wo_ids))
+                )
             )
             if op_ids:
-                db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
+                db.execute(
+                    delete(ExecutionEvent).where(
+                        ExecutionEvent.operation_id.in_(op_ids)
+                    )
+                )
                 db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
             db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
         db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
@@ -244,18 +258,31 @@ def _seed_operation(
     return op
 
 
-def _seed_in_progress_operation(db, *, suffix: str, station_scope_value: str = _STATION) -> Operation:
+def _seed_in_progress_operation(
+    db, *, suffix: str, station_scope_value: str = _STATION
+) -> Operation:
     _ensure_open_station_session(db, station_id=station_scope_value)
-    op = _seed_operation(db, suffix=suffix, status=StatusEnum.planned.value, station_scope_value=station_scope_value)
-    start_operation(db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID)
+    op = _seed_operation(
+        db,
+        suffix=suffix,
+        status=StatusEnum.planned.value,
+        station_scope_value=station_scope_value,
+    )
+    start_operation(
+        db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID
+    )
     db_op = db.scalar(select(Operation).where(Operation.id == op.id))
     assert db_op is not None
     assert db_op.status == StatusEnum.in_progress.value
     return db_op
 
 
-def _seed_paused_operation(db, *, suffix: str, station_scope_value: str = _STATION) -> Operation:
-    op = _seed_in_progress_operation(db, suffix=suffix, station_scope_value=station_scope_value)
+def _seed_paused_operation(
+    db, *, suffix: str, station_scope_value: str = _STATION
+) -> Operation:
+    op = _seed_in_progress_operation(
+        db, suffix=suffix, station_scope_value=station_scope_value
+    )
     pause_operation(
         db,
         op,
@@ -269,9 +296,13 @@ def _seed_paused_operation(db, *, suffix: str, station_scope_value: str = _STATI
     return db_op
 
 
-def _seed_blocked_operation(db, *, suffix: str, station_scope_value: str = _STATION) -> Operation:
+def _seed_blocked_operation(
+    db, *, suffix: str, station_scope_value: str = _STATION
+) -> Operation:
     """Start downtime from IN_PROGRESS → operation becomes BLOCKED."""
-    op = _seed_in_progress_operation(db, suffix=suffix, station_scope_value=station_scope_value)
+    op = _seed_in_progress_operation(
+        db, suffix=suffix, station_scope_value=station_scope_value
+    )
     start_downtime(
         db,
         op,
@@ -297,8 +328,7 @@ def _latest_event_type(db, operation_id: int) -> str | None:
 def _events_of_type(db, operation_id: int, event_type: str) -> list:
     return list(
         db.scalars(
-            select(ExecutionEvent)
-            .where(
+            select(ExecutionEvent).where(
                 ExecutionEvent.operation_id == operation_id,
                 ExecutionEvent.event_type == event_type,
             )
@@ -309,6 +339,7 @@ def _events_of_type(db, operation_id: int, event_type: str) -> list:
 # ---------------------------------------------------------------------------
 # T1 — Happy path: start_downtime from IN_PROGRESS → BLOCKED
 # ---------------------------------------------------------------------------
+
 
 def test_start_downtime_happy_path_from_in_progress(db_session):
     db = db_session
@@ -331,6 +362,7 @@ def test_start_downtime_happy_path_from_in_progress(db_session):
 # ---------------------------------------------------------------------------
 # T2 — Happy path: start_downtime from PAUSED → stays PAUSED with downtime open
 # ---------------------------------------------------------------------------
+
 
 def test_start_downtime_happy_path_from_paused(db_session):
     db = db_session
@@ -358,6 +390,7 @@ def test_start_downtime_happy_path_from_paused(db_session):
 # T3 — Rejects non-IN_PROGRESS/PAUSED state (PLANNED)
 # ---------------------------------------------------------------------------
 
+
 def test_start_downtime_rejects_planned_operation(db_session):
     db = db_session
     _ensure_open_station_session(db)
@@ -376,6 +409,7 @@ def test_start_downtime_rejects_planned_operation(db_session):
 # ---------------------------------------------------------------------------
 # T4 — Rejects CLOSED operation
 # ---------------------------------------------------------------------------
+
 
 def test_start_downtime_rejects_closed_operation(db_session):
     db = db_session
@@ -401,6 +435,7 @@ def test_start_downtime_rejects_closed_operation(db_session):
 # T5 — Rejects duplicate open downtime
 # ---------------------------------------------------------------------------
 
+
 def test_start_downtime_rejects_duplicate_open_downtime(db_session):
     db = db_session
     # First downtime opens: IN_PROGRESS → BLOCKED
@@ -424,6 +459,7 @@ def test_start_downtime_rejects_duplicate_open_downtime(db_session):
 # T5b — Rejects DOWNTIME_ALREADY_OPEN when snapshot is IN_PROGRESS but
 #        events show open downtime (edge case: status check passes, event check fires)
 # ---------------------------------------------------------------------------
+
 
 def test_start_downtime_rejects_downtime_already_open_event_count_guard(db_session):
     db = db_session
@@ -469,6 +505,7 @@ def test_start_downtime_rejects_downtime_already_open_event_count_guard(db_sessi
     db.flush()
     # Inject OP_STARTED and DOWNTIME_STARTED events directly
     from app.repositories.execution_event_repository import create_execution_event
+
     create_execution_event(
         db=db,
         event_type=ExecutionEventType.OP_STARTED.value,
@@ -504,6 +541,7 @@ def test_start_downtime_rejects_downtime_already_open_event_count_guard(db_sessi
 # T6 — Rejects unknown/invalid reason code
 # ---------------------------------------------------------------------------
 
+
 def test_start_downtime_rejects_invalid_reason_code(db_session):
     db = db_session
     op = _seed_in_progress_operation(db, suffix="DT-START-BADCODE")
@@ -521,6 +559,7 @@ def test_start_downtime_rejects_invalid_reason_code(db_session):
 # ---------------------------------------------------------------------------
 # T7 — Happy path: end_downtime → BLOCKED→PAUSED, downtime_open=False
 # ---------------------------------------------------------------------------
+
 
 def test_end_downtime_happy_path_blocked_to_paused(db_session):
     db = db_session
@@ -544,6 +583,7 @@ def test_end_downtime_happy_path_blocked_to_paused(db_session):
 # T8 — end_downtime does NOT auto-resume (no EXECUTION_RESUMED emitted)
 # ---------------------------------------------------------------------------
 
+
 def test_end_downtime_does_not_auto_resume(db_session):
     db = db_session
     op = _seed_blocked_operation(db, suffix="DT-END-NO-RESUME")
@@ -556,7 +596,9 @@ def test_end_downtime_does_not_auto_resume(db_session):
         tenant_id=_TENANT_ID,
     )
 
-    resumed_events = _events_of_type(db, op.id, ExecutionEventType.EXECUTION_RESUMED.value)
+    resumed_events = _events_of_type(
+        db, op.id, ExecutionEventType.EXECUTION_RESUMED.value
+    )
     assert len(resumed_events) == 0, (
         "end_downtime must not auto-resume: no EXECUTION_RESUMED event should be emitted"
     )
@@ -565,6 +607,7 @@ def test_end_downtime_does_not_auto_resume(db_session):
 # ---------------------------------------------------------------------------
 # T9 — end_downtime rejects when no open downtime
 # ---------------------------------------------------------------------------
+
 
 def test_end_downtime_rejects_when_no_open_downtime(db_session):
     db = db_session
@@ -583,6 +626,7 @@ def test_end_downtime_rejects_when_no_open_downtime(db_session):
 # ---------------------------------------------------------------------------
 # T10 — end_downtime rejects CLOSED operation
 # ---------------------------------------------------------------------------
+
 
 def test_end_downtime_rejects_closed_operation(db_session):
     db = db_session
@@ -608,6 +652,7 @@ def test_end_downtime_rejects_closed_operation(db_session):
 # T11 — resume_operation rejected while downtime is open
 # ---------------------------------------------------------------------------
 
+
 def test_resume_blocked_while_downtime_open(db_session):
     db = db_session
     op = _seed_blocked_operation(db, suffix="DT-RESUME-BLOCKED")
@@ -626,9 +671,12 @@ def test_resume_blocked_while_downtime_open(db_session):
 # T12 — No-session outcome parity
 # ---------------------------------------------------------------------------
 
+
 def test_start_downtime_no_session_rejects(db_session):
     db = db_session
-    op = _seed_operation(db, suffix="DT-NO-SESSION", status=StatusEnum.in_progress.value)
+    op = _seed_operation(
+        db, suffix="DT-NO-SESSION", status=StatusEnum.in_progress.value
+    )
 
     with pytest.raises(StationSessionGuardError, match="STATION_SESSION_REQUIRED"):
         start_downtime(
@@ -643,6 +691,7 @@ def test_start_downtime_no_session_rejects(db_session):
 # ---------------------------------------------------------------------------
 # T13 — OPEN-session outcome parity
 # ---------------------------------------------------------------------------
+
 
 def test_start_downtime_open_session_parity(db_session):
     db = db_session

@@ -1,7 +1,11 @@
 from sqlalchemy.orm import Session
 
 from app.models.user import LIFECYCLE_STATUS_ACTIVE, LIFECYCLE_STATUS_DISABLED, User
-from app.repositories.user_repository import list_users_by_tenant, set_user_active, set_user_lifecycle_status
+from app.repositories.user_repository import (
+    list_users_by_tenant,
+    set_user_active,
+    set_user_lifecycle_status,
+)
 from app.services.security_event_service import record_security_event
 
 

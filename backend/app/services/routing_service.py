@@ -82,7 +82,9 @@ def _to_operation_item(row: RoutingOperation) -> RoutingOperationItem:
 
 
 def _to_item(row: Routing) -> RoutingItem:
-    ordered_operations = sorted(row.operations, key=lambda op: (op.sequence_no, op.operation_id))
+    ordered_operations = sorted(
+        row.operations, key=lambda op: (op.sequence_no, op.operation_id)
+    )
     return RoutingItem(
         routing_id=row.routing_id,
         tenant_id=row.tenant_id,
@@ -177,7 +179,9 @@ def list_routings(db: Session, *, tenant_id: str) -> list[RoutingItem]:
     return [_to_item(row) for row in list_routings_by_tenant(db, tenant_id=tenant_id)]
 
 
-def get_routing_by_id(db: Session, *, tenant_id: str, routing_id: str) -> RoutingItem | None:
+def get_routing_by_id(
+    db: Session, *, tenant_id: str, routing_id: str
+) -> RoutingItem | None:
     row = get_routing_row(db, tenant_id=tenant_id, routing_id=routing_id)
     if row is None:
         return None
@@ -215,7 +219,12 @@ def create_routing(
         actor_user_id=actor_user_id,
         event_type="ROUTING.CREATED",
         row=row,
-        changed_fields=["product_id", "routing_code", "routing_name", "lifecycle_status"],
+        changed_fields=[
+            "product_id",
+            "routing_code",
+            "routing_name",
+            "lifecycle_status",
+        ],
     )
     return _to_item(row)
 
@@ -238,11 +247,15 @@ def update_routing(
     changed_fields: list[str] = []
 
     if payload.routing_code is not None:
-        next_code = _normalize_non_empty_optional(payload.routing_code, field_name="routing_code")
+        next_code = _normalize_non_empty_optional(
+            payload.routing_code, field_name="routing_code"
+        )
         if row.lifecycle_status == "RELEASED":
             raise ValueError("RELEASED routing structural update is not allowed")
         if next_code != row.routing_code:
-            conflict = get_routing_by_code(db, tenant_id=tenant_id, routing_code=next_code)
+            conflict = get_routing_by_code(
+                db, tenant_id=tenant_id, routing_code=next_code
+            )
             if conflict is not None and conflict.routing_id != row.routing_id:
                 raise ValueError("Duplicate routing_code in tenant")
             row.routing_code = next_code
@@ -252,12 +265,16 @@ def update_routing(
         if row.lifecycle_status == "RELEASED":
             raise ValueError("RELEASED routing structural update is not allowed")
         if payload.product_id != row.product_id:
-            _validate_product_link(db, tenant_id=tenant_id, product_id=payload.product_id)
+            _validate_product_link(
+                db, tenant_id=tenant_id, product_id=payload.product_id
+            )
             row.product_id = payload.product_id
             changed_fields.append("product_id")
 
     if payload.routing_name is not None:
-        next_name = _normalize_non_empty_optional(payload.routing_name, field_name="routing_name")
+        next_name = _normalize_non_empty_optional(
+            payload.routing_name, field_name="routing_name"
+        )
         if next_name != row.routing_name:
             row.routing_name = next_name
             changed_fields.append("routing_name")
@@ -292,15 +309,22 @@ def add_routing_operation(
 
     _ensure_draft_for_operation_mutation(routing)
 
-    operation_code = _normalize_non_empty(payload.operation_code, field_name="operation_code")
-    operation_name = _normalize_non_empty(payload.operation_name, field_name="operation_name")
+    operation_code = _normalize_non_empty(
+        payload.operation_code, field_name="operation_code"
+    )
+    operation_name = _normalize_non_empty(
+        payload.operation_name, field_name="operation_name"
+    )
 
-    if get_routing_operation_by_sequence(
-        db,
-        tenant_id=tenant_id,
-        routing_id=routing_id,
-        sequence_no=payload.sequence_no,
-    ) is not None:
+    if (
+        get_routing_operation_by_sequence(
+            db,
+            tenant_id=tenant_id,
+            routing_id=routing_id,
+            sequence_no=payload.sequence_no,
+        )
+        is not None
+    ):
         raise ValueError("Duplicate sequence_no in routing")
 
     op_row = RoutingOperation(
@@ -360,13 +384,17 @@ def update_routing_operation(
     changed_fields: list[str] = []
 
     if payload.operation_code is not None:
-        next_code = _normalize_non_empty_optional(payload.operation_code, field_name="operation_code")
+        next_code = _normalize_non_empty_optional(
+            payload.operation_code, field_name="operation_code"
+        )
         if next_code != op_row.operation_code:
             op_row.operation_code = next_code
             changed_fields.append("operation_code")
 
     if payload.operation_name is not None:
-        next_name = _normalize_non_empty_optional(payload.operation_name, field_name="operation_name")
+        next_name = _normalize_non_empty_optional(
+            payload.operation_name, field_name="operation_name"
+        )
         if next_name != op_row.operation_name:
             op_row.operation_name = next_name
             changed_fields.append("operation_name")
@@ -383,11 +411,17 @@ def update_routing_operation(
         op_row.sequence_no = payload.sequence_no
         changed_fields.append("sequence_no")
 
-    if payload.standard_cycle_time is not None and payload.standard_cycle_time != op_row.standard_cycle_time:
+    if (
+        payload.standard_cycle_time is not None
+        and payload.standard_cycle_time != op_row.standard_cycle_time
+    ):
         op_row.standard_cycle_time = payload.standard_cycle_time
         changed_fields.append("standard_cycle_time")
 
-    if payload.required_resource_type is not None and payload.required_resource_type != op_row.required_resource_type:
+    if (
+        payload.required_resource_type is not None
+        and payload.required_resource_type != op_row.required_resource_type
+    ):
         op_row.required_resource_type = payload.required_resource_type
         changed_fields.append("required_resource_type")
 

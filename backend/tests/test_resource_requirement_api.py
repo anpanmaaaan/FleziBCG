@@ -14,7 +14,12 @@ from app.models.security_event import SecurityEventLog
 from app.schemas.product import ProductCreateRequest
 from app.security.dependencies import RequestIdentity, require_authenticated_identity
 from app.services.product_service import create_product
-from app.services.routing_service import add_routing_operation, create_routing, release_routing, retire_routing
+from app.services.routing_service import (
+    add_routing_operation,
+    create_routing,
+    release_routing,
+    retire_routing,
+)
 from app.schemas.routing import RoutingCreateRequest, RoutingOperationCreateRequest
 
 
@@ -25,7 +30,9 @@ def _build_app(identity: RequestIdentity) -> FastAPI:
     return app
 
 
-def _override_action_dependency(app: FastAPI, path: str, method: str, identity: RequestIdentity) -> Any:
+def _override_action_dependency(
+    app: FastAPI, path: str, method: str, identity: RequestIdentity
+) -> Any:
     route = cast(
         Any,
         next(
@@ -147,7 +154,9 @@ def test_resource_requirement_routes_happy_path_and_lifecycle_guards():
     assert created.status_code == 200
     req_id = created.json()["requirement_id"]
 
-    listed = client.get(f"/api/v1/routings/{routing_id}/operations/{operation_id}/resource-requirements")
+    listed = client.get(
+        f"/api/v1/routings/{routing_id}/operations/{operation_id}/resource-requirements"
+    )
     assert listed.status_code == 200
     assert len(listed.json()) == 1
 
@@ -178,7 +187,9 @@ def test_resource_requirement_routes_happy_path_and_lifecycle_guards():
     assert req2.status_code == 200
     req2_id = req2.json()["requirement_id"]
 
-    release_routing(db, tenant_id="tenant_a", actor_user_id="admin-a", routing_id=routing_id)
+    release_routing(
+        db, tenant_id="tenant_a", actor_user_id="admin-a", routing_id=routing_id
+    )
 
     reject_create_released = client.post(
         f"/api/v1/routings/{routing_id}/operations/{operation_id}/resource-requirements",
@@ -216,7 +227,9 @@ def test_cross_tenant_404_input_rejections_and_auth_rejection():
     db = _make_session()
     app.dependency_overrides[routing_router_module.get_db] = lambda: db
 
-    write_path = "/api/v1/routings/{routing_id}/operations/{operation_id}/resource-requirements"
+    write_path = (
+        "/api/v1/routings/{routing_id}/operations/{operation_id}/resource-requirements"
+    )
     write_detail = "/api/v1/routings/{routing_id}/operations/{operation_id}/resource-requirements/{requirement_id}"
     action_dep = _override_action_dependency(app, write_path, "POST", identity)
     _override_action_dependency(app, write_detail, "PATCH", identity)
@@ -333,7 +346,9 @@ def test_retired_routing_rejects_create_update_delete():
     db = _make_session()
     app.dependency_overrides[routing_router_module.get_db] = lambda: db
 
-    write_path = "/api/v1/routings/{routing_id}/operations/{operation_id}/resource-requirements"
+    write_path = (
+        "/api/v1/routings/{routing_id}/operations/{operation_id}/resource-requirements"
+    )
     write_detail = "/api/v1/routings/{routing_id}/operations/{operation_id}/resource-requirements/{requirement_id}"
     _override_action_dependency(app, write_path, "POST", identity)
     _override_action_dependency(app, write_detail, "PATCH", identity)
@@ -353,7 +368,9 @@ def test_retired_routing_rejects_create_update_delete():
     assert created.status_code == 200
     req_id = created.json()["requirement_id"]
 
-    retire_routing(db, tenant_id="tenant_a", actor_user_id="admin-a", routing_id=routing_id)
+    retire_routing(
+        db, tenant_id="tenant_a", actor_user_id="admin-a", routing_id=routing_id
+    )
 
     reject_create = client.post(
         f"/api/v1/routings/{routing_id}/operations/{operation_id}/resource-requirements",

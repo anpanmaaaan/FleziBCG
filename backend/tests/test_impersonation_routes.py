@@ -7,6 +7,7 @@ Verifies that:
 - Service errors map to correct HTTP status codes
 - Route dependency is auto-discovered (survives action code changes)
 """
+
 from datetime import datetime, timezone
 from typing import Any, cast
 
@@ -53,7 +54,9 @@ def _find_route_dependency(app: FastAPI, path: str, method: str) -> Any:
     )
 
 
-def _override_action_dependency(app: FastAPI, path: str, method: str, identity: RequestIdentity) -> Any:
+def _override_action_dependency(
+    app: FastAPI, path: str, method: str, identity: RequestIdentity
+) -> Any:
     dep = _find_route_dependency(app, path, method)
     app.dependency_overrides[dep] = lambda: identity
     return dep
@@ -69,18 +72,22 @@ def test_create_impersonation_delegates_with_correct_params(monkeypatch):
     _override_action_dependency(app, "/api/v1/impersonations", "POST", identity)
     app.dependency_overrides[impersonations_router_module.get_db] = lambda: object()
 
-    fake_session = type("S", (), {
-        "id": 1,
-        "real_user_id": "admin-user",
-        "real_role_code": "ADM",
-        "acting_role_code": "OPR",
-        "tenant_id": "default",
-        "reason": "testing",
-        "expires_at": datetime(2099, 1, 1, tzinfo=timezone.utc),
-        "revoked_at": None,
-        "created_at": datetime(2026, 5, 3, tzinfo=timezone.utc),
-        "is_active": True,
-    })()
+    fake_session = type(
+        "S",
+        (),
+        {
+            "id": 1,
+            "real_user_id": "admin-user",
+            "real_role_code": "ADM",
+            "acting_role_code": "OPR",
+            "tenant_id": "default",
+            "reason": "testing",
+            "expires_at": datetime(2099, 1, 1, tzinfo=timezone.utc),
+            "revoked_at": None,
+            "created_at": datetime(2026, 5, 3, tzinfo=timezone.utc),
+            "is_active": True,
+        },
+    )()
 
     captured = {}
 
@@ -89,7 +96,9 @@ def test_create_impersonation_delegates_with_correct_params(monkeypatch):
         captured["tenant_id"] = tenant_id
         return fake_session
 
-    monkeypatch.setattr(impersonations_router_module, "create_impersonation_session", fake_create)
+    monkeypatch.setattr(
+        impersonations_router_module, "create_impersonation_session", fake_create
+    )
 
     client = TestClient(app)
     response = client.post(
@@ -167,21 +176,27 @@ def test_create_impersonation_service_value_error_returns_400(monkeypatch):
 
 def test_revoke_impersonation_delegates_with_correct_params(monkeypatch):
     app, identity = _build_app()
-    _override_action_dependency(app, "/api/v1/impersonations/{session_id}/revoke", "POST", identity)
+    _override_action_dependency(
+        app, "/api/v1/impersonations/{session_id}/revoke", "POST", identity
+    )
     app.dependency_overrides[impersonations_router_module.get_db] = lambda: object()
 
-    fake_session = type("S", (), {
-        "id": 42,
-        "real_user_id": "admin-user",
-        "real_role_code": "ADM",
-        "acting_role_code": "OPR",
-        "tenant_id": "default",
-        "reason": "testing",
-        "expires_at": datetime(2099, 1, 1, tzinfo=timezone.utc),
-        "revoked_at": datetime(2026, 5, 3, tzinfo=timezone.utc),
-        "created_at": datetime(2026, 5, 3, tzinfo=timezone.utc),
-        "is_active": False,
-    })()
+    fake_session = type(
+        "S",
+        (),
+        {
+            "id": 42,
+            "real_user_id": "admin-user",
+            "real_role_code": "ADM",
+            "acting_role_code": "OPR",
+            "tenant_id": "default",
+            "reason": "testing",
+            "expires_at": datetime(2099, 1, 1, tzinfo=timezone.utc),
+            "revoked_at": datetime(2026, 5, 3, tzinfo=timezone.utc),
+            "created_at": datetime(2026, 5, 3, tzinfo=timezone.utc),
+            "is_active": False,
+        },
+    )()
 
     captured = {}
 
@@ -190,7 +205,9 @@ def test_revoke_impersonation_delegates_with_correct_params(monkeypatch):
         captured["requesting_user_id"] = requesting_user_id
         return fake_session
 
-    monkeypatch.setattr(impersonations_router_module, "revoke_impersonation_session", fake_revoke)
+    monkeypatch.setattr(
+        impersonations_router_module, "revoke_impersonation_session", fake_revoke
+    )
 
     client = TestClient(app)
     response = client.post("/api/v1/impersonations/42/revoke")
@@ -204,7 +221,9 @@ def test_revoke_impersonation_delegates_with_correct_params(monkeypatch):
 
 def test_revoke_impersonation_rejects_without_action():
     app, identity = _build_app()
-    dep = _find_route_dependency(app, "/api/v1/impersonations/{session_id}/revoke", "POST")
+    dep = _find_route_dependency(
+        app, "/api/v1/impersonations/{session_id}/revoke", "POST"
+    )
     app.dependency_overrides[dep] = lambda: (_ for _ in ()).throw(
         HTTPException(status_code=403, detail="Forbidden")
     )
@@ -217,7 +236,9 @@ def test_revoke_impersonation_rejects_without_action():
 
 def test_revoke_impersonation_not_found_returns_404(monkeypatch):
     app, identity = _build_app()
-    _override_action_dependency(app, "/api/v1/impersonations/{session_id}/revoke", "POST", identity)
+    _override_action_dependency(
+        app, "/api/v1/impersonations/{session_id}/revoke", "POST", identity
+    )
     app.dependency_overrides[impersonations_router_module.get_db] = lambda: object()
 
     monkeypatch.setattr(
@@ -234,7 +255,9 @@ def test_revoke_impersonation_not_found_returns_404(monkeypatch):
 
 def test_revoke_impersonation_permission_error_returns_403(monkeypatch):
     app, identity = _build_app()
-    _override_action_dependency(app, "/api/v1/impersonations/{session_id}/revoke", "POST", identity)
+    _override_action_dependency(
+        app, "/api/v1/impersonations/{session_id}/revoke", "POST", identity
+    )
     app.dependency_overrides[impersonations_router_module.get_db] = lambda: object()
 
     monkeypatch.setattr(
@@ -259,18 +282,22 @@ def test_current_impersonation_returns_active_session(monkeypatch):
     app.dependency_overrides[require_authenticated_identity] = lambda: identity
     app.dependency_overrides[impersonations_router_module.get_db] = lambda: object()
 
-    fake_session = type("S", (), {
-        "id": 7,
-        "real_user_id": "admin-user",
-        "real_role_code": "ADM",
-        "acting_role_code": "OPR",
-        "tenant_id": "default",
-        "reason": "testing",
-        "expires_at": datetime(2099, 1, 1, tzinfo=timezone.utc),
-        "revoked_at": None,
-        "created_at": datetime(2026, 5, 3, tzinfo=timezone.utc),
-        "is_active": True,
-    })()
+    fake_session = type(
+        "S",
+        (),
+        {
+            "id": 7,
+            "real_user_id": "admin-user",
+            "real_role_code": "ADM",
+            "acting_role_code": "OPR",
+            "tenant_id": "default",
+            "reason": "testing",
+            "expires_at": datetime(2099, 1, 1, tzinfo=timezone.utc),
+            "revoked_at": None,
+            "created_at": datetime(2026, 5, 3, tzinfo=timezone.utc),
+            "is_active": True,
+        },
+    )()
 
     monkeypatch.setattr(
         impersonations_router_module,

@@ -8,7 +8,13 @@ from sqlalchemy import delete, select
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent, ExecutionEventType
-from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.master import (
+    ClosureStatusEnum,
+    Operation,
+    ProductionOrder,
+    StatusEnum,
+    WorkOrder,
+)
 from app.models.rbac import Role, Scope, UserRoleAssignment
 from app.models.station_session import StationSession
 from app.schemas.operation import OperationCloseRequest
@@ -78,14 +84,22 @@ def _purge(db) -> None:
     )
     if po_ids:
         wo_ids = list(
-            db.scalars(select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids)))
+            db.scalars(
+                select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))
+            )
         )
         if wo_ids:
             op_ids = list(
-                db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids)))
+                db.scalars(
+                    select(Operation.id).where(Operation.work_order_id.in_(wo_ids))
+                )
             )
             if op_ids:
-                db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
+                db.execute(
+                    delete(ExecutionEvent).where(
+                        ExecutionEvent.operation_id.in_(op_ids)
+                    )
+                )
                 db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
             db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
         db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
@@ -223,7 +237,9 @@ def test_close_operation_happy_path_from_completed(db_session):
 
 def test_close_operation_rejects_invalid_runtime_state(db_session):
     db = db_session
-    op = _seed_operation(db, suffix="CLOSE-NOT-COMPLETED", status=StatusEnum.in_progress.value)
+    op = _seed_operation(
+        db, suffix="CLOSE-NOT-COMPLETED", status=StatusEnum.in_progress.value
+    )
 
     with pytest.raises(CloseOperationConflictError, match="STATE_NOT_COMPLETED"):
         close_operation(
@@ -340,7 +356,9 @@ def test_close_operation_allowed_actions_after_close_backend_derived(db_session)
 
 def test_close_operation_without_station_session_is_allowed(db_session):
     db = db_session
-    op = _seed_operation(db, suffix="CLOSE-NO-SESSION", status=StatusEnum.completed.value)
+    op = _seed_operation(
+        db, suffix="CLOSE-NO-SESSION", status=StatusEnum.completed.value
+    )
 
     detail = close_operation(
         db,
@@ -355,7 +373,9 @@ def test_close_operation_without_station_session_is_allowed(db_session):
 
 def test_close_operation_with_open_station_session_parity(db_session):
     db = db_session
-    op = _seed_operation(db, suffix="CLOSE-OPEN-SESSION", status=StatusEnum.completed.value)
+    op = _seed_operation(
+        db, suffix="CLOSE-OPEN-SESSION", status=StatusEnum.completed.value
+    )
 
     _seed_station_scope(db, user_id=_ACTOR, station_id=_STATION)
     session = open_station_session(

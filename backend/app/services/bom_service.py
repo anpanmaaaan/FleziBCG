@@ -34,10 +34,12 @@ from app.schemas.bom import (
 from app.services.security_event_service import record_security_event
 
 
-def _compute_allowed_actions(has_manage: bool, lifecycle_status: str) -> BomAllowedActions:
+def _compute_allowed_actions(
+    has_manage: bool, lifecycle_status: str
+) -> BomAllowedActions:
     """
     Compute BOM allowed actions based on user permission and BOM lifecycle state.
-    
+
     Rules:
     - If user lacks admin.master_data.bom.manage, all actions are false
     - If user has manage permission:
@@ -55,7 +57,7 @@ def _compute_allowed_actions(has_manage: bool, lifecycle_status: str) -> BomAllo
             can_remove_item=False,
             can_create_sibling=False,
         )
-    
+
     # User has manage permission; check lifecycle state
     if lifecycle_status == "DRAFT":
         return BomAllowedActions(
@@ -169,7 +171,9 @@ def get_bom(
     if product is None:
         raise LookupError("Product not found")
 
-    row = get_bom_row_with_product(db, tenant_id=tenant_id, product_id=product_id, bom_id=bom_id)
+    row = get_bom_row_with_product(
+        db, tenant_id=tenant_id, product_id=product_id, bom_id=bom_id
+    )
     if row is None:
         raise LookupError("BOM not found")
 
@@ -178,12 +182,15 @@ def get_bom(
 
 # ─── Private helpers ──────────────────────────────────────────────────────────
 
+
 def _assert_product_exists(db: Session, *, tenant_id: str, product_id: str) -> None:
     if get_product_row(db, tenant_id=tenant_id, product_id=product_id) is None:
         raise LookupError("Product not found")
 
 
-def _get_bom_or_404(db: Session, *, tenant_id: str, product_id: str, bom_id: str) -> Bom:
+def _get_bom_or_404(
+    db: Session, *, tenant_id: str, product_id: str, bom_id: str
+) -> Bom:
     row = get_bom_row(db, tenant_id=tenant_id, bom_id=bom_id)
     if row is None or row.product_id != product_id:
         raise LookupError("BOM not found")
@@ -256,6 +263,7 @@ def _emit_bom_item_event(
 
 # ─── BOM write commands ───────────────────────────────────────────────────────
 
+
 def create_bom(
     db: Session,
     *,
@@ -274,7 +282,9 @@ def create_bom(
     if not bom_name:
         raise ValueError("bom_name is required")
 
-    existing = get_bom_by_code(db, tenant_id=tenant_id, product_id=product_id, bom_code=bom_code)
+    existing = get_bom_by_code(
+        db, tenant_id=tenant_id, product_id=product_id, bom_code=bom_code
+    )
     if existing is not None:
         raise ValueError("Duplicate bom_code for product in tenant")
 
@@ -325,7 +335,10 @@ def update_bom(
             row.bom_name = next_name
             changed_fields.append("bom_name")
 
-    if payload.effective_from is not None and payload.effective_from != row.effective_from:
+    if (
+        payload.effective_from is not None
+        and payload.effective_from != row.effective_from
+    ):
         row.effective_from = payload.effective_from
         changed_fields.append("effective_from")
 
@@ -412,6 +425,7 @@ def retire_bom(
 
 # ─── BOM Item write commands ──────────────────────────────────────────────────
 
+
 def add_bom_item(
     db: Session,
     *,
@@ -436,12 +450,16 @@ def add_bom_item(
     if not uom:
         raise ValueError("unit_of_measure is required")
 
-    component = get_product_row(db, tenant_id=tenant_id, product_id=payload.component_product_id)
+    component = get_product_row(
+        db, tenant_id=tenant_id, product_id=payload.component_product_id
+    )
     if component is None:
         raise LookupError("Component product not found in tenant")
 
     if payload.component_product_id == product_id:
-        raise ValueError("component_product_id cannot be the same as the parent product_id")
+        raise ValueError(
+            "component_product_id cannot be the same as the parent product_id"
+        )
 
     duplicate_line = get_bom_item_by_line_no(
         db, tenant_id=tenant_id, bom_id=bom_id, line_no=payload.line_no
@@ -468,7 +486,12 @@ def add_bom_item(
         actor_user_id=actor_user_id,
         event_type="BOM_ITEM.ADDED",
         item_row=item_row,
-        changed_fields=["component_product_id", "line_no", "quantity", "unit_of_measure"],
+        changed_fields=[
+            "component_product_id",
+            "line_no",
+            "quantity",
+            "unit_of_measure",
+        ],
     )
     return _to_component_item(item_row)
 
@@ -483,7 +506,9 @@ def update_bom_item(
     bom_item_id: str,
     payload: BomItemUpdateRequest,
 ) -> BomComponentItem:
-    bom_row = _get_bom_or_404(db, tenant_id=tenant_id, product_id=product_id, bom_id=bom_id)
+    bom_row = _get_bom_or_404(
+        db, tenant_id=tenant_id, product_id=product_id, bom_id=bom_id
+    )
 
     if bom_row.lifecycle_status != "DRAFT":
         raise ValueError("BOM items can only be updated while parent BOM is DRAFT")
@@ -552,7 +577,9 @@ def remove_bom_item(
     bom_id: str,
     bom_item_id: str,
 ) -> None:
-    bom_row = _get_bom_or_404(db, tenant_id=tenant_id, product_id=product_id, bom_id=bom_id)
+    bom_row = _get_bom_or_404(
+        db, tenant_id=tenant_id, product_id=product_id, bom_id=bom_id
+    )
 
     if bom_row.lifecycle_status != "DRAFT":
         raise ValueError("BOM items can only be removed while parent BOM is DRAFT")

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Operator Clock Off verification script (StationSession guard version).
 
 Checks:
@@ -237,7 +237,12 @@ def _cleanup(db) -> None:
 
     db.execute(delete(ProductionOrder).where(ProductionOrder.order_number == PO_NUMBER))
 
-    db.execute(delete(StationSession).where(StationSession.tenant_id == TENANT_ID, StationSession.station_id == STATION_SCOPE))
+    db.execute(
+        delete(StationSession).where(
+            StationSession.tenant_id == TENANT_ID,
+            StationSession.station_id == STATION_SCOPE,
+        )
+    )
 
     db.execute(delete(UserRoleAssignment).where(UserRoleAssignment.user_id == USER_ID))
     user_roles = list(db.scalars(select(UserRole).where(UserRole.user_id == USER_ID)))

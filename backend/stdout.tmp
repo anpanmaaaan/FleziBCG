@@ -1,0 +1,11 @@
+....................                                                     [100%]
+============================== warnings summary ===============================
+tests/test_rbac_seed_alignment.py::test_seed_creates_permission_row_for_every_action_code
+  G:\Work\FleziBCG\backend\tests\conftest.py:234: UserWarning: Running tests against a DB that does not look test-specific.
+    URL (masked): postgresql+psycopg://mes:***@localhost:5432/mes
+    Set POSTGRES_DB to a name containing 'test' for isolation, or
+    set FLEZIBCG_ALLOW_TEST_DB_RESET=1 to silence this warning.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+20 passed, 1 warning in 3.67s

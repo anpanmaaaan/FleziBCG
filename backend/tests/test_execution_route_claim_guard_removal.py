@@ -13,7 +13,13 @@ from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.main import app
 from app.models.execution import ExecutionEvent, ExecutionEventType
-from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.master import (
+    ClosureStatusEnum,
+    Operation,
+    ProductionOrder,
+    StatusEnum,
+    WorkOrder,
+)
 from app.models.station_session import StationSession
 from app.security.dependencies import RequestIdentity
 
@@ -46,7 +52,9 @@ def override_operation_auth_dependencies():
             user_id = (request.headers.get("X-User-Id") or _ACTOR).strip()
             tenant_id = (request.headers.get("X-Tenant-Id") or _TENANT_ID).strip()
             raw_actions = request.headers.get("X-Action-Codes") or ""
-            action_codes = {code.strip() for code in raw_actions.split(",") if code.strip()}
+            action_codes = {
+                code.strip() for code in raw_actions.split(",") if code.strip()
+            }
 
             if required_action not in action_codes:
                 raise HTTPException(
@@ -55,7 +63,9 @@ def override_operation_auth_dependencies():
                 )
 
             if role_code not in {"OPR", "SUP", "QCI", "QAL"}:
-                raise HTTPException(status_code=403, detail="Missing required permission")
+                raise HTTPException(
+                    status_code=403, detail="Missing required permission"
+                )
 
             return RequestIdentity(
                 user_id=user_id,
@@ -91,7 +101,9 @@ def override_operation_auth_dependencies():
             app.dependency_overrides.pop(dep_call, None)
 
 
-def _headers(*, action: str, user_id: str = _ACTOR, role_code: str = "OPR") -> dict[str, str]:
+def _headers(
+    *, action: str, user_id: str = _ACTOR, role_code: str = "OPR"
+) -> dict[str, str]:
     return {
         "Authorization": f"Bearer test-token-for-{role_code}",
         "X-Role-Code": role_code,
@@ -110,12 +122,22 @@ def _purge(db) -> None:
     )
     if po_ids:
         wo_ids = list(
-            db.scalars(select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids)))
+            db.scalars(
+                select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))
+            )
         )
         if wo_ids:
-            op_ids = list(db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids))))
+            op_ids = list(
+                db.scalars(
+                    select(Operation.id).where(Operation.work_order_id.in_(wo_ids))
+                )
+            )
             if op_ids:
-                db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
+                db.execute(
+                    delete(ExecutionEvent).where(
+                        ExecutionEvent.operation_id.in_(op_ids)
+                    )
+                )
                 db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
             db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
         db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
@@ -267,7 +289,13 @@ def _insert_open_session(db, *, station_id: str, operator_user_id: str) -> None:
 
 def _event_count(db, operation_id: int) -> int:
     return len(
-        list(db.scalars(select(ExecutionEvent.id).where(ExecutionEvent.operation_id == operation_id)))
+        list(
+            db.scalars(
+                select(ExecutionEvent.id).where(
+                    ExecutionEvent.operation_id == operation_id
+                )
+            )
+        )
     )
 
 
@@ -459,7 +487,10 @@ def test_close_and_reopen_routes_remain_unchanged(db_session):
         headers=_headers(action="execution.close", role_code="OPR"),
     )
     assert non_sup_close.status_code == 403
-    assert "Missing required role for close_operation: SUP" in non_sup_close.json()["detail"]
+    assert (
+        "Missing required role for close_operation: SUP"
+        in non_sup_close.json()["detail"]
+    )
 
     sup_close = client.post(
         f"/api/v1/operations/{operation.id}/close",

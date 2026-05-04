@@ -8,7 +8,13 @@ from sqlalchemy import delete, select
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent, ExecutionEventType
-from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.master import (
+    ClosureStatusEnum,
+    Operation,
+    ProductionOrder,
+    StatusEnum,
+    WorkOrder,
+)
 from app.models.station_session import StationSession
 from app.schemas.operation import (
     OperationCloseRequest,
@@ -55,14 +61,22 @@ def _purge(db) -> None:
     )
     if po_ids:
         wo_ids = list(
-            db.scalars(select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids)))
+            db.scalars(
+                select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))
+            )
         )
         if wo_ids:
             op_ids = list(
-                db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids)))
+                db.scalars(
+                    select(Operation.id).where(Operation.work_order_id.in_(wo_ids))
+                )
             )
             if op_ids:
-                db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
+                db.execute(
+                    delete(ExecutionEvent).where(
+                        ExecutionEvent.operation_id.in_(op_ids)
+                    )
+                )
                 db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
             db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
         db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
@@ -157,7 +171,11 @@ def _seed_operation(
     db.add(op)
     db.flush()
 
-    if status in (StatusEnum.in_progress.value, StatusEnum.paused.value, StatusEnum.completed.value):
+    if status in (
+        StatusEnum.in_progress.value,
+        StatusEnum.paused.value,
+        StatusEnum.completed.value,
+    ):
         db.add(
             ExecutionEvent(
                 event_type=ExecutionEventType.OP_STARTED.value,
@@ -220,7 +238,9 @@ def _event_count(db, operation_id: int) -> int:
     return len(
         list(
             db.scalars(
-                select(ExecutionEvent.id).where(ExecutionEvent.operation_id == operation_id)
+                select(ExecutionEvent.id).where(
+                    ExecutionEvent.operation_id == operation_id
+                )
             )
         )
     )
@@ -253,7 +273,9 @@ def test_guard_rejects_when_station_session_is_closed(db_session):
 def test_guard_rejects_station_mismatch_when_operator_has_session_elsewhere(db_session):
     _insert_session(db_session, station_id=_OTHER_STATION, operator_user_id=_ACTOR)
 
-    with pytest.raises(StationSessionGuardError, match="STATION_SESSION_STATION_MISMATCH"):
+    with pytest.raises(
+        StationSessionGuardError, match="STATION_SESSION_STATION_MISMATCH"
+    ):
         ensure_open_station_session_for_command(
             db_session,
             tenant_id=_TENANT_ID,
@@ -263,10 +285,14 @@ def test_guard_rejects_station_mismatch_when_operator_has_session_elsewhere(db_s
         )
 
 
-def test_guard_rejects_operator_mismatch_when_station_session_owned_by_other_operator(db_session):
+def test_guard_rejects_operator_mismatch_when_station_session_owned_by_other_operator(
+    db_session,
+):
     _insert_session(db_session, operator_user_id=_OTHER_ACTOR)
 
-    with pytest.raises(StationSessionGuardError, match="STATION_SESSION_OPERATOR_MISMATCH"):
+    with pytest.raises(
+        StationSessionGuardError, match="STATION_SESSION_OPERATOR_MISMATCH"
+    ):
         ensure_open_station_session_for_command(
             db_session,
             tenant_id=_TENANT_ID,
@@ -276,10 +302,14 @@ def test_guard_rejects_operator_mismatch_when_station_session_owned_by_other_ope
         )
 
 
-def test_guard_rejects_tenant_mismatch_when_station_has_other_tenant_session(db_session):
+def test_guard_rejects_tenant_mismatch_when_station_has_other_tenant_session(
+    db_session,
+):
     _insert_session(db_session, tenant_id=_OTHER_TENANT_ID, operator_user_id=_ACTOR)
 
-    with pytest.raises(StationSessionGuardError, match="STATION_SESSION_TENANT_MISMATCH"):
+    with pytest.raises(
+        StationSessionGuardError, match="STATION_SESSION_TENANT_MISMATCH"
+    ):
         ensure_open_station_session_for_command(
             db_session,
             tenant_id=_TENANT_ID,
@@ -345,7 +375,9 @@ def test_guard_allows_matching_open_station_session(db_session):
             lambda db, op: report_quantity(
                 db,
                 op,
-                OperationReportQuantityRequest(good_qty=2, scrap_qty=0, operator_id=_ACTOR),
+                OperationReportQuantityRequest(
+                    good_qty=2, scrap_qty=0, operator_id=_ACTOR
+                ),
                 actor_user_id=_ACTOR,
                 tenant_id=_TENANT_ID,
             ),
@@ -356,7 +388,9 @@ def test_guard_allows_matching_open_station_session(db_session):
             lambda db, op: start_downtime(
                 db,
                 op,
-                OperationStartDowntimeRequest(reason_code=_REASON_CODE, note="start dt"),
+                OperationStartDowntimeRequest(
+                    reason_code=_REASON_CODE, note="start dt"
+                ),
                 actor_user_id=_ACTOR,
                 tenant_id=_TENANT_ID,
             ),
@@ -442,7 +476,9 @@ def test_subset_commands_reject_missing_session_and_emit_no_event(
             lambda db, op: report_quantity(
                 db,
                 op,
-                OperationReportQuantityRequest(good_qty=2, scrap_qty=0, operator_id=_ACTOR),
+                OperationReportQuantityRequest(
+                    good_qty=2, scrap_qty=0, operator_id=_ACTOR
+                ),
                 actor_user_id=_ACTOR,
                 tenant_id=_TENANT_ID,
             ),
@@ -454,7 +490,9 @@ def test_subset_commands_reject_missing_session_and_emit_no_event(
             lambda db, op: start_downtime(
                 db,
                 op,
-                OperationStartDowntimeRequest(reason_code=_REASON_CODE, note="start dt"),
+                OperationStartDowntimeRequest(
+                    reason_code=_REASON_CODE, note="start dt"
+                ),
                 actor_user_id=_ACTOR,
                 tenant_id=_TENANT_ID,
             ),
@@ -523,7 +561,9 @@ def test_close_operation_behavior_remains_unchanged_without_station_session(db_s
     assert detail.closure_status == ClosureStatusEnum.closed.value
 
 
-def test_reopen_operation_behavior_remains_unchanged_without_station_session(db_session):
+def test_reopen_operation_behavior_remains_unchanged_without_station_session(
+    db_session,
+):
     op = _seed_operation(
         db_session,
         suffix="DEFER-REOPEN",

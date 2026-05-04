@@ -1,4 +1,5 @@
-﻿"""Service layer tests for Reason Code functionality (MMD-BE-07, MMD-BE-13)."""
+"""Service layer tests for Reason Code functionality (MMD-BE-07, MMD-BE-13)."""
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
@@ -100,9 +101,9 @@ class TestListReasonCodes:
     def test_list_reason_codes_returns_released_active_by_default(self, db: Session):
         """Default filter returns RELEASED + is_active=true codes."""
         _populate_test_codes(db)
-        
+
         result = list_reason_codes(db, tenant_id="tenant-A")
-        
+
         assert len(result) == 3
         ids = {item.reason_code_id for item in result}
         assert ids == {"RC-001", "RC-002", "RC-003"}
@@ -110,9 +111,9 @@ class TestListReasonCodes:
     def test_list_reason_codes_filters_by_domain(self, db: Session):
         """Filter by reason_domain narrows results."""
         _populate_test_codes(db)
-        
+
         result = list_reason_codes(db, tenant_id="tenant-A", reason_domain="DOWNTIME")
-        
+
         assert len(result) == 2
         ids = {item.reason_code_id for item in result}
         assert ids == {"RC-001", "RC-002"}
@@ -120,34 +121,34 @@ class TestListReasonCodes:
     def test_list_reason_codes_filters_by_category(self, db: Session):
         """Filter by reason_category narrows results."""
         _populate_test_codes(db)
-        
+
         result = list_reason_codes(
             db, tenant_id="tenant-A", reason_category="Dimensional Defect"
         )
-        
+
         assert len(result) == 1
         assert result[0].reason_code_id == "RC-003"
 
     def test_list_reason_codes_filters_by_lifecycle_status(self, db: Session):
         """Filter by lifecycle_status overrides default."""
         _populate_test_codes(db)
-        
-        result = list_reason_codes(
-            db, tenant_id="tenant-A", lifecycle_status="DRAFT"
-        )
-        
+
+        result = list_reason_codes(db, tenant_id="tenant-A", lifecycle_status="DRAFT")
+
         # RC-004 is DRAFT + inactive
         # With lifecycle_status="DRAFT", default include_inactive=False still filters to is_active
         assert len(result) == 0
 
-    def test_list_reason_codes_filters_by_lifecycle_status_with_inactive(self, db: Session):
+    def test_list_reason_codes_filters_by_lifecycle_status_with_inactive(
+        self, db: Session
+    ):
         """Filter by lifecycle_status with include_inactive includes all codes."""
         _populate_test_codes(db)
-        
+
         result = list_reason_codes(
             db, tenant_id="tenant-A", lifecycle_status="DRAFT", include_inactive=True
         )
-        
+
         # RC-004 is DRAFT + inactive
         assert len(result) == 1
         assert result[0].reason_code_id == "RC-004"
@@ -155,14 +156,12 @@ class TestListReasonCodes:
     def test_list_reason_codes_can_include_inactive(self, db: Session):
         """include_inactive flag allows filtering to all codes of default lifecycle_status."""
         _populate_test_codes(db)
-        
+
         # With include_inactive=True but default lifecycle_status=RELEASED,
         # we get all RELEASED codes (active and inactive)
         # RC-004 is DRAFT, so it's excluded
-        result = list_reason_codes(
-            db, tenant_id="tenant-A", include_inactive=True
-        )
-        
+        result = list_reason_codes(db, tenant_id="tenant-A", include_inactive=True)
+
         assert len(result) == 3
         ids = {item.reason_code_id for item in result}
         assert ids == {"RC-001", "RC-002", "RC-003"}
@@ -170,7 +169,7 @@ class TestListReasonCodes:
     def test_list_reason_codes_tenant_scoped(self, db: Session):
         """Results are scoped by tenant_id."""
         _populate_test_codes(db)
-        
+
         # Add codes for a different tenant
         other_codes = [
             ReasonCode(
@@ -189,27 +188,23 @@ class TestListReasonCodes:
         for code in other_codes:
             db.add(code)
         db.commit()
-        
+
         # Query for tenant-A should not include tenant-B codes
         result_a = list_reason_codes(db, tenant_id="tenant-A")
         assert len(result_a) == 3
         assert all(item.tenant_id == "tenant-A" for item in result_a)
-        
+
         # Query for tenant-B should not include tenant-A codes
         result_b = list_reason_codes(db, tenant_id="tenant-B")
         assert len(result_b) == 1
         assert result_b[0].reason_code_id == "RC-OTHER-001"
 
-    def test_list_reason_codes_ordered_by_domain_category_sort_order(
-        self, db: Session
-    ):
+    def test_list_reason_codes_ordered_by_domain_category_sort_order(self, db: Session):
         """Results are ordered by (reason_domain, reason_category, sort_order)."""
         _populate_test_codes(db)
-        
-        result = list_reason_codes(
-            db, tenant_id="tenant-A", include_inactive=True
-        )
-        
+
+        result = list_reason_codes(db, tenant_id="tenant-A", include_inactive=True)
+
         # With include_inactive=True but default lifecycle_status=RELEASED,
         # we get 3 codes (RC-004 is DRAFT, excluded)
         assert len(result) == 3
@@ -224,9 +219,9 @@ class TestGetReasonCode:
     def test_get_reason_code_returns_matching_code(self, db: Session):
         """get_reason_code returns matching code by id."""
         _populate_test_codes(db)
-        
+
         result = get_reason_code(db, tenant_id="tenant-A", reason_code_id="RC-001")
-        
+
         assert result is not None
         assert result.reason_code_id == "RC-001"
         assert result.reason_code == "DT-MAINT-01"
@@ -235,35 +230,33 @@ class TestGetReasonCode:
     def test_get_reason_code_returns_none_for_missing_code(self, db: Session):
         """get_reason_code returns None for nonexistent code."""
         _populate_test_codes(db)
-        
+
         result = get_reason_code(db, tenant_id="tenant-A", reason_code_id="MISSING")
-        
+
         assert result is None
 
     def test_get_reason_code_returns_none_for_wrong_tenant(self, db: Session):
         """get_reason_code respects tenant_id scope."""
         _populate_test_codes(db)
-        
+
         result = get_reason_code(db, tenant_id="wrong-tenant", reason_code_id="RC-001")
-        
+
         assert result is None
 
     def test_reason_code_status_values_are_stable(self, db: Session):
         """Lifecycle status values are stable (DRAFT, RELEASED, RETIRED)."""
         _populate_test_codes(db)
-        
-        result = list_reason_codes(
-            db, tenant_id="tenant-A", include_inactive=True
-        )
-        
+
+        result = list_reason_codes(db, tenant_id="tenant-A", include_inactive=True)
+
         statuses = {item.lifecycle_status for item in result}
         assert statuses.issubset({"DRAFT", "RELEASED", "RETIRED"})
 
 
 # 笏笏笏 MMD-BE-13: Create Reason Code (service) 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
 
-class TestCreateReasonCode:
 
+class TestCreateReasonCode:
     def test_create_reason_code_sets_draft_default(self, db: Session):
         item = create_reason_code(
             db,
@@ -288,11 +281,17 @@ class TestCreateReasonCode:
             reason_code="DT-SVC-DUP",
             reason_name="Duplicate",
         )
-        create_reason_code(db, tenant_id="tenant-A", actor_user_id="admin", payload=payload)
+        create_reason_code(
+            db, tenant_id="tenant-A", actor_user_id="admin", payload=payload
+        )
         with pytest.raises(ValueError, match="Duplicate"):
-            create_reason_code(db, tenant_id="tenant-A", actor_user_id="admin", payload=payload)
+            create_reason_code(
+                db, tenant_id="tenant-A", actor_user_id="admin", payload=payload
+            )
 
-    def test_create_reason_code_same_code_different_domain_is_allowed(self, db: Session):
+    def test_create_reason_code_same_code_different_domain_is_allowed(
+        self, db: Session
+    ):
         for domain in ["DOWNTIME", "SCRAP"]:
             create_reason_code(
                 db,
@@ -309,8 +308,8 @@ class TestCreateReasonCode:
 
 # 笏笏笏 MMD-BE-13: Update Reason Code (service) 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
 
-class TestUpdateReasonCode:
 
+class TestUpdateReasonCode:
     def test_update_reason_code_only_draft(self, db: Session):
         _populate_test_codes(db)
         with pytest.raises(ValueError, match="cannot be updated"):
@@ -329,7 +328,9 @@ class TestUpdateReasonCode:
             tenant_id="tenant-A",
             actor_user_id="admin",
             reason_code_id="RC-004",  # DRAFT
-            payload=ReasonCodeUpdateRequest(reason_name="Updated Draft Name", sort_order=99),
+            payload=ReasonCodeUpdateRequest(
+                reason_name="Updated Draft Name", sort_order=99
+            ),
         )
         assert item.reason_name == "Updated Draft Name"
         assert item.sort_order == 99
@@ -352,8 +353,8 @@ class TestUpdateReasonCode:
 
 # 笏笏笏 MMD-BE-13: Release Reason Code (service) 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
 
-class TestReleaseReasonCode:
 
+class TestReleaseReasonCode:
     def test_release_only_draft(self, db: Session):
         _populate_test_codes(db)
         item = release_reason_code(
@@ -381,18 +382,24 @@ class TestReleaseReasonCode:
             ),
         )
         retire_reason_code(
-            db, tenant_id="tenant-A", actor_user_id="admin", reason_code_id=item.reason_code_id
+            db,
+            tenant_id="tenant-A",
+            actor_user_id="admin",
+            reason_code_id=item.reason_code_id,
         )
         with pytest.raises(ValueError, match="RETIRED"):
             release_reason_code(
-                db, tenant_id="tenant-A", actor_user_id="admin", reason_code_id=item.reason_code_id
+                db,
+                tenant_id="tenant-A",
+                actor_user_id="admin",
+                reason_code_id=item.reason_code_id,
             )
 
 
 # 笏笏笏 MMD-BE-13: Retire Reason Code (service) 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
 
-class TestRetireReasonCode:
 
+class TestRetireReasonCode:
     def test_retire_draft_or_released(self, db: Session):
         _populate_test_codes(db)
         for rc_id in ["RC-001", "RC-004"]:  # RELEASED, DRAFT
@@ -414,19 +421,27 @@ class TestRetireReasonCode:
             ),
         )
         retire_reason_code(
-            db, tenant_id="tenant-A", actor_user_id="admin", reason_code_id=item.reason_code_id
+            db,
+            tenant_id="tenant-A",
+            actor_user_id="admin",
+            reason_code_id=item.reason_code_id,
         )
         with pytest.raises(ValueError, match="already RETIRED"):
             retire_reason_code(
-                db, tenant_id="tenant-A", actor_user_id="admin", reason_code_id=item.reason_code_id
+                db,
+                tenant_id="tenant-A",
+                actor_user_id="admin",
+                reason_code_id=item.reason_code_id,
             )
 
 
 # 笏笏笏 MMD-BE-13: Boundary guards (service) 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
 
+
 def test_no_downtime_reason_mapping_field_or_behavior():
     """reason_code_service.py must not reference downtime_reason anywhere."""
     import app.services.reason_code_service as svc_mod
+
     SRC = open(svc_mod.__file__, encoding="utf-8").read()
     assert "downtime_reason" not in SRC.lower()
 
@@ -434,6 +449,7 @@ def test_no_downtime_reason_mapping_field_or_behavior():
 def test_no_execution_material_quality_erp_side_effects():
     """reason_code_service.py must not reference execution, quality, ERP, or material move symbols."""
     import app.services.reason_code_service as svc_mod
+
     SRC = open(svc_mod.__file__, encoding="utf-8").read()
     forbidden_terms = [
         "operation_event",
@@ -447,7 +463,9 @@ def test_no_execution_material_quality_erp_side_effects():
         "inventory_move",
     ]
     for term in forbidden_terms:
-        assert term not in SRC.lower(), f"reason_code_service must not reference: {term!r}"
+        assert term not in SRC.lower(), (
+            f"reason_code_service must not reference: {term!r}"
+        )
 
 
 def test_reason_code_event_names_are_canonical_and_non_operational():
@@ -464,4 +482,6 @@ def test_reason_code_event_names_are_canonical_and_non_operational():
     for marker in allowed:
         assert marker in src, f"Missing canonical ReasonCode event marker: {marker}"
 
-    assert 'event_type="REASONCODE.' not in src, "Legacy REASONCODE.* event naming is forbidden"
+    assert 'event_type="REASONCODE.' not in src, (
+        "Legacy REASONCODE.* event naming is forbidden"
+    )

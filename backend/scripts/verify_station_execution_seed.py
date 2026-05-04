@@ -1,4 +1,4 @@
-﻿"""
+"""
 PH6 station-execution seed verification.
 
 Checks the dedicated PH6-STATION demo dataset still exposes the minimum
@@ -96,7 +96,11 @@ def main() -> None:
 
     token = _login(client)
     queue_response = client.get("/api/v1/station/queue", headers=_auth_headers(token))
-    queue_items = queue_response.json().get("items", []) if queue_response.status_code == 200 else []
+    queue_items = (
+        queue_response.json().get("items", [])
+        if queue_response.status_code == 200
+        else []
+    )
 
     seed_items = [
         item
@@ -104,7 +108,9 @@ def main() -> None:
         if str(item.get("operation_number", "")).startswith(SEED_PREFIX)
     ]
     planned_items = [item for item in seed_items if item.get("status") == "PLANNED"]
-    in_progress_items = [item for item in seed_items if item.get("status") == "IN_PROGRESS"]
+    in_progress_items = [
+        item for item in seed_items if item.get("status") == "IN_PROGRESS"
+    ]
 
     checks.append(
         Check(
@@ -163,7 +169,9 @@ def main() -> None:
         Check(
             name="StationSession start guard satisfiable for operator/station",
             passed=session_guard_ok,
-            detail="guard passed" if session_guard_ok else f"error={session_guard_error}",
+            detail="guard passed"
+            if session_guard_ok
+            else f"error={session_guard_error}",
         )
     )
 

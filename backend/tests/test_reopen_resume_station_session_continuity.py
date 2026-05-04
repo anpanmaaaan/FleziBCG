@@ -8,7 +8,13 @@ from sqlalchemy import delete, select
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent, ExecutionEventType
-from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.master import (
+    ClosureStatusEnum,
+    Operation,
+    ProductionOrder,
+    StatusEnum,
+    WorkOrder,
+)
 from app.models.station_session import StationSession
 from app.schemas.operation import OperationReopenRequest, OperationResumeRequest
 from app.services.operation_service import (
@@ -36,12 +42,22 @@ def _purge(db) -> None:
     )
     if po_ids:
         wo_ids = list(
-            db.scalars(select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids)))
+            db.scalars(
+                select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))
+            )
         )
         if wo_ids:
-            op_ids = list(db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids))))
+            op_ids = list(
+                db.scalars(
+                    select(Operation.id).where(Operation.work_order_id.in_(wo_ids))
+                )
+            )
             if op_ids:
-                db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
+                db.execute(
+                    delete(ExecutionEvent).where(
+                        ExecutionEvent.operation_id.in_(op_ids)
+                    )
+                )
                 db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
             db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
         db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
@@ -155,7 +171,9 @@ def _event_count(db, operation_id: int) -> int:
     return len(
         list(
             db.scalars(
-                select(ExecutionEvent.id).where(ExecutionEvent.operation_id == operation_id)
+                select(ExecutionEvent.id).where(
+                    ExecutionEvent.operation_id == operation_id
+                )
             )
         )
     )
@@ -228,7 +246,9 @@ def test_resume_after_reopen_rejects_without_open_station_session(db_session):
         )
 
 
-def test_resume_after_reopen_rejects_closed_station_session_and_does_not_append_event(db_session):
+def test_resume_after_reopen_rejects_closed_station_session_and_does_not_append_event(
+    db_session,
+):
     db = db_session
     op = _seed_operation(db, suffix="CLOSED-SESSION")
     reopen_operation(
@@ -277,7 +297,9 @@ def test_resume_after_reopen_rejects_operator_and_station_mismatch(db_session):
         operator_user_id=_OTHER_OPERATOR,
         status="OPEN",
     )
-    with pytest.raises(StationSessionGuardError, match="STATION_SESSION_OPERATOR_MISMATCH"):
+    with pytest.raises(
+        StationSessionGuardError, match="STATION_SESSION_OPERATOR_MISMATCH"
+    ):
         resume_operation(
             db,
             op,
@@ -300,7 +322,9 @@ def test_resume_after_reopen_rejects_operator_and_station_mismatch(db_session):
         operator_user_id=_OPERATOR,
         status="OPEN",
     )
-    with pytest.raises(StationSessionGuardError, match="STATION_SESSION_STATION_MISMATCH"):
+    with pytest.raises(
+        StationSessionGuardError, match="STATION_SESSION_STATION_MISMATCH"
+    ):
         resume_operation(
             db,
             op,

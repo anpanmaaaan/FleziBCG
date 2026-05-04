@@ -28,7 +28,9 @@ def _version_not_found() -> LookupError:
     return LookupError("Product version not found")
 
 
-def _compute_allowed_actions(row: ProductVersion, has_manage: bool) -> ProductVersionAllowedActions:
+def _compute_allowed_actions(
+    row: ProductVersion, has_manage: bool
+) -> ProductVersionAllowedActions:
     """Compute server-derived write capabilities for a Product Version.
 
     All capabilities are False if the user lacks manage permission.
@@ -50,7 +52,9 @@ def _compute_allowed_actions(row: ProductVersion, has_manage: bool) -> ProductVe
     )
 
 
-def _to_version_item(row: ProductVersion, has_manage: bool = False) -> ProductVersionItem:
+def _to_version_item(
+    row: ProductVersion, has_manage: bool = False
+) -> ProductVersionItem:
     return ProductVersionItem(
         product_version_id=row.product_version_id,
         tenant_id=row.tenant_id,
@@ -69,7 +73,11 @@ def _to_version_item(row: ProductVersion, has_manage: bool = False) -> ProductVe
 
 
 def _validate_effective_date_range(effective_from, effective_to) -> None:
-    if effective_from is not None and effective_to is not None and effective_from > effective_to:
+    if (
+        effective_from is not None
+        and effective_to is not None
+        and effective_from > effective_to
+    ):
         raise ValueError("effective_from must be less than or equal to effective_to")
 
 
@@ -121,7 +129,9 @@ def list_product_versions(
     product = get_product_row(db, tenant_id=tenant_id, product_id=product_id)
     if product is None:
         raise LookupError("Product not found")
-    rows = list_product_versions_by_product(db, tenant_id=tenant_id, product_id=product_id)
+    rows = list_product_versions_by_product(
+        db, tenant_id=tenant_id, product_id=product_id
+    )
     return [_to_version_item(r, has_manage_permission) for r in rows]
 
 
@@ -142,7 +152,10 @@ def get_product_version(
     if product is None:
         raise LookupError("Product not found")
     row = get_product_version_row(
-        db, tenant_id=tenant_id, product_id=product_id, product_version_id=product_version_id
+        db,
+        tenant_id=tenant_id,
+        product_id=product_id,
+        product_version_id=product_version_id,
     )
     if row is None:
         raise _version_not_found()
@@ -233,8 +246,14 @@ def update_product_version(
     if row.lifecycle_status != "DRAFT":
         raise ValueError("Only DRAFT product versions can be updated")
 
-    next_effective_from = payload.effective_from if payload.effective_from is not None else row.effective_from
-    next_effective_to = payload.effective_to if payload.effective_to is not None else row.effective_to
+    next_effective_from = (
+        payload.effective_from
+        if payload.effective_from is not None
+        else row.effective_from
+    )
+    next_effective_to = (
+        payload.effective_to if payload.effective_to is not None else row.effective_to
+    )
     _validate_effective_date_range(next_effective_from, next_effective_to)
 
     changed_fields: list[str] = []
@@ -243,7 +262,10 @@ def update_product_version(
         row.version_name = payload.version_name
         changed_fields.append("version_name")
 
-    if payload.effective_from is not None and payload.effective_from != row.effective_from:
+    if (
+        payload.effective_from is not None
+        and payload.effective_from != row.effective_from
+    ):
         row.effective_from = payload.effective_from
         changed_fields.append("effective_from")
 

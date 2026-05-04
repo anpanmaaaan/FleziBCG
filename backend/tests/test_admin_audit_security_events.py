@@ -51,8 +51,13 @@ def test_user_lifecycle_records_security_events():
     deactivate_user(db, tenant_id="tenant_a", user_id="u-a", actor_user_id="admin-1")
     activate_user(db, tenant_id="tenant_a", user_id="u-a", actor_user_id="admin-1")
 
-    events = list(db.scalars(select(SecurityEventLog).order_by(SecurityEventLog.id.asc())))
-    assert [event.event_type for event in events] == ["IAM.USER_DEACTIVATE", "IAM.USER_ACTIVATE"]
+    events = list(
+        db.scalars(select(SecurityEventLog).order_by(SecurityEventLog.id.asc()))
+    )
+    assert [event.event_type for event in events] == [
+        "IAM.USER_DEACTIVATE",
+        "IAM.USER_ACTIVATE",
+    ]
     assert all(event.actor_user_id == "admin-1" for event in events)
     assert all(event.tenant_id == "tenant_a" for event in events)
 
@@ -80,6 +85,11 @@ def test_access_assignment_records_security_events():
         actor_user_id="admin-1",
     )
 
-    events = list(db.scalars(select(SecurityEventLog).order_by(SecurityEventLog.id.asc())))
-    assert [event.event_type for event in events] == ["IAM.ROLE_ASSIGNMENT", "IAM.SCOPE_ASSIGNMENT"]
+    events = list(
+        db.scalars(select(SecurityEventLog).order_by(SecurityEventLog.id.asc()))
+    )
+    assert [event.event_type for event in events] == [
+        "IAM.ROLE_ASSIGNMENT",
+        "IAM.SCOPE_ASSIGNMENT",
+    ]
     assert all(event.actor_user_id == "admin-1" for event in events)

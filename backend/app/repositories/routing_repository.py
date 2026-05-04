@@ -17,7 +17,9 @@ def list_routings_by_tenant(db: Session, *, tenant_id: str) -> list[Routing]:
     )
 
 
-def get_routing_by_id(db: Session, *, tenant_id: str, routing_id: str) -> Routing | None:
+def get_routing_by_id(
+    db: Session, *, tenant_id: str, routing_id: str
+) -> Routing | None:
     return db.scalar(
         select(Routing)
         .options(selectinload(Routing.operations))
@@ -25,10 +27,13 @@ def get_routing_by_id(db: Session, *, tenant_id: str, routing_id: str) -> Routin
     )
 
 
-def get_routing_by_code(db: Session, *, tenant_id: str, routing_code: str) -> Routing | None:
+def get_routing_by_code(
+    db: Session, *, tenant_id: str, routing_code: str
+) -> Routing | None:
     return db.scalar(
-        select(Routing)
-        .where(Routing.tenant_id == tenant_id, Routing.routing_code == routing_code)
+        select(Routing).where(
+            Routing.tenant_id == tenant_id, Routing.routing_code == routing_code
+        )
     )
 
 

@@ -2,7 +2,15 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -29,7 +37,9 @@ class ProductVersion(Base):
     __tablename__ = "product_versions"
     __table_args__ = (
         UniqueConstraint(
-            "tenant_id", "product_id", "version_code",
+            "tenant_id",
+            "product_id",
+            "version_code",
             name="uq_product_versions_tenant_product_code",
         ),
     )
@@ -52,5 +62,8 @@ class ProductVersion(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )

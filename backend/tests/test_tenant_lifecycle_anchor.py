@@ -11,6 +11,7 @@ Covers:
 - Downgrade contract
 - Alembic head updated to 0006
 """
+
 import ast
 import re
 from pathlib import Path
@@ -25,9 +26,11 @@ MIGRATION_FILE = (
 
 # ── Model tests ──────────────────────────────────────────────────────────────
 
+
 def test_tenant_model_exists() -> None:
     """Tenant class must be importable from app.models.tenant."""
     from app.models.tenant import Tenant
+
     assert Tenant is not None
 
 
@@ -63,6 +66,7 @@ def test_tenant_lifecycle_constants_exist() -> None:
         TENANT_STATUS_DISABLED,
         TENANT_STATUS_SUSPENDED,
     )
+
     assert TENANT_STATUS_ACTIVE == "ACTIVE"
     assert TENANT_STATUS_DISABLED == "DISABLED"
     assert TENANT_STATUS_SUSPENDED == "SUSPENDED"
@@ -126,6 +130,7 @@ def test_tenant_is_lifecycle_active_property() -> None:
 
 # ── SQLite round-trip ─────────────────────────────────────────────────────────
 
+
 def test_tenant_sqlite_round_trip() -> None:
     """Tenant must persist and retrieve correctly in an in-memory SQLite DB."""
     from sqlalchemy import create_engine
@@ -156,6 +161,7 @@ def test_tenant_sqlite_round_trip() -> None:
 
 # ── Migration tests ───────────────────────────────────────────────────────────
 
+
 def test_tenant_migration_revision_exists() -> None:
     """Migration file 0006_add_tenant_lifecycle_anchor.py must exist."""
     assert MIGRATION_FILE.exists(), f"Migration file not found: {MIGRATION_FILE}"
@@ -172,7 +178,7 @@ def test_tenant_migration_revision_id() -> None:
 def test_tenant_migration_down_revision_matches_current_head() -> None:
     """down_revision must be '0005' — the head before this slice."""
     source = MIGRATION_FILE.read_text(encoding="utf-8")
-    assert 'down_revision' in source
+    assert "down_revision" in source
     match = re.search(r'down_revision\s*.*=\s*"(\w+)"', source)
     assert match is not None, "Could not find down_revision assignment"
     assert match.group(1) == "0005", (
@@ -185,7 +191,11 @@ def test_tenant_migration_creates_tenants_table_only() -> None:
     tree = ast.parse(MIGRATION_FILE.read_text(encoding="utf-8"))
 
     upgrade_fn = next(
-        (n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "upgrade"),
+        (
+            n
+            for n in ast.walk(tree)
+            if isinstance(n, ast.FunctionDef) and n.name == "upgrade"
+        ),
         None,
     )
     assert upgrade_fn is not None, "No upgrade() function found"
@@ -211,7 +221,11 @@ def test_tenant_migration_does_not_modify_existing_tables() -> None:
     tree = ast.parse(MIGRATION_FILE.read_text(encoding="utf-8"))
 
     upgrade_fn = next(
-        (n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "upgrade"),
+        (
+            n
+            for n in ast.walk(tree)
+            if isinstance(n, ast.FunctionDef) and n.name == "upgrade"
+        ),
         None,
     )
     assert upgrade_fn is not None
@@ -254,7 +268,11 @@ def test_tenant_downgrade_drops_tenants_table_only() -> None:
     tree = ast.parse(MIGRATION_FILE.read_text(encoding="utf-8"))
 
     downgrade_fn = next(
-        (n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "downgrade"),
+        (
+            n
+            for n in ast.walk(tree)
+            if isinstance(n, ast.FunctionDef) and n.name == "downgrade"
+        ),
         None,
     )
     assert downgrade_fn is not None, "No downgrade() function found"

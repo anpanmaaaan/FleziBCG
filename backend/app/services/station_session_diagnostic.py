@@ -16,6 +16,7 @@ Contract:
 Design authority: docs/design/02_domain/execution/station-session-ownership-contract.md
 Slice: P0-C-04C (Diagnostic Session Context Bridge)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

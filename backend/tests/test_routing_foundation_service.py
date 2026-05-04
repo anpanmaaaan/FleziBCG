@@ -68,7 +68,9 @@ def test_create_routing_happy_path_and_event():
     assert created.routing_code == "R-001"
     assert created.lifecycle_status == "DRAFT"
 
-    events = list(db.scalars(select(SecurityEventLog).order_by(SecurityEventLog.id.asc())))
+    events = list(
+        db.scalars(select(SecurityEventLog).order_by(SecurityEventLog.id.asc()))
+    )
     assert events[-1].event_type == "ROUTING.CREATED"
 
 
@@ -149,7 +151,9 @@ def test_tenant_scoped_list_and_get_and_cross_tenant_hidden():
     found = get_routing_by_id(db, tenant_id="tenant_a", routing_id=routing_a.routing_id)
     assert found is not None
 
-    hidden = get_routing_by_id(db, tenant_id="tenant_b", routing_id=routing_a.routing_id)
+    hidden = get_routing_by_id(
+        db, tenant_id="tenant_b", routing_id=routing_a.routing_id
+    )
     assert hidden is None
 
 

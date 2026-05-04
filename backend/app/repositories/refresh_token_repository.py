@@ -53,7 +53,9 @@ def revoke_by_token_hash(
     return True
 
 
-def mark_rotated(db: Session, record: RefreshToken, *, reason: str = "rotated") -> RefreshToken:
+def mark_rotated(
+    db: Session, record: RefreshToken, *, reason: str = "rotated"
+) -> RefreshToken:
     """Mark a token as rotated (consumed in exchange for a new token).
 
     INVARIANT: A rotated token sets both rotated_at and revoked_at so that

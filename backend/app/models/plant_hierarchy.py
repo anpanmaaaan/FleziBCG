@@ -21,11 +21,20 @@ WHY NOT modify existing models: Existing string columns (station_scope_value,
   StationSession.station_id, etc.) are not touched — doing so would require
   coordinated migration of execution data and is explicitly out of scope.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 

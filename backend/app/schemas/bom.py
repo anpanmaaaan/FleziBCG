@@ -10,6 +10,7 @@ _ALLOWED_BOM_LIFECYCLE_STATUSES = {"DRAFT", "RELEASED", "RETIRED"}
 
 # ─── Write request schemas ────────────────────────────────────────────────────
 
+
 class BomCreateRequest(BaseModel):
     """Request schema for POST /products/{product_id}/boms.
 

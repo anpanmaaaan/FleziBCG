@@ -59,7 +59,9 @@ def _create_or_get_scope(db, scope_value: str) -> Scope:
     return scope
 
 
-def _create_or_get_user_role(db, user_id: str, username: str, role_code: str, scope: Scope):
+def _create_or_get_user_role(
+    db, user_id: str, username: str, role_code: str, scope: Scope
+):
     """Create user role assignment."""
     role = db.scalar(select(Role).where(Role.code == role_code))
     if not role:
@@ -137,9 +139,7 @@ def seed_test_dataset_1():
 
         # Create work order
         wo = db.scalar(
-            select(WorkOrder).where(
-                WorkOrder.work_order_number == "TEST-DEMO-S1-WO"
-            )
+            select(WorkOrder).where(WorkOrder.work_order_number == "TEST-DEMO-S1-WO")
         )
         if not wo:
             wo = WorkOrder(
@@ -236,9 +236,7 @@ def seed_test_dataset_2():
 
         # Create work order
         wo = db.scalar(
-            select(WorkOrder).where(
-                WorkOrder.work_order_number == "TEST-DEMO-S2-WO"
-            )
+            select(WorkOrder).where(WorkOrder.work_order_number == "TEST-DEMO-S2-WO")
         )
         if not wo:
             wo = WorkOrder(
@@ -260,7 +258,9 @@ def seed_test_dataset_2():
                 select(Operation).where(Operation.operation_number == op_num)
             )
             if not existing:
-                status = StatusEnum.in_progress.value if i == 1 else StatusEnum.planned.value
+                status = (
+                    StatusEnum.in_progress.value if i == 1 else StatusEnum.planned.value
+                )
                 op = Operation(
                     operation_number=op_num,
                     work_order_id=wo.id,
@@ -341,9 +341,7 @@ def seed_test_dataset_3():
 
         # Create work order
         wo = db.scalar(
-            select(WorkOrder).where(
-                WorkOrder.work_order_number == "TEST-DEMO-S3-WO"
-            )
+            select(WorkOrder).where(WorkOrder.work_order_number == "TEST-DEMO-S3-WO")
         )
         if not wo:
             wo = WorkOrder(
@@ -384,7 +382,7 @@ def seed_test_dataset_3():
                 )
                 db.add(op)
                 db.flush()
-                print(f"✓ Created Operation: {op_num} @ {stations[i-1]}")
+                print(f"✓ Created Operation: {op_num} @ {stations[i - 1]}")
 
         db.commit()
         print("✓ Committed all changes\n")

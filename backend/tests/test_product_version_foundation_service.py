@@ -166,7 +166,9 @@ def test_create_product_version_enforces_unique_code_per_product():
 def test_update_product_version_only_draft():
     db = _make_session()
     product_id = _mk_product(db)
-    released = _mk_version(db, "tenant_a", product_id, "v1", lifecycle_status="RELEASED")
+    released = _mk_version(
+        db, "tenant_a", product_id, "v1", lifecycle_status="RELEASED"
+    )
 
     try:
         update_product_version(

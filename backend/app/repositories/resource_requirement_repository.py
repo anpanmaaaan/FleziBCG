@@ -66,14 +66,18 @@ def get_resource_requirement_by_unique_key(
     )
 
 
-def create_resource_requirement(db: Session, *, row: ResourceRequirement) -> ResourceRequirement:
+def create_resource_requirement(
+    db: Session, *, row: ResourceRequirement
+) -> ResourceRequirement:
     db.add(row)
     db.commit()
     db.refresh(row)
     return row
 
 
-def update_resource_requirement(db: Session, *, row: ResourceRequirement) -> ResourceRequirement:
+def update_resource_requirement(
+    db: Session, *, row: ResourceRequirement
+) -> ResourceRequirement:
     db.commit()
     db.refresh(row)
     return row

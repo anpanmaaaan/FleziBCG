@@ -118,10 +118,7 @@ def check_db_connectivity() -> Check:
         except Exception:
             raw_url = "<url-unavailable>"
 
-        detail = (
-            f"{type(exc).__name__}: {exc}\n"
-            f"{_DEV_DB_START_HINT}"
-        )
+        detail = f"{type(exc).__name__}: {exc}\n{_DEV_DB_START_HINT}"
         return Check(
             f"DB connectivity ({_mask_url(raw_url)})",
             False,
@@ -144,6 +141,22 @@ def check_ruff_lint() -> Check:
             summary = line.strip()
             break
     return Check("Ruff lint (ruff check .)", False, summary or output[:200])
+
+
+def check_ruff_format() -> Check:
+    """Run ruff format --check . and return pass/fail (BACKEND-QA-BASELINE-03)."""
+    cmd = [sys.executable, "-m", "ruff", "format", "--check", "."]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    output = (result.stdout + result.stderr).strip()
+    passed = result.returncode == 0
+    if passed:
+        return Check("Ruff format (ruff format --check .)", True, "")
+    summary = ""
+    for line in reversed(output.splitlines()):
+        if "would reformat" in line or "reformatted" in line or "unchanged" in line:
+            summary = line.strip()
+            break
+    return Check("Ruff format (ruff format --check .)", False, summary or output[:200])
 
 
 def check_pytest(args: list[str], label: str) -> Check:
@@ -182,7 +195,7 @@ def main() -> int:
     args = parser.parse_args()
 
     print("=" * 60)
-    print("FleziBCG Backend Verification (BACKEND-QA-BASELINE-02)")
+    print("FleziBCG Backend Verification (BACKEND-QA-BASELINE-03)")
     print("=" * 60)
     print()
     print("Compose file:  docker/docker-compose.db.yml")
@@ -198,6 +211,10 @@ def main() -> int:
     # 2. Ruff lint
     print("[2/5] Ruff lint check ...")
     results.append(check_ruff_lint())
+
+    # 2b. Ruff format check (BACKEND-QA-BASELINE-03)
+    print("[2b/5] Ruff format check ...")
+    results.append(check_ruff_format())
 
     # 3. DB connectivity
     print("[3/5] DB connectivity check ...")
@@ -237,9 +254,7 @@ def main() -> int:
     runs = 2 if args.full_suite_twice else 1
     for i in range(1, runs + 1):
         label = (
-            f"Full backend suite (run {i}/{runs})"
-            if runs > 1
-            else "Full backend suite"
+            f"Full backend suite (run {i}/{runs})" if runs > 1 else "Full backend suite"
         )
         print(f"[5/5] {label} ...")
         results.append(check_pytest(["tests/", "-q", "--tb=short"], label))

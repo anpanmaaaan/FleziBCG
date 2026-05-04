@@ -63,8 +63,9 @@ def list_security_events(
 
     return list(
         db.scalars(
-            query
-            .order_by(SecurityEventLog.created_at.desc(), SecurityEventLog.id.desc())
+            query.order_by(
+                SecurityEventLog.created_at.desc(), SecurityEventLog.id.desc()
+            )
             .limit(safe_limit)
             .offset(safe_offset)
         )

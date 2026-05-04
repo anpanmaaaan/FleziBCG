@@ -34,6 +34,8 @@ def apply_cors_middleware(fastapi_app: FastAPI) -> None:
 
 
 apply_cors_middleware(app)
+
+
 @app.middleware("http")
 async def auth_identity_middleware(request: Request, call_next):
     auth_header = request.headers.get("Authorization")

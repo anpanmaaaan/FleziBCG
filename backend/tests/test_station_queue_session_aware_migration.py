@@ -54,7 +54,9 @@ def test_station_queue_ownership_summary_handles_no_open_session(station_queue_f
     assert session is not None
     # SS-CLOSE-001: close must be rejected while IN_PROGRESS/PAUSED/BLOCKED
     # operations exist under this station. The fixture seeds all three.
-    with pytest.raises(StationSessionConflictError, match="STATION_SESSION_ACTIVE_EXECUTION"):
+    with pytest.raises(
+        StationSessionConflictError, match="STATION_SESSION_ACTIVE_EXECUTION"
+    ):
         close_station_session(db, identity, session_id=session.session_id)
 
 
@@ -69,7 +71,13 @@ _TENANT_NS = "default"
 
 def _setup_no_session_station(db):
     from app.db.init_db import init_db
-    from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+    from app.models.master import (
+        ClosureStatusEnum,
+        Operation,
+        ProductionOrder,
+        StatusEnum,
+        WorkOrder,
+    )
     from app.models.rbac import Role, Scope, UserRoleAssignment
     from app.models.station_session import StationSession
 
@@ -91,11 +99,15 @@ def _setup_no_session_station(db):
     )
     if po_ids:
         wo_ids = list(
-            db.scalars(select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids)))
+            db.scalars(
+                select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))
+            )
         )
         if wo_ids:
             op_ids = list(
-                db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids)))
+                db.scalars(
+                    select(Operation.id).where(Operation.work_order_id.in_(wo_ids))
+                )
             )
             if op_ids:
                 db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
@@ -118,7 +130,15 @@ def _setup_no_session_station(db):
     scope = Scope(tenant_id=_TENANT_NS, scope_type="station", scope_value=_STATION_NS)
     db.add(scope)
     db.flush()
-    db.add(UserRoleAssignment(user_id=_USER_NS, role_id=role.id, scope_id=scope.id, is_primary=True, is_active=True))
+    db.add(
+        UserRoleAssignment(
+            user_id=_USER_NS,
+            role_id=role.id,
+            scope_id=scope.id,
+            is_primary=True,
+            is_active=True,
+        )
+    )
 
     po = ProductionOrder(
         order_number=f"{_PREFIX_NS}-PO-001",

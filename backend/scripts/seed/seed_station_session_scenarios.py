@@ -16,6 +16,7 @@ Usage:
     cd backend
     .venv\\Scripts\\python scripts/seed/seed_station_session_scenarios.py
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -208,7 +209,9 @@ def _create_po_and_wo(
     tenant_id: str,
 ) -> tuple[ProductionOrder, WorkOrder]:
     po_num = f"{_PREFIX}-PO-{scenario_code}"
-    po = db.scalar(select(ProductionOrder).where(ProductionOrder.order_number == po_num))
+    po = db.scalar(
+        select(ProductionOrder).where(ProductionOrder.order_number == po_num)
+    )
     if po is None:
         po = ProductionOrder(
             order_number=po_num,
@@ -254,15 +257,21 @@ def _purge(db: Session) -> None:
     )
     if po_ids:
         wo_ids = list(
-            db.scalars(select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids)))
+            db.scalars(
+                select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))
+            )
         )
         if wo_ids:
             op_ids = list(
-                db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids)))
+                db.scalars(
+                    select(Operation.id).where(Operation.work_order_id.in_(wo_ids))
+                )
             )
             if op_ids:
                 db.execute(
-                    delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids))
+                    delete(ExecutionEvent).where(
+                        ExecutionEvent.operation_id.in_(op_ids)
+                    )
                 )
                 db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
             db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
@@ -374,10 +383,20 @@ def seed_ss2(db: Session) -> None:
 
     _, wo = _create_po_and_wo(db, scenario_code="SS2", tenant_id=_TENANT_A)
     op1 = _create_operation(
-        db, suffix="SS2-01", station_id=station, tenant_id=_TENANT_A, sequence=10, wo_id=wo.id
+        db,
+        suffix="SS2-01",
+        station_id=station,
+        tenant_id=_TENANT_A,
+        sequence=10,
+        wo_id=wo.id,
     )
     _create_operation(
-        db, suffix="SS2-02", station_id=station, tenant_id=_TENANT_A, sequence=20, wo_id=wo.id
+        db,
+        suffix="SS2-02",
+        station_id=station,
+        tenant_id=_TENANT_A,
+        sequence=20,
+        wo_id=wo.id,
     )
     db.commit()
 
@@ -387,11 +406,15 @@ def seed_ss2(db: Session) -> None:
         session = open_station_session(db, identity, station_id=station)
     if session.operator_user_id != _TENANT_A_OPERATOR_ID:
         session = identify_operator_at_station(
-            db, identity, session_id=session.session_id, operator_user_id=_TENANT_A_OPERATOR_ID
+            db,
+            identity,
+            session_id=session.session_id,
+            operator_user_id=_TENANT_A_OPERATOR_ID,
         )
 
     # Start op 1
     from app.repositories.operation_repository import get_operation_by_id
+
     op1_loaded = get_operation_by_id(db, op1.id)
     assert op1_loaded is not None
     start_operation(
@@ -432,7 +455,12 @@ def seed_ss3(db: Session) -> None:
 
     _, wo = _create_po_and_wo(db, scenario_code="SS3", tenant_id=_TENANT_A)
     _create_operation(
-        db, suffix="SS3-01", station_id=station, tenant_id=_TENANT_A, sequence=10, wo_id=wo.id
+        db,
+        suffix="SS3-01",
+        station_id=station,
+        tenant_id=_TENANT_A,
+        sequence=10,
+        wo_id=wo.id,
     )
     db.commit()
 
@@ -476,7 +504,12 @@ def seed_ss4(db: Session) -> None:
     _ensure_role_assignment(db, _TENANT_A_OPERATOR_ID, opr_role, scope_a)
     _, wo_a = _create_po_and_wo(db, scenario_code="SS4A", tenant_id=_TENANT_A)
     _create_operation(
-        db, suffix="SS4A-01", station_id=station, tenant_id=_TENANT_A, sequence=10, wo_id=wo_a.id
+        db,
+        suffix="SS4A-01",
+        station_id=station,
+        tenant_id=_TENANT_A,
+        sequence=10,
+        wo_id=wo_a.id,
     )
     db.commit()
 
@@ -486,7 +519,12 @@ def seed_ss4(db: Session) -> None:
     _ensure_role_assignment(db, _TENANT_B_OPERATOR_ID, opr_role, scope_b)
     _, wo_b = _create_po_and_wo(db, scenario_code="SS4B", tenant_id=_TENANT_B)
     _create_operation(
-        db, suffix="SS4B-01", station_id=station, tenant_id=_TENANT_B, sequence=10, wo_id=wo_b.id
+        db,
+        suffix="SS4B-01",
+        station_id=station,
+        tenant_id=_TENANT_B,
+        sequence=10,
+        wo_id=wo_b.id,
     )
     db.commit()
 
@@ -496,15 +534,24 @@ def seed_ss4(db: Session) -> None:
         session_b = open_station_session(db, identity_b, station_id=station)
     if session_b.operator_user_id != _TENANT_B_OPERATOR_ID:
         session_b = identify_operator_at_station(
-            db, identity_b, session_id=session_b.session_id, operator_user_id=_TENANT_B_OPERATOR_ID
+            db,
+            identity_b,
+            session_id=session_b.session_id,
+            operator_user_id=_TENANT_B_OPERATOR_ID,
         )
 
     print(f"  Station : {station}")
-    print(f"  Tenant A ({_TENANT_A}): op SS4A-01 PLANNED, NO session  → NO_ACTIVE_SESSION")
+    print(
+        f"  Tenant A ({_TENANT_A}): op SS4A-01 PLANNED, NO session  → NO_ACTIVE_SESSION"
+    )
     print(f"  Tenant B ({_TENANT_B}): op SS4B-01 PLANNED, session OPEN → OPEN")
     print(f"  Session B ID: {session_b.session_id}")
-    print("  Login A : username=operator       / password=password123  (tenant=default)")
-    print("  Login B : username=operator-b     / password=password123  (tenant=tenant-b-demo)")
+    print(
+        "  Login A : username=operator       / password=password123  (tenant=default)"
+    )
+    print(
+        "  Login B : username=operator-b     / password=password123  (tenant=tenant-b-demo)"
+    )
 
 
 # ---------------------------------------------------------------------------

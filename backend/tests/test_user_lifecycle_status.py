@@ -11,6 +11,7 @@ Covers:
 
 All tests use SQLite in-memory DB — no external infrastructure required.
 """
+
 from pathlib import Path
 
 from sqlalchemy import create_engine, text
@@ -179,8 +180,9 @@ def test_user_status_migration_backfills_from_is_active():
 
     with engine.begin() as conn:
         # Create users table in pre-0004 state (no lifecycle_status column)
-        conn.execute(text(
-            """
+        conn.execute(
+            text(
+                """
             CREATE TABLE users (
                 id INTEGER PRIMARY KEY,
                 user_id VARCHAR(64) NOT NULL UNIQUE,
@@ -193,32 +195,39 @@ def test_user_status_migration_backfills_from_is_active():
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
             """
-        ))
+            )
+        )
         # Seed: one active, one inactive
-        conn.execute(text(
-            "INSERT INTO users (user_id, username, password_hash, tenant_id, is_active) "
-            "VALUES ('u-active', 'alice', 'h', 'default', 1)"
-        ))
-        conn.execute(text(
-            "INSERT INTO users (user_id, username, password_hash, tenant_id, is_active) "
-            "VALUES ('u-inactive', 'bob', 'h', 'default', 0)"
-        ))
+        conn.execute(
+            text(
+                "INSERT INTO users (user_id, username, password_hash, tenant_id, is_active) "
+                "VALUES ('u-active', 'alice', 'h', 'default', 1)"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO users (user_id, username, password_hash, tenant_id, is_active) "
+                "VALUES ('u-inactive', 'bob', 'h', 'default', 0)"
+            )
+        )
 
         # Apply the lifecycle_status column (simulating 0004 upgrade step 1)
         conn.execute(text("ALTER TABLE users ADD COLUMN lifecycle_status VARCHAR(32)"))
 
         # Apply the backfill SQL from the migration
-        conn.execute(text(
-            "UPDATE users SET lifecycle_status = 'ACTIVE' WHERE is_active = true"
-        ))
-        conn.execute(text(
-            "UPDATE users SET lifecycle_status = 'DISABLED' WHERE is_active = false"
-        ))
+        conn.execute(
+            text("UPDATE users SET lifecycle_status = 'ACTIVE' WHERE is_active = true")
+        )
+        conn.execute(
+            text(
+                "UPDATE users SET lifecycle_status = 'DISABLED' WHERE is_active = false"
+            )
+        )
 
         # Verify
-        result = conn.execute(text(
-            "SELECT user_id, lifecycle_status FROM users ORDER BY user_id"
-        ))
+        result = conn.execute(
+            text("SELECT user_id, lifecycle_status FROM users ORDER BY user_id")
+        )
         rows = {row[0]: row[1] for row in result}
 
     assert rows.get("u-active") == "ACTIVE", (
@@ -253,7 +262,13 @@ def test_user_status_migration_does_not_touch_unrelated_tables():
                 continue
 
             attr = node.func.attr
-            if attr in {"add_column", "drop_column", "alter_column", "create_table", "drop_table"}:
+            if attr in {
+                "add_column",
+                "drop_column",
+                "alter_column",
+                "create_table",
+                "drop_table",
+            }:
                 # First positional arg is the table name
                 if node.args and isinstance(node.args[0], ast.Constant):
                     table_args.append(node.args[0].value)
@@ -406,10 +421,10 @@ def test_refresh_token_flow_does_not_bypass_disabled_user():
         is_active=True,
         lifecycle_status=LIFECYCLE_STATUS_DISABLED,
     )
-    result = get_identity_by_user_id(db, user_id="u-disabled-refresh", tenant_id="default")
-    assert result is None, (
-        "DISABLED user must not get identity via refresh-token path"
+    result = get_identity_by_user_id(
+        db, user_id="u-disabled-refresh", tenant_id="default"
     )
+    assert result is None, "DISABLED user must not get identity via refresh-token path"
 
 
 def test_refresh_token_flow_does_not_bypass_locked_user():
@@ -422,10 +437,10 @@ def test_refresh_token_flow_does_not_bypass_locked_user():
         is_active=True,
         lifecycle_status=LIFECYCLE_STATUS_LOCKED,
     )
-    result = get_identity_by_user_id(db, user_id="u-locked-refresh", tenant_id="default")
-    assert result is None, (
-        "LOCKED user must not get identity via refresh-token path"
+    result = get_identity_by_user_id(
+        db, user_id="u-locked-refresh", tenant_id="default"
     )
+    assert result is None, "LOCKED user must not get identity via refresh-token path"
 
 
 # ---------------------------------------------------------------------------
@@ -438,11 +453,13 @@ from app.services.user_lifecycle_service import activate_user, deactivate_user
 def test_activate_user_sets_status_active():
     """activate_user sets is_active=True and lifecycle_status=ACTIVE."""
     db = _make_user_session()
-    db.add(_make_user(
-        user_id="u-deact",
-        is_active=False,
-        lifecycle_status=LIFECYCLE_STATUS_DISABLED,
-    ))
+    db.add(
+        _make_user(
+            user_id="u-deact",
+            is_active=False,
+            lifecycle_status=LIFECYCLE_STATUS_DISABLED,
+        )
+    )
     db.commit()
 
     result = activate_user(db, tenant_id="default", user_id="u-deact")
@@ -454,11 +471,13 @@ def test_activate_user_sets_status_active():
 def test_deactivate_user_sets_status_disabled():
     """deactivate_user sets is_active=False and lifecycle_status=DISABLED."""
     db = _make_user_session()
-    db.add(_make_user(
-        user_id="u-act",
-        is_active=True,
-        lifecycle_status=LIFECYCLE_STATUS_ACTIVE,
-    ))
+    db.add(
+        _make_user(
+            user_id="u-act",
+            is_active=True,
+            lifecycle_status=LIFECYCLE_STATUS_ACTIVE,
+        )
+    )
     db.commit()
 
     result = deactivate_user(db, tenant_id="default", user_id="u-act")

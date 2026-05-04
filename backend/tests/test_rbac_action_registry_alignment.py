@@ -35,48 +35,60 @@ from app.security.rbac import ACTION_CODE_REGISTRY
 # Constants derived from authoritative registry doc
 # ---------------------------------------------------------------------------
 
-_EXPECTED_EXECUTION_CODES = frozenset({
-    "execution.start",
-    "execution.complete",
-    "execution.report_quantity",
-    "execution.pause",
-    "execution.resume",
-    "execution.start_downtime",
-    "execution.end_downtime",
-    "execution.close",
-    "execution.reopen",
-})
+_EXPECTED_EXECUTION_CODES = frozenset(
+    {
+        "execution.start",
+        "execution.complete",
+        "execution.report_quantity",
+        "execution.pause",
+        "execution.resume",
+        "execution.start_downtime",
+        "execution.end_downtime",
+        "execution.close",
+        "execution.reopen",
+    }
+)
 
-_EXPECTED_APPROVAL_CODES = frozenset({
-    "approval.create",
-    "approval.decide",
-})
+_EXPECTED_APPROVAL_CODES = frozenset(
+    {
+        "approval.create",
+        "approval.decide",
+    }
+)
 
-_EXPECTED_ADMIN_IAM_CODES = frozenset({
-    "admin.impersonation.create",
-    "admin.impersonation.revoke",
-    "admin.user.manage",
-})
+_EXPECTED_ADMIN_IAM_CODES = frozenset(
+    {
+        "admin.impersonation.create",
+        "admin.impersonation.revoke",
+        "admin.user.manage",
+    }
+)
 
-_EXPECTED_ADMIN_MMD_CODES = frozenset({
-    "admin.master_data.product.manage",
-    "admin.master_data.routing.manage",
-    "admin.master_data.resource_requirement.manage",
-    # Added by MMD-BE-08A (2026-05-03): product version write governance
-    "admin.master_data.product_version.manage",
-    # Added by MMD-BE-09A (2026-05-03): BOM action code registered as prerequisite for MMD-BE-12
-    "admin.master_data.bom.manage",
-    # Added by MMD-BE-10A (2026-05-04): Reason Code action code registered as prerequisite for MMD-BE-13
-    "admin.master_data.reason_code.manage",
-})
+_EXPECTED_ADMIN_MMD_CODES = frozenset(
+    {
+        "admin.master_data.product.manage",
+        "admin.master_data.routing.manage",
+        "admin.master_data.resource_requirement.manage",
+        # Added by MMD-BE-08A (2026-05-03): product version write governance
+        "admin.master_data.product_version.manage",
+        # Added by MMD-BE-09A (2026-05-03): BOM action code registered as prerequisite for MMD-BE-12
+        "admin.master_data.bom.manage",
+        # Added by MMD-BE-10A (2026-05-04): Reason Code action code registered as prerequisite for MMD-BE-13
+        "admin.master_data.reason_code.manage",
+    }
+)
 
-_EXPECTED_ADMIN_CONFIG_CODES = frozenset({
-    "admin.downtime_reason.manage",
-})
+_EXPECTED_ADMIN_CONFIG_CODES = frozenset(
+    {
+        "admin.downtime_reason.manage",
+    }
+)
 
-_EXPECTED_ADMIN_AUDIT_CODES = frozenset({
-    "admin.security_event.read",
-})
+_EXPECTED_ADMIN_AUDIT_CODES = frozenset(
+    {
+        "admin.security_event.read",
+    }
+)
 
 _ALL_EXPECTED_CODES = (
     _EXPECTED_EXECUTION_CODES
@@ -87,7 +99,9 @@ _ALL_EXPECTED_CODES = (
     | _EXPECTED_ADMIN_AUDIT_CODES
 )
 
-_VALID_FAMILIES: frozenset[str] = frozenset({"VIEW", "EXECUTE", "APPROVE", "CONFIGURE", "ADMIN"})
+_VALID_FAMILIES: frozenset[str] = frozenset(
+    {"VIEW", "EXECUTE", "APPROVE", "CONFIGURE", "ADMIN"}
+)
 
 BACKEND_ROOT = Path(__file__).parent.parent
 
@@ -142,8 +156,12 @@ def test_action_code_registry_contains_exactly_canonical_set() -> None:
     actual = set(ACTION_CODE_REGISTRY)
     unexpected = actual - _ALL_EXPECTED_CODES
     missing = _ALL_EXPECTED_CODES - actual
-    assert not unexpected, f"Unexpected codes in ACTION_CODE_REGISTRY (not in registry doc): {unexpected}"
-    assert not missing, f"Missing codes in ACTION_CODE_REGISTRY (in registry doc but absent): {missing}"
+    assert not unexpected, (
+        f"Unexpected codes in ACTION_CODE_REGISTRY (not in registry doc): {unexpected}"
+    )
+    assert not missing, (
+        f"Missing codes in ACTION_CODE_REGISTRY (in registry doc but absent): {missing}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -158,7 +176,9 @@ def test_all_registry_values_are_valid_permission_families() -> None:
         for code, family in ACTION_CODE_REGISTRY.items()
         if family not in _VALID_FAMILIES
     }
-    assert not invalid, f"Invalid PermissionFamily values in ACTION_CODE_REGISTRY: {invalid}"
+    assert not invalid, (
+        f"Invalid PermissionFamily values in ACTION_CODE_REGISTRY: {invalid}"
+    )
 
 
 def test_execution_codes_map_to_execute_family() -> None:
@@ -183,7 +203,12 @@ def test_approval_codes_map_to_approve_family() -> None:
 
 def test_admin_codes_map_to_admin_family() -> None:
     """All admin.* action codes must map to ADMIN family."""
-    admin_codes = _EXPECTED_ADMIN_IAM_CODES | _EXPECTED_ADMIN_MMD_CODES | _EXPECTED_ADMIN_CONFIG_CODES | _EXPECTED_ADMIN_AUDIT_CODES
+    admin_codes = (
+        _EXPECTED_ADMIN_IAM_CODES
+        | _EXPECTED_ADMIN_MMD_CODES
+        | _EXPECTED_ADMIN_CONFIG_CODES
+        | _EXPECTED_ADMIN_AUDIT_CODES
+    )
     wrong = {
         code: ACTION_CODE_REGISTRY[code]
         for code in admin_codes
@@ -218,9 +243,13 @@ def test_operations_route_uses_only_registered_action_codes() -> None:
     """
     import re
 
-    src = (BACKEND_ROOT / "app" / "api" / "v1" / "operations.py").read_text(encoding="utf-8")
+    src = (BACKEND_ROOT / "app" / "api" / "v1" / "operations.py").read_text(
+        encoding="utf-8"
+    )
     used_codes = re.findall(r'require_action\("([^"]+)"\)', src)
-    assert used_codes, "No require_action calls found in operations.py — guard was removed?"
+    assert used_codes, (
+        "No require_action calls found in operations.py — guard was removed?"
+    )
     unregistered = [c for c in used_codes if c not in ACTION_CODE_REGISTRY]
     assert not unregistered, (
         f"operations.py uses unregistered action codes: {unregistered}"
@@ -231,7 +260,9 @@ def test_operations_route_uses_only_execution_codes() -> None:
     """All require_action calls in operations.py must use execution.* codes only."""
     import re
 
-    src = (BACKEND_ROOT / "app" / "api" / "v1" / "operations.py").read_text(encoding="utf-8")
+    src = (BACKEND_ROOT / "app" / "api" / "v1" / "operations.py").read_text(
+        encoding="utf-8"
+    )
     used_codes = re.findall(r'require_action\("([^"]+)"\)', src)
     non_execution = [c for c in used_codes if not c.startswith("execution.")]
     assert not non_execution, (
@@ -243,7 +274,9 @@ def test_approval_routes_use_only_approval_codes() -> None:
     """All require_action calls in approvals.py must use approval.* codes."""
     import re
 
-    src = (BACKEND_ROOT / "app" / "api" / "v1" / "approvals.py").read_text(encoding="utf-8")
+    src = (BACKEND_ROOT / "app" / "api" / "v1" / "approvals.py").read_text(
+        encoding="utf-8"
+    )
     used_codes = re.findall(r'require_action\("([^"]+)"\)', src)
     non_approval = [c for c in used_codes if not c.startswith("approval.")]
     assert not non_approval, (
@@ -264,7 +297,9 @@ def test_known_gap_downtime_reasons_resolved_uses_dedicated_action_code() -> Non
     """
     import re
 
-    src = (BACKEND_ROOT / "app" / "api" / "v1" / "downtime_reasons.py").read_text(encoding="utf-8")
+    src = (BACKEND_ROOT / "app" / "api" / "v1" / "downtime_reasons.py").read_text(
+        encoding="utf-8"
+    )
     used_codes = re.findall(r'require_action\("([^"]+)"\)', src)
     assert "admin.downtime_reason.manage" in used_codes, (
         "downtime_reasons.py does not use admin.downtime_reason.manage. "
@@ -283,7 +318,9 @@ def test_known_gap_security_events_resolved_uses_dedicated_action_code() -> None
     """
     import re
 
-    src = (BACKEND_ROOT / "app" / "api" / "v1" / "security_events.py").read_text(encoding="utf-8")
+    src = (BACKEND_ROOT / "app" / "api" / "v1" / "security_events.py").read_text(
+        encoding="utf-8"
+    )
     used_codes = re.findall(r'require_action\("([^"]+)"\)', src)
     assert "admin.security_event.read" in used_codes, (
         "security_events.py does not use admin.security_event.read. "
@@ -304,7 +341,9 @@ def test_known_gap_impersonation_routes_resolved_use_dedicated_action_codes() ->
     """
     import re
 
-    src = (BACKEND_ROOT / "app" / "api" / "v1" / "impersonations.py").read_text(encoding="utf-8")
+    src = (BACKEND_ROOT / "app" / "api" / "v1" / "impersonations.py").read_text(
+        encoding="utf-8"
+    )
     used_codes = re.findall(r'require_action\("([^"]+)"\)', src)
     assert "admin.impersonation.create" in used_codes, (
         "impersonations.py does not use admin.impersonation.create. "
@@ -323,7 +362,9 @@ def test_impersonation_current_route_uses_authenticated_identity_only() -> None:
     The create and revoke routes use dedicated action codes; /current is read-only.
     """
 
-    src = (BACKEND_ROOT / "app" / "api" / "v1" / "impersonations.py").read_text(encoding="utf-8")
+    src = (BACKEND_ROOT / "app" / "api" / "v1" / "impersonations.py").read_text(
+        encoding="utf-8"
+    )
     assert "require_authenticated_identity" in src, (
         "impersonations.py no longer uses require_authenticated_identity. "
         "GET /current route guard may have been incorrectly removed."

@@ -18,7 +18,15 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 import app.security.rbac as rbac_module
-from app.models.rbac import Permission, Role, RolePermission, RoleScope, Scope, UserRole, UserRoleAssignment
+from app.models.rbac import (
+    Permission,
+    Role,
+    RolePermission,
+    RoleScope,
+    Scope,
+    UserRole,
+    UserRoleAssignment,
+)
 from app.security.rbac import ACTION_CODE_REGISTRY, SYSTEM_ROLE_FAMILIES, seed_rbac_core
 
 BACKEND_ROOT = Path(__file__).parent.parent
@@ -48,7 +56,11 @@ def test_api_routes_do_not_require_configure_action_codes() -> None:
         src = file_path.read_text(encoding="utf-8")
         used_codes.extend(re.findall(r'require_action\("([^"]+)"\)', src))
 
-    configure_used = [c for c in used_codes if c in ACTION_CODE_REGISTRY and ACTION_CODE_REGISTRY[c] == "CONFIGURE"]
+    configure_used = [
+        c
+        for c in used_codes
+        if c in ACTION_CODE_REGISTRY and ACTION_CODE_REGISTRY[c] == "CONFIGURE"
+    ]
     assert not configure_used, (
         f"API routes currently use CONFIGURE action codes: {configure_used}. "
         "P0-A-09 boundary assumes no CONFIGURE action guard is active yet."
@@ -90,7 +102,9 @@ def test_seed_links_iep_to_configure_family_permission(seeded_db: Session) -> No
     iep_role = seeded_db.scalar(select(Role).where(Role.code == "IEP"))
     assert iep_role is not None
 
-    configure_perm = seeded_db.scalar(select(Permission).where(Permission.code == "CONFIGURE"))
+    configure_perm = seeded_db.scalar(
+        select(Permission).where(Permission.code == "CONFIGURE")
+    )
     assert configure_perm is not None
 
     link = seeded_db.scalar(

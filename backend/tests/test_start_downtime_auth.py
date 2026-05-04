@@ -137,7 +137,9 @@ def seeded_operation():
         yield op
     finally:
         db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id == op.id))
-        db.execute(delete(StationSession).where(StationSession.station_id == scope.scope_value))
+        db.execute(
+            delete(StationSession).where(StationSession.station_id == scope.scope_value)
+        )
         db.execute(delete(Operation).where(Operation.id == op.id))
         db.execute(delete(WorkOrder).where(WorkOrder.id == wo.id))
         db.execute(delete(ProductionOrder).where(ProductionOrder.id == po.id))

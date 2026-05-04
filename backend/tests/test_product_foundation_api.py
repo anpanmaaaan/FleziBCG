@@ -19,11 +19,15 @@ def _build_app(identity: RequestIdentity, has_manage: bool = False) -> FastAPI:
     app.include_router(product_router_module.router, prefix="/api/v1")
     app.dependency_overrides[require_authenticated_identity] = lambda: identity
     # Patch has_action to avoid RBAC table queries in isolated SQLite tests.
-    product_router_module.has_action = lambda db, ident, action_code, *a, **kw: has_manage
+    product_router_module.has_action = lambda db, ident, action_code, *a, **kw: (
+        has_manage
+    )
     return app
 
 
-def _override_action_dependency(app: FastAPI, path: str, method: str, identity: RequestIdentity) -> Any:
+def _override_action_dependency(
+    app: FastAPI, path: str, method: str, identity: RequestIdentity
+) -> Any:
     route = cast(
         Any,
         next(
@@ -70,8 +74,12 @@ def test_product_routes_happy_path_and_state_transitions():
 
     _override_action_dependency(app, "/api/v1/products", "POST", identity)
     _override_action_dependency(app, "/api/v1/products/{product_id}", "PATCH", identity)
-    _override_action_dependency(app, "/api/v1/products/{product_id}/release", "POST", identity)
-    _override_action_dependency(app, "/api/v1/products/{product_id}/retire", "POST", identity)
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/release", "POST", identity
+    )
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/retire", "POST", identity
+    )
 
     client = TestClient(app)
 
@@ -153,9 +161,15 @@ def test_cross_tenant_get_returns_404_and_duplicate_code_returns_409():
     app.dependency_overrides[product_router_module.get_db] = lambda: db
 
     _override_action_dependency(app, "/api/v1/products", "POST", tenant_a_identity)
-    _override_action_dependency(app, "/api/v1/products/{product_id}", "PATCH", tenant_a_identity)
-    _override_action_dependency(app, "/api/v1/products/{product_id}/release", "POST", tenant_a_identity)
-    _override_action_dependency(app, "/api/v1/products/{product_id}/retire", "POST", tenant_a_identity)
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}", "PATCH", tenant_a_identity
+    )
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/release", "POST", tenant_a_identity
+    )
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/retire", "POST", tenant_a_identity
+    )
 
     created_other_tenant = create_product(
         db,
@@ -208,7 +222,9 @@ def test_write_routes_reject_without_required_action_override():
     db = _make_session()
     app.dependency_overrides[product_router_module.get_db] = lambda: db
 
-    action_dependency = _override_action_dependency(app, "/api/v1/products", "POST", identity)
+    action_dependency = _override_action_dependency(
+        app, "/api/v1/products", "POST", identity
+    )
     app.dependency_overrides[action_dependency] = lambda: (_ for _ in ()).throw(
         HTTPException(status_code=403, detail="Forbidden")
     )
@@ -244,7 +260,11 @@ def test_product_detail_includes_product_version_capabilities_field():
 
     created = client.post(
         "/api/v1/products",
-        json={"product_code": "CAP-001", "product_name": "Cap Product", "product_type": "COMPONENT"},
+        json={
+            "product_code": "CAP-001",
+            "product_name": "Cap Product",
+            "product_type": "COMPONENT",
+        },
     )
     assert created.status_code == 200
     product_id = created.json()["product_id"]
@@ -275,7 +295,11 @@ def test_product_detail_can_create_false_for_non_manage_user():
 
     created = client.post(
         "/api/v1/products",
-        json={"product_code": "CAP-002", "product_name": "Cap Product 2", "product_type": "COMPONENT"},
+        json={
+            "product_code": "CAP-002",
+            "product_name": "Cap Product 2",
+            "product_type": "COMPONENT",
+        },
     )
     assert created.status_code == 200
     product_id = created.json()["product_id"]
@@ -304,7 +328,11 @@ def test_product_detail_can_create_true_for_manage_user():
 
     created = client.post(
         "/api/v1/products",
-        json={"product_code": "CAP-003", "product_name": "Cap Product 3", "product_type": "COMPONENT"},
+        json={
+            "product_code": "CAP-003",
+            "product_name": "Cap Product 3",
+            "product_type": "COMPONENT",
+        },
     )
     assert created.status_code == 200
     product_id = created.json()["product_id"]
@@ -333,7 +361,11 @@ def test_product_list_includes_product_version_capabilities():
 
     client.post(
         "/api/v1/products",
-        json={"product_code": "CAP-004", "product_name": "Cap Product 4", "product_type": "COMPONENT"},
+        json={
+            "product_code": "CAP-004",
+            "product_name": "Cap Product 4",
+            "product_type": "COMPONENT",
+        },
     )
 
     listed = client.get("/api/v1/products")
@@ -365,13 +397,21 @@ def test_product_write_response_can_create_false_when_no_pv_manage():
 
     _override_action_dependency(app, "/api/v1/products", "POST", identity)
     _override_action_dependency(app, "/api/v1/products/{product_id}", "PATCH", identity)
-    _override_action_dependency(app, "/api/v1/products/{product_id}/release", "POST", identity)
-    _override_action_dependency(app, "/api/v1/products/{product_id}/retire", "POST", identity)
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/release", "POST", identity
+    )
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/retire", "POST", identity
+    )
     client = TestClient(app)
 
     create_resp = client.post(
         "/api/v1/products",
-        json={"product_code": "WC-001", "product_name": "Write Cap Product", "product_type": "COMPONENT"},
+        json={
+            "product_code": "WC-001",
+            "product_name": "Write Cap Product",
+            "product_type": "COMPONENT",
+        },
     )
     assert create_resp.status_code == 200
     assert create_resp.json()["product_version_capabilities"]["can_create"] is False
@@ -413,12 +453,18 @@ def test_product_write_response_can_create_true_when_has_pv_manage():
 
     _override_action_dependency(app, "/api/v1/products", "POST", identity)
     _override_action_dependency(app, "/api/v1/products/{product_id}", "PATCH", identity)
-    _override_action_dependency(app, "/api/v1/products/{product_id}/release", "POST", identity)
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/release", "POST", identity
+    )
     client = TestClient(app)
 
     create_resp = client.post(
         "/api/v1/products",
-        json={"product_code": "WC-002", "product_name": "Super Product", "product_type": "FINISHED_GOOD"},
+        json={
+            "product_code": "WC-002",
+            "product_name": "Super Product",
+            "product_type": "FINISHED_GOOD",
+        },
     )
     assert create_resp.status_code == 200
     assert create_resp.json()["product_version_capabilities"]["can_create"] is True

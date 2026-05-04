@@ -34,7 +34,13 @@ from sqlalchemy import delete, select
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent, ExecutionEventType
-from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.master import (
+    ClosureStatusEnum,
+    Operation,
+    ProductionOrder,
+    StatusEnum,
+    WorkOrder,
+)
 from app.models.rbac import Role, Scope, UserRoleAssignment
 from app.models.station_session import StationSession
 from app.schemas.operation import OperationReopenRequest
@@ -105,14 +111,22 @@ def _purge(db) -> None:
     )
     if po_ids:
         wo_ids = list(
-            db.scalars(select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids)))
+            db.scalars(
+                select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))
+            )
         )
         if wo_ids:
             op_ids = list(
-                db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids)))
+                db.scalars(
+                    select(Operation.id).where(Operation.work_order_id.in_(wo_ids))
+                )
             )
             if op_ids:
-                db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
+                db.execute(
+                    delete(ExecutionEvent).where(
+                        ExecutionEvent.operation_id.in_(op_ids)
+                    )
+                )
                 db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
             db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
         db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
@@ -258,13 +272,15 @@ def _latest_event(db, operation_id: int) -> ExecutionEvent | None:
 
 def _event_count(db, operation_id: int) -> int:
     return db.scalar(
-        select(ExecutionEvent.id).where(
-            ExecutionEvent.operation_id == operation_id
-        ).count()  # type: ignore[attr-defined]
+        select(ExecutionEvent.id)
+        .where(ExecutionEvent.operation_id == operation_id)
+        .count()  # type: ignore[attr-defined]
     ) or len(
         list(
             db.scalars(
-                select(ExecutionEvent.id).where(ExecutionEvent.operation_id == operation_id)
+                select(ExecutionEvent.id).where(
+                    ExecutionEvent.operation_id == operation_id
+                )
             )
         )
     )
@@ -274,7 +290,9 @@ def _count_events(db, operation_id: int) -> int:
     return len(
         list(
             db.scalars(
-                select(ExecutionEvent.id).where(ExecutionEvent.operation_id == operation_id)
+                select(ExecutionEvent.id).where(
+                    ExecutionEvent.operation_id == operation_id
+                )
             )
         )
     )
@@ -283,6 +301,7 @@ def _count_events(db, operation_id: int) -> int:
 # ---------------------------------------------------------------------------
 # T1 — Happy path from CLOSED completed operation
 # ---------------------------------------------------------------------------
+
 
 def test_reopen_operation_happy_path_from_closed_completed(db_session):
     db = db_session
@@ -311,6 +330,7 @@ def test_reopen_operation_happy_path_from_closed_completed(db_session):
 # T2 — Rejects non-CLOSED (OPEN) operation
 # ---------------------------------------------------------------------------
 
+
 def test_reopen_operation_rejects_non_closed_open_operation(db_session):
     db = db_session
     op = _seed_operation(
@@ -333,6 +353,7 @@ def test_reopen_operation_rejects_non_closed_open_operation(db_session):
 # ---------------------------------------------------------------------------
 # T3 — Rejects blank reason
 # ---------------------------------------------------------------------------
+
 
 def test_reopen_operation_rejects_blank_reason(db_session):
     db = db_session
@@ -357,6 +378,7 @@ def test_reopen_operation_rejects_blank_reason(db_session):
 # T4 — Schema rejects None reason (Pydantic schema-level guard)
 # ---------------------------------------------------------------------------
 
+
 def test_reopen_request_schema_rejects_none_reason():
     # OperationReopenRequest validates reason as a required string.
     # None is rejected at schema boundary before service is called.
@@ -369,6 +391,7 @@ def test_reopen_request_schema_rejects_none_reason():
 # ---------------------------------------------------------------------------
 # T5 — Rejects tenant mismatch
 # ---------------------------------------------------------------------------
+
 
 def test_reopen_operation_rejects_tenant_mismatch(db_session):
     db = db_session
@@ -392,6 +415,7 @@ def test_reopen_operation_rejects_tenant_mismatch(db_session):
 # ---------------------------------------------------------------------------
 # T6 — Emits OPERATION_REOPENED event with expected payload fields
 # ---------------------------------------------------------------------------
+
 
 def test_reopen_operation_emits_operation_reopened_event_with_payload(db_session):
     db = db_session
@@ -429,6 +453,7 @@ def test_reopen_operation_emits_operation_reopened_event_with_payload(db_session
 # T7 — closure_status becomes OPEN in detail and snapshot
 # ---------------------------------------------------------------------------
 
+
 def test_reopen_operation_closure_status_becomes_open(db_session):
     db = db_session
     op = _seed_operation(
@@ -457,6 +482,7 @@ def test_reopen_operation_closure_status_becomes_open(db_session):
 # ---------------------------------------------------------------------------
 # T8 — Projection/detail after reopen is consistent (PAUSED + OPEN)
 # ---------------------------------------------------------------------------
+
 
 def test_reopen_operation_projection_detail_consistent(db_session):
     db = db_session
@@ -490,6 +516,7 @@ def test_reopen_operation_projection_detail_consistent(db_session):
 # T9 — allowed_actions after reopen = ["resume_execution", "start_downtime"]
 # ---------------------------------------------------------------------------
 
+
 def test_reopen_operation_allowed_actions_backend_derived(db_session):
     db = db_session
     op = _seed_operation(
@@ -517,6 +544,7 @@ def test_reopen_operation_allowed_actions_backend_derived(db_session):
 # T10 — Missing StationSession does not change reopen outcome
 # ---------------------------------------------------------------------------
 
+
 def test_reopen_operation_without_station_session_is_allowed(db_session):
     db = db_session
     op = _seed_operation(
@@ -542,6 +570,7 @@ def test_reopen_operation_without_station_session_is_allowed(db_session):
 # ---------------------------------------------------------------------------
 # T11 — Matching OPEN StationSession does not change reopen outcome
 # ---------------------------------------------------------------------------
+
 
 def test_reopen_operation_with_open_station_session_parity(db_session):
     db = db_session
@@ -577,6 +606,7 @@ def test_reopen_operation_with_open_station_session_parity(db_session):
 # T12 — PAUSED non-closed operation rejects reopen
 # ---------------------------------------------------------------------------
 
+
 def test_reopen_operation_rejects_paused_non_closed_operation(db_session):
     db = db_session
     op = _seed_operation(
@@ -599,6 +629,7 @@ def test_reopen_operation_rejects_paused_non_closed_operation(db_session):
 # ---------------------------------------------------------------------------
 # T13 — reopen_count increments on first reopen
 # ---------------------------------------------------------------------------
+
 
 def test_reopen_operation_increments_reopen_count(db_session):
     db = db_session

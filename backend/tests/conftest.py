@@ -39,9 +39,7 @@ def _mask_db_url(url: str) -> str:
     try:
         parsed = urlparse(url)
         if parsed.password:
-            safe_netloc = parsed.netloc.replace(
-                f":{parsed.password}@", ":***@", 1
-            )
+            safe_netloc = parsed.netloc.replace(f":{parsed.password}@", ":***@", 1)
             return url.replace(parsed.netloc, safe_netloc, 1)
         return url
     except Exception:  # pragma: no cover
@@ -102,7 +100,7 @@ def _to_psycopg_url(url: str) -> str:
     """
     for prefix in ("postgresql+psycopg://", "postgres+psycopg://"):
         if url.startswith(prefix):
-            return "postgresql://" + url[len(prefix):]
+            return "postgresql://" + url[len(prefix) :]
     return url
 
 
@@ -158,9 +156,7 @@ def pg_show_active_connections(url: str, *, dbname: str | None = None) -> list[d
         import psycopg
         from psycopg.rows import dict_row
 
-        with psycopg.connect(
-            url, connect_timeout=2, row_factory=dict_row
-        ) as conn:
+        with psycopg.connect(url, connect_timeout=2, row_factory=dict_row) as conn:
             with conn.cursor() as cur:
                 if dbname:
                     cur.execute(

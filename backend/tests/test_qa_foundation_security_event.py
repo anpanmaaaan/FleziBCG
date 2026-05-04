@@ -2,7 +2,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.models.security_event import SecurityEventLog
-from app.services.security_event_service import get_security_events, record_security_event
+from app.services.security_event_service import (
+    get_security_events,
+    record_security_event,
+)
 
 
 def _make_session():

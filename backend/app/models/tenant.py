@@ -13,6 +13,7 @@ INVARIANTS (P0-A-02A):
 - No API endpoints are added in this slice.
 - No Admin UI is added in this slice.
 """
+
 from __future__ import annotations
 
 from datetime import datetime

@@ -98,6 +98,7 @@ def _build_app(factory, extra_overrides=None):
 def _mock_get_db():
     """Yield a mock DB — for tests that patch all DB-calling functions."""
     from unittest.mock import MagicMock
+
     yield MagicMock()
 
 
@@ -577,7 +578,9 @@ def test_revoked_session_refresh_token_cannot_refresh():
     )
     db.commit()
 
-    assert validate_refresh_token(db, raw_token=raw_token, tenant_id="default") is not None
+    assert (
+        validate_refresh_token(db, raw_token=raw_token, tenant_id="default") is not None
+    )
 
     count = revoke_tokens_for_session(
         db, session_id="sess-rev", tenant_id="default", reason="logout"

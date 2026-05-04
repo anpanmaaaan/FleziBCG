@@ -46,9 +46,7 @@ def test_revoke_session_records_logout_security_event():
     )
 
     events = list(
-        db.scalars(
-            select(SecurityEventLog).order_by(SecurityEventLog.id.asc())
-        )
+        db.scalars(select(SecurityEventLog).order_by(SecurityEventLog.id.asc()))
     )
     assert [event.event_type for event in events] == ["AUTH.LOGIN", "AUTH.LOGOUT"]
     assert events[-1].resource_id == session.session_id
@@ -75,7 +73,10 @@ def test_revoke_all_sessions_records_security_event_per_revoked_session():
     )
     assert revoked == 2
     assert len(events) == 2
-    assert {event.resource_id for event in events} == {first.session_id, second.session_id}
+    assert {event.resource_id for event in events} == {
+        first.session_id,
+        second.session_id,
+    }
 
 
 def test_admin_revoke_records_admin_session_revoke_event():
@@ -92,8 +93,9 @@ def test_admin_revoke_records_admin_session_revoke_event():
 
     events = list(
         db.scalars(
-            select(SecurityEventLog)
-            .where(SecurityEventLog.event_type == "AUTH.SESSION_REVOKE")
+            select(SecurityEventLog).where(
+                SecurityEventLog.event_type == "AUTH.SESSION_REVOKE"
+            )
         )
     )
     assert len(events) == 1

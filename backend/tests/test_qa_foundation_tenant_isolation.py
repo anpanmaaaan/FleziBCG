@@ -21,7 +21,9 @@ def _build_app(identity: RequestIdentity) -> FastAPI:
     return app
 
 
-def _override_action_dependency(app: FastAPI, path: str, method: str, identity: RequestIdentity) -> Any:
+def _override_action_dependency(
+    app: FastAPI, path: str, method: str, identity: RequestIdentity
+) -> Any:
     route = cast(
         Any,
         next(

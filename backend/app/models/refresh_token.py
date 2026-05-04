@@ -50,9 +50,7 @@ class RefreshToken(Base):
     token_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     # ROTATION: All tokens in a rotation chain share the same token_family_id.
     token_family_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    issued_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )

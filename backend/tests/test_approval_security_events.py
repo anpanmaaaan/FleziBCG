@@ -106,7 +106,9 @@ def _decide_request(
 
 def test_create_request_emits_approval_requested_security_event() -> None:
     db = _make_session()
-    request = _create_request(db, action_type="QC_HOLD", requester_id="requester-1", tenant_id="tenant-a")
+    request = _create_request(
+        db, action_type="QC_HOLD", requester_id="requester-1", tenant_id="tenant-a"
+    )
 
     events = list(
         db.scalars(
@@ -202,9 +204,15 @@ def test_approval_audit_log_is_preserved_alongside_security_event() -> None:
     security_events = list(db.scalars(select(SecurityEventLog)))
 
     # Approval-local audit rows still present
-    assert [row.event_type for row in audit_rows] == ["REQUEST_CREATED", "DECISION_MADE"]
+    assert [row.event_type for row in audit_rows] == [
+        "REQUEST_CREATED",
+        "DECISION_MADE",
+    ]
     # Platform security events added
-    assert {evt.event_type for evt in security_events} == {"APPROVAL.REQUESTED", "APPROVAL.APPROVED"}
+    assert {evt.event_type for evt in security_events} == {
+        "APPROVAL.REQUESTED",
+        "APPROVAL.APPROVED",
+    }
 
 
 def test_impersonation_context_is_captured_in_approval_decision_event() -> None:

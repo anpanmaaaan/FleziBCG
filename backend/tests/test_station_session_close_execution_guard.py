@@ -16,6 +16,7 @@ Tests:
   T06 test_close_succeeds_after_open_downtime_resolves
   T07 test_start_operation_regression_session_guard_still_rejects_without_session
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -183,7 +184,9 @@ def _purge(db) -> None:
             )
             if op_ids:
                 db.execute(
-                    delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids))
+                    delete(ExecutionEvent).where(
+                        ExecutionEvent.operation_id.in_(op_ids)
+                    )
                 )
                 db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
             db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
@@ -196,9 +199,7 @@ def _purge(db) -> None:
         )
     )
     db.execute(
-        delete(UserRoleAssignment).where(
-            UserRoleAssignment.user_id.like(f"{_PREFIX}%")
-        )
+        delete(UserRoleAssignment).where(UserRoleAssignment.user_id.like(f"{_PREFIX}%"))
     )
     db.execute(
         delete(Scope).where(
@@ -238,7 +239,9 @@ def test_close_rejects_when_operation_is_in_progress(db_session):
         tenant_id=_TENANT_ID,
     )
 
-    with pytest.raises(StationSessionConflictError, match="STATION_SESSION_ACTIVE_EXECUTION"):
+    with pytest.raises(
+        StationSessionConflictError, match="STATION_SESSION_ACTIVE_EXECUTION"
+    ):
         close_station_session(db, _identity(), session_id=session.session_id)
 
 
@@ -271,7 +274,9 @@ def test_close_rejects_when_operation_is_paused(db_session):
         tenant_id=_TENANT_ID,
     )
 
-    with pytest.raises(StationSessionConflictError, match="STATION_SESSION_ACTIVE_EXECUTION"):
+    with pytest.raises(
+        StationSessionConflictError, match="STATION_SESSION_ACTIVE_EXECUTION"
+    ):
         close_station_session(db, _identity(), session_id=session.session_id)
 
 
@@ -370,7 +375,9 @@ def test_close_succeeds_after_open_downtime_resolves(db_session):
 
 
 # ── T07 ─────────────────────────────────────────────────────────────────────
-def test_start_operation_regression_session_guard_still_rejects_without_session(db_session):
+def test_start_operation_regression_session_guard_still_rejects_without_session(
+    db_session,
+):
     """T07: Regression — INV-004 session guard on start_operation is unchanged.
     start_operation must still reject if no open station session exists.
     """

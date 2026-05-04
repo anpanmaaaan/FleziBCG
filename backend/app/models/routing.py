@@ -17,15 +17,22 @@ class Routing(Base):
 
     routing_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    product_id: Mapped[str] = mapped_column(String(64), ForeignKey("products.product_id"), nullable=False, index=True)
+    product_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("products.product_id"), nullable=False, index=True
+    )
     routing_code: Mapped[str] = mapped_column(String(64), nullable=False)
     routing_name: Mapped[str] = mapped_column(String(256), nullable=False)
-    lifecycle_status: Mapped[str] = mapped_column(String(16), nullable=False, default="DRAFT")
+    lifecycle_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="DRAFT"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
     operations: Mapped[list[RoutingOperation]] = relationship(
@@ -44,12 +51,16 @@ class RoutingOperation(Base):
 
     operation_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    routing_id: Mapped[str] = mapped_column(String(64), ForeignKey("routings.routing_id"), nullable=False, index=True)
+    routing_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("routings.routing_id"), nullable=False, index=True
+    )
     operation_code: Mapped[str] = mapped_column(String(64), nullable=False)
     operation_name: Mapped[str] = mapped_column(String(256), nullable=False)
     sequence_no: Mapped[int] = mapped_column(Integer, nullable=False)
     standard_cycle_time: Mapped[float | None] = mapped_column(Float, nullable=True)
-    required_resource_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    required_resource_type: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
     # WHY: v1.2 contract boundary patch — RoutingOperation-owned extended fields.
     # All nullable per routing-foundation-contract.md Section 3 (extended structure).
     setup_time: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -59,7 +70,10 @@ class RoutingOperation(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
     routing: Mapped[Routing] = relationship("Routing", back_populates="operations")

@@ -14,7 +14,11 @@ from app.schemas.routing import (
     RoutingOperationUpdateRequest,
     RoutingUpdateRequest,
 )
-from app.security.dependencies import RequestIdentity, require_action, require_authenticated_identity
+from app.security.dependencies import (
+    RequestIdentity,
+    require_action,
+    require_authenticated_identity,
+)
 from app.services.routing_service import (
     add_routing_operation as add_routing_operation_service,
     create_routing as create_routing_service,
@@ -59,7 +63,9 @@ def get_routing_by_id(
     db: Session = Depends(get_db),
     identity: RequestIdentity = Depends(require_authenticated_identity),
 ) -> RoutingItem:
-    row = get_routing_by_id_service(db, tenant_id=identity.tenant_id, routing_id=routing_id)
+    row = get_routing_by_id_service(
+        db, tenant_id=identity.tenant_id, routing_id=routing_id
+    )
     if row is None:
         raise HTTPException(status_code=404, detail="Routing not found")
     return row
@@ -69,7 +75,9 @@ def get_routing_by_id(
 def create_routing(
     payload: RoutingCreateRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.master_data.routing.manage")),
+    identity: RequestIdentity = Depends(
+        require_action("admin.master_data.routing.manage")
+    ),
 ) -> RoutingItem:
     try:
         return create_routing_service(
@@ -89,7 +97,9 @@ def update_routing(
     routing_id: str,
     payload: RoutingUpdateRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.master_data.routing.manage")),
+    identity: RequestIdentity = Depends(
+        require_action("admin.master_data.routing.manage")
+    ),
 ) -> RoutingItem:
     try:
         return update_routing_service(
@@ -112,7 +122,9 @@ def add_routing_operation(
     routing_id: str,
     payload: RoutingOperationCreateRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.master_data.routing.manage")),
+    identity: RequestIdentity = Depends(
+        require_action("admin.master_data.routing.manage")
+    ),
 ) -> RoutingItem:
     try:
         return add_routing_operation_service(
@@ -136,7 +148,9 @@ def update_routing_operation(
     operation_id: str,
     payload: RoutingOperationUpdateRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.master_data.routing.manage")),
+    identity: RequestIdentity = Depends(
+        require_action("admin.master_data.routing.manage")
+    ),
 ) -> RoutingItem:
     try:
         return update_routing_operation_service(
@@ -160,7 +174,9 @@ def remove_routing_operation(
     routing_id: str,
     operation_id: str,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.master_data.routing.manage")),
+    identity: RequestIdentity = Depends(
+        require_action("admin.master_data.routing.manage")
+    ),
 ) -> RoutingItem:
     try:
         return remove_routing_operation_service(
@@ -180,7 +196,9 @@ def remove_routing_operation(
 def release_routing(
     routing_id: str,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.master_data.routing.manage")),
+    identity: RequestIdentity = Depends(
+        require_action("admin.master_data.routing.manage")
+    ),
 ) -> RoutingItem:
     try:
         return release_routing_service(
@@ -199,7 +217,9 @@ def release_routing(
 def retire_routing(
     routing_id: str,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.master_data.routing.manage")),
+    identity: RequestIdentity = Depends(
+        require_action("admin.master_data.routing.manage")
+    ),
 ) -> RoutingItem:
     try:
         return retire_routing_service(
@@ -264,7 +284,9 @@ def create_resource_requirement(
     operation_id: str,
     payload: ResourceRequirementCreateRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.master_data.resource_requirement.manage")),
+    identity: RequestIdentity = Depends(
+        require_action("admin.master_data.resource_requirement.manage")
+    ),
 ) -> ResourceRequirementItem:
     try:
         return create_resource_requirement_service(
@@ -293,7 +315,9 @@ def update_resource_requirement(
     requirement_id: str,
     payload: ResourceRequirementUpdateRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.master_data.resource_requirement.manage")),
+    identity: RequestIdentity = Depends(
+        require_action("admin.master_data.resource_requirement.manage")
+    ),
 ) -> ResourceRequirementItem:
     try:
         return update_resource_requirement_service(
@@ -322,7 +346,9 @@ def delete_resource_requirement(
     operation_id: str,
     requirement_id: str,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.master_data.resource_requirement.manage")),
+    identity: RequestIdentity = Depends(
+        require_action("admin.master_data.resource_requirement.manage")
+    ),
 ) -> ResourceRequirementItem:
     try:
         return delete_resource_requirement_service(

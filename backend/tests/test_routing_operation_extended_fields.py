@@ -334,7 +334,9 @@ def test_existing_create_payload_still_works_without_extended_fields():
     )
 
     op_row = db.scalar(
-        select(RoutingOperation).where(RoutingOperation.routing_id == routing.routing_id)
+        select(RoutingOperation).where(
+            RoutingOperation.routing_id == routing.routing_id
+        )
     )
     assert op_row.operation_code == "OP-OLD"
     assert op_row.standard_cycle_time == 90.0
