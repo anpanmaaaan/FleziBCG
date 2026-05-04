@@ -43,11 +43,15 @@ def _make_session():
     Bom.__table__.create(bind=engine)
     BomItem.__table__.create(bind=engine)
     SecurityEventLog.__table__.create(bind=engine)
-    session_local = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
+    session_local = sessionmaker(
+        bind=engine, autoflush=False, autocommit=False, expire_on_commit=False
+    )
     return session_local
 
 
-def _build_app(identity: RequestIdentity, session_local, has_manage: bool = False) -> FastAPI:
+def _build_app(
+    identity: RequestIdentity, session_local, has_manage: bool = False
+) -> FastAPI:
     from app.api.v1.products import get_db
 
     app = FastAPI()
@@ -55,7 +59,9 @@ def _build_app(identity: RequestIdentity, session_local, has_manage: bool = Fals
     app.dependency_overrides[require_authenticated_identity] = lambda: identity
     app.dependency_overrides[get_db] = lambda: session_local()
     # Patch has_action for permission checks
-    product_router_module.has_action = lambda db, ident, action_code, *a, **kw: has_manage
+    product_router_module.has_action = lambda db, ident, action_code, *a, **kw: (
+        has_manage
+    )
     return app
 
 
@@ -144,7 +150,13 @@ def test_draft_bom_allowed_actions_all_true_with_manage():
     session_local = _make_session()
     db = session_local()
     product_id = _mk_product(db)
-    bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="DRAFT-001", lifecycle_status="DRAFT")
+    bom = _mk_bom(
+        db,
+        tenant_id="tenant_a",
+        product_id=product_id,
+        bom_code="DRAFT-001",
+        lifecycle_status="DRAFT",
+    )
     db.close()
 
     app = _build_app(identity, session_local, has_manage=True)
@@ -159,7 +171,9 @@ def test_draft_bom_allowed_actions_all_true_with_manage():
     assert actions["can_add_item"] is True, "DRAFT BOM should allow add_item"
     assert actions["can_update_item"] is True, "DRAFT BOM should allow update_item"
     assert actions["can_remove_item"] is True, "DRAFT BOM should allow remove_item"
-    assert actions["can_create_sibling"] is True, "DRAFT BOM should allow create_sibling"
+    assert actions["can_create_sibling"] is True, (
+        "DRAFT BOM should allow create_sibling"
+    )
 
 
 def test_released_bom_allowed_actions_retire_only_with_manage():
@@ -168,7 +182,13 @@ def test_released_bom_allowed_actions_retire_only_with_manage():
     session_local = _make_session()
     db = session_local()
     product_id = _mk_product(db)
-    bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="REL-001", lifecycle_status="RELEASED")
+    bom = _mk_bom(
+        db,
+        tenant_id="tenant_a",
+        product_id=product_id,
+        bom_code="REL-001",
+        lifecycle_status="RELEASED",
+    )
     db.close()
 
     app = _build_app(identity, session_local, has_manage=True)
@@ -181,9 +201,15 @@ def test_released_bom_allowed_actions_retire_only_with_manage():
     assert actions["can_release"] is False, "RELEASED BOM should not allow release"
     assert actions["can_retire"] is True, "RELEASED BOM should allow retire"
     assert actions["can_add_item"] is False, "RELEASED BOM should not allow add_item"
-    assert actions["can_update_item"] is False, "RELEASED BOM should not allow update_item"
-    assert actions["can_remove_item"] is False, "RELEASED BOM should not allow remove_item"
-    assert actions["can_create_sibling"] is True, "RELEASED BOM should allow create_sibling"
+    assert actions["can_update_item"] is False, (
+        "RELEASED BOM should not allow update_item"
+    )
+    assert actions["can_remove_item"] is False, (
+        "RELEASED BOM should not allow remove_item"
+    )
+    assert actions["can_create_sibling"] is True, (
+        "RELEASED BOM should allow create_sibling"
+    )
 
 
 def test_retired_bom_allowed_actions_sibling_only_with_manage():
@@ -192,7 +218,13 @@ def test_retired_bom_allowed_actions_sibling_only_with_manage():
     session_local = _make_session()
     db = session_local()
     product_id = _mk_product(db)
-    bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="RET-001", lifecycle_status="RETIRED")
+    bom = _mk_bom(
+        db,
+        tenant_id="tenant_a",
+        product_id=product_id,
+        bom_code="RET-001",
+        lifecycle_status="RETIRED",
+    )
     db.close()
 
     app = _build_app(identity, session_local, has_manage=True)
@@ -205,9 +237,15 @@ def test_retired_bom_allowed_actions_sibling_only_with_manage():
     assert actions["can_release"] is False, "RETIRED BOM should not allow release"
     assert actions["can_retire"] is False, "RETIRED BOM should not allow retire"
     assert actions["can_add_item"] is False, "RETIRED BOM should not allow add_item"
-    assert actions["can_update_item"] is False, "RETIRED BOM should not allow update_item"
-    assert actions["can_remove_item"] is False, "RETIRED BOM should not allow remove_item"
-    assert actions["can_create_sibling"] is True, "RETIRED BOM should allow create_sibling"
+    assert actions["can_update_item"] is False, (
+        "RETIRED BOM should not allow update_item"
+    )
+    assert actions["can_remove_item"] is False, (
+        "RETIRED BOM should not allow remove_item"
+    )
+    assert actions["can_create_sibling"] is True, (
+        "RETIRED BOM should allow create_sibling"
+    )
 
 
 def test_bom_allowed_actions_all_false_without_manage():
@@ -218,21 +256,43 @@ def test_bom_allowed_actions_all_false_without_manage():
     product_id = _mk_product(db)
     # Test with DRAFT, RELEASED, RETIRED
     for lifecycle in ["DRAFT", "RELEASED", "RETIRED"]:
-        bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code=f"NOAUTH-{lifecycle}", lifecycle_status=lifecycle)
+        bom = _mk_bom(
+            db,
+            tenant_id="tenant_a",
+            product_id=product_id,
+            bom_code=f"NOAUTH-{lifecycle}",
+            lifecycle_status=lifecycle,
+        )
         db.close()
 
-        app = _build_app(identity, session_local, has_manage=False)  # NO manage permission
+        app = _build_app(
+            identity, session_local, has_manage=False
+        )  # NO manage permission
         client = TestClient(app)
 
         response = client.get(f"/api/v1/products/{product_id}/boms/{bom.bom_id}")
         assert response.status_code == 200
         actions = response.json()["allowed_actions"]
-        assert actions["can_update"] is False, f"{lifecycle} BOM without manage: can_update should be False"
-        assert actions["can_release"] is False, f"{lifecycle} BOM without manage: can_release should be False"
-        assert actions["can_retire"] is False, f"{lifecycle} BOM without manage: can_retire should be False"
-        assert actions["can_add_item"] is False, f"{lifecycle} BOM without manage: can_add_item should be False"
-        assert actions["can_update_item"] is False, f"{lifecycle} BOM without manage: can_update_item should be False"
-        assert actions["can_remove_item"] is False, f"{lifecycle} BOM without manage: can_remove_item should be False"
-        assert actions["can_create_sibling"] is False, f"{lifecycle} BOM without manage: can_create_sibling should be False"
+        assert actions["can_update"] is False, (
+            f"{lifecycle} BOM without manage: can_update should be False"
+        )
+        assert actions["can_release"] is False, (
+            f"{lifecycle} BOM without manage: can_release should be False"
+        )
+        assert actions["can_retire"] is False, (
+            f"{lifecycle} BOM without manage: can_retire should be False"
+        )
+        assert actions["can_add_item"] is False, (
+            f"{lifecycle} BOM without manage: can_add_item should be False"
+        )
+        assert actions["can_update_item"] is False, (
+            f"{lifecycle} BOM without manage: can_update_item should be False"
+        )
+        assert actions["can_remove_item"] is False, (
+            f"{lifecycle} BOM without manage: can_remove_item should be False"
+        )
+        assert actions["can_create_sibling"] is False, (
+            f"{lifecycle} BOM without manage: can_create_sibling should be False"
+        )
 
         db = session_local()

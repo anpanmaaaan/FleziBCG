@@ -93,18 +93,14 @@ def test_rotate_refresh_token_marks_old_token_as_rotated():
 def test_rotated_token_cannot_be_reused():
     """INVARIANT: Using the old token after rotation must return None."""
     db = _make_db()
-    raw_old, _ = svc.issue_refresh_token(
-        db, user_id="u-001", tenant_id="tenant-a"
-    )
+    raw_old, _ = svc.issue_refresh_token(db, user_id="u-001", tenant_id="tenant-a")
     db.commit()
 
     svc.rotate_refresh_token(db, raw_token=raw_old, tenant_id="tenant-a")
     db.commit()
 
     # Attempt to reuse old token
-    result = svc.validate_refresh_token(
-        db, raw_token=raw_old, tenant_id="tenant-a"
-    )
+    result = svc.validate_refresh_token(db, raw_token=raw_old, tenant_id="tenant-a")
     assert result is None, "Rotated (consumed) token must not validate"
 
 
@@ -114,9 +110,7 @@ def test_rotated_token_cannot_be_rotated_again():
     This is the primary reuse attack detection signal.
     """
     db = _make_db()
-    raw_old, _ = svc.issue_refresh_token(
-        db, user_id="u-001", tenant_id="tenant-a"
-    )
+    raw_old, _ = svc.issue_refresh_token(db, user_id="u-001", tenant_id="tenant-a")
     db.commit()
 
     # First rotation: valid
@@ -126,15 +120,15 @@ def test_rotated_token_cannot_be_rotated_again():
 
     # Second rotation with old token: must fail
     result2 = svc.rotate_refresh_token(db, raw_token=raw_old, tenant_id="tenant-a")
-    assert result2 is None, "Re-rotating a rotated token must return None (reuse attack)"
+    assert result2 is None, (
+        "Re-rotating a rotated token must return None (reuse attack)"
+    )
 
 
 def test_rotate_revoked_token_returns_none():
     """Attempting to rotate an explicitly revoked token must return None."""
     db = _make_db()
-    raw_token, _ = svc.issue_refresh_token(
-        db, user_id="u-001", tenant_id="tenant-a"
-    )
+    raw_token, _ = svc.issue_refresh_token(db, user_id="u-001", tenant_id="tenant-a")
     db.commit()
 
     svc.revoke_refresh_token(db, raw_token=raw_token, tenant_id="tenant-a")
@@ -147,23 +141,17 @@ def test_rotate_revoked_token_returns_none():
 def test_rotate_cross_tenant_token_returns_none():
     """Attempting to rotate a token with wrong tenant must return None."""
     db = _make_db()
-    raw_token, _ = svc.issue_refresh_token(
-        db, user_id="u-001", tenant_id="tenant-a"
-    )
+    raw_token, _ = svc.issue_refresh_token(db, user_id="u-001", tenant_id="tenant-a")
     db.commit()
 
-    result = svc.rotate_refresh_token(
-        db, raw_token=raw_token, tenant_id="tenant-b"
-    )
+    result = svc.rotate_refresh_token(db, raw_token=raw_token, tenant_id="tenant-b")
     assert result is None
 
 
 def test_new_token_after_rotation_is_valid():
     """New token returned by rotation must immediately validate."""
     db = _make_db()
-    raw_old, _ = svc.issue_refresh_token(
-        db, user_id="u-001", tenant_id="tenant-a"
-    )
+    raw_old, _ = svc.issue_refresh_token(db, user_id="u-001", tenant_id="tenant-a")
     db.commit()
 
     result = svc.rotate_refresh_token(db, raw_token=raw_old, tenant_id="tenant-a")
@@ -171,7 +159,5 @@ def test_new_token_after_rotation_is_valid():
     assert result is not None
 
     raw_new, _ = result
-    validated = svc.validate_refresh_token(
-        db, raw_token=raw_new, tenant_id="tenant-a"
-    )
+    validated = svc.validate_refresh_token(db, raw_token=raw_new, tenant_id="tenant-a")
     assert validated is not None, "Newly rotated-in token must be valid"

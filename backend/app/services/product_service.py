@@ -38,7 +38,9 @@ def _deserialize_display_metadata(value: str | None) -> dict[str, Any] | None:
     return json.loads(value)
 
 
-def _to_item(row: Product, has_manage: bool = False, has_bom_manage: bool = False) -> ProductItem:
+def _to_item(
+    row: Product, has_manage: bool = False, has_bom_manage: bool = False
+) -> ProductItem:
     return ProductItem(
         product_id=row.product_id,
         tenant_id=row.tenant_id,
@@ -50,7 +52,9 @@ def _to_item(row: Product, has_manage: bool = False, has_bom_manage: bool = Fals
         display_metadata=_deserialize_display_metadata(row.display_metadata),
         created_at=row.created_at,
         updated_at=row.updated_at,
-        product_version_capabilities=ProductVersionProductCapabilities(can_create=has_manage),
+        product_version_capabilities=ProductVersionProductCapabilities(
+            can_create=has_manage
+        ),
         bom_capabilities=ProductBomCapabilities(can_create=has_bom_manage),
     )
 
@@ -94,10 +98,18 @@ def _emit_product_event(
 
 
 def list_products(
-    db: Session, *, tenant_id: str, has_manage_permission: bool = False, has_bom_manage_permission: bool = False
+    db: Session,
+    *,
+    tenant_id: str,
+    has_manage_permission: bool = False,
+    has_bom_manage_permission: bool = False,
 ) -> list[ProductItem]:
     return [
-        _to_item(row, has_manage=has_manage_permission, has_bom_manage=has_bom_manage_permission)
+        _to_item(
+            row,
+            has_manage=has_manage_permission,
+            has_bom_manage=has_bom_manage_permission,
+        )
         for row in list_products_by_tenant(db, tenant_id=tenant_id)
     ]
 
@@ -113,7 +125,9 @@ def get_product_by_id(
     row = get_product_row(db, tenant_id=tenant_id, product_id=product_id)
     if row is None:
         return None
-    return _to_item(row, has_manage=has_manage_permission, has_bom_manage=has_bom_manage_permission)
+    return _to_item(
+        row, has_manage=has_manage_permission, has_bom_manage=has_bom_manage_permission
+    )
 
 
 def create_product(
@@ -194,7 +208,9 @@ def update_product(
         if row.lifecycle_status == "RELEASED":
             raise ValueError("RELEASED product structural update is not allowed")
         if next_code != row.product_code:
-            conflict = get_product_by_code(db, tenant_id=tenant_id, product_code=next_code)
+            conflict = get_product_by_code(
+                db, tenant_id=tenant_id, product_code=next_code
+            )
             if conflict is not None and conflict.product_id != row.product_id:
                 raise ValueError("Duplicate product_code in tenant")
             row.product_code = next_code

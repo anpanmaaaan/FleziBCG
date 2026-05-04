@@ -25,7 +25,8 @@ def _override_admin_dependency(app: FastAPI, identity: RequestIdentity) -> Any:
         next(
             r
             for r in app.routes
-            if getattr(r, "path", "") == "/api/v1/security-events" and "GET" in (r.methods or set())
+            if getattr(r, "path", "") == "/api/v1/security-events"
+            and "GET" in (r.methods or set())
         ),
     )
     admin_dependency = next(

@@ -21,11 +21,15 @@ def _build_app(identity: RequestIdentity, has_manage: bool = False) -> FastAPI:
     app.include_router(product_router_module.router, prefix="/api/v1")
     app.dependency_overrides[require_authenticated_identity] = lambda: identity
     # Patch has_action to avoid RBAC table queries in isolated SQLite tests.
-    product_router_module.has_action = lambda db, ident, action_code, *a, **kw: has_manage
+    product_router_module.has_action = lambda db, ident, action_code, *a, **kw: (
+        has_manage
+    )
     return app
 
 
-def _override_action_dependency(app: FastAPI, path: str, method: str, identity: RequestIdentity):
+def _override_action_dependency(
+    app: FastAPI, path: str, method: str, identity: RequestIdentity
+):
     route = next(
         r
         for r in app.routes
@@ -75,7 +79,11 @@ def test_product_detail_includes_bom_capabilities_field():
 
     created = client.post(
         "/api/v1/products",
-        json={"product_code": "BOM-CAP-001", "product_name": "BOM Cap Product", "product_type": "COMPONENT"},
+        json={
+            "product_code": "BOM-CAP-001",
+            "product_name": "BOM Cap Product",
+            "product_type": "COMPONENT",
+        },
     )
     assert created.status_code == 200
     product_id = created.json()["product_id"]
@@ -84,7 +92,9 @@ def test_product_detail_includes_bom_capabilities_field():
     assert detail.status_code == 200
     body = detail.json()
     assert "bom_capabilities" in body, "Missing bom_capabilities field"
-    assert "can_create" in body["bom_capabilities"], "Missing can_create in bom_capabilities"
+    assert "can_create" in body["bom_capabilities"], (
+        "Missing can_create in bom_capabilities"
+    )
 
 
 def test_product_detail_bom_can_create_false_for_non_manage_user():
@@ -110,15 +120,20 @@ def test_product_detail_bom_can_create_false_for_non_manage_user():
 
     created = client.post(
         "/api/v1/products",
-        json={"product_code": "BOM-CAP-002", "product_name": "BOM Cap 2", "product_type": "COMPONENT"},
+        json={
+            "product_code": "BOM-CAP-002",
+            "product_name": "BOM Cap 2",
+            "product_type": "COMPONENT",
+        },
     )
     assert created.status_code == 200
     product_id = created.json()["product_id"]
 
     detail = client.get(f"/api/v1/products/{product_id}")
     assert detail.status_code == 200
-    assert detail.json()["bom_capabilities"]["can_create"] is False, \
+    assert detail.json()["bom_capabilities"]["can_create"] is False, (
         "User without bom.manage should have can_create=false"
+    )
 
 
 def test_product_detail_bom_can_create_true_for_manage_user():
@@ -144,15 +159,20 @@ def test_product_detail_bom_can_create_true_for_manage_user():
 
     created = client.post(
         "/api/v1/products",
-        json={"product_code": "BOM-CAP-003", "product_name": "BOM Cap 3", "product_type": "COMPONENT"},
+        json={
+            "product_code": "BOM-CAP-003",
+            "product_name": "BOM Cap 3",
+            "product_type": "COMPONENT",
+        },
     )
     assert created.status_code == 200
     product_id = created.json()["product_id"]
 
     detail = client.get(f"/api/v1/products/{product_id}")
     assert detail.status_code == 200
-    assert detail.json()["bom_capabilities"]["can_create"] is True, \
+    assert detail.json()["bom_capabilities"]["can_create"] is True, (
         "User with bom.manage should have can_create=true"
+    )
 
 
 def test_product_list_includes_bom_capabilities():
@@ -175,7 +195,11 @@ def test_product_list_includes_bom_capabilities():
 
     created = client.post(
         "/api/v1/products",
-        json={"product_code": "BOM-LIST-001", "product_name": "BOM List Product", "product_type": "COMPONENT"},
+        json={
+            "product_code": "BOM-LIST-001",
+            "product_name": "BOM List Product",
+            "product_type": "COMPONENT",
+        },
     )
     assert created.status_code == 200
 
@@ -184,6 +208,9 @@ def test_product_list_includes_bom_capabilities():
     assert len(listed.json()) >= 1
     item = listed.json()[0]
     assert "bom_capabilities" in item, "Missing bom_capabilities in product list item"
-    assert "can_create" in item["bom_capabilities"], "Missing can_create in product list item"
-    assert item["bom_capabilities"]["can_create"] is False, \
+    assert "can_create" in item["bom_capabilities"], (
+        "Missing can_create in product list item"
+    )
+    assert item["bom_capabilities"]["can_create"] is False, (
         "Non-manage user should have can_create=false in list"
+    )

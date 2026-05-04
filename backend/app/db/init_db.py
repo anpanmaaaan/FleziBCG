@@ -200,7 +200,9 @@ def init_db(*, bootstrap_schema: bool = False, _use_sql_runner: bool = False) ->
     # rules (which reference role codes), then demo users (which reference roles).
     # Tenant row is seeded first so all subsequent auth checks can pass.
     with SessionLocal() as db:
-        seed_tenant_row(db, tenant_id="default", tenant_code="DEFAULT", tenant_name="Default Tenant")
+        seed_tenant_row(
+            db, tenant_id="default", tenant_code="DEFAULT", tenant_name="Default Tenant"
+        )
         seed_rbac_core(db)
         seed_approval_rules(db)
         seed_demo_users(db)

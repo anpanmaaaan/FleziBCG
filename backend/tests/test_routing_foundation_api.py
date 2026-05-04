@@ -22,7 +22,9 @@ def _build_app(identity: RequestIdentity) -> FastAPI:
     return app
 
 
-def _override_action_dependency(app: FastAPI, path: str, method: str, identity: RequestIdentity) -> Any:
+def _override_action_dependency(
+    app: FastAPI, path: str, method: str, identity: RequestIdentity
+) -> Any:
     route = cast(
         Any,
         next(
@@ -85,11 +87,27 @@ def test_routing_routes_happy_path_and_lifecycle():
 
     _override_action_dependency(app, "/api/v1/routings", "POST", identity)
     _override_action_dependency(app, "/api/v1/routings/{routing_id}", "PATCH", identity)
-    _override_action_dependency(app, "/api/v1/routings/{routing_id}/operations", "POST", identity)
-    _override_action_dependency(app, "/api/v1/routings/{routing_id}/operations/{operation_id}", "PATCH", identity)
-    _override_action_dependency(app, "/api/v1/routings/{routing_id}/operations/{operation_id}", "DELETE", identity)
-    _override_action_dependency(app, "/api/v1/routings/{routing_id}/release", "POST", identity)
-    _override_action_dependency(app, "/api/v1/routings/{routing_id}/retire", "POST", identity)
+    _override_action_dependency(
+        app, "/api/v1/routings/{routing_id}/operations", "POST", identity
+    )
+    _override_action_dependency(
+        app,
+        "/api/v1/routings/{routing_id}/operations/{operation_id}",
+        "PATCH",
+        identity,
+    )
+    _override_action_dependency(
+        app,
+        "/api/v1/routings/{routing_id}/operations/{operation_id}",
+        "DELETE",
+        identity,
+    )
+    _override_action_dependency(
+        app, "/api/v1/routings/{routing_id}/release", "POST", identity
+    )
+    _override_action_dependency(
+        app, "/api/v1/routings/{routing_id}/retire", "POST", identity
+    )
 
     product_id = _mk_product(db, tenant_id="tenant_a")
 
@@ -174,11 +192,27 @@ def test_cross_tenant_detail_404_duplicate_409_and_retired_product_link_reject()
 
     _override_action_dependency(app, "/api/v1/routings", "POST", identity)
     _override_action_dependency(app, "/api/v1/routings/{routing_id}", "PATCH", identity)
-    _override_action_dependency(app, "/api/v1/routings/{routing_id}/operations", "POST", identity)
-    _override_action_dependency(app, "/api/v1/routings/{routing_id}/operations/{operation_id}", "PATCH", identity)
-    _override_action_dependency(app, "/api/v1/routings/{routing_id}/operations/{operation_id}", "DELETE", identity)
-    _override_action_dependency(app, "/api/v1/routings/{routing_id}/release", "POST", identity)
-    _override_action_dependency(app, "/api/v1/routings/{routing_id}/retire", "POST", identity)
+    _override_action_dependency(
+        app, "/api/v1/routings/{routing_id}/operations", "POST", identity
+    )
+    _override_action_dependency(
+        app,
+        "/api/v1/routings/{routing_id}/operations/{operation_id}",
+        "PATCH",
+        identity,
+    )
+    _override_action_dependency(
+        app,
+        "/api/v1/routings/{routing_id}/operations/{operation_id}",
+        "DELETE",
+        identity,
+    )
+    _override_action_dependency(
+        app, "/api/v1/routings/{routing_id}/release", "POST", identity
+    )
+    _override_action_dependency(
+        app, "/api/v1/routings/{routing_id}/retire", "POST", identity
+    )
 
     product_a = _mk_product(db, tenant_id="tenant_a")
     product_b = _mk_product(db, tenant_id="tenant_b")
@@ -288,7 +322,9 @@ def test_write_routes_reject_without_required_action_override():
 
     product_id = _mk_product(db, tenant_id="tenant_a")
 
-    action_dependency = _override_action_dependency(app, "/api/v1/routings", "POST", identity)
+    action_dependency = _override_action_dependency(
+        app, "/api/v1/routings", "POST", identity
+    )
     app.dependency_overrides[action_dependency] = lambda: (_ for _ in ()).throw(
         HTTPException(status_code=403, detail="Forbidden")
     )

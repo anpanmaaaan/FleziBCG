@@ -13,7 +13,9 @@ from app.services.operation_service import (
     derive_operation_detail,
     derive_operation_runtime_projection_for_ids,
 )
-from scripts.reconcile_operation_status_projection import run_status_projection_reconcile
+from scripts.reconcile_operation_status_projection import (
+    run_status_projection_reconcile,
+)
 
 _PREFIX = "TEST-RECONCILE-CMD"
 _TENANT_A = "tenant-a"
@@ -42,7 +44,9 @@ def _purge(db) -> None:
             db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids)))
         )
         if op_ids:
-            db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
+            db.execute(
+                delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids))
+            )
         db.execute(delete(Operation).where(Operation.work_order_id.in_(wo_ids)))
         db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
     db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
@@ -229,7 +233,9 @@ def test_reconcile_command_respects_tenant_scope():
         assert op_tenant_a.status == StatusEnum.in_progress.value
         assert op_tenant_b.status == StatusEnum.paused.value
 
-        tenant_b_detect = run_status_projection_reconcile(tenant_id=_TENANT_B, apply=False)
+        tenant_b_detect = run_status_projection_reconcile(
+            tenant_id=_TENANT_B, apply=False
+        )
         assert tenant_b_detect["mismatch_count"] == 1
     finally:
         db.rollback()

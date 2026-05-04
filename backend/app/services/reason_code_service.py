@@ -15,6 +15,7 @@ from app.repositories.reason_code_repository import (
     update_reason_code_row,
 )
 from app.schemas.reason_code import (
+    ReasonCodeAllowedActions,
     ReasonCodeCreateRequest,
     ReasonCodeItem,
     ReasonCodeUpdateRequest,
@@ -22,7 +23,49 @@ from app.schemas.reason_code import (
 from app.services.security_event_service import record_security_event
 
 
-def _to_item(row: ReasonCode) -> ReasonCodeItem:
+def _compute_allowed_actions(
+    has_manage: bool, lifecycle_status: str
+) -> ReasonCodeAllowedActions:
+    """Compute Reason Code allowed actions from user permission and lifecycle state.
+
+    Rules (MMD-FULLSTACK-13B):
+    - No manage permission: all false.
+    - DRAFT + manage: all true.
+    - RELEASED + manage: can_retire and can_create_sibling only.
+    - RETIRED + manage: can_create_sibling only.
+    can_create_sibling = can create another Reason Code (NOT clone/copy/bulk/map).
+    """
+    if not has_manage:
+        return ReasonCodeAllowedActions(
+            can_update=False,
+            can_release=False,
+            can_retire=False,
+            can_create_sibling=False,
+        )
+    if lifecycle_status == "DRAFT":
+        return ReasonCodeAllowedActions(
+            can_update=True,
+            can_release=True,
+            can_retire=True,
+            can_create_sibling=True,
+        )
+    if lifecycle_status == "RELEASED":
+        return ReasonCodeAllowedActions(
+            can_update=False,
+            can_release=False,
+            can_retire=True,
+            can_create_sibling=True,
+        )
+    # RETIRED
+    return ReasonCodeAllowedActions(
+        can_update=False,
+        can_release=False,
+        can_retire=False,
+        can_create_sibling=True,
+    )
+
+
+def _to_item(row: ReasonCode, has_manage: bool = False) -> ReasonCodeItem:
     """Convert ORM model to read schema."""
     return ReasonCodeItem(
         reason_code_id=row.reason_code_id,
@@ -38,6 +81,7 @@ def _to_item(row: ReasonCode) -> ReasonCodeItem:
         sort_order=row.sort_order,
         created_at=row.created_at,
         updated_at=row.updated_at,
+        allowed_actions=_compute_allowed_actions(has_manage, row.lifecycle_status),
     )
 
 
@@ -82,6 +126,7 @@ def _get_or_404(db: Session, *, tenant_id: str, reason_code_id: str) -> ReasonCo
 
 # ─── Read commands ────────────────────────────────────────────────────────────
 
+
 def list_reason_codes(
     db: Session,
     *,
@@ -90,6 +135,7 @@ def list_reason_codes(
     reason_category: str | None = None,
     lifecycle_status: str | None = None,
     include_inactive: bool = False,
+    has_manage_permission: bool = False,
 ) -> list[ReasonCodeItem]:
     rows = list_reason_codes_by_tenant(
         db,
@@ -99,7 +145,7 @@ def list_reason_codes(
         lifecycle_status=lifecycle_status,
         include_inactive=include_inactive,
     )
-    return [_to_item(row) for row in rows]
+    return [_to_item(row, has_manage=has_manage_permission) for row in rows]
 
 
 def get_reason_code(
@@ -107,14 +153,16 @@ def get_reason_code(
     *,
     tenant_id: str,
     reason_code_id: str,
+    has_manage_permission: bool = False,
 ) -> ReasonCodeItem | None:
     row = get_reason_code_row(db, tenant_id=tenant_id, reason_code_id=reason_code_id)
     if row is None:
         return None
-    return _to_item(row)
+    return _to_item(row, has_manage=has_manage_permission)
 
 
 # ─── Write commands ───────────────────────────────────────────────────────────
+
 
 def create_reason_code(
     db: Session,
@@ -170,9 +218,14 @@ def create_reason_code(
         actor_user_id=actor_user_id,
         event_type="ReasonCode.CREATED",
         row=row,
-        changed_fields=["reason_code", "reason_name", "reason_domain", "lifecycle_status"],
+        changed_fields=[
+            "reason_code",
+            "reason_name",
+            "reason_domain",
+            "lifecycle_status",
+        ],
     )
-    return _to_item(row)
+    return _to_item(row, has_manage=True)
 
 
 def update_reason_code(
@@ -205,7 +258,10 @@ def update_reason_code(
             row.description = payload.description
             changed_fields.append("description")
 
-    if payload.requires_comment is not None and payload.requires_comment != row.requires_comment:
+    if (
+        payload.requires_comment is not None
+        and payload.requires_comment != row.requires_comment
+    ):
         row.requires_comment = payload.requires_comment
         changed_fields.append("requires_comment")
 
@@ -218,7 +274,7 @@ def update_reason_code(
         changed_fields.append("is_active")
 
     if not changed_fields:
-        return _to_item(row)
+        return _to_item(row, has_manage=True)
 
     row = update_reason_code_row(db, row=row)
     _emit_reason_code_event(
@@ -229,7 +285,7 @@ def update_reason_code(
         row=row,
         changed_fields=changed_fields,
     )
-    return _to_item(row)
+    return _to_item(row, has_manage=True)
 
 
 def release_reason_code(
@@ -256,7 +312,7 @@ def release_reason_code(
         row=row,
         changed_fields=["lifecycle_status"],
     )
-    return _to_item(row)
+    return _to_item(row, has_manage=True)
 
 
 def retire_reason_code(
@@ -281,4 +337,4 @@ def retire_reason_code(
         row=row,
         changed_fields=["lifecycle_status"],
     )
-    return _to_item(row)
+    return _to_item(row, has_manage=True)

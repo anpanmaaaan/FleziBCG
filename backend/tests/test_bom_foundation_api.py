@@ -44,7 +44,9 @@ def _make_session():
     Bom.__table__.create(bind=engine)
     BomItem.__table__.create(bind=engine)
     SecurityEventLog.__table__.create(bind=engine)
-    session_local = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
+    session_local = sessionmaker(
+        bind=engine, autoflush=False, autocommit=False, expire_on_commit=False
+    )
     return session_local
 
 
@@ -62,7 +64,9 @@ def _build_app(
     app.dependency_overrides[get_db] = lambda: session_local()
     # BOM read endpoints now project capability fields via has_action().
     # In this lightweight SQLite harness, patch has_action to avoid RBAC table dependency.
-    product_router_module.has_action = lambda db, ident, action_code, *a, **kw: has_bom_manage
+    product_router_module.has_action = lambda db, ident, action_code, *a, **kw: (
+        has_bom_manage
+    )
     return app
 
 
@@ -103,7 +107,9 @@ def _mk_bom(
     return row
 
 
-def _mk_bom_item(db, *, tenant_id: str, bom_id: str, component_product_id: str, line_no: int) -> BomItem:
+def _mk_bom_item(
+    db, *, tenant_id: str, bom_id: str, component_product_id: str, line_no: int
+) -> BomItem:
     row = BomItem(
         bom_item_id=uuid.uuid4().hex,
         tenant_id=tenant_id,
@@ -170,10 +176,24 @@ def test_get_bom_returns_detail_with_items():
     parent_product = _mk_product(db, "tenant_a")
     component_1 = _mk_product(db, "tenant_a")
     component_2 = _mk_product(db, "tenant_a")
-    bom = _mk_bom(db, tenant_id="tenant_a", product_id=parent_product, bom_code="BOM-DET")
+    bom = _mk_bom(
+        db, tenant_id="tenant_a", product_id=parent_product, bom_code="BOM-DET"
+    )
     bom_id = bom.bom_id
-    _mk_bom_item(db, tenant_id="tenant_a", bom_id=bom.bom_id, component_product_id=component_1, line_no=20)
-    _mk_bom_item(db, tenant_id="tenant_a", bom_id=bom.bom_id, component_product_id=component_2, line_no=10)
+    _mk_bom_item(
+        db,
+        tenant_id="tenant_a",
+        bom_id=bom.bom_id,
+        component_product_id=component_1,
+        line_no=20,
+    )
+    _mk_bom_item(
+        db,
+        tenant_id="tenant_a",
+        bom_id=bom.bom_id,
+        component_product_id=component_2,
+        line_no=10,
+    )
     db.close()
 
     app = _build_app(identity, session_local)
@@ -226,9 +246,9 @@ def test_bom_read_requires_auth_if_product_reads_require_auth():
     db.close()
 
     app = _build_app(identity, session_local)
-    app.dependency_overrides[require_authenticated_identity] = lambda: (_ for _ in ()).throw(
-        HTTPException(status_code=401, detail="Unauthorized")
-    )
+    app.dependency_overrides[require_authenticated_identity] = lambda: (
+        _ for _ in ()
+    ).throw(HTTPException(status_code=401, detail="Unauthorized"))
     client = TestClient(app)
 
     response = client.get(f"/api/v1/products/{product_id}/boms")
@@ -310,7 +330,10 @@ def test_bom_model_has_no_inventory_movement_fields():
 
 # ─── MMD-BE-12 BOM write API tests ───────────────────────────────────────────
 
-def _override_bom_manage(app: FastAPI, path: str, method: str, identity: RequestIdentity) -> Any:
+
+def _override_bom_manage(
+    app: FastAPI, path: str, method: str, identity: RequestIdentity
+) -> Any:
     """Override the require_action dependency for a specific BOM write route."""
     route = cast(
         Any,
@@ -357,6 +380,7 @@ def _make_managed_app(identity: RequestIdentity, session_local) -> FastAPI:
 
 # ── Create BOM ────────────────────────────────────────────────────────────────
 
+
 def test_create_bom_creates_draft():
     identity = _make_identity()
     session_local = _make_session()
@@ -387,8 +411,14 @@ def test_create_bom_rejects_duplicate_code_for_same_product():
 
     app = _make_managed_app(identity, session_local)
     client = TestClient(app)
-    client.post(f"/api/v1/products/{product_id}/boms", json={"bom_code": "BOM-DUP", "bom_name": "BOM"})
-    second = client.post(f"/api/v1/products/{product_id}/boms", json={"bom_code": "BOM-DUP", "bom_name": "BOM"})
+    client.post(
+        f"/api/v1/products/{product_id}/boms",
+        json={"bom_code": "BOM-DUP", "bom_name": "BOM"},
+    )
+    second = client.post(
+        f"/api/v1/products/{product_id}/boms",
+        json={"bom_code": "BOM-DUP", "bom_name": "BOM"},
+    )
     assert second.status_code == 409
 
 
@@ -404,7 +434,11 @@ def test_create_bom_rejects_lifecycle_status_payload():
 
     response = client.post(
         f"/api/v1/products/{product_id}/boms",
-        json={"bom_code": "BOM-A", "bom_name": "BOM Alpha", "lifecycle_status": "RELEASED"},
+        json={
+            "bom_code": "BOM-A",
+            "bom_name": "BOM Alpha",
+            "lifecycle_status": "RELEASED",
+        },
     )
     assert response.status_code == 422
 
@@ -421,7 +455,11 @@ def test_create_bom_rejects_product_version_id_payload():
 
     response = client.post(
         f"/api/v1/products/{product_id}/boms",
-        json={"bom_code": "BOM-A", "bom_name": "BOM Alpha", "product_version_id": "pv-001"},
+        json={
+            "bom_code": "BOM-A",
+            "bom_name": "BOM Alpha",
+            "product_version_id": "pv-001",
+        },
     )
     assert response.status_code == 422
 
@@ -442,7 +480,9 @@ def test_create_bom_requires_manage_action():
     app.dependency_overrides[get_db] = lambda: session_local()
 
     # Override the action dependency to deny
-    deny_dep = _override_bom_manage(app, "/api/v1/products/{product_id}/boms", "POST", identity)
+    deny_dep = _override_bom_manage(
+        app, "/api/v1/products/{product_id}/boms", "POST", identity
+    )
     app.dependency_overrides[deny_dep] = lambda: (_ for _ in ()).throw(
         HTTPException(status_code=403, detail="Forbidden")
     )
@@ -456,6 +496,7 @@ def test_create_bom_requires_manage_action():
 
 
 # ── Update BOM ────────────────────────────────────────────────────────────────
+
 
 def test_update_bom_allows_draft_metadata_update():
     identity = _make_identity()
@@ -481,7 +522,13 @@ def test_update_bom_rejects_released():
     session_local = _make_session()
     db = session_local()
     product_id = _mk_product(db, "tenant_a")
-    bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="U-002", lifecycle_status="RELEASED")
+    bom = _mk_bom(
+        db,
+        tenant_id="tenant_a",
+        product_id=product_id,
+        bom_code="U-002",
+        lifecycle_status="RELEASED",
+    )
     db.close()
 
     app = _make_managed_app(identity, session_local)
@@ -499,7 +546,13 @@ def test_update_bom_rejects_retired():
     session_local = _make_session()
     db = session_local()
     product_id = _mk_product(db, "tenant_a")
-    bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="U-003", lifecycle_status="RETIRED")
+    bom = _mk_bom(
+        db,
+        tenant_id="tenant_a",
+        product_id=product_id,
+        bom_code="U-003",
+        lifecycle_status="RETIRED",
+    )
     db.close()
 
     app = _make_managed_app(identity, session_local)
@@ -580,6 +633,7 @@ def test_update_bom_requires_manage_action():
 
 # ── Release BOM ───────────────────────────────────────────────────────────────
 
+
 def test_release_bom_changes_draft_to_released():
     identity = _make_identity()
     session_local = _make_session()
@@ -587,7 +641,13 @@ def test_release_bom_changes_draft_to_released():
     product_id = _mk_product(db, "tenant_a")
     comp_id = _mk_product(db, "tenant_a")
     bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="R-001")
-    _mk_bom_item(db, tenant_id="tenant_a", bom_id=bom.bom_id, component_product_id=comp_id, line_no=10)
+    _mk_bom_item(
+        db,
+        tenant_id="tenant_a",
+        bom_id=bom.bom_id,
+        component_product_id=comp_id,
+        line_no=10,
+    )
     db.close()
 
     app = _make_managed_app(identity, session_local)
@@ -604,18 +664,36 @@ def test_release_bom_rejects_released_or_retired():
     db = session_local()
     product_id = _mk_product(db, "tenant_a")
     bom_released = _mk_bom(
-        db, tenant_id="tenant_a", product_id=product_id, bom_code="R-002", lifecycle_status="RELEASED"
+        db,
+        tenant_id="tenant_a",
+        product_id=product_id,
+        bom_code="R-002",
+        lifecycle_status="RELEASED",
     )
     bom_retired = _mk_bom(
-        db, tenant_id="tenant_a", product_id=product_id, bom_code="R-003", lifecycle_status="RETIRED"
+        db,
+        tenant_id="tenant_a",
+        product_id=product_id,
+        bom_code="R-003",
+        lifecycle_status="RETIRED",
     )
     db.close()
 
     app = _make_managed_app(identity, session_local)
     client = TestClient(app)
 
-    assert client.post(f"/api/v1/products/{product_id}/boms/{bom_released.bom_id}/release").status_code == 400
-    assert client.post(f"/api/v1/products/{product_id}/boms/{bom_retired.bom_id}/release").status_code == 400
+    assert (
+        client.post(
+            f"/api/v1/products/{product_id}/boms/{bom_released.bom_id}/release"
+        ).status_code
+        == 400
+    )
+    assert (
+        client.post(
+            f"/api/v1/products/{product_id}/boms/{bom_retired.bom_id}/release"
+        ).status_code
+        == 400
+    )
 
 
 def test_release_bom_requires_items():
@@ -656,19 +734,31 @@ def test_release_bom_requires_manage_action():
     )
 
     client = TestClient(app)
-    assert client.post(f"/api/v1/products/{product_id}/boms/{bom.bom_id}/release").status_code == 403
+    assert (
+        client.post(
+            f"/api/v1/products/{product_id}/boms/{bom.bom_id}/release"
+        ).status_code
+        == 403
+    )
 
 
 # ── Retire BOM ────────────────────────────────────────────────────────────────
+
 
 def test_retire_bom_changes_draft_or_released_to_retired():
     identity = _make_identity()
     session_local = _make_session()
     db = session_local()
     product_id = _mk_product(db, "tenant_a")
-    bom_draft = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="RT-001")
+    bom_draft = _mk_bom(
+        db, tenant_id="tenant_a", product_id=product_id, bom_code="RT-001"
+    )
     bom_released = _mk_bom(
-        db, tenant_id="tenant_a", product_id=product_id, bom_code="RT-002", lifecycle_status="RELEASED"
+        db,
+        tenant_id="tenant_a",
+        product_id=product_id,
+        bom_code="RT-002",
+        lifecycle_status="RELEASED",
     )
     db.close()
 
@@ -690,7 +780,11 @@ def test_retire_bom_rejects_retired():
     db = session_local()
     product_id = _mk_product(db, "tenant_a")
     bom = _mk_bom(
-        db, tenant_id="tenant_a", product_id=product_id, bom_code="RT-003", lifecycle_status="RETIRED"
+        db,
+        tenant_id="tenant_a",
+        product_id=product_id,
+        bom_code="RT-003",
+        lifecycle_status="RETIRED",
     )
     db.close()
 
@@ -724,10 +818,16 @@ def test_retire_bom_requires_manage_action():
     )
 
     client = TestClient(app)
-    assert client.post(f"/api/v1/products/{product_id}/boms/{bom.bom_id}/retire").status_code == 403
+    assert (
+        client.post(
+            f"/api/v1/products/{product_id}/boms/{bom.bom_id}/retire"
+        ).status_code
+        == 403
+    )
 
 
 # ── Add BOM Item ──────────────────────────────────────────────────────────────
+
 
 def test_add_bom_item_allows_draft_parent():
     identity = _make_identity()
@@ -743,7 +843,12 @@ def test_add_bom_item_allows_draft_parent():
 
     response = client.post(
         f"/api/v1/products/{product_id}/boms/{bom.bom_id}/items",
-        json={"component_product_id": comp_id, "line_no": 10, "quantity": 2.0, "unit_of_measure": "PCS"},
+        json={
+            "component_product_id": comp_id,
+            "line_no": 10,
+            "quantity": 2.0,
+            "unit_of_measure": "PCS",
+        },
     )
     assert response.status_code == 201
     data = response.json()
@@ -758,23 +863,44 @@ def test_add_bom_item_rejects_released_or_retired_parent():
     product_id = _mk_product(db, "tenant_a")
     comp_id = _mk_product(db, "tenant_a")
     bom_released = _mk_bom(
-        db, tenant_id="tenant_a", product_id=product_id, bom_code="AI-002", lifecycle_status="RELEASED"
+        db,
+        tenant_id="tenant_a",
+        product_id=product_id,
+        bom_code="AI-002",
+        lifecycle_status="RELEASED",
     )
     bom_retired = _mk_bom(
-        db, tenant_id="tenant_a", product_id=product_id, bom_code="AI-003", lifecycle_status="RETIRED"
+        db,
+        tenant_id="tenant_a",
+        product_id=product_id,
+        bom_code="AI-003",
+        lifecycle_status="RETIRED",
     )
     db.close()
 
     app = _make_managed_app(identity, session_local)
     client = TestClient(app)
 
-    item_payload = {"component_product_id": comp_id, "line_no": 10, "quantity": 1.0, "unit_of_measure": "PCS"}
-    assert client.post(
-        f"/api/v1/products/{product_id}/boms/{bom_released.bom_id}/items", json=item_payload
-    ).status_code == 400
-    assert client.post(
-        f"/api/v1/products/{product_id}/boms/{bom_retired.bom_id}/items", json=item_payload
-    ).status_code == 400
+    item_payload = {
+        "component_product_id": comp_id,
+        "line_no": 10,
+        "quantity": 1.0,
+        "unit_of_measure": "PCS",
+    }
+    assert (
+        client.post(
+            f"/api/v1/products/{product_id}/boms/{bom_released.bom_id}/items",
+            json=item_payload,
+        ).status_code
+        == 400
+    )
+    assert (
+        client.post(
+            f"/api/v1/products/{product_id}/boms/{bom_retired.bom_id}/items",
+            json=item_payload,
+        ).status_code
+        == 400
+    )
 
 
 def test_add_bom_item_rejects_parent_as_component():
@@ -790,7 +916,12 @@ def test_add_bom_item_rejects_parent_as_component():
 
     response = client.post(
         f"/api/v1/products/{product_id}/boms/{bom.bom_id}/items",
-        json={"component_product_id": product_id, "line_no": 10, "quantity": 1.0, "unit_of_measure": "PCS"},
+        json={
+            "component_product_id": product_id,
+            "line_no": 10,
+            "quantity": 1.0,
+            "unit_of_measure": "PCS",
+        },
     )
     assert response.status_code == 400
 
@@ -802,7 +933,13 @@ def test_add_bom_item_rejects_duplicate_line_no():
     product_id = _mk_product(db, "tenant_a")
     comp_id = _mk_product(db, "tenant_a")
     bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="AI-005")
-    _mk_bom_item(db, tenant_id="tenant_a", bom_id=bom.bom_id, component_product_id=comp_id, line_no=10)
+    _mk_bom_item(
+        db,
+        tenant_id="tenant_a",
+        bom_id=bom.bom_id,
+        component_product_id=comp_id,
+        line_no=10,
+    )
     db.close()
 
     app = _make_managed_app(identity, session_local)
@@ -810,7 +947,12 @@ def test_add_bom_item_rejects_duplicate_line_no():
 
     response = client.post(
         f"/api/v1/products/{product_id}/boms/{bom.bom_id}/items",
-        json={"component_product_id": comp_id, "line_no": 10, "quantity": 1.0, "unit_of_measure": "PCS"},
+        json={
+            "component_product_id": comp_id,
+            "line_no": 10,
+            "quantity": 1.0,
+            "unit_of_measure": "PCS",
+        },
     )
     assert response.status_code == 409
 
@@ -829,7 +971,12 @@ def test_add_bom_item_rejects_non_positive_quantity():
 
     response = client.post(
         f"/api/v1/products/{product_id}/boms/{bom.bom_id}/items",
-        json={"component_product_id": comp_id, "line_no": 10, "quantity": 0.0, "unit_of_measure": "PCS"},
+        json={
+            "component_product_id": comp_id,
+            "line_no": 10,
+            "quantity": 0.0,
+            "unit_of_measure": "PCS",
+        },
     )
     assert response.status_code == 400
 
@@ -872,7 +1019,12 @@ def test_add_bom_item_validates_component_exists():
 
     response = client.post(
         f"/api/v1/products/{product_id}/boms/{bom.bom_id}/items",
-        json={"component_product_id": "nonexistent-id", "line_no": 10, "quantity": 1.0, "unit_of_measure": "PCS"},
+        json={
+            "component_product_id": "nonexistent-id",
+            "line_no": 10,
+            "quantity": 1.0,
+            "unit_of_measure": "PCS",
+        },
     )
     assert response.status_code == 404
 
@@ -903,12 +1055,18 @@ def test_add_bom_item_requires_manage_action():
     client = TestClient(app)
     response = client.post(
         f"/api/v1/products/{product_id}/boms/{bom.bom_id}/items",
-        json={"component_product_id": comp_id, "line_no": 10, "quantity": 1.0, "unit_of_measure": "PCS"},
+        json={
+            "component_product_id": comp_id,
+            "line_no": 10,
+            "quantity": 1.0,
+            "unit_of_measure": "PCS",
+        },
     )
     assert response.status_code == 403
 
 
 # ── Update BOM Item ───────────────────────────────────────────────────────────
+
 
 def test_update_bom_item_allows_draft_parent():
     identity = _make_identity()
@@ -917,7 +1075,13 @@ def test_update_bom_item_allows_draft_parent():
     product_id = _mk_product(db, "tenant_a")
     comp_id = _mk_product(db, "tenant_a")
     bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="UI-001")
-    item = _mk_bom_item(db, tenant_id="tenant_a", bom_id=bom.bom_id, component_product_id=comp_id, line_no=10)
+    item = _mk_bom_item(
+        db,
+        tenant_id="tenant_a",
+        bom_id=bom.bom_id,
+        component_product_id=comp_id,
+        line_no=10,
+    )
     db.close()
 
     app = _make_managed_app(identity, session_local)
@@ -938,10 +1102,18 @@ def test_update_bom_item_rejects_released_or_retired_parent():
     product_id = _mk_product(db, "tenant_a")
     comp_id = _mk_product(db, "tenant_a")
     bom_released = _mk_bom(
-        db, tenant_id="tenant_a", product_id=product_id, bom_code="UI-002", lifecycle_status="RELEASED"
+        db,
+        tenant_id="tenant_a",
+        product_id=product_id,
+        bom_code="UI-002",
+        lifecycle_status="RELEASED",
     )
     item = _mk_bom_item(
-        db, tenant_id="tenant_a", bom_id=bom_released.bom_id, component_product_id=comp_id, line_no=10
+        db,
+        tenant_id="tenant_a",
+        bom_id=bom_released.bom_id,
+        component_product_id=comp_id,
+        line_no=10,
     )
     db.close()
 
@@ -962,7 +1134,13 @@ def test_update_bom_item_requires_manage_action():
     product_id = _mk_product(db, "tenant_a")
     comp_id = _mk_product(db, "tenant_a")
     bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="UI-003")
-    item = _mk_bom_item(db, tenant_id="tenant_a", bom_id=bom.bom_id, component_product_id=comp_id, line_no=10)
+    item = _mk_bom_item(
+        db,
+        tenant_id="tenant_a",
+        bom_id=bom.bom_id,
+        component_product_id=comp_id,
+        line_no=10,
+    )
     db.close()
 
     from app.api.v1.products import get_db
@@ -992,6 +1170,7 @@ def test_update_bom_item_requires_manage_action():
 
 # ── Remove BOM Item ───────────────────────────────────────────────────────────
 
+
 def test_remove_bom_item_allows_draft_parent():
     identity = _make_identity()
     session_local = _make_session()
@@ -999,7 +1178,13 @@ def test_remove_bom_item_allows_draft_parent():
     product_id = _mk_product(db, "tenant_a")
     comp_id = _mk_product(db, "tenant_a")
     bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="RI-001")
-    item = _mk_bom_item(db, tenant_id="tenant_a", bom_id=bom.bom_id, component_product_id=comp_id, line_no=10)
+    item = _mk_bom_item(
+        db,
+        tenant_id="tenant_a",
+        bom_id=bom.bom_id,
+        component_product_id=comp_id,
+        line_no=10,
+    )
     db.close()
 
     app = _make_managed_app(identity, session_local)
@@ -1018,10 +1203,18 @@ def test_remove_bom_item_rejects_released_or_retired_parent():
     product_id = _mk_product(db, "tenant_a")
     comp_id = _mk_product(db, "tenant_a")
     bom_released = _mk_bom(
-        db, tenant_id="tenant_a", product_id=product_id, bom_code="RI-002", lifecycle_status="RELEASED"
+        db,
+        tenant_id="tenant_a",
+        product_id=product_id,
+        bom_code="RI-002",
+        lifecycle_status="RELEASED",
     )
     item = _mk_bom_item(
-        db, tenant_id="tenant_a", bom_id=bom_released.bom_id, component_product_id=comp_id, line_no=10
+        db,
+        tenant_id="tenant_a",
+        bom_id=bom_released.bom_id,
+        component_product_id=comp_id,
+        line_no=10,
     )
     db.close()
 
@@ -1041,7 +1234,13 @@ def test_remove_bom_item_requires_manage_action():
     product_id = _mk_product(db, "tenant_a")
     comp_id = _mk_product(db, "tenant_a")
     bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="RI-003")
-    item = _mk_bom_item(db, tenant_id="tenant_a", bom_id=bom.bom_id, component_product_id=comp_id, line_no=10)
+    item = _mk_bom_item(
+        db,
+        tenant_id="tenant_a",
+        bom_id=bom.bom_id,
+        component_product_id=comp_id,
+        line_no=10,
+    )
     db.close()
 
     from app.api.v1.products import get_db

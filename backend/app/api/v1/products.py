@@ -18,7 +18,11 @@ from app.schemas.product import (
     ProductVersionItem,
     ProductVersionUpdateRequest,
 )
-from app.security.dependencies import RequestIdentity, require_action, require_authenticated_identity
+from app.security.dependencies import (
+    RequestIdentity,
+    require_action,
+    require_authenticated_identity,
+)
 from app.security.rbac import has_action
 from app.services.bom_service import get_bom as get_bom_service
 from app.services.bom_service import list_boms as list_boms_service
@@ -67,7 +71,10 @@ def list_products(
     has_pv_manage = has_action(db, identity, "admin.master_data.product_version.manage")
     has_bom_manage = has_action(db, identity, "admin.master_data.bom.manage")
     return list_products_service(
-        db, tenant_id=identity.tenant_id, has_manage_permission=has_pv_manage, has_bom_manage_permission=has_bom_manage
+        db,
+        tenant_id=identity.tenant_id,
+        has_manage_permission=has_pv_manage,
+        has_bom_manage_permission=has_bom_manage,
     )
 
 
@@ -95,7 +102,9 @@ def get_product_by_id(
 def create_product(
     payload: ProductCreateRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.master_data.product.manage")),
+    identity: RequestIdentity = Depends(
+        require_action("admin.master_data.product.manage")
+    ),
 ) -> ProductItem:
     has_pv_manage = has_action(db, identity, "admin.master_data.product_version.manage")
     has_bom_manage = has_action(db, identity, "admin.master_data.bom.manage")
@@ -119,7 +128,9 @@ def update_product(
     product_id: str,
     payload: ProductUpdateRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.master_data.product.manage")),
+    identity: RequestIdentity = Depends(
+        require_action("admin.master_data.product.manage")
+    ),
 ) -> ProductItem:
     has_pv_manage = has_action(db, identity, "admin.master_data.product_version.manage")
     has_bom_manage = has_action(db, identity, "admin.master_data.bom.manage")
@@ -145,7 +156,9 @@ def update_product(
 def release_product(
     product_id: str,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.master_data.product.manage")),
+    identity: RequestIdentity = Depends(
+        require_action("admin.master_data.product.manage")
+    ),
 ) -> ProductItem:
     has_pv_manage = has_action(db, identity, "admin.master_data.product_version.manage")
     has_bom_manage = has_action(db, identity, "admin.master_data.bom.manage")
@@ -187,7 +200,9 @@ def create_product_version(
     product_id: str,
     payload: ProductVersionCreateRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.master_data.product_version.manage")),
+    identity: RequestIdentity = Depends(
+        require_action("admin.master_data.product_version.manage")
+    ),
 ) -> ProductVersionItem:
     try:
         return create_product_version_service(
@@ -211,7 +226,9 @@ def update_product_version(
     version_id: str,
     payload: ProductVersionUpdateRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.master_data.product_version.manage")),
+    identity: RequestIdentity = Depends(
+        require_action("admin.master_data.product_version.manage")
+    ),
 ) -> ProductVersionItem:
     try:
         return update_product_version_service(
@@ -228,12 +245,16 @@ def update_product_version(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
-@router.post("/{product_id}/versions/{version_id}/release", response_model=ProductVersionItem)
+@router.post(
+    "/{product_id}/versions/{version_id}/release", response_model=ProductVersionItem
+)
 def release_product_version(
     product_id: str,
     version_id: str,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.master_data.product_version.manage")),
+    identity: RequestIdentity = Depends(
+        require_action("admin.master_data.product_version.manage")
+    ),
 ) -> ProductVersionItem:
     try:
         return release_product_version_service(
@@ -249,12 +270,16 @@ def release_product_version(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
-@router.post("/{product_id}/versions/{version_id}/retire", response_model=ProductVersionItem)
+@router.post(
+    "/{product_id}/versions/{version_id}/retire", response_model=ProductVersionItem
+)
 def retire_product_version(
     product_id: str,
     version_id: str,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.master_data.product_version.manage")),
+    identity: RequestIdentity = Depends(
+        require_action("admin.master_data.product_version.manage")
+    ),
 ) -> ProductVersionItem:
     try:
         return retire_product_version_service(
@@ -332,7 +357,9 @@ def get_product_version(
 def retire_product(
     product_id: str,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(require_action("admin.master_data.product.manage")),
+    identity: RequestIdentity = Depends(
+        require_action("admin.master_data.product.manage")
+    ),
 ) -> ProductItem:
     has_pv_manage = has_action(db, identity, "admin.master_data.product_version.manage")
     has_bom_manage = has_action(db, identity, "admin.master_data.bom.manage")
@@ -352,6 +379,7 @@ def retire_product(
 
 
 # ─── BOM write endpoints — MMD-BE-12 ─────────────────────────────────────────
+
 
 @router.post("/{product_id}/boms", response_model=BomItem, status_code=201)
 def create_bom(
@@ -441,7 +469,11 @@ def retire_bom(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
-@router.post("/{product_id}/boms/{bom_id}/items", response_model=BomComponentItem, status_code=201)
+@router.post(
+    "/{product_id}/boms/{bom_id}/items",
+    response_model=BomComponentItem,
+    status_code=201,
+)
 def add_bom_item(
     product_id: str,
     bom_id: str,
@@ -515,4 +547,3 @@ def remove_bom_item(
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-

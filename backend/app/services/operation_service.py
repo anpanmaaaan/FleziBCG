@@ -312,7 +312,10 @@ def ensure_open_station_session_for_command(
                 tenant_id=tenant_id,
                 operator_user_id=normalized_operator,
             )
-            if operator_session is not None and operator_session.station_id != station_id:
+            if (
+                operator_session is not None
+                and operator_session.station_id != station_id
+            ):
                 raise StationSessionGuardError(
                     "STATION_SESSION_STATION_MISMATCH",
                     status_code=409,
@@ -322,7 +325,10 @@ def ensure_open_station_session_for_command(
             db,
             station_id=station_id,
         )
-        if cross_tenant_session is not None and cross_tenant_session.tenant_id != tenant_id:
+        if (
+            cross_tenant_session is not None
+            and cross_tenant_session.tenant_id != tenant_id
+        ):
             raise StationSessionGuardError(
                 "STATION_SESSION_TENANT_MISMATCH",
                 status_code=404,
@@ -339,7 +345,10 @@ def ensure_open_station_session_for_command(
             status_code=404,
         )
 
-    if latest_station_session.status != "OPEN" or latest_station_session.closed_at is not None:
+    if (
+        latest_station_session.status != "OPEN"
+        or latest_station_session.closed_at is not None
+    ):
         raise StationSessionGuardError(
             "STATION_SESSION_CLOSED",
             status_code=409,
@@ -1016,7 +1025,8 @@ def start_operation(
         db,
         tenant_id=tenant_id,
         station_id=operation.station_scope_value,
-        operator_user_id=_normalize_command_operator(request.operator_id) or actor_user_id,
+        operator_user_id=_normalize_command_operator(request.operator_id)
+        or actor_user_id,
         command_name="start_operation",
     )
     _session_ctx = _compute_session_diagnostic(db, operation, tenant_id)  # P0-C-04D
@@ -1090,7 +1100,8 @@ def report_quantity(
         db,
         tenant_id=tenant_id,
         station_id=operation.station_scope_value,
-        operator_user_id=_normalize_command_operator(request.operator_id) or actor_user_id,
+        operator_user_id=_normalize_command_operator(request.operator_id)
+        or actor_user_id,
         command_name="report_quantity",
     )
     _session_ctx = _compute_session_diagnostic(db, operation, tenant_id)  # P0-C-04D
@@ -1148,7 +1159,8 @@ def complete_operation(
         db,
         tenant_id=tenant_id,
         station_id=operation.station_scope_value,
-        operator_user_id=_normalize_command_operator(request.operator_id) or actor_user_id,
+        operator_user_id=_normalize_command_operator(request.operator_id)
+        or actor_user_id,
         command_name="complete_operation",
     )
     _session_ctx = _compute_session_diagnostic(db, operation, tenant_id)  # P0-C-04D

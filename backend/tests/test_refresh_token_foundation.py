@@ -123,7 +123,9 @@ def test_refresh_token_migration_upgrade_creates_only_refresh_tokens():
     This ensures the migration does not accidentally touch existing tables.
     """
     migration_file = BACKEND_DIR / "alembic" / "versions" / "0002_add_refresh_tokens.py"
-    assert migration_file.exists(), "Migration file 0002_add_refresh_tokens.py not found"
+    assert migration_file.exists(), (
+        "Migration file 0002_add_refresh_tokens.py not found"
+    )
 
     source = migration_file.read_text(encoding="utf-8")
 
@@ -167,9 +169,7 @@ def test_issue_refresh_token_stores_hash_not_plaintext():
     assert record.token_hash != raw_token, (
         "token_hash must not equal raw_token — raw token must not be stored"
     )
-    assert len(record.token_hash) == 64, (
-        "SHA-256 hex digest must be 64 characters"
-    )
+    assert len(record.token_hash) == 64, "SHA-256 hex digest must be 64 characters"
     # Verify the hash is hex
     int(record.token_hash, 16)
 
@@ -240,9 +240,7 @@ def test_issue_refresh_token_record():
 def test_validate_refresh_token_success():
     """Valid token must return the record."""
     db = _make_db()
-    raw_token, _ = svc.issue_refresh_token(
-        db, user_id="u-001", tenant_id="tenant-a"
-    )
+    raw_token, _ = svc.issue_refresh_token(db, user_id="u-001", tenant_id="tenant-a")
     db.commit()
 
     result = svc.validate_refresh_token(db, raw_token=raw_token, tenant_id="tenant-a")
@@ -262,9 +260,7 @@ def test_validate_rejects_unknown_token():
 def test_validate_rejects_revoked_token():
     """INVARIANT: Revoked token must not validate."""
     db = _make_db()
-    raw_token, _ = svc.issue_refresh_token(
-        db, user_id="u-001", tenant_id="tenant-a"
-    )
+    raw_token, _ = svc.issue_refresh_token(db, user_id="u-001", tenant_id="tenant-a")
     db.commit()
 
     revoked = svc.revoke_refresh_token(
@@ -273,9 +269,7 @@ def test_validate_rejects_revoked_token():
     db.commit()
     assert revoked is True
 
-    result = svc.validate_refresh_token(
-        db, raw_token=raw_token, tenant_id="tenant-a"
-    )
+    result = svc.validate_refresh_token(db, raw_token=raw_token, tenant_id="tenant-a")
     assert result is None, "Revoked token must not validate"
 
 
@@ -289,23 +283,17 @@ def test_validate_rejects_expired_token():
     record.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
     db.commit()
 
-    result = svc.validate_refresh_token(
-        db, raw_token=raw_token, tenant_id="tenant-a"
-    )
+    result = svc.validate_refresh_token(db, raw_token=raw_token, tenant_id="tenant-a")
     assert result is None, "Expired token must not validate"
 
 
 def test_validate_rejects_cross_tenant_token():
     """INVARIANT: Token issued to tenant-a must not validate for tenant-b."""
     db = _make_db()
-    raw_token, _ = svc.issue_refresh_token(
-        db, user_id="u-001", tenant_id="tenant-a"
-    )
+    raw_token, _ = svc.issue_refresh_token(db, user_id="u-001", tenant_id="tenant-a")
     db.commit()
 
-    result = svc.validate_refresh_token(
-        db, raw_token=raw_token, tenant_id="tenant-b"
-    )
+    result = svc.validate_refresh_token(db, raw_token=raw_token, tenant_id="tenant-b")
     assert result is None, "Cross-tenant validation must return None"
 
 
@@ -331,9 +319,7 @@ def test_revoke_refresh_token():
 def test_revoke_unknown_token_returns_false():
     """Revoking a token that does not exist must return False."""
     db = _make_db()
-    ok = svc.revoke_refresh_token(
-        db, raw_token="no-such-token", tenant_id="tenant-a"
-    )
+    ok = svc.revoke_refresh_token(db, raw_token="no-such-token", tenant_id="tenant-a")
     assert ok is False
 
 
@@ -368,15 +354,9 @@ def test_revoke_tokens_for_session():
 def test_revoke_tokens_for_user():
     """INVARIANT: All tokens for a user must be revoked on logout-all."""
     db = _make_db()
-    raw1, _ = svc.issue_refresh_token(
-        db, user_id="u-001", tenant_id="tenant-a"
-    )
-    raw2, _ = svc.issue_refresh_token(
-        db, user_id="u-001", tenant_id="tenant-a"
-    )
-    raw3, _ = svc.issue_refresh_token(
-        db, user_id="u-002", tenant_id="tenant-a"
-    )
+    raw1, _ = svc.issue_refresh_token(db, user_id="u-001", tenant_id="tenant-a")
+    raw2, _ = svc.issue_refresh_token(db, user_id="u-001", tenant_id="tenant-a")
+    raw3, _ = svc.issue_refresh_token(db, user_id="u-002", tenant_id="tenant-a")
     db.commit()
 
     count = svc.revoke_tokens_for_user(
@@ -388,18 +368,16 @@ def test_revoke_tokens_for_user():
     assert svc.validate_refresh_token(db, raw_token=raw1, tenant_id="tenant-a") is None
     assert svc.validate_refresh_token(db, raw_token=raw2, tenant_id="tenant-a") is None
     # Other user's token must be unaffected
-    assert svc.validate_refresh_token(db, raw_token=raw3, tenant_id="tenant-a") is not None
+    assert (
+        svc.validate_refresh_token(db, raw_token=raw3, tenant_id="tenant-a") is not None
+    )
 
 
 def test_revoke_tokens_for_user_is_tenant_scoped():
     """Revoke-all for tenant-a must not affect tokens in tenant-b."""
     db = _make_db()
-    raw_a, _ = svc.issue_refresh_token(
-        db, user_id="u-001", tenant_id="tenant-a"
-    )
-    raw_b, _ = svc.issue_refresh_token(
-        db, user_id="u-001", tenant_id="tenant-b"
-    )
+    raw_a, _ = svc.issue_refresh_token(db, user_id="u-001", tenant_id="tenant-a")
+    raw_b, _ = svc.issue_refresh_token(db, user_id="u-001", tenant_id="tenant-b")
     db.commit()
 
     count = svc.revoke_tokens_for_user(
@@ -409,4 +387,7 @@ def test_revoke_tokens_for_user_is_tenant_scoped():
 
     assert count == 1
     # tenant-b token must not be affected
-    assert svc.validate_refresh_token(db, raw_token=raw_b, tenant_id="tenant-b") is not None
+    assert (
+        svc.validate_refresh_token(db, raw_token=raw_b, tenant_id="tenant-b")
+        is not None
+    )

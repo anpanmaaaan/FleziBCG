@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+
 class SessionOwnershipSummary(BaseModel):
     target_owner_type: str
     session_id: str | None = None

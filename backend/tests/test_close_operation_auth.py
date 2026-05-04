@@ -10,7 +10,13 @@ from sqlalchemy import delete
 from app.db.session import SessionLocal
 from app.main import app
 from app.models.execution import ExecutionEvent, ExecutionEventType
-from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.master import (
+    ClosureStatusEnum,
+    Operation,
+    ProductionOrder,
+    StatusEnum,
+    WorkOrder,
+)
 from app.models.rbac import Scope
 from app.security.dependencies import RequestIdentity
 
@@ -159,9 +165,19 @@ def seeded_completed_operation():
     "role_code,action_codes,expected_status,expected_detail_substring",
     [
         ("SUP", ["execution.close"], 200, None),
-        ("OPR", ["execution.close"], 403, "Missing required role for close_operation: SUP"),
+        (
+            "OPR",
+            ["execution.close"],
+            403,
+            "Missing required role for close_operation: SUP",
+        ),
         ("SUP", [], 403, "Missing required action: execution.close"),
-        ("QCI", ["execution.close"], 403, "Missing required role for close_operation: SUP"),
+        (
+            "QCI",
+            ["execution.close"],
+            403,
+            "Missing required role for close_operation: SUP",
+        ),
     ],
 )
 def test_close_operation_authorization(
@@ -190,4 +206,3 @@ def test_close_operation_authorization(
     detail = response.json().get("detail", "")
     assert expected_detail_substring is not None
     assert expected_detail_substring in detail
-

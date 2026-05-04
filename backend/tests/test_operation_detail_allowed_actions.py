@@ -23,7 +23,13 @@ from sqlalchemy import delete, select
 
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent
-from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.master import (
+    ClosureStatusEnum,
+    Operation,
+    ProductionOrder,
+    StatusEnum,
+    WorkOrder,
+)
 from app.models.station_session import StationSession
 from app.schemas.operation import (
     OperationEndDowntimeRequest,
@@ -218,12 +224,12 @@ def test_derive_allowed_actions_closed_is_always_empty():
         StatusEnum.completed_late.value,
         StatusEnum.aborted.value,
     ):
-        assert _derive_allowed_actions(closed, False, ClosureStatusEnum.closed.value) == [
-            "reopen_operation"
-        ]
-        assert _derive_allowed_actions(closed, True, ClosureStatusEnum.closed.value) == [
-            "reopen_operation"
-        ]
+        assert _derive_allowed_actions(
+            closed, False, ClosureStatusEnum.closed.value
+        ) == ["reopen_operation"]
+        assert _derive_allowed_actions(
+            closed, True, ClosureStatusEnum.closed.value
+        ) == ["reopen_operation"]
 
 
 # 笏笏笏 Event-driven round-trip against the real session 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
@@ -231,7 +237,6 @@ def test_derive_allowed_actions_closed_is_always_empty():
 # flips, allowed_actions loses start_downtime and gains end_downtime; then
 # end_downtime 竍・downtime_open clears, BLOCKED snapshot transitions to PAUSED,
 # and allowed_actions returns to the PAUSED set.
-
 
 
 # ─── Pure unit tests for _derive_status ────────────────────────────────────────────
@@ -257,9 +262,17 @@ class _FakeEvent:
         # P0C02-T6: OP_STARTED only → IN_PROGRESS.
         (["OP_STARTED"], StatusEnum.in_progress.value, "started_only_in_progress"),
         # P0C02-T1: OP_STARTED → OP_COMPLETED → COMPLETED.
-        (["OP_STARTED", "OP_COMPLETED"], StatusEnum.completed.value, "started_then_completed"),
+        (
+            ["OP_STARTED", "OP_COMPLETED"],
+            StatusEnum.completed.value,
+            "started_then_completed",
+        ),
         # P0C02-T5: OP_STARTED → OP_ABORTED → ABORTED.
-        (["OP_STARTED", "OP_ABORTED"], StatusEnum.aborted.value, "started_then_aborted"),
+        (
+            ["OP_STARTED", "OP_ABORTED"],
+            StatusEnum.aborted.value,
+            "started_then_aborted",
+        ),
         # P0C02-T2: OP_STARTED → OP_COMPLETED → operation_reopened → PAUSED.
         # Reopen resets the operation back to non-running; explicit resume required.
         (
@@ -321,6 +334,7 @@ def test_derive_status_event_sequence(event_types, expected_status, test_id):
         "P0-C-02 regression -- OP_COMPLETED must update last_runtime_event."
     )
 
+
 _ROUNDTRIP_PREFIX = "TEST-ALLOWED-ACTIONS"
 
 
@@ -349,7 +363,9 @@ def _purge(db) -> None:
                 delete(ExecutionEvent).where(ExecutionEvent.work_order_id.in_(wo_ids))
             )
             db.execute(
-                delete(StationSession).where(StationSession.station_id == "STATION_TEST_AA")
+                delete(StationSession).where(
+                    StationSession.station_id == "STATION_TEST_AA"
+                )
             )
             db.execute(delete(Operation).where(Operation.work_order_id.in_(wo_ids)))
         db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))

@@ -21,13 +21,16 @@ def test_security_event_list_requires_authentication(monkeypatch):
     assert response.json()["detail"] == "Authentication required"
 
 
-def test_security_event_list_rejects_user_without_required_action_if_guard_exists(monkeypatch):
+def test_security_event_list_rejects_user_without_required_action_if_guard_exists(
+    monkeypatch,
+):
     app = _app_with_router()
 
     route = next(
         r
         for r in app.routes
-        if getattr(r, "path", "") == "/api/v1/security-events" and "GET" in (r.methods or set())
+        if getattr(r, "path", "") == "/api/v1/security-events"
+        and "GET" in (r.methods or set())
     )
     admin_dep = next(
         dep.call
@@ -35,7 +38,9 @@ def test_security_event_list_rejects_user_without_required_action_if_guard_exist
         if getattr(dep.call, "__name__", "") != "get_db"
     )
     app.dependency_overrides[admin_dep] = lambda: (_ for _ in ()).throw(
-        HTTPException(status_code=403, detail="Missing required action: admin.user.manage")
+        HTTPException(
+            status_code=403, detail="Missing required action: admin.user.manage"
+        )
     )
 
     client = TestClient(app)
@@ -67,7 +72,8 @@ def test_security_event_list_authorized_user_can_read_events(monkeypatch):
     route = next(
         r
         for r in app.routes
-        if getattr(r, "path", "") == "/api/v1/security-events" and "GET" in (r.methods or set())
+        if getattr(r, "path", "") == "/api/v1/security-events"
+        and "GET" in (r.methods or set())
     )
     admin_dep = next(
         dep.call

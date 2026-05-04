@@ -23,7 +23,9 @@ class ResourceRequirement(Base):
 
     requirement_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    routing_id: Mapped[str] = mapped_column(String(64), ForeignKey("routings.routing_id"), nullable=False, index=True)
+    routing_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("routings.routing_id"), nullable=False, index=True
+    )
     operation_id: Mapped[str] = mapped_column(
         String(64),
         ForeignKey("routing_operations.operation_id"),
@@ -39,5 +41,8 @@ class ResourceRequirement(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )

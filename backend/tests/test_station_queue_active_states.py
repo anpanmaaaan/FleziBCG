@@ -227,9 +227,7 @@ def station_queue_fixture():
         start_downtime(
             db,
             op_blocked,
-            OperationStartDowntimeRequest(
-                reason_code="BREAKDOWN_GENERIC", note="test"
-            ),
+            OperationStartDowntimeRequest(reason_code="BREAKDOWN_GENERIC", note="test"),
             actor_user_id=_USER_ID,
             tenant_id=_TENANT_ID,
         )
@@ -374,7 +372,9 @@ def test_station_queue_and_detail_status_parity(station_queue_fixture):
 
     _, items = get_station_queue(db, _identity())
     for item in items:
-        operation = db.scalar(select(Operation).where(Operation.id == item["operation_id"]))
+        operation = db.scalar(
+            select(Operation).where(Operation.id == item["operation_id"])
+        )
         assert operation is not None
         detail = derive_operation_detail(db, operation)
         assert item["status"] == detail.status

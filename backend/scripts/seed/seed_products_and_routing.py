@@ -423,7 +423,9 @@ def seed_resource_requirements():
         db.close()
 
 
-def _create_or_get_routing(db, product_id: str, routing_code: str, routing_name: str) -> Routing:
+def _create_or_get_routing(
+    db, product_id: str, routing_code: str, routing_name: str
+) -> Routing:
     """Create or get a routing by code."""
     existing = db.scalar(
         select(Routing).where(
@@ -484,6 +486,7 @@ def main():
     init_db = None
     try:
         from app.db.init_db import init_db as init_db_func
+
         init_db = init_db_func  # noqa: F841
     except ImportError:
         pass

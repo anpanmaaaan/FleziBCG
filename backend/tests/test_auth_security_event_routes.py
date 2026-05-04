@@ -20,18 +20,18 @@ def test_refresh_records_security_event():
     Security event emission is tested comprehensively in test_auth_refresh_token_runtime.py.
     """
     from unittest.mock import MagicMock
-    
+
     app = FastAPI()
     app.include_router(auth_router_module.router)
-    
+
     # Override get_db to return a mock
     def mock_get_db():
         yield MagicMock()
-    
+
     app.dependency_overrides[auth_router_module.get_db] = mock_get_db
-    
+
     client = TestClient(app)
-    
+
     # Old contract: POST /auth/refresh with no body should be rejected
     response_old = client.post(
         "/auth/refresh",
@@ -39,7 +39,7 @@ def test_refresh_records_security_event():
     )
     # 422 because no body / invalid request
     assert response_old.status_code in [422, 401, 400]
-    
+
     # New contract: POST /auth/refresh with refresh_token body is required
     response_new = client.post(
         "/auth/refresh",

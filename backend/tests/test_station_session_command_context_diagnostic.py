@@ -17,6 +17,7 @@ Contract:
 - OperationDetail API response shape is unchanged.
 - Claim compatibility regression must remain green.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -27,7 +28,13 @@ from sqlalchemy import delete, select
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent
-from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.master import (
+    ClosureStatusEnum,
+    Operation,
+    ProductionOrder,
+    StatusEnum,
+    WorkOrder,
+)
 from app.models.rbac import Role, Scope, UserRoleAssignment
 from app.models.station_session import StationSession
 from app.schemas.operation import (
@@ -92,14 +99,22 @@ def _purge(db) -> None:
     )
     if po_ids:
         wo_ids = list(
-            db.scalars(select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids)))
+            db.scalars(
+                select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))
+            )
         )
         if wo_ids:
             op_ids = list(
-                db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids)))
+                db.scalars(
+                    select(Operation.id).where(Operation.work_order_id.in_(wo_ids))
+                )
             )
             if op_ids:
-                db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
+                db.execute(
+                    delete(ExecutionEvent).where(
+                        ExecutionEvent.operation_id.in_(op_ids)
+                    )
+                )
                 db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
             db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
         db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
@@ -109,9 +124,7 @@ def _purge(db) -> None:
             StationSession.tenant_id.in_([_TENANT_ID, _OTHER_TENANT_ID]),
         )
     )
-    db.execute(
-        delete(UserRoleAssignment).where(UserRoleAssignment.user_id == _ACTOR)
-    )
+    db.execute(delete(UserRoleAssignment).where(UserRoleAssignment.user_id == _ACTOR))
     db.execute(
         delete(Scope).where(
             Scope.scope_value == _STATION,
@@ -221,6 +234,7 @@ def _seed_running_op(db, suffix: str) -> Operation:
     )
     # Re-load ORM object
     from app.repositories.operation_repository import get_operation_by_id
+
     reloaded = get_operation_by_id(db, op.id)
     assert reloaded is not None
     return reloaded
@@ -244,6 +258,7 @@ def cmd_fixture():
 # CMD-T1: start_operation unchanged — no StationSession
 # ---------------------------------------------------------------------------
 
+
 def test_start_operation_requires_session(cmd_fixture):
     """CMD-T1: start_operation rejects when no StationSession exists."""
     db = cmd_fixture
@@ -262,6 +277,7 @@ def test_start_operation_requires_session(cmd_fixture):
 # ---------------------------------------------------------------------------
 # CMD-T2: start_operation unchanged — with OPEN StationSession
 # ---------------------------------------------------------------------------
+
 
 def test_start_operation_unchanged_with_open_session(cmd_fixture):
     """CMD-T2: start_operation succeeds (same outcome) when OPEN StationSession exists."""
@@ -283,6 +299,7 @@ def test_start_operation_unchanged_with_open_session(cmd_fixture):
 # ---------------------------------------------------------------------------
 # CMD-T3: pause_operation unchanged — no StationSession
 # ---------------------------------------------------------------------------
+
 
 def test_pause_operation_requires_session(cmd_fixture):
     """CMD-T3: pause_operation rejects when no StationSession exists."""
@@ -309,6 +326,7 @@ def test_pause_operation_requires_session(cmd_fixture):
 # CMD-T4: pause_operation unchanged — with OPEN StationSession
 # ---------------------------------------------------------------------------
 
+
 def test_pause_operation_unchanged_with_open_session(cmd_fixture):
     """CMD-T4: pause_operation succeeds (same outcome) when OPEN StationSession exists."""
     db = cmd_fixture
@@ -332,6 +350,7 @@ def test_pause_operation_unchanged_with_open_session(cmd_fixture):
 # CMD-T5: existing rejection unchanged — start on IN_PROGRESS op
 # ---------------------------------------------------------------------------
 
+
 def test_start_operation_rejection_unchanged_with_no_session(cmd_fixture):
     """CMD-T5: start_operation still rejects IN_PROGRESS operation with same error code."""
     db = cmd_fixture
@@ -339,8 +358,11 @@ def test_start_operation_rejection_unchanged_with_no_session(cmd_fixture):
     # Seed a PLANNED op with no operator_id so no operator-conflict guard fires
     op = _seed_planned_op(db, "t5-reject")
     # Start it (no operator_id avoids the per-operator running check)
-    start_operation(db, op, OperationStartRequest(operator_id=None), tenant_id=_TENANT_ID)
+    start_operation(
+        db, op, OperationStartRequest(operator_id=None), tenant_id=_TENANT_ID
+    )
     from app.repositories.operation_repository import get_operation_by_id
+
     op = get_operation_by_id(db, op.id)
     assert op is not None
     assert op.status == StatusEnum.in_progress.value
@@ -355,6 +377,7 @@ def test_start_operation_rejection_unchanged_with_no_session(cmd_fixture):
 # ---------------------------------------------------------------------------
 # CMD-T6: diagnostic is accessible from command context
 # ---------------------------------------------------------------------------
+
 
 def test_diagnostic_accessible_from_command_context(cmd_fixture):
     """CMD-T6: Given tenant_id + operation.station_scope_value, diagnostic returns OPEN."""
@@ -378,6 +401,7 @@ def test_diagnostic_accessible_from_command_context(cmd_fixture):
 # ---------------------------------------------------------------------------
 # CMD-T7: CLOSED session is not active diagnostic context
 # ---------------------------------------------------------------------------
+
 
 def test_closed_session_not_active_context_from_command_context(cmd_fixture):
     """CMD-T7: Only CLOSED sessions present — diagnostic returns NO_ACTIVE_SESSION."""
@@ -403,6 +427,7 @@ def test_closed_session_not_active_context_from_command_context(cmd_fixture):
 # ---------------------------------------------------------------------------
 # CMD-T8: cross-tenant session does not create false positive
 # ---------------------------------------------------------------------------
+
 
 def test_cross_tenant_session_no_false_positive(cmd_fixture):
     """CMD-T8: Session for other tenant does not appear in diagnostic for this tenant."""
@@ -430,6 +455,7 @@ def test_cross_tenant_session_no_false_positive(cmd_fixture):
 # ---------------------------------------------------------------------------
 # CMD-T9: pause rejection unchanged (PauseExecutionConflictError on non-running)
 # ---------------------------------------------------------------------------
+
 
 def test_pause_rejection_unchanged_no_session(cmd_fixture):
     """CMD-T9 (variant): pause on PLANNED op still rejects with same error code."""

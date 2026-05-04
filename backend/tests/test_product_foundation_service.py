@@ -42,7 +42,9 @@ def test_create_product_happy_path_records_event():
     assert created.product_code == "FG-001"
     assert created.lifecycle_status == "DRAFT"
 
-    events = list(db.scalars(select(SecurityEventLog).order_by(SecurityEventLog.id.asc())))
+    events = list(
+        db.scalars(select(SecurityEventLog).order_by(SecurityEventLog.id.asc()))
+    )
     assert len(events) == 1
     assert events[0].event_type == "PRODUCT.CREATED"
     assert events[0].tenant_id == "tenant_a"
@@ -120,10 +122,14 @@ def test_list_and_get_are_tenant_scoped():
     assert len(listed_a) == 1
     assert listed_a[0].product_id == a.product_id
 
-    found_in_tenant = get_product_by_id(db, tenant_id="tenant_a", product_id=a.product_id)
+    found_in_tenant = get_product_by_id(
+        db, tenant_id="tenant_a", product_id=a.product_id
+    )
     assert found_in_tenant is not None
 
-    hidden_cross_tenant = get_product_by_id(db, tenant_id="tenant_b", product_id=a.product_id)
+    hidden_cross_tenant = get_product_by_id(
+        db, tenant_id="tenant_b", product_id=a.product_id
+    )
     assert hidden_cross_tenant is None
 
 
@@ -168,7 +174,9 @@ def test_release_and_retire_transitions_and_events():
     except ValueError:
         pass
 
-    events = list(db.scalars(select(SecurityEventLog).order_by(SecurityEventLog.id.asc())))
+    events = list(
+        db.scalars(select(SecurityEventLog).order_by(SecurityEventLog.id.asc()))
+    )
     assert [event.event_type for event in events] == [
         "PRODUCT.CREATED",
         "PRODUCT.RELEASED",
@@ -257,7 +265,9 @@ def test_update_rules_for_draft_released_and_retired():
     except ValueError:
         pass
 
-    events = list(db.scalars(select(SecurityEventLog).order_by(SecurityEventLog.id.asc())))
+    events = list(
+        db.scalars(select(SecurityEventLog).order_by(SecurityEventLog.id.asc()))
+    )
     assert [event.event_type for event in events] == [
         "PRODUCT.CREATED",
         "PRODUCT.UPDATED",

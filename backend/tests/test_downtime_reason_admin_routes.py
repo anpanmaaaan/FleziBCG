@@ -40,7 +40,9 @@ def _build_app() -> tuple[FastAPI, RequestIdentity]:
     return app, identity
 
 
-def _override_admin_dependency(app: FastAPI, path: str, identity: RequestIdentity) -> None:
+def _override_admin_dependency(
+    app: FastAPI, path: str, identity: RequestIdentity
+) -> None:
     route = cast(
         Any,
         next(
@@ -68,7 +70,9 @@ def _make_session():
 def test_admin_routes_exist_and_delegate_to_service(monkeypatch):
     app, identity = _build_app()
     _override_admin_dependency(app, "/api/v1/downtime-reasons", identity)
-    _override_admin_dependency(app, "/api/v1/downtime-reasons/{reason_code}/deactivate", identity)
+    _override_admin_dependency(
+        app, "/api/v1/downtime-reasons/{reason_code}/deactivate", identity
+    )
 
     fake_db = object()
     app.dependency_overrides[downtime_reason_router_module.get_db] = lambda: fake_db

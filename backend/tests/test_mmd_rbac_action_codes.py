@@ -18,14 +18,27 @@ from pathlib import Path
 from app.security.rbac import ACTION_CODE_REGISTRY
 
 BACKEND_ROOT = Path(__file__).parent.parent
-PRODUCTS_SRC = (BACKEND_ROOT / "app" / "api" / "v1" / "products.py").read_text(encoding="utf-8")
-ROUTINGS_SRC = (BACKEND_ROOT / "app" / "api" / "v1" / "routings.py").read_text(encoding="utf-8")
-REASON_CODES_SRC = (BACKEND_ROOT / "app" / "api" / "v1" / "reason_codes.py").read_text(encoding="utf-8")
-REASON_CODE_SVC_SRC = (BACKEND_ROOT / "app" / "services" / "reason_code_service.py").read_text(encoding="utf-8")
-REASON_CODE_REPO_SRC = (BACKEND_ROOT / "app" / "repositories" / "reason_code_repository.py").read_text(encoding="utf-8")
-DOWNTIME_REASONS_SRC = (BACKEND_ROOT / "app" / "api" / "v1" / "downtime_reasons.py").read_text(encoding="utf-8")
+PRODUCTS_SRC = (BACKEND_ROOT / "app" / "api" / "v1" / "products.py").read_text(
+    encoding="utf-8"
+)
+ROUTINGS_SRC = (BACKEND_ROOT / "app" / "api" / "v1" / "routings.py").read_text(
+    encoding="utf-8"
+)
+REASON_CODES_SRC = (BACKEND_ROOT / "app" / "api" / "v1" / "reason_codes.py").read_text(
+    encoding="utf-8"
+)
+REASON_CODE_SVC_SRC = (
+    BACKEND_ROOT / "app" / "services" / "reason_code_service.py"
+).read_text(encoding="utf-8")
+REASON_CODE_REPO_SRC = (
+    BACKEND_ROOT / "app" / "repositories" / "reason_code_repository.py"
+).read_text(encoding="utf-8")
+DOWNTIME_REASONS_SRC = (
+    BACKEND_ROOT / "app" / "api" / "v1" / "downtime_reasons.py"
+).read_text(encoding="utf-8")
 
 # ─── Registry checks ──────────────────────────────────────────────────────────
+
 
 def test_product_action_code_in_registry():
     assert "admin.master_data.product.manage" in ACTION_CODE_REGISTRY, (
@@ -58,9 +71,10 @@ def test_resource_requirement_action_code_in_registry():
 
 
 def test_resource_requirement_action_code_is_admin_family():
-    assert ACTION_CODE_REGISTRY.get("admin.master_data.resource_requirement.manage") == "ADMIN", (
-        "admin.master_data.resource_requirement.manage must map to ADMIN family"
-    )
+    assert (
+        ACTION_CODE_REGISTRY.get("admin.master_data.resource_requirement.manage")
+        == "ADMIN"
+    ), "admin.master_data.resource_requirement.manage must map to ADMIN family"
 
 
 def test_product_version_manage_action_code_exists():
@@ -70,9 +84,9 @@ def test_product_version_manage_action_code_exists():
 
 
 def test_product_version_manage_action_code_is_domain_specific():
-    assert ACTION_CODE_REGISTRY.get("admin.master_data.product_version.manage") == "ADMIN", (
-        "admin.master_data.product_version.manage must map to ADMIN family"
-    )
+    assert (
+        ACTION_CODE_REGISTRY.get("admin.master_data.product_version.manage") == "ADMIN"
+    ), "admin.master_data.product_version.manage must map to ADMIN family"
     assert "admin.master_data.product_version.manage" != "admin.user.manage", (
         "Product Version action code must remain domain-specific and distinct from IAM"
     )
@@ -84,11 +98,14 @@ def test_existing_mmd_action_codes_still_exist():
         "admin.master_data.routing.manage",
         "admin.master_data.resource_requirement.manage",
     }
-    missing_codes = sorted(code for code in expected_codes if code not in ACTION_CODE_REGISTRY)
+    missing_codes = sorted(
+        code for code in expected_codes if code not in ACTION_CODE_REGISTRY
+    )
     assert missing_codes == [], f"Existing MMD action codes missing: {missing_codes}"
 
 
 # ─── Placeholder code absence checks ─────────────────────────────────────────
+
 
 def test_admin_user_manage_not_in_product_mutations():
     """Product endpoints must not use the IAM user-management placeholder code."""
@@ -105,6 +122,7 @@ def test_admin_user_manage_not_in_routing_mutations():
 
 
 # ─── Correct code presence checks ────────────────────────────────────────────
+
 
 def test_product_endpoints_use_product_action_code():
     """All 4 product mutation endpoints must use the product-specific action code."""
@@ -132,12 +150,13 @@ def test_resource_requirement_endpoints_use_rr_action_code():
 
 # ─── Read endpoint boundary check ────────────────────────────────────────────
 
+
 def test_read_endpoints_do_not_require_mutation_action_code():
     """GET handlers must use require_authenticated_identity, not require_action."""
     # Extract all GET route function bodies (heuristic: look for require_action in GET handlers)
     # A GET handler signature starts with @router.get and should not contain require_action
     get_blocks = re.findall(
-        r'@router\.get\b[^@]+?(?=@router\.|$)',
+        r"@router\.get\b[^@]+?(?=@router\.|$)",
         PRODUCTS_SRC + ROUTINGS_SRC,
         flags=re.DOTALL,
     )
@@ -156,7 +175,9 @@ def test_product_version_read_endpoints_do_not_require_manage_action():
     )
     assert len(version_get_blocks) == 2, "Expected 2 Product Version GET route blocks"
     for block in version_get_blocks:
-        assert "require_action" not in block, "Product Version GET route must not require action code"
+        assert "require_action" not in block, (
+            "Product Version GET route must not require action code"
+        )
 
 
 def test_product_version_write_routes_use_product_version_action_code():
@@ -167,7 +188,9 @@ def test_product_version_write_routes_use_product_version_action_code():
         '@router.post("/{product_id}/versions/{version_id}/retire"',
     ]
     for marker in required_markers:
-        assert marker in PRODUCTS_SRC, f"Missing Product Version write route marker: {marker}"
+        assert marker in PRODUCTS_SRC, (
+            f"Missing Product Version write route marker: {marker}"
+        )
 
     count = PRODUCTS_SRC.count('"admin.master_data.product_version.manage"')
     assert count >= 4, (
@@ -187,10 +210,13 @@ def test_no_product_version_delete_reactivate_set_current_clone_binding_routes_e
         '@router.post("/{product_id}/versions/{version_id}/bind-resource-requirement"',
     ]
     for marker in forbidden_markers:
-        assert marker not in PRODUCTS_SRC, f"Unexpected deferred Product Version route marker found: {marker}"
+        assert marker not in PRODUCTS_SRC, (
+            f"Unexpected deferred Product Version route marker found: {marker}"
+        )
 
 
 # ─── MMD-BE-09A: BOM action code registry checks ─────────────────────────────
+
 
 def test_bom_manage_action_code_exists():
     assert "admin.master_data.bom.manage" in ACTION_CODE_REGISTRY, (
@@ -214,7 +240,9 @@ def test_bom_read_endpoints_do_not_require_manage_action():
         PRODUCTS_SRC,
         flags=re.DOTALL,
     )
-    assert len(bom_get_blocks) >= 2, "Expected at least 2 BOM GET route blocks in products.py"
+    assert len(bom_get_blocks) >= 2, (
+        "Expected at least 2 BOM GET route blocks in products.py"
+    )
     for block in bom_get_blocks:
         assert "require_action" not in block, (
             "BOM GET route must not use require_action — authenticated-read only"
@@ -240,7 +268,7 @@ def test_bom_write_routes_implemented_by_mmd_be_12():
 
 def test_bom_write_routes_use_bom_manage_action_code():
     """All BOM write route blocks must reference admin.master_data.bom.manage."""
-    assert PRODUCTS_SRC.count('admin.master_data.bom.manage') >= 7, (
+    assert PRODUCTS_SRC.count("admin.master_data.bom.manage") >= 7, (
         "Expected at least 7 occurrences of admin.master_data.bom.manage (one per write endpoint)"
     )
 
@@ -263,6 +291,7 @@ def test_no_bom_forbidden_endpoints_exist():
 
 # ─── MMD-BE-10A: Reason Code action code registry checks ─────────────────────
 
+
 def test_reason_code_manage_action_code_exists():
     """MMD-BE-10A: admin.master_data.reason_code.manage must be present."""
     assert "admin.master_data.reason_code.manage" in ACTION_CODE_REGISTRY, (
@@ -272,9 +301,9 @@ def test_reason_code_manage_action_code_exists():
 
 def test_reason_code_manage_action_code_is_domain_specific():
     """Action code must map to ADMIN and must not equal the IAM manage code."""
-    assert ACTION_CODE_REGISTRY.get("admin.master_data.reason_code.manage") == "ADMIN", (
-        "admin.master_data.reason_code.manage must map to ADMIN family"
-    )
+    assert (
+        ACTION_CODE_REGISTRY.get("admin.master_data.reason_code.manage") == "ADMIN"
+    ), "admin.master_data.reason_code.manage must map to ADMIN family"
     assert "admin.master_data.reason_code.manage" != "admin.user.manage", (
         "Reason Code action code must remain domain-specific and distinct from IAM user management"
     )
@@ -290,7 +319,9 @@ def test_existing_mmd_action_codes_unchanged_after_10a():
         "admin.master_data.bom.manage": "ADMIN",
     }
     for code, family in expected.items():
-        assert code in ACTION_CODE_REGISTRY, f"Pre-existing MMD action code missing after 10A: {code}"
+        assert code in ACTION_CODE_REGISTRY, (
+            f"Pre-existing MMD action code missing after 10A: {code}"
+        )
         assert ACTION_CODE_REGISTRY[code] == family, (
             f"Pre-existing MMD action code family changed: {code} → {ACTION_CODE_REGISTRY[code]!r}"
         )
@@ -299,11 +330,13 @@ def test_existing_mmd_action_codes_unchanged_after_10a():
 def test_reason_code_read_endpoints_do_not_require_manage_action():
     """Reason Code GET routes must use authenticated-read only — not require_action."""
     rc_get_blocks = re.findall(
-        r'@router\.get\b[^@]+?(?=@router\.|$)',
+        r"@router\.get\b[^@]+?(?=@router\.|$)",
         REASON_CODES_SRC,
         flags=re.DOTALL,
     )
-    assert len(rc_get_blocks) >= 2, "Expected at least 2 GET route blocks in reason_codes.py"
+    assert len(rc_get_blocks) >= 2, (
+        "Expected at least 2 GET route blocks in reason_codes.py"
+    )
     for block in rc_get_blocks:
         assert "require_action" not in block, (
             "Reason Code GET route must not use require_action — authenticated-read only"
@@ -313,7 +346,7 @@ def test_reason_code_read_endpoints_do_not_require_manage_action():
 def test_reason_code_write_routes_exist_and_are_scoped():
     """MMD-BE-13: Reason Code write routes (POST, PATCH /release /retire) must exist and no forbidden routes."""
     required_markers = [
-        "@router.post(\"\",",
+        '@router.post("",',
         "@router.patch(",
         "/release",
         "/retire",

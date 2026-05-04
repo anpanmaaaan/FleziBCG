@@ -78,7 +78,8 @@ def override_authenticated_dependency():
     route = cast(
         Any,
         next(
-            r for r in app.routes
+            r
+            for r in app.routes
             if getattr(r, "path", "") == "/api/v1/downtime-reasons"
         ),
     )
@@ -89,7 +90,9 @@ def override_authenticated_dependency():
     )
 
     def _override(request: Request) -> RequestIdentity:
-        tenant_id = (request.headers.get("X-Tenant-Id") or "default").strip() or "default"
+        tenant_id = (
+            request.headers.get("X-Tenant-Id") or "default"
+        ).strip() or "default"
         role_code = (request.headers.get("X-Role-Code") or "OPR").strip().upper()
         if request.headers.get("X-Force-Anon") == "1":
             raise HTTPException(status_code=401, detail="Authentication required")

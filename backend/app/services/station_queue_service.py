@@ -38,9 +38,7 @@ def _effective_role(identity: RequestIdentity) -> str:
 
 def ensure_operator_context(identity: RequestIdentity) -> None:
     if _effective_role(identity) != "OPR":
-        raise PermissionError(
-            "Station queue is only available to OPR context."
-        )
+        raise PermissionError("Station queue is only available to OPR context.")
 
 
 # EDGE: Station scope is resolved from UserRoleAssignment, isolating the
@@ -96,7 +94,9 @@ def get_station_scoped_operation(
     return operation
 
 
-def _to_session_owner_state(identity: RequestIdentity, operator_user_id: str | None) -> str:
+def _to_session_owner_state(
+    identity: RequestIdentity, operator_user_id: str | None
+) -> str:
     if not operator_user_id:
         return "unassigned"
     if operator_user_id == identity.user_id:
@@ -149,7 +149,8 @@ def get_station_queue(db: Session, identity: RequestIdentity) -> tuple[str, list
         row
         for row in rows
         if runtime_projection_by_operation_id.get(row[0].id) is not None
-        and runtime_projection_by_operation_id[row[0].id].status in active_queue_statuses
+        and runtime_projection_by_operation_id[row[0].id].status
+        in active_queue_statuses
     ]
 
     active_station_session = get_active_station_session_for_station(

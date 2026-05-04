@@ -10,6 +10,7 @@ Covers:
   T06 test_close_station_session_rejects_running_execution_if_policy_exists
        [P1 GAP — current policy does not enforce this; test documents the gap]
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -20,7 +21,13 @@ from sqlalchemy import delete, select
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent
-from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.master import (
+    ClosureStatusEnum,
+    Operation,
+    ProductionOrder,
+    StatusEnum,
+    WorkOrder,
+)
 from app.models.rbac import Role, Scope, UserRoleAssignment
 from app.models.station_session import StationSession
 from app.schemas.operation import OperationStartRequest
@@ -154,14 +161,22 @@ def _purge(db) -> None:
     )
     if po_ids:
         wo_ids = list(
-            db.scalars(select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids)))
+            db.scalars(
+                select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))
+            )
         )
         if wo_ids:
             op_ids = list(
-                db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids)))
+                db.scalars(
+                    select(Operation.id).where(Operation.work_order_id.in_(wo_ids))
+                )
             )
             if op_ids:
-                db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
+                db.execute(
+                    delete(ExecutionEvent).where(
+                        ExecutionEvent.operation_id.in_(op_ids)
+                    )
+                )
                 db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
             db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
         db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
@@ -173,9 +188,7 @@ def _purge(db) -> None:
         )
     )
     db.execute(
-        delete(UserRoleAssignment).where(
-            UserRoleAssignment.user_id.like(f"{_PREFIX}%")
-        )
+        delete(UserRoleAssignment).where(UserRoleAssignment.user_id.like(f"{_PREFIX}%"))
     )
     db.execute(
         delete(Scope).where(
@@ -316,5 +329,7 @@ def test_close_station_session_rejects_running_execution_if_policy_exists(db_ses
     )
 
     # SS-CLOSE-001: must reject while active execution exists
-    with pytest.raises(StationSessionConflictError, match="STATION_SESSION_ACTIVE_EXECUTION"):
+    with pytest.raises(
+        StationSessionConflictError, match="STATION_SESSION_ACTIVE_EXECUTION"
+    ):
         close_station_session(db, _identity(_ACTOR), session_id=session.session_id)

@@ -189,7 +189,9 @@ def run_status_projection_reconcile(
             for item in mismatches:
                 out_stream.write(
                     "- op_id={operation_id} op_no={operation_number} "
-                    "snapshot={snapshot_status} derived={derived_status}\n".format(**item)
+                    "snapshot={snapshot_status} derived={derived_status}\n".format(
+                        **item
+                    )
                 )
         else:
             out_stream.write("mismatches: none\n")

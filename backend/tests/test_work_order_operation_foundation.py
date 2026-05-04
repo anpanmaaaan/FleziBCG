@@ -24,7 +24,13 @@ from sqlalchemy import delete, select
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent
-from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.master import (
+    ClosureStatusEnum,
+    Operation,
+    ProductionOrder,
+    StatusEnum,
+    WorkOrder,
+)
 from app.schemas.operation import (
     OperationCloseRequest,
     OperationStartRequest,
@@ -42,6 +48,7 @@ _TENANT_B = "tenant_beta"
 
 # ─── Fixture helpers ──────────────────────────────────────────────────────────
 
+
 def _purge(db) -> None:
     po_ids = list(
         db.scalars(
@@ -54,7 +61,9 @@ def _purge(db) -> None:
         db.commit()
         return
     wo_ids = list(
-        db.scalars(select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids)))
+        db.scalars(
+            select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))
+        )
     )
     if wo_ids:
         op_ids = list(
@@ -83,7 +92,9 @@ def db_session():
         db.close()
 
 
-def _seed_operation(db, suffix: str, tenant_id: str, status: str = StatusEnum.planned.value) -> Operation:
+def _seed_operation(
+    db, suffix: str, tenant_id: str, status: str = StatusEnum.planned.value
+) -> Operation:
     """Seed a minimal PO→WO→Operation hierarchy under the given tenant."""
     po = ProductionOrder(
         order_number=f"{_PREFIX}-PO-{suffix}",
@@ -129,6 +140,7 @@ def _seed_operation(db, suffix: str, tenant_id: str, status: str = StatusEnum.pl
 
 # ─── P0C01-T3: start_operation rejects wrong tenant ──────────────────────────
 
+
 def test_start_operation_rejects_wrong_tenant(db_session):
     """
     INV: Tenant isolation — start_operation raises when the caller's tenant_id
@@ -151,6 +163,7 @@ def test_start_operation_rejects_wrong_tenant(db_session):
 
 # ─── P0C01-T4: close_operation rejects wrong tenant ──────────────────────────
 
+
 def test_close_operation_rejects_wrong_tenant(db_session):
     """
     INV: Tenant isolation — close_operation raises when the caller's tenant_id
@@ -159,7 +172,9 @@ def test_close_operation_rejects_wrong_tenant(db_session):
     close_operation is one of the highest-impact commands (irreversible without
     a supervised reopen), so this guard is particularly important.
     """
-    op = _seed_operation(db_session, "T4", tenant_id=_TENANT_A, status=StatusEnum.completed.value)
+    op = _seed_operation(
+        db_session, "T4", tenant_id=_TENANT_A, status=StatusEnum.completed.value
+    )
 
     with pytest.raises(ValueError, match="does not belong to the requesting tenant"):
         close_operation(
@@ -173,6 +188,7 @@ def test_close_operation_rejects_wrong_tenant(db_session):
 
 # ─── P0C01-T5: WO→PO→Operation hierarchy reads via derive_operation_detail ───
 
+
 def test_derive_operation_detail_populates_hierarchy(db_session):
     """
     INV: Projection consistency — derive_operation_detail must expose
@@ -184,6 +200,7 @@ def test_derive_operation_detail_populates_hierarchy(db_session):
     op = _seed_operation(db_session, "T5", tenant_id=_TENANT_A)
 
     from app.repositories.operation_repository import get_operation_by_id
+
     op_loaded = get_operation_by_id(db_session, op.id)
     assert op_loaded is not None
 
@@ -199,6 +216,7 @@ def test_derive_operation_detail_populates_hierarchy(db_session):
 
 
 # ─── P0C01-T6: WorkOrder tenant_id matches Operation tenant_id ───────────────
+
 
 def test_work_order_and_operation_share_tenant(db_session):
     """
@@ -221,6 +239,7 @@ def test_work_order_and_operation_share_tenant(db_session):
 
 # ─── P0C01-T3b: report_quantity rejects wrong tenant ─────────────────────────
 
+
 def test_report_quantity_rejects_wrong_tenant(db_session):
     """
     INV: Tenant isolation — report_quantity raises when caller's tenant_id
@@ -229,7 +248,9 @@ def test_report_quantity_rejects_wrong_tenant(db_session):
     from app.schemas.operation import OperationReportQuantityRequest
     from app.services.operation_service import report_quantity
 
-    op = _seed_operation(db_session, "T3B", tenant_id=_TENANT_A, status=StatusEnum.in_progress.value)
+    op = _seed_operation(
+        db_session, "T3B", tenant_id=_TENANT_A, status=StatusEnum.in_progress.value
+    )
 
     with pytest.raises(ValueError, match="does not belong to the requesting tenant"):
         report_quantity(

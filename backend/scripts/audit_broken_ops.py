@@ -7,6 +7,7 @@ Safe:
   - COMPLETED operations → giữ nguyên
   - Operations đang có OPEN session → giữ nguyên (vd SS-DEMO in-progress)
 """
+
 from __future__ import annotations
 
 import sys
@@ -28,17 +29,24 @@ from app.models.station_session import StationSession
 _PURGE_PREFIXES = ["TEST-DT-AUTH-", "TEST-CLOSE-AUTH-"]
 
 # Trạng thái bị stuck (không phải terminal, không phải planned)
-_STUCK_STATUSES = [StatusEnum.in_progress.value, StatusEnum.blocked.value, StatusEnum.paused.value]
+_STUCK_STATUSES = [
+    StatusEnum.in_progress.value,
+    StatusEnum.blocked.value,
+    StatusEnum.paused.value,
+]
 
 
 def _has_active_session(db, tenant_id: str, station_id: str) -> bool:
-    return db.scalar(
-        select(StationSession).where(
-            StationSession.station_id == station_id,
-            StationSession.tenant_id == tenant_id,
-            StationSession.status == "OPEN",
+    return (
+        db.scalar(
+            select(StationSession).where(
+                StationSession.station_id == station_id,
+                StationSession.tenant_id == tenant_id,
+                StationSession.status == "OPEN",
+            )
         )
-    ) is not None
+        is not None
+    )
 
 
 def _is_test_data(op_number: str) -> bool:
@@ -47,21 +55,21 @@ def _is_test_data(op_number: str) -> bool:
 
 def audit(db) -> dict:
     ops = db.scalars(
-        select(Operation).where(
-            Operation.status.notin_([StatusEnum.planned.value])
-        )
+        select(Operation).where(Operation.status.notin_([StatusEnum.planned.value]))
     ).all()
 
-    stuck = []   # IN_PROGRESS/BLOCKED/PAUSED, no session → reset to PLANNED
-    purge = []   # TEST-DT-AUTH-* / TEST-CLOSE-AUTH-* → delete entirely
-    ok = []      # COMPLETED or has active session → keep
+    stuck = []  # IN_PROGRESS/BLOCKED/PAUSED, no session → reset to PLANNED
+    purge = []  # TEST-DT-AUTH-* / TEST-CLOSE-AUTH-* → delete entirely
+    ok = []  # COMPLETED or has active session → keep
 
     for op in ops:
         wo = db.get(WorkOrder, op.work_order_id)
         po = db.get(ProductionOrder, wo.production_order_id) if wo else None
-        event_count = db.query(ExecutionEvent).filter(
-            ExecutionEvent.operation_id == op.id
-        ).count()
+        event_count = (
+            db.query(ExecutionEvent)
+            .filter(ExecutionEvent.operation_id == op.id)
+            .count()
+        )
         has_sess = _has_active_session(db, op.tenant_id, op.station_scope_value)
         row = {
             "id": op.id,
@@ -89,11 +97,13 @@ def _get_po_ids_by_prefix(db) -> list[int]:
     """Lấy PO ids cần purge (có prefix trong _PURGE_PREFIXES)."""
     all_ids = []
     for prefix in _PURGE_PREFIXES:
-        ids = list(db.scalars(
-            select(ProductionOrder.id).where(
-                ProductionOrder.order_number.like(f"{prefix}%")
+        ids = list(
+            db.scalars(
+                select(ProductionOrder.id).where(
+                    ProductionOrder.order_number.like(f"{prefix}%")
+                )
             )
-        ))
+        )
         all_ids.extend(ids)
     return all_ids
 
@@ -115,7 +125,9 @@ def do_cleanup(db, result: dict) -> None:
             op.good_qty = 0
             op.scrap_qty = 0
         db.flush()
-        print(f"\n[RESET] {len(stuck_ids)} stuck ops → PLANNED ({ev_deleted} events xóa)")
+        print(
+            f"\n[RESET] {len(stuck_ids)} stuck ops → PLANNED ({ev_deleted} events xóa)"
+        )
         for r in stuck:
             print(f"  id={r['id']} {r['op_number']} ({r['status']} → PLANNED)")
 
@@ -124,16 +136,24 @@ def do_cleanup(db, result: dict) -> None:
     if purge:
         po_ids = _get_po_ids_by_prefix(db)
         if po_ids:
-            wo_ids = list(db.scalars(
-                select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))
-            ))
+            wo_ids = list(
+                db.scalars(
+                    select(WorkOrder.id).where(
+                        WorkOrder.production_order_id.in_(po_ids)
+                    )
+                )
+            )
             if wo_ids:
-                op_ids = list(db.scalars(
-                    select(Operation.id).where(Operation.work_order_id.in_(wo_ids))
-                ))
+                op_ids = list(
+                    db.scalars(
+                        select(Operation.id).where(Operation.work_order_id.in_(wo_ids))
+                    )
+                )
                 if op_ids:
                     ev2 = db.execute(
-                        delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids))
+                        delete(ExecutionEvent).where(
+                            ExecutionEvent.operation_id.in_(op_ids)
+                        )
                     ).rowcount
                     db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
                     print(f"\n[PURGE] {len(op_ids)} test ops + {ev2} events xóa")

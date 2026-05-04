@@ -26,6 +26,7 @@ ENV VARS (optional overrides):
     FLEZIBCG_SEED_TENANT_NAME — default: "Default Tenant"
     FLEZIBCG_ALLOW_PRODUCTION_SEED — set to "true" to allow production seeding
 """
+
 from __future__ import annotations
 
 import os

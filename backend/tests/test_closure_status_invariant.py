@@ -9,7 +9,13 @@ from sqlalchemy import delete, select, text
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent, ExecutionEventType
-from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.master import (
+    ClosureStatusEnum,
+    Operation,
+    ProductionOrder,
+    StatusEnum,
+    WorkOrder,
+)
 from app.models.station_session import StationSession
 from app.schemas.operation import (
     OperationAbortRequest,
@@ -54,13 +60,21 @@ def _purge(db) -> None:
         return
 
     wo_ids = list(
-        db.scalars(select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids)))
+        db.scalars(
+            select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))
+        )
     )
     if wo_ids:
-        op_ids = list(db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids))))
+        op_ids = list(
+            db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids)))
+        )
         if op_ids:
-            db.execute(delete(StationSession).where(StationSession.station_id == "STATION_01"))
-            db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
+            db.execute(
+                delete(StationSession).where(StationSession.station_id == "STATION_01")
+            )
+            db.execute(
+                delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids))
+            )
             db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
         db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
     db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
@@ -192,7 +206,12 @@ def test_closed_record_rejects_all_execution_writes_with_same_code(db_session):
         closure_status=ClosureStatusEnum.closed.value,
     )
     with pytest.raises(ClosedRecordConflictError, match="STATE_CLOSED_RECORD"):
-        start_operation(db, op_start, OperationStartRequest(operator_id="opr-001"), tenant_id=_TENANT_ID)
+        start_operation(
+            db,
+            op_start,
+            OperationStartRequest(operator_id="opr-001"),
+            tenant_id=_TENANT_ID,
+        )
 
     op_pause = _mk_operation(
         db,
@@ -237,7 +256,9 @@ def test_closed_record_rejects_all_execution_writes_with_same_code(db_session):
         report_quantity(
             db,
             op_report,
-            OperationReportQuantityRequest(good_qty=1, scrap_qty=0, operator_id="opr-001"),
+            OperationReportQuantityRequest(
+                good_qty=1, scrap_qty=0, operator_id="opr-001"
+            ),
             tenant_id=_TENANT_ID,
         )
 
@@ -317,8 +338,15 @@ def test_open_record_keeps_existing_behavior_and_not_closed_error(db_session):
         status=StatusEnum.in_progress.value,
         closure_status=ClosureStatusEnum.open.value,
     )
-    with pytest.raises(StartOperationConflictError, match="Operation must be PLANNED to start"):
-        start_operation(db, op_start, OperationStartRequest(operator_id="opr-001"), tenant_id=_TENANT_ID)
+    with pytest.raises(
+        StartOperationConflictError, match="Operation must be PLANNED to start"
+    ):
+        start_operation(
+            db,
+            op_start,
+            OperationStartRequest(operator_id="opr-001"),
+            tenant_id=_TENANT_ID,
+        )
 
     op_pause = _mk_operation(
         db,

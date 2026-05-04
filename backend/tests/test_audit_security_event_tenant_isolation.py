@@ -25,7 +25,8 @@ def _override_admin_dependency(app: FastAPI, identity: RequestIdentity) -> Any:
         next(
             r
             for r in app.routes
-            if getattr(r, "path", "") == "/api/v1/security-events" and "GET" in (r.methods or set())
+            if getattr(r, "path", "") == "/api/v1/security-events"
+            and "GET" in (r.methods or set())
         ),
     )
     admin_dependency = next(
@@ -48,7 +49,15 @@ def _make_session() -> Session:
     return session_local()
 
 
-def _seed(db: Session, *, tenant_id: str, event_type: str, actor_user_id: str, resource_type: str, resource_id: str):
+def _seed(
+    db: Session,
+    *,
+    tenant_id: str,
+    event_type: str,
+    actor_user_id: str,
+    resource_type: str,
+    resource_id: str,
+):
     db.add(
         SecurityEventLog(
             tenant_id=tenant_id,

@@ -29,10 +29,14 @@ from tests.conftest import (
 
 class TestLooksLikeTestDb:
     def test_url_with_test_suffix_is_safe(self):
-        assert _looks_like_test_db("postgresql+psycopg://u:p@localhost/mes_test") is True
+        assert (
+            _looks_like_test_db("postgresql+psycopg://u:p@localhost/mes_test") is True
+        )
 
     def test_url_with_test_prefix_is_safe(self):
-        assert _looks_like_test_db("postgresql+psycopg://u:p@localhost/test_mes") is True
+        assert (
+            _looks_like_test_db("postgresql+psycopg://u:p@localhost/test_mes") is True
+        )
 
     def test_url_ending_with_slash_test_is_safe(self):
         assert _looks_like_test_db("postgresql://u:p@localhost:5432/test") is True
@@ -42,7 +46,9 @@ class TestLooksLikeTestDb:
 
     def test_uppercase_test_in_name_is_case_insensitive(self):
         # URLs are lowercased internally.
-        assert _looks_like_test_db("postgresql+psycopg://u:p@localhost/MES_TEST") is True
+        assert (
+            _looks_like_test_db("postgresql+psycopg://u:p@localhost/MES_TEST") is True
+        )
 
     def test_empty_url_is_not_safe(self):
         assert _looks_like_test_db("") is False
@@ -103,7 +109,9 @@ class TestAssertTestDbUrl:
 
 class TestMaskDbUrl:
     def test_masks_password_in_standard_url(self):
-        masked = _mask_db_url("postgresql+psycopg://user:supersecret@localhost:5432/mes")
+        masked = _mask_db_url(
+            "postgresql+psycopg://user:supersecret@localhost:5432/mes"
+        )
         assert "supersecret" not in masked
         assert "***" in masked
 

@@ -9,6 +9,7 @@ Behavior contract:
   verified context, not from user input).
 - No new domain events are introduced in this slice.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -19,7 +20,13 @@ from sqlalchemy import delete, select
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent
-from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.master import (
+    ClosureStatusEnum,
+    Operation,
+    ProductionOrder,
+    StatusEnum,
+    WorkOrder,
+)
 from app.models.rbac import Role, Scope, UserRoleAssignment
 from app.models.station_session import StationSession
 from app.schemas.operation import OperationStartRequest
@@ -75,11 +82,7 @@ def _purge_sessions(db) -> None:
 
 
 def _purge_rbac(db) -> None:
-    db.execute(
-        delete(UserRoleAssignment).where(
-            UserRoleAssignment.user_id == _ACTOR
-        )
-    )
+    db.execute(delete(UserRoleAssignment).where(UserRoleAssignment.user_id == _ACTOR))
     db.execute(
         delete(Scope).where(
             Scope.scope_value == _STATION,
@@ -99,14 +102,18 @@ def _purge_operations(db) -> None:
     if not po_ids:
         return
     wo_ids = list(
-        db.scalars(select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids)))
+        db.scalars(
+            select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))
+        )
     )
     if wo_ids:
         op_ids = list(
             db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids)))
         )
         if op_ids:
-            db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
+            db.execute(
+                delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids))
+            )
             db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
         db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
     db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))

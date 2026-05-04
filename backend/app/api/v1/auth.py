@@ -110,7 +110,9 @@ def refresh(
 
     # rotate_refresh_token validates (expired/revoked/rotated/unknown = None)
     # then atomically marks the old token as rotated and issues a new one.
-    result = rotate_refresh_token(db, raw_token=request.refresh_token, tenant_id=tenant_id)
+    result = rotate_refresh_token(
+        db, raw_token=request.refresh_token, tenant_id=tenant_id
+    )
     if result is None:
         # Emit reuse-rejection event regardless of failure reason — timing
         # uniformity prevents distinguishing expired vs rotated vs unknown.

@@ -180,7 +180,10 @@ def test_pending_approval_can_be_decided_by_valid_approver_role(decision: str) -
     assert decision_row.decision == decision
     assert refreshed_request is not None
     assert refreshed_request.status == decision
-    assert [row.event_type for row in audit_rows] == ["REQUEST_CREATED", "DECISION_MADE"]
+    assert [row.event_type for row in audit_rows] == [
+        "REQUEST_CREATED",
+        "DECISION_MADE",
+    ]
 
 
 @pytest.mark.parametrize("decision", ["APPROVED", "REJECTED"])

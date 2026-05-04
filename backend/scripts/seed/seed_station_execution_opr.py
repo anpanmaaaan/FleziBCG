@@ -96,7 +96,9 @@ def _reset_station_seed(db) -> None:
         )
         if operation_ids:
             db.execute(
-                delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(operation_ids))
+                delete(ExecutionEvent).where(
+                    ExecutionEvent.operation_id.in_(operation_ids)
+                )
             )
         db.execute(
             delete(ExecutionEvent).where(ExecutionEvent.work_order_id.in_(wo_ids))

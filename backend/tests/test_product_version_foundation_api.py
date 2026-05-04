@@ -23,7 +23,9 @@ from app.security.dependencies import RequestIdentity, require_authenticated_ide
 from app.services.product_service import create_product
 
 BACKEND_ROOT = Path(__file__).parent.parent
-PRODUCTS_SRC = (BACKEND_ROOT / "app" / "api" / "v1" / "products.py").read_text(encoding="utf-8")
+PRODUCTS_SRC = (BACKEND_ROOT / "app" / "api" / "v1" / "products.py").read_text(
+    encoding="utf-8"
+)
 
 
 def _make_identity(tenant_id: str = "tenant_a") -> RequestIdentity:
@@ -65,11 +67,15 @@ def _build_app(identity: RequestIdentity, session_local) -> FastAPI:
     return app
 
 
-def _override_action_dependency(app: FastAPI, path: str, method: str, identity: RequestIdentity) -> Any:
+def _override_action_dependency(
+    app: FastAPI, path: str, method: str, identity: RequestIdentity
+) -> Any:
     route = cast(
         Any,
         next(
-            r for r in app.routes if getattr(r, "path", "") == path and method in (r.methods or set())
+            r
+            for r in app.routes
+            if getattr(r, "path", "") == path and method in (r.methods or set())
         ),
     )
     action_dependency = next(
@@ -150,7 +156,9 @@ def test_get_product_version_returns_200_with_correct_data():
     app = _build_app(identity, session_local)
     client = TestClient(app)
 
-    response = client.get(f"/api/v1/products/{product_id}/versions/{v.product_version_id}")
+    response = client.get(
+        f"/api/v1/products/{product_id}/versions/{v.product_version_id}"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["product_version_id"] == v.product_version_id
@@ -166,7 +174,9 @@ def test_create_product_version_requires_manage_action():
     db.close()
 
     app = _build_app(identity, session_local)
-    action_dep = _override_action_dependency(app, "/api/v1/products/{product_id}/versions", "POST", identity)
+    action_dep = _override_action_dependency(
+        app, "/api/v1/products/{product_id}/versions", "POST", identity
+    )
     app.dependency_overrides[action_dep] = lambda: (_ for _ in ()).throw(
         HTTPException(status_code=403, detail="Forbidden")
     )
@@ -187,7 +197,9 @@ def test_create_product_version_creates_draft():
     db.close()
 
     app = _build_app(identity, session_local)
-    _override_action_dependency(app, "/api/v1/products/{product_id}/versions", "POST", identity)
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/versions", "POST", identity
+    )
     client = TestClient(app)
 
     response = client.post(
@@ -212,7 +224,9 @@ def test_create_product_version_rejects_is_current_payload():
     db.close()
 
     app = _build_app(identity, session_local)
-    _override_action_dependency(app, "/api/v1/products/{product_id}/versions", "POST", identity)
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/versions", "POST", identity
+    )
     client = TestClient(app)
 
     response = client.post(
@@ -230,13 +244,19 @@ def test_create_product_version_rejects_duplicate_code_for_same_product():
     db.close()
 
     app = _build_app(identity, session_local)
-    _override_action_dependency(app, "/api/v1/products/{product_id}/versions", "POST", identity)
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/versions", "POST", identity
+    )
     client = TestClient(app)
 
-    first = client.post(f"/api/v1/products/{product_id}/versions", json={"version_code": "dup"})
+    first = client.post(
+        f"/api/v1/products/{product_id}/versions", json={"version_code": "dup"}
+    )
     assert first.status_code == 200
 
-    second = client.post(f"/api/v1/products/{product_id}/versions", json={"version_code": "dup"})
+    second = client.post(
+        f"/api/v1/products/{product_id}/versions", json={"version_code": "dup"}
+    )
     assert second.status_code == 409
 
 
@@ -249,11 +269,17 @@ def test_create_product_version_allows_same_code_for_different_product():
     db.close()
 
     app = _build_app(identity, session_local)
-    _override_action_dependency(app, "/api/v1/products/{product_id}/versions", "POST", identity)
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/versions", "POST", identity
+    )
     client = TestClient(app)
 
-    a = client.post(f"/api/v1/products/{product_id_a}/versions", json={"version_code": "same"})
-    b = client.post(f"/api/v1/products/{product_id_b}/versions", json={"version_code": "same"})
+    a = client.post(
+        f"/api/v1/products/{product_id_a}/versions", json={"version_code": "same"}
+    )
+    b = client.post(
+        f"/api/v1/products/{product_id_b}/versions", json={"version_code": "same"}
+    )
     assert a.status_code == 200
     assert b.status_code == 200
 
@@ -294,7 +320,9 @@ def test_update_product_version_allows_draft_metadata_update():
     db.close()
 
     app = _build_app(identity, session_local)
-    _override_action_dependency(app, "/api/v1/products/{product_id}/versions/{version_id}", "PATCH", identity)
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/versions/{version_id}", "PATCH", identity
+    )
     client = TestClient(app)
 
     response = client.patch(
@@ -314,7 +342,9 @@ def test_update_product_version_rejects_released():
     db.close()
 
     app = _build_app(identity, session_local)
-    _override_action_dependency(app, "/api/v1/products/{product_id}/versions/{version_id}", "PATCH", identity)
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/versions/{version_id}", "PATCH", identity
+    )
     client = TestClient(app)
 
     response = client.patch(
@@ -333,7 +363,9 @@ def test_update_product_version_rejects_retired():
     db.close()
 
     app = _build_app(identity, session_local)
-    _override_action_dependency(app, "/api/v1/products/{product_id}/versions/{version_id}", "PATCH", identity)
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/versions/{version_id}", "PATCH", identity
+    )
     client = TestClient(app)
 
     response = client.patch(
@@ -352,7 +384,9 @@ def test_update_product_version_rejects_lifecycle_status_patch():
     db.close()
 
     app = _build_app(identity, session_local)
-    _override_action_dependency(app, "/api/v1/products/{product_id}/versions/{version_id}", "PATCH", identity)
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/versions/{version_id}", "PATCH", identity
+    )
     client = TestClient(app)
 
     response = client.patch(
@@ -371,7 +405,9 @@ def test_update_product_version_rejects_is_current_patch():
     db.close()
 
     app = _build_app(identity, session_local)
-    _override_action_dependency(app, "/api/v1/products/{product_id}/versions/{version_id}", "PATCH", identity)
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/versions/{version_id}", "PATCH", identity
+    )
     client = TestClient(app)
 
     response = client.patch(
@@ -401,7 +437,9 @@ def test_release_product_version_requires_manage_action():
     )
     client = TestClient(app)
 
-    response = client.post(f"/api/v1/products/{product_id}/versions/{version.product_version_id}/release")
+    response = client.post(
+        f"/api/v1/products/{product_id}/versions/{version.product_version_id}/release"
+    )
     assert response.status_code == 403
 
 
@@ -422,7 +460,9 @@ def test_release_product_version_changes_draft_to_released():
     )
     client = TestClient(app)
 
-    response = client.post(f"/api/v1/products/{product_id}/versions/{version.product_version_id}/release")
+    response = client.post(
+        f"/api/v1/products/{product_id}/versions/{version.product_version_id}/release"
+    )
     assert response.status_code == 200
     assert response.json()["lifecycle_status"] == "RELEASED"
 
@@ -432,7 +472,9 @@ def test_release_product_version_rejects_released_or_retired():
     _, session_local = _make_session()
     db = session_local()
     product_id = _mk_product(db, "tenant_a")
-    released = _mk_version(db, "tenant_a", product_id, "rel", lifecycle_status="RELEASED")
+    released = _mk_version(
+        db, "tenant_a", product_id, "rel", lifecycle_status="RELEASED"
+    )
     retired = _mk_version(db, "tenant_a", product_id, "ret", lifecycle_status="RETIRED")
     released_id = released.product_version_id
     retired_id = retired.product_version_id
@@ -473,7 +515,9 @@ def test_retire_product_version_requires_manage_action():
     )
     client = TestClient(app)
 
-    response = client.post(f"/api/v1/products/{product_id}/versions/{version.product_version_id}/retire")
+    response = client.post(
+        f"/api/v1/products/{product_id}/versions/{version.product_version_id}/retire"
+    )
     assert response.status_code == 403
 
 
@@ -510,7 +554,9 @@ def test_retire_product_version_rejects_current_version_if_policy_applies():
     _, session_local = _make_session()
     db = session_local()
     product_id = _mk_product(db, "tenant_a")
-    current = _mk_version(db, "tenant_a", product_id, "cur", lifecycle_status="RELEASED", is_current=True)
+    current = _mk_version(
+        db, "tenant_a", product_id, "cur", lifecycle_status="RELEASED", is_current=True
+    )
     db.close()
 
     app = _build_app(identity, session_local)
@@ -522,7 +568,9 @@ def test_retire_product_version_rejects_current_version_if_policy_applies():
     )
     client = TestClient(app)
 
-    response = client.post(f"/api/v1/products/{product_id}/versions/{current.product_version_id}/retire")
+    response = client.post(
+        f"/api/v1/products/{product_id}/versions/{current.product_version_id}/retire"
+    )
     assert response.status_code == 400
 
 
@@ -536,7 +584,9 @@ def test_write_routes_return_404_for_wrong_product():
     db.close()
 
     app = _build_app(identity, session_local)
-    _override_action_dependency(app, "/api/v1/products/{product_id}/versions/{version_id}", "PATCH", identity)
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/versions/{version_id}", "PATCH", identity
+    )
     _override_action_dependency(
         app,
         "/api/v1/products/{product_id}/versions/{version_id}/release",
@@ -555,8 +605,12 @@ def test_write_routes_return_404_for_wrong_product():
         f"/api/v1/products/{product_id_a}/versions/{version_b.product_version_id}",
         json={"description": "x"},
     )
-    rel = client.post(f"/api/v1/products/{product_id_a}/versions/{version_b.product_version_id}/release")
-    ret = client.post(f"/api/v1/products/{product_id_a}/versions/{version_b.product_version_id}/retire")
+    rel = client.post(
+        f"/api/v1/products/{product_id_a}/versions/{version_b.product_version_id}/release"
+    )
+    ret = client.post(
+        f"/api/v1/products/{product_id_a}/versions/{version_b.product_version_id}/retire"
+    )
 
     assert patch.status_code == 404
     assert rel.status_code == 404
@@ -574,7 +628,9 @@ def test_no_delete_reactivate_set_current_clone_binding_routes_exist():
         "/api/v1/products/{product_id}/versions/{version_id}/clone": {"POST"},
         "/api/v1/products/{product_id}/versions/{version_id}/bind-bom": {"POST"},
         "/api/v1/products/{product_id}/versions/{version_id}/bind-routing": {"POST"},
-        "/api/v1/products/{product_id}/versions/{version_id}/bind-resource-requirement": {"POST"},
+        "/api/v1/products/{product_id}/versions/{version_id}/bind-resource-requirement": {
+            "POST"
+        },
     }
 
     existing = {
@@ -643,7 +699,9 @@ def test_list_versions_includes_allowed_actions_field():
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 1
-    assert "allowed_actions" in data[0], "allowed_actions field must be present in list response"
+    assert "allowed_actions" in data[0], (
+        "allowed_actions field must be present in list response"
+    )
 
 
 def test_get_version_includes_allowed_actions_field():
@@ -658,10 +716,14 @@ def test_get_version_includes_allowed_actions_field():
     app = _build_app(identity, session_local)
     client = TestClient(app)
 
-    response = client.get(f"/api/v1/products/{product_id}/versions/{v.product_version_id}")
+    response = client.get(
+        f"/api/v1/products/{product_id}/versions/{v.product_version_id}"
+    )
     assert response.status_code == 200
     data = response.json()
-    assert "allowed_actions" in data, "allowed_actions field must be present in get response"
+    assert "allowed_actions" in data, (
+        "allowed_actions field must be present in get response"
+    )
 
 
 def test_allowed_actions_all_false_for_user_without_manage():
@@ -675,7 +737,9 @@ def test_allowed_actions_all_false_for_user_without_manage():
     db.close()
 
     identity = _make_identity()
-    test_app, _, original, products_module = _build_app_with_manage(session_local, has_manage=False)
+    test_app, _, original, products_module = _build_app_with_manage(
+        session_local, has_manage=False
+    )
     try:
         client = TestClient(test_app)
         response = client.get(f"/api/v1/products/{product_id}/versions")
@@ -697,11 +761,15 @@ def test_allowed_actions_draft_with_manage():
     _, session_local = _make_session()
     db = session_local()
     product_id = _mk_product(db, "tenant_a")
-    _mk_version(db, "tenant_a", product_id, "v1", lifecycle_status="DRAFT", is_current=False)
+    _mk_version(
+        db, "tenant_a", product_id, "v1", lifecycle_status="DRAFT", is_current=False
+    )
     db.close()
 
     identity = _make_identity()
-    test_app, _, original, products_module = _build_app_with_manage(session_local, has_manage=True)
+    test_app, _, original, products_module = _build_app_with_manage(
+        session_local, has_manage=True
+    )
     try:
         client = TestClient(test_app)
         response = client.get(f"/api/v1/products/{product_id}/versions")
@@ -722,11 +790,15 @@ def test_allowed_actions_released_not_current_with_manage():
     _, session_local = _make_session()
     db = session_local()
     product_id = _mk_product(db, "tenant_a")
-    _mk_version(db, "tenant_a", product_id, "v1", lifecycle_status="RELEASED", is_current=False)
+    _mk_version(
+        db, "tenant_a", product_id, "v1", lifecycle_status="RELEASED", is_current=False
+    )
     db.close()
 
     identity = _make_identity()
-    test_app, _, original, products_module = _build_app_with_manage(session_local, has_manage=True)
+    test_app, _, original, products_module = _build_app_with_manage(
+        session_local, has_manage=True
+    )
     try:
         client = TestClient(test_app)
         response = client.get(f"/api/v1/products/{product_id}/versions")
@@ -747,11 +819,15 @@ def test_allowed_actions_released_is_current_with_manage():
     _, session_local = _make_session()
     db = session_local()
     product_id = _mk_product(db, "tenant_a")
-    _mk_version(db, "tenant_a", product_id, "v1", lifecycle_status="RELEASED", is_current=True)
+    _mk_version(
+        db, "tenant_a", product_id, "v1", lifecycle_status="RELEASED", is_current=True
+    )
     db.close()
 
     identity = _make_identity()
-    test_app, _, original, products_module = _build_app_with_manage(session_local, has_manage=True)
+    test_app, _, original, products_module = _build_app_with_manage(
+        session_local, has_manage=True
+    )
     try:
         client = TestClient(test_app)
         response = client.get(f"/api/v1/products/{product_id}/versions")
@@ -772,11 +848,15 @@ def test_allowed_actions_retired_with_manage():
     _, session_local = _make_session()
     db = session_local()
     product_id = _mk_product(db, "tenant_a")
-    _mk_version(db, "tenant_a", product_id, "v1", lifecycle_status="RETIRED", is_current=False)
+    _mk_version(
+        db, "tenant_a", product_id, "v1", lifecycle_status="RETIRED", is_current=False
+    )
     db.close()
 
     identity = _make_identity()
-    test_app, _, original, products_module = _build_app_with_manage(session_local, has_manage=True)
+    test_app, _, original, products_module = _build_app_with_manage(
+        session_local, has_manage=True
+    )
     try:
         client = TestClient(test_app)
         response = client.get(f"/api/v1/products/{product_id}/versions")
@@ -801,11 +881,15 @@ def test_read_endpoints_return_200_for_non_manage_user():
     db.close()
 
     identity = _make_identity()
-    test_app, _, original, products_module = _build_app_with_manage(session_local, has_manage=False)
+    test_app, _, original, products_module = _build_app_with_manage(
+        session_local, has_manage=False
+    )
     try:
         client = TestClient(test_app)
         list_resp = client.get(f"/api/v1/products/{product_id}/versions")
-        get_resp = client.get(f"/api/v1/products/{product_id}/versions/{v.product_version_id}")
+        get_resp = client.get(
+            f"/api/v1/products/{product_id}/versions/{v.product_version_id}"
+        )
         assert list_resp.status_code == 200
         assert get_resp.status_code == 200
     finally:

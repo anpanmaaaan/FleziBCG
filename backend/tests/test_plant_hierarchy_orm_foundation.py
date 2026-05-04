@@ -18,6 +18,7 @@ Covers:
 
 All tests use SQLite in-memory — no external infrastructure required.
 """
+
 from __future__ import annotations
 
 import ast
@@ -31,9 +32,7 @@ from app.models.plant_hierarchy import Area, Equipment, Line, Plant, Station
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 ALEMBIC_INI = BACKEND_DIR / "alembic.ini"
-MIGRATION_PATH = (
-    BACKEND_DIR / "alembic" / "versions" / "0005_add_plant_hierarchy.py"
-)
+MIGRATION_PATH = BACKEND_DIR / "alembic" / "versions" / "0005_add_plant_hierarchy.py"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -79,9 +78,16 @@ def test_plant_hierarchy_models_exist():
 def test_plant_fields_exist():
     """Plant model must have all required fields."""
     required = {
-        "plant_id", "tenant_id", "plant_code", "plant_name",
-        "timezone", "country_code", "is_active", "metadata_json",
-        "created_at", "updated_at",
+        "plant_id",
+        "tenant_id",
+        "plant_code",
+        "plant_name",
+        "timezone",
+        "country_code",
+        "is_active",
+        "metadata_json",
+        "created_at",
+        "updated_at",
     }
     actual = {c.key for c in Plant.__table__.columns}
     missing = required - actual
@@ -91,9 +97,15 @@ def test_plant_fields_exist():
 def test_area_fields_exist():
     """Area model must have all required fields including plant_id FK."""
     required = {
-        "area_id", "tenant_id", "plant_id",
-        "area_code", "area_name", "is_active", "metadata_json",
-        "created_at", "updated_at",
+        "area_id",
+        "tenant_id",
+        "plant_id",
+        "area_code",
+        "area_name",
+        "is_active",
+        "metadata_json",
+        "created_at",
+        "updated_at",
     }
     actual = {c.key for c in Area.__table__.columns}
     missing = required - actual
@@ -103,9 +115,15 @@ def test_area_fields_exist():
 def test_line_fields_exist():
     """Line model must have all required fields including area_id FK."""
     required = {
-        "line_id", "tenant_id", "area_id",
-        "line_code", "line_name", "is_active", "metadata_json",
-        "created_at", "updated_at",
+        "line_id",
+        "tenant_id",
+        "area_id",
+        "line_code",
+        "line_name",
+        "is_active",
+        "metadata_json",
+        "created_at",
+        "updated_at",
     }
     actual = {c.key for c in Line.__table__.columns}
     missing = required - actual
@@ -115,10 +133,16 @@ def test_line_fields_exist():
 def test_station_fields_exist():
     """Station model must have all required fields including line_id FK."""
     required = {
-        "station_id", "tenant_id", "line_id",
-        "station_code", "station_name", "station_type",
-        "is_active", "metadata_json",
-        "created_at", "updated_at",
+        "station_id",
+        "tenant_id",
+        "line_id",
+        "station_code",
+        "station_name",
+        "station_type",
+        "is_active",
+        "metadata_json",
+        "created_at",
+        "updated_at",
     }
     actual = {c.key for c in Station.__table__.columns}
     missing = required - actual
@@ -128,10 +152,16 @@ def test_station_fields_exist():
 def test_equipment_fields_exist():
     """Equipment model must have all required fields including station_id FK."""
     required = {
-        "equipment_id", "tenant_id", "station_id",
-        "equipment_code", "equipment_name", "equipment_type",
-        "is_active", "metadata_json",
-        "created_at", "updated_at",
+        "equipment_id",
+        "tenant_id",
+        "station_id",
+        "equipment_code",
+        "equipment_name",
+        "equipment_type",
+        "is_active",
+        "metadata_json",
+        "created_at",
+        "updated_at",
     }
     actual = {c.key for c in Equipment.__table__.columns}
     missing = required - actual
@@ -142,18 +172,14 @@ def test_all_hierarchy_models_have_tenant_id():
     """All five hierarchy models must have a tenant_id column."""
     for model in _HIERARCHY_MODELS:
         col_names = {c.key for c in model.__table__.columns}
-        assert "tenant_id" in col_names, (
-            f"{model.__name__} missing tenant_id"
-        )
+        assert "tenant_id" in col_names, f"{model.__name__} missing tenant_id"
 
 
 def test_all_hierarchy_models_have_is_active():
     """All five hierarchy models must have an is_active boolean column."""
     for model in _HIERARCHY_MODELS:
         col_names = {c.key for c in model.__table__.columns}
-        assert "is_active" in col_names, (
-            f"{model.__name__} missing is_active"
-        )
+        assert "is_active" in col_names, f"{model.__name__} missing is_active"
 
 
 def test_hierarchy_relationship_columns_exist():
@@ -204,8 +230,7 @@ def test_plant_hierarchy_indexes_exist():
         index_names = {idx.name for idx in table.indexes}
         expected_idx = expected_index_prefixes[table.name]
         assert expected_idx in index_names, (
-            f"{model.__name__} missing index '{expected_idx}'. "
-            f"Found: {index_names}"
+            f"{model.__name__} missing index '{expected_idx}'. Found: {index_names}"
         )
 
 
@@ -423,7 +448,11 @@ def _get_migration_ast_calls() -> list[tuple[str, str, list]]:
 def test_plant_hierarchy_migration_creates_expected_tables_only():
     """Migration upgrade must create exactly the 5 hierarchy tables, no more."""
     calls = _get_migration_ast_calls()
-    created = [args[0] for fn, scope, args in calls if fn == "create_table" and scope == "upgrade"]
+    created = [
+        args[0]
+        for fn, scope, args in calls
+        if fn == "create_table" and scope == "upgrade"
+    ]
     assert sorted(created) == sorted(_HIERARCHY_TABLES), (
         f"Expected tables: {sorted(_HIERARCHY_TABLES)}\n"
         f"Actually created: {sorted(created)}"
@@ -456,8 +485,7 @@ def test_plant_hierarchy_downgrade_drops_tables_in_dependency_order():
     # Must appear in this order (leaf → root)
     expected_order = ["equipment", "stations", "lines", "areas", "plants"]
     assert dropped == expected_order, (
-        f"Expected downgrade drop order: {expected_order}\n"
-        f"Actual: {dropped}"
+        f"Expected downgrade drop order: {expected_order}\nActual: {dropped}"
     )
 
 
@@ -477,8 +505,9 @@ def test_plant_hierarchy_sqlite_migration_upgrade():
 
     with engine.begin() as conn:
         # Simulate migration upgrade manually
-        conn.execute(text(
-            """CREATE TABLE plants (
+        conn.execute(
+            text(
+                """CREATE TABLE plants (
                 plant_id VARCHAR(64) PRIMARY KEY,
                 tenant_id VARCHAR(64) NOT NULL,
                 plant_code VARCHAR(64) NOT NULL,
@@ -491,9 +520,11 @@ def test_plant_hierarchy_sqlite_migration_upgrade():
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
                 CONSTRAINT uq_plants_tenant_code UNIQUE (tenant_id, plant_code)
             )"""
-        ))
-        conn.execute(text(
-            """CREATE TABLE areas (
+            )
+        )
+        conn.execute(
+            text(
+                """CREATE TABLE areas (
                 area_id VARCHAR(64) PRIMARY KEY,
                 tenant_id VARCHAR(64) NOT NULL,
                 plant_id VARCHAR(64) NOT NULL REFERENCES plants(plant_id),
@@ -505,16 +536,21 @@ def test_plant_hierarchy_sqlite_migration_upgrade():
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
                 CONSTRAINT uq_areas_tenant_plant_code UNIQUE (tenant_id, plant_id, area_code)
             )"""
-        ))
+            )
+        )
         # Insert records to verify constraint
-        conn.execute(text(
-            "INSERT INTO plants (plant_id, tenant_id, plant_code, plant_name) "
-            "VALUES ('p1', 'default', 'PLT01', 'Main Plant')"
-        ))
-        conn.execute(text(
-            "INSERT INTO areas (area_id, tenant_id, plant_id, area_code, area_name) "
-            "VALUES ('a1', 'default', 'p1', 'AREA01', 'Assembly')"
-        ))
+        conn.execute(
+            text(
+                "INSERT INTO plants (plant_id, tenant_id, plant_code, plant_name) "
+                "VALUES ('p1', 'default', 'PLT01', 'Main Plant')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO areas (area_id, tenant_id, plant_id, area_code, area_name) "
+                "VALUES ('a1', 'default', 'p1', 'AREA01', 'Assembly')"
+            )
+        )
         result = conn.execute(text("SELECT plant_id FROM areas WHERE area_id = 'a1'"))
         row = result.fetchone()
         assert row[0] == "p1"

@@ -25,6 +25,8 @@ from app.models.routing import Routing
 
 
 TENANT_ID = "default"
+
+
 def seed_production_orders_for_widgets():
     """
     Create production orders for WIDGET-A and WIDGET-B using master data.
@@ -259,7 +261,9 @@ def _create_work_order_with_operations(
         db.add(op)
         db.flush()
 
-    print(f"    → {wo_number} ({len(routing.operations)} ops across {len(set(stations))} stations)")
+    print(
+        f"    → {wo_number} ({len(routing.operations)} ops across {len(set(stations))} stations)"
+    )
 
 
 def _parse_datetime(value: str) -> datetime:
@@ -277,6 +281,7 @@ def main():
     init_db_module = None
     try:
         from app.db.init_db import init_db as init_db_func
+
         init_db_module = init_db_func
         init_db_module()
     except ImportError:

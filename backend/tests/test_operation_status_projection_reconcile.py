@@ -41,7 +41,9 @@ def _purge(db) -> None:
             db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids)))
         )
         if op_ids:
-            db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
+            db.execute(
+                delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids))
+            )
         db.execute(delete(Operation).where(Operation.work_order_id.in_(wo_ids)))
         db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
     db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
@@ -232,7 +234,9 @@ def _seed_operation_with_event_types(
     return op
 
 
-def _assert_detail_bulk_parity(db, op: Operation, expected_status: str, expected_downtime_open: bool):
+def _assert_detail_bulk_parity(
+    db, op: Operation, expected_status: str, expected_downtime_open: bool
+):
     detail = derive_operation_detail(db, op)
     bulk_projection = derive_operation_runtime_projection_for_ids(
         db,

@@ -34,7 +34,9 @@ def list_security_events(
     identity: RequestIdentity = Depends(require_action("admin.security_event.read")),
 ) -> list[SecurityEventItem]:
     if created_from and created_to and created_from > created_to:
-        raise HTTPException(status_code=422, detail="created_from must be <= created_to")
+        raise HTTPException(
+            status_code=422, detail="created_from must be <= created_to"
+        )
 
     rows = get_security_events(
         db,

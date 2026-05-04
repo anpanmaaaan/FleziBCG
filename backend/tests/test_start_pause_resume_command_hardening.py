@@ -8,7 +8,13 @@ from sqlalchemy import delete, select
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent, ExecutionEventType
-from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.master import (
+    ClosureStatusEnum,
+    Operation,
+    ProductionOrder,
+    StatusEnum,
+    WorkOrder,
+)
 from app.models.rbac import Role, Scope, UserRoleAssignment
 from app.models.station_session import StationSession
 from app.schemas.operation import (
@@ -141,12 +147,22 @@ def _purge(db) -> None:
     )
     if po_ids:
         wo_ids = list(
-            db.scalars(select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids)))
+            db.scalars(
+                select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))
+            )
         )
         if wo_ids:
-            op_ids = list(db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids))))
+            op_ids = list(
+                db.scalars(
+                    select(Operation.id).where(Operation.work_order_id.in_(wo_ids))
+                )
+            )
             if op_ids:
-                db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
+                db.execute(
+                    delete(ExecutionEvent).where(
+                        ExecutionEvent.operation_id.in_(op_ids)
+                    )
+                )
                 db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
             db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
         db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
@@ -241,7 +257,9 @@ def _latest_event_type(db, operation_id: int) -> str | None:
     )
 
 
-def _seed_paused_operation(db, *, suffix: str, station_scope_value: str = _STATION) -> Operation:
+def _seed_paused_operation(
+    db, *, suffix: str, station_scope_value: str = _STATION
+) -> Operation:
     _ensure_open_station_session(db, station_id=station_scope_value)
     op = _seed_operation(
         db,
@@ -291,7 +309,9 @@ def test_start_operation_happy_path_planned_emits_event_and_derives_actions(db_s
 def test_start_operation_rejects_non_planned(db_session):
     db = db_session
     _ensure_open_station_session(db)
-    op = _seed_operation(db, suffix="START-NOT-PLANNED", status=StatusEnum.in_progress.value)
+    op = _seed_operation(
+        db, suffix="START-NOT-PLANNED", status=StatusEnum.in_progress.value
+    )
 
     with pytest.raises(StartOperationConflictError):
         start_operation(
@@ -321,11 +341,15 @@ def test_start_operation_rejects_closed_operation(db_session):
         )
 
 
-def test_pause_operation_happy_path_in_progress_emits_event_and_derives_actions(db_session):
+def test_pause_operation_happy_path_in_progress_emits_event_and_derives_actions(
+    db_session,
+):
     db = db_session
     _ensure_open_station_session(db)
     op = _seed_operation(db, suffix="PAUSE-OK", status=StatusEnum.planned.value)
-    started = start_operation(db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID)
+    started = start_operation(
+        db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID
+    )
     assert started.status == StatusEnum.in_progress.value
 
     db_op = db.scalar(select(Operation).where(Operation.id == op.id))
@@ -347,7 +371,9 @@ def test_pause_operation_happy_path_in_progress_emits_event_and_derives_actions(
 def test_pause_operation_rejects_non_in_progress(db_session):
     db = db_session
     _ensure_open_station_session(db)
-    op = _seed_operation(db, suffix="PAUSE-NON-RUNNING", status=StatusEnum.planned.value)
+    op = _seed_operation(
+        db, suffix="PAUSE-NON-RUNNING", status=StatusEnum.planned.value
+    )
 
     with pytest.raises(PauseExecutionConflictError, match="STATE_NOT_RUNNING"):
         pause_operation(
@@ -399,7 +425,9 @@ def test_resume_operation_happy_path_paused_emits_event_and_derives_actions(db_s
 def test_resume_operation_rejects_non_paused(db_session):
     db = db_session
     _ensure_open_station_session(db)
-    op = _seed_operation(db, suffix="RESUME-NOT-PAUSED", status=StatusEnum.in_progress.value)
+    op = _seed_operation(
+        db, suffix="RESUME-NOT-PAUSED", status=StatusEnum.in_progress.value
+    )
 
     with pytest.raises(ResumeExecutionConflictError, match="STATE_NOT_PAUSED"):
         resume_operation(

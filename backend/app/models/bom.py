@@ -2,7 +2,16 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -20,7 +29,9 @@ class Bom(Base):
 
     __tablename__ = "boms"
     __table_args__ = (
-        UniqueConstraint("tenant_id", "product_id", "bom_code", name="uq_boms_tenant_product_code"),
+        UniqueConstraint(
+            "tenant_id", "product_id", "bom_code", name="uq_boms_tenant_product_code"
+        ),
     )
 
     bom_id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -30,7 +41,9 @@ class Bom(Base):
     )
     bom_code: Mapped[str] = mapped_column(String(64), nullable=False)
     bom_name: Mapped[str] = mapped_column(String(256), nullable=False)
-    lifecycle_status: Mapped[str] = mapped_column(String(16), nullable=False, default="DRAFT")
+    lifecycle_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="DRAFT"
+    )
     effective_from: Mapped[date | None] = mapped_column(Date, nullable=True)
     effective_to: Mapped[date | None] = mapped_column(Date, nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -38,7 +51,10 @@ class Bom(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
     items: Mapped[list[BomItem]] = relationship(
@@ -52,12 +68,16 @@ class Bom(Base):
 class BomItem(Base):
     __tablename__ = "bom_items"
     __table_args__ = (
-        UniqueConstraint("tenant_id", "bom_id", "line_no", name="uq_bom_items_tenant_bom_line_no"),
+        UniqueConstraint(
+            "tenant_id", "bom_id", "line_no", name="uq_bom_items_tenant_bom_line_no"
+        ),
     )
 
     bom_item_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    bom_id: Mapped[str] = mapped_column(String(64), ForeignKey("boms.bom_id"), nullable=False, index=True)
+    bom_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("boms.bom_id"), nullable=False, index=True
+    )
     component_product_id: Mapped[str] = mapped_column(
         String(64), ForeignKey("products.product_id"), nullable=False, index=True
     )
@@ -71,7 +91,10 @@ class BomItem(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
     bom: Mapped[Bom] = relationship("Bom", back_populates="items")

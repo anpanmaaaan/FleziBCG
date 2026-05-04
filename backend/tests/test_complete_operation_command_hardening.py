@@ -8,7 +8,13 @@ from sqlalchemy import delete, select
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent, ExecutionEventType
-from app.models.master import ClosureStatusEnum, Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.master import (
+    ClosureStatusEnum,
+    Operation,
+    ProductionOrder,
+    StatusEnum,
+    WorkOrder,
+)
 from app.models.rbac import Role, Scope, UserRoleAssignment
 from app.models.station_session import StationSession
 from app.schemas.operation import OperationCompleteRequest, OperationStartRequest
@@ -136,14 +142,22 @@ def _purge(db) -> None:
     )
     if po_ids:
         wo_ids = list(
-            db.scalars(select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids)))
+            db.scalars(
+                select(WorkOrder.id).where(WorkOrder.production_order_id.in_(po_ids))
+            )
         )
         if wo_ids:
             op_ids = list(
-                db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids)))
+                db.scalars(
+                    select(Operation.id).where(Operation.work_order_id.in_(wo_ids))
+                )
             )
             if op_ids:
-                db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
+                db.execute(
+                    delete(ExecutionEvent).where(
+                        ExecutionEvent.operation_id.in_(op_ids)
+                    )
+                )
                 db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
             db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
         db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
@@ -229,10 +243,19 @@ def _seed_operation(
     return op
 
 
-def _seed_in_progress_operation(db, *, suffix: str, station_scope_value: str = _STATION) -> Operation:
+def _seed_in_progress_operation(
+    db, *, suffix: str, station_scope_value: str = _STATION
+) -> Operation:
     _ensure_open_station_session(db, station_id=station_scope_value)
-    op = _seed_operation(db, suffix=suffix, status=StatusEnum.planned.value, station_scope_value=station_scope_value)
-    start_operation(db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID)
+    op = _seed_operation(
+        db,
+        suffix=suffix,
+        status=StatusEnum.planned.value,
+        station_scope_value=station_scope_value,
+    )
+    start_operation(
+        db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID
+    )
     db_op = db.scalar(select(Operation).where(Operation.id == op.id))
     assert db_op is not None
     assert db_op.status == StatusEnum.in_progress.value
@@ -282,7 +305,9 @@ def test_complete_operation_rejects_invalid_runtime_state(db_session):
 def test_complete_operation_rejects_already_completed(db_session):
     db = db_session
     _ensure_open_station_session(db)
-    op = _seed_operation(db, suffix="COMPLETE-ALREADY", status=StatusEnum.completed.value)
+    op = _seed_operation(
+        db, suffix="COMPLETE-ALREADY", status=StatusEnum.completed.value
+    )
 
     with pytest.raises(CompleteOperationConflictError, match="already completed"):
         complete_operation(
@@ -343,7 +368,9 @@ def test_complete_operation_emits_op_completed_event(db_session):
     assert "completed_at" in last.payload
 
 
-def test_complete_operation_projection_after_complete_is_event_derived_completed(db_session):
+def test_complete_operation_projection_after_complete_is_event_derived_completed(
+    db_session,
+):
     db = db_session
     op = _seed_in_progress_operation(db, suffix="COMPLETE-PROJ")
 
@@ -376,7 +403,9 @@ def test_complete_operation_allowed_actions_after_complete_backend_derived(db_se
 
 def test_complete_operation_without_station_session_rejects(db_session):
     db = db_session
-    op = _seed_operation(db, suffix="COMPLETE-NO-SESSION", status=StatusEnum.in_progress.value)
+    op = _seed_operation(
+        db, suffix="COMPLETE-NO-SESSION", status=StatusEnum.in_progress.value
+    )
 
     with pytest.raises(StationSessionGuardError, match="STATION_SESSION_REQUIRED"):
         complete_operation(

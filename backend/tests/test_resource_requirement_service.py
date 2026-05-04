@@ -103,7 +103,9 @@ def test_create_list_get_update_delete_requirement_happy_path_and_events():
     )
     assert created.required_resource_type == "TOOLING"
 
-    listed = list_resource_requirements(db, tenant_id="tenant_a", routing_id=routing_id, operation_id=operation_id)
+    listed = list_resource_requirements(
+        db, tenant_id="tenant_a", routing_id=routing_id, operation_id=operation_id
+    )
     assert len(listed) == 1
 
     fetched = get_resource_requirement_by_id(
@@ -122,7 +124,9 @@ def test_create_list_get_update_delete_requirement_happy_path_and_events():
         routing_id=routing_id,
         operation_id=operation_id,
         requirement_id=created.requirement_id,
-        payload=ResourceRequirementUpdateRequest(quantity_required=2, notes="Need two tools"),
+        payload=ResourceRequirementUpdateRequest(
+            quantity_required=2, notes="Need two tools"
+        ),
     )
     assert updated.quantity_required == 2
 
@@ -136,7 +140,9 @@ def test_create_list_get_update_delete_requirement_happy_path_and_events():
     )
     assert removed.requirement_id == created.requirement_id
 
-    events = list(db.scalars(select(SecurityEventLog).order_by(SecurityEventLog.id.asc())))
+    events = list(
+        db.scalars(select(SecurityEventLog).order_by(SecurityEventLog.id.asc()))
+    )
     event_types = [e.event_type for e in events]
     assert "RESOURCE_REQUIREMENT.CREATED" in event_types
     assert "RESOURCE_REQUIREMENT.UPDATED" in event_types

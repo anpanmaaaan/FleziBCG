@@ -158,7 +158,9 @@ def test_open_station_session_happy_path_emits_candidate_event(station_session_f
     assert session.tenant_id == _TENANT_ID
     assert session.station_id == _STATION_A
     assert session.status == "OPEN"
-    assert session.operator_user_id == _ACTOR_MULTI  # auto-derived from identity (BT-AGG-002)
+    assert (
+        session.operator_user_id == _ACTOR_MULTI
+    )  # auto-derived from identity (BT-AGG-002)
 
     event = db.scalar(
         select(SecurityEventLog)
@@ -226,7 +228,9 @@ def test_close_session_and_closed_terminal_rules(station_session_fixture):
     db = station_session_fixture
 
     opened = open_station_session(db, _identity(_ACTOR_MULTI), station_id=_STATION_A)
-    closed = close_station_session(db, _identity(_ACTOR_MULTI), session_id=opened.session_id)
+    closed = close_station_session(
+        db, _identity(_ACTOR_MULTI), session_id=opened.session_id
+    )
 
     assert closed.status == "CLOSED"
     assert closed.closed_at is not None
@@ -273,7 +277,9 @@ def test_get_current_station_session_returns_open_session(station_session_fixtur
     db = station_session_fixture
 
     opened = open_station_session(db, _identity(_ACTOR_MULTI), station_id=_STATION_A)
-    current = get_current_station_session(db, _identity(_ACTOR_MULTI), station_id=_STATION_A)
+    current = get_current_station_session(
+        db, _identity(_ACTOR_MULTI), station_id=_STATION_A
+    )
 
     assert current is not None
     assert current.session_id == opened.session_id
