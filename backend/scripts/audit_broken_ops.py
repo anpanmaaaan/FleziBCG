@@ -17,7 +17,6 @@ from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.models.execution import ExecutionEvent
 from app.models.master import (
-    ClosureStatusEnum,
     Operation,
     ProductionOrder,
     StatusEnum,

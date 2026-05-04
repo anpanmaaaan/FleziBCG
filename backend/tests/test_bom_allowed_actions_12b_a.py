@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import uuid
-from typing import cast
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -103,7 +102,7 @@ def test_get_boms_includes_allowed_actions():
     session_local = _make_session()
     db = session_local()
     product_id = _mk_product(db)
-    bom = _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="AA-001")
+    _mk_bom(db, tenant_id="tenant_a", product_id=product_id, bom_code="AA-001")
     db.close()
 
     app = _build_app(identity, session_local, has_manage=True)
