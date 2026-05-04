@@ -4,6 +4,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, UniqueCon
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
+
 from app.db.base import Base
 
 
@@ -24,6 +25,14 @@ class ApprovalRule(Base):
     # rules override the wildcard when both exist (see approval_repository ordering).
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, default="*")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # P0-A-15A: Scope applicability fields (nullable, additive — no runtime matching yet)
+    governed_action_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    governed_resource_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    scope_ref: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    scope_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    priority: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    effective_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    effective_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
