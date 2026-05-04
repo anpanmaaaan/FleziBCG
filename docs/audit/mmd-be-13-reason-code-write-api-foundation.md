@@ -45,7 +45,7 @@ All write endpoints gated by `admin.master_data.reason_code.manage` action code.
 - Checks for duplicate `(tenant_id, reason_domain, reason_code)` — raises `ValueError` if exists
 - Sets `lifecycle_status = "DRAFT"` — immutable at create time
 - `tenant_id` always from identity, never from payload
-- Emits `REASONCODE.CREATED` security event
+- Emits `ReasonCode.CREATED` security event
 
 ### `update_reason_code(db, *, tenant_id, actor_user_id, reason_code_id, payload)`
 - Rejects if `lifecycle_status != "DRAFT"` → `ValueError("{status} Reason Code metadata cannot be updated")`
@@ -53,18 +53,18 @@ All write endpoints gated by `admin.master_data.reason_code.manage` action code.
 - Immutable fields: `reason_code`, `reason_domain`, `reason_category`, `tenant_id`, `lifecycle_status`, `downtime_reason_id`
 - Uses `model_fields_set` to correctly handle `description=None` (allow explicit null)
 - No-op if no changes detected
-- Emits `REASONCODE.UPDATED` security event
+- Emits `ReasonCode.UPDATED` security event
 
 ### `release_reason_code(db, *, tenant_id, actor_user_id, reason_code_id)`
 - Rejects RETIRED → `ValueError("RETIRED Reason Code cannot be released")`
 - Rejects not-DRAFT → `ValueError("Only DRAFT Reason Codes can be released")`
 - Sets `lifecycle_status = "RELEASED"`
-- Emits `REASONCODE.RELEASED` security event
+- Emits `ReasonCode.RELEASED` security event
 
 ### `retire_reason_code(db, *, tenant_id, actor_user_id, reason_code_id)`
 - Rejects if already RETIRED → `ValueError("Reason Code is already RETIRED")`
 - Sets `lifecycle_status = "RETIRED"` from any non-RETIRED status
-- Emits `REASONCODE.RETIRED` security event
+- Emits `ReasonCode.RETIRED` security event
 
 ---
 

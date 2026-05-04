@@ -680,6 +680,20 @@ def test_update_reason_code_rejects_reason_domain_patch():
     assert response.status_code == 422
 
 
+def test_update_reason_code_rejects_reason_category_patch():
+    identity = _make_identity()
+    session_local = _make_session_factory()
+
+    app = _make_managed_app(identity, session_local)
+    client = TestClient(app)
+
+    response = client.patch(
+        "/api/v1/reason-codes/RC-NONEXISTENT",
+        json={"reason_category": "CannotChange"},
+    )
+    assert response.status_code == 422
+
+
 def test_update_reason_code_rejects_downtime_reason_mapping_patch():
     identity = _make_identity()
     session_local = _make_session_factory()
