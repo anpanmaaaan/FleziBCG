@@ -66,6 +66,8 @@ _EXPECTED_ADMIN_MMD_CODES = frozenset({
     "admin.master_data.product_version.manage",
     # Added by MMD-BE-09A (2026-05-03): BOM action code registered as prerequisite for MMD-BE-12
     "admin.master_data.bom.manage",
+    # Added by MMD-BE-10A (2026-05-04): Reason Code action code registered as prerequisite for MMD-BE-13
+    "admin.master_data.reason_code.manage",
 })
 
 _EXPECTED_ADMIN_CONFIG_CODES = frozenset({
