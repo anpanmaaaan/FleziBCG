@@ -327,6 +327,15 @@ jobs:
             tests/test_approval_decision_governed_context_api.py \
             --tb=short
 
+      # ── P0-A-15F: Approval decision API specificity precedence coverage ─────
+      - name: P0-A-15F tests — approval decision specificity and wildcard fallback
+        shell: bash
+        run: |
+          cd backend
+          python -m pytest -q \
+            tests/test_approval_decision_specificity_api.py \
+            --tb=short
+
       # ── P0-A-09: IEP CONFIGURE family boundary lock ──────────────────────────
       - name: P0-A-09 tests — IEP CONFIGURE family boundary lock
         shell: bash
