@@ -18,15 +18,13 @@ def list_reason_codes_by_tenant(
     """
     List reason codes for a tenant with optional filtering.
 
-    Default behavior: returns RELEASED codes that are active.
+    Default behavior (lifecycle_status=None): returns codes of ALL statuses.
+    Operational callers that want only RELEASED codes must pass lifecycle_status="RELEASED" explicitly.
     """
     query = select(ReasonCode).where(ReasonCode.tenant_id == tenant_id)
 
-    if lifecycle_status is None:
-        # Default: only RELEASED codes
-        query = query.where(ReasonCode.lifecycle_status == "RELEASED")
-    else:
-        # Filter by specified status
+    if lifecycle_status is not None:
+        # Filter to specific status only when explicitly requested
         query = query.where(ReasonCode.lifecycle_status == lifecycle_status)
 
     if not include_inactive:
