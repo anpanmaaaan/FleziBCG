@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
 from app.schemas.reason_code import (
+    ReasonCodeCapabilities,
     ReasonCodeCreateRequest,
     ReasonCodeItem,
     ReasonCodeUpdateRequest,
@@ -36,6 +37,28 @@ def get_db():
 # ─── Read endpoints ───────────────────────────────────────────────────────────
 
 
+@router.get("/capabilities", response_model=ReasonCodeCapabilities)
+def get_reason_code_capabilities(
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(require_authenticated_identity),
+) -> ReasonCodeCapabilities:
+    """Page-level create capability. Read does not require manage permission.
+    can_create=true only if user has admin.master_data.reason_code.manage.
+    MMD-FULLSTACK-13C.
+    """
+    can_create = has_action(
+        db,
+        IdentityLike(
+            user_id=identity.user_id,
+            tenant_id=identity.tenant_id,
+            is_authenticated=identity.is_authenticated,
+            acting_role_code=identity.acting_role_code,
+        ),
+        "admin.master_data.reason_code.manage",
+    )
+    return ReasonCodeCapabilities(can_create=can_create)
+
+
 @router.get("", response_model=list[ReasonCodeItem])
 def list_reason_codes(
     domain: str | None = None,
@@ -45,7 +68,16 @@ def list_reason_codes(
     db: Session = Depends(get_db),
     identity: RequestIdentity = Depends(require_authenticated_identity),
 ) -> list[ReasonCodeItem]:
-    has_manage = has_action(db, IdentityLike(user_id=identity.user_id, tenant_id=identity.tenant_id, is_authenticated=identity.is_authenticated, acting_role_code=identity.acting_role_code), "admin.master_data.reason_code.manage")
+    has_manage = has_action(
+        db,
+        IdentityLike(
+            user_id=identity.user_id,
+            tenant_id=identity.tenant_id,
+            is_authenticated=identity.is_authenticated,
+            acting_role_code=identity.acting_role_code,
+        ),
+        "admin.master_data.reason_code.manage",
+    )
     return list_reason_codes_service(
         db,
         tenant_id=identity.tenant_id,
@@ -63,7 +95,16 @@ def get_reason_code(
     db: Session = Depends(get_db),
     identity: RequestIdentity = Depends(require_authenticated_identity),
 ) -> ReasonCodeItem:
-    has_manage = has_action(db, IdentityLike(user_id=identity.user_id, tenant_id=identity.tenant_id, is_authenticated=identity.is_authenticated, acting_role_code=identity.acting_role_code), "admin.master_data.reason_code.manage")
+    has_manage = has_action(
+        db,
+        IdentityLike(
+            user_id=identity.user_id,
+            tenant_id=identity.tenant_id,
+            is_authenticated=identity.is_authenticated,
+            acting_role_code=identity.acting_role_code,
+        ),
+        "admin.master_data.reason_code.manage",
+    )
     code = get_reason_code_service(
         db,
         tenant_id=identity.tenant_id,

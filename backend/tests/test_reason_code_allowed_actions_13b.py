@@ -255,3 +255,48 @@ def test_read_reason_codes_does_not_require_manage_permission():
     assert len(items) == 1
     assert items[0]["reason_code"] == "RC-ANY"
     assert items[0]["allowed_actions"]["can_update"] is False
+
+
+# ─── Page-level create capability (MMD-FULLSTACK-13C) ────────────────────────
+
+
+def test_capabilities_endpoint_returns_can_create_true_for_manage_user():
+    """GET /reason-codes/capabilities returns can_create=true for manage user (MMD-FULLSTACK-13C)."""
+    identity = _make_identity()
+    session_local = _make_session_local()
+
+    app = _build_app(identity, session_local, has_manage=True)
+    client = TestClient(app)
+
+    response = client.get("/api/v1/reason-codes/capabilities")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["can_create"] is True
+
+
+def test_capabilities_endpoint_returns_can_create_false_for_non_manage_user():
+    """GET /reason-codes/capabilities returns can_create=false for non-manage user (MMD-FULLSTACK-13C)."""
+    identity = _make_identity()
+    session_local = _make_session_local()
+
+    app = _build_app(identity, session_local, has_manage=False)
+    client = TestClient(app)
+
+    response = client.get("/api/v1/reason-codes/capabilities")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["can_create"] is False
+
+
+def test_capabilities_endpoint_does_not_require_manage_permission():
+    """GET /reason-codes/capabilities returns 200 for any authenticated user (MMD-FULLSTACK-13C)."""
+    identity = _make_identity()
+    session_local = _make_session_local()
+
+    # Non-manage user — read must still succeed
+    app = _build_app(identity, session_local, has_manage=False)
+    client = TestClient(app)
+
+    response = client.get("/api/v1/reason-codes/capabilities")
+    assert response.status_code == 200, "Capabilities read must not require manage permission"
+    assert "can_create" in response.json()

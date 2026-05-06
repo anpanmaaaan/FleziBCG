@@ -1254,11 +1254,12 @@ if (/aa\.can_retire/.test(reasonCodesPage)) {
   fail("rc_page_uses_can_retire", "ReasonCodes.tsx not consuming allowed_actions.can_retire for write gate (MMD-FULLSTACK-13B)");
 }
 
-// L10 — ReasonCodes page consumes allowed_actions.can_create_sibling (or documents fallback)
-if (/can_create_sibling/.test(reasonCodesPage)) {
-  pass("rc_page_uses_can_create_sibling");
+// L10 — ReasonCodeAllowedActions has can_create_sibling field in type definition
+// (MMD-FULLSTACK-13C: page-level can_create is now used for Create button gate instead)
+if (/can_create_sibling/.test(reasonCodeApi)) {
+  pass("rc_allowed_actions_has_can_create_sibling_in_type");
 } else {
-  fail("rc_page_uses_can_create_sibling", "ReasonCodes.tsx not consuming allowed_actions.can_create_sibling for create gate (MMD-FULLSTACK-13B)");
+  fail("rc_allowed_actions_has_can_create_sibling_in_type", "ReasonCodeAllowedActions missing can_create_sibling field in reasonCodeApi.ts (MMD-FULLSTACK-13B)");
 }
 
 // L11 — ReasonCodes page does not use lifecycle_status alone as write gate
@@ -1274,6 +1275,67 @@ if (apiIndexSrc && /ReasonCodeAllowedActions/.test(apiIndexSrc)) {
   pass("rc_allowed_actions_exported_from_index");
 } else {
   fail("rc_allowed_actions_exported_from_index", "ReasonCodeAllowedActions not exported from api/index.ts (MMD-FULLSTACK-13B)");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Section M — Reason Code Page-Level Create Capability Guard (MMD-FULLSTACK-13C)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// M1 — ReasonCodeCapabilities type exists in reasonCodeApi.ts
+if (/ReasonCodeCapabilities/.test(reasonCodeApi)) {
+  pass("rc_api_capabilities_type_exists");
+} else {
+  fail("rc_api_capabilities_type_exists", "reasonCodeApi.ts missing ReasonCodeCapabilities type (MMD-FULLSTACK-13C)");
+}
+
+// M2 — ReasonCodeCapabilities has can_create field
+if (/can_create\s*:\s*boolean/.test(reasonCodeApi)) {
+  pass("rc_capabilities_has_can_create");
+} else {
+  fail("rc_capabilities_has_can_create", "ReasonCodeCapabilities missing can_create: boolean field (MMD-FULLSTACK-13C)");
+}
+
+// M3 — getCapabilities helper exists in reasonCodeApi.ts
+if (/getCapabilities/.test(reasonCodeApi)) {
+  pass("rc_api_get_capabilities_helper_exists");
+} else {
+  fail("rc_api_get_capabilities_helper_exists", "reasonCodeApi.ts missing getCapabilities method (MMD-FULLSTACK-13C)");
+}
+
+// M4 — ReasonCodeCapabilities exported from api/index.ts
+if (apiIndexSrc && /ReasonCodeCapabilities/.test(apiIndexSrc)) {
+  pass("rc_capabilities_exported_from_index");
+} else {
+  fail("rc_capabilities_exported_from_index", "ReasonCodeCapabilities not exported from api/index.ts (MMD-FULLSTACK-13C)");
+}
+
+// M5 — ReasonCodes page imports or uses ReasonCodeCapabilities
+if (/ReasonCodeCapabilities/.test(reasonCodesPage)) {
+  pass("rc_page_imports_capabilities_type");
+} else {
+  fail("rc_page_imports_capabilities_type", "ReasonCodes.tsx does not import/use ReasonCodeCapabilities (MMD-FULLSTACK-13C)");
+}
+
+// M6 — ReasonCodes page calls getCapabilities
+if (/getCapabilities/.test(reasonCodesPage)) {
+  pass("rc_page_calls_get_capabilities");
+} else {
+  fail("rc_page_calls_get_capabilities", "ReasonCodes.tsx does not call getCapabilities (MMD-FULLSTACK-13C)");
+}
+
+// M7 — ReasonCodes page Create button uses rcCapabilities.can_create (page-level gate)
+if (/rcCapabilities/.test(reasonCodesPage) && /can_create/.test(reasonCodesPage)) {
+  pass("rc_page_create_uses_page_level_capability");
+} else {
+  fail("rc_page_create_uses_page_level_capability", "ReasonCodes.tsx Create button does not use page-level rcCapabilities.can_create (MMD-FULLSTACK-13C)");
+}
+
+// M8 — ReasonCodes page Create button no longer relies on codes.some(can_create_sibling) as primary gate
+// The old fallback pattern was: codes.length > 0 && !codes.some((c) => c.allowed_actions.can_create_sibling)
+if (!/codes\.some\(.*can_create_sibling/.test(reasonCodesPage)) {
+  pass("rc_page_create_not_row_level_sibling_gate");
+} else {
+  fail("rc_page_create_not_row_level_sibling_gate", "ReasonCodes.tsx Create button still depends on row-level can_create_sibling — MMD-FULLSTACK-13C empty-list fix not applied");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

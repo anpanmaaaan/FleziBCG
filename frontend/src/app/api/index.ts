@@ -75,6 +75,7 @@ export { reasonCodeApi } from "./reasonCodeApi";
 export type {
   ReasonCodeItemFromAPI,
   ReasonCodeAllowedActions,
+  ReasonCodeCapabilities,
   ListReasonCodesParams,
   ReasonCodeCreateRequest,
   ReasonCodeUpdateRequest,

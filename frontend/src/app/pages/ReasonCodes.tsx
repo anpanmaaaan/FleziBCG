@@ -4,10 +4,11 @@ import { ScreenStatusBadge } from "@/app/components";
 import { HttpError } from "@/app/api";
 import { useI18n } from "@/app/i18n";
 import { reasonCodeApi } from "@/app/api/reasonCodeApi";
-import type { ReasonCodeItemFromAPI, ReasonCodeCreateRequest, ReasonCodeUpdateRequest } from "@/app/api/reasonCodeApi";
+import type { ReasonCodeCapabilities, ReasonCodeItemFromAPI, ReasonCodeCreateRequest, ReasonCodeUpdateRequest } from "@/app/api/reasonCodeApi";
 
 // MMD-FULLSTACK-13: Write-intent controls added.
 // MMD-FULLSTACK-13B: Write controls now governed by backend-derived allowed_actions.
+// MMD-FULLSTACK-13C: Page-level create capability from GET /reason-codes/capabilities.
 // Backend remains authorization truth. Frontend sends intent only.
 // No lifecycle_status, no downtime_reason_id, no execution/quality/material/ERP behavior.
 
@@ -51,6 +52,11 @@ export function ReasonCodes() {
   const [search, setSearch] = useState("");
   const [domainFilter, setDomainFilter] = useState<string>("all");
   const [includeInactive, setIncludeInactive] = useState(false);
+
+  // MMD-FULLSTACK-13C: Page-level create capability from backend.
+  // Null = loading; resolved once capabilities endpoint responds.
+  // Failure = keep disabled; backend 403 remains final guard.
+  const [rcCapabilities, setRcCapabilities] = useState<ReasonCodeCapabilities | null>(null);
 
   // Write-intent state
   const [actionBusy, setActionBusy] = useState(false);
@@ -127,6 +133,19 @@ export function ReasonCodes() {
 
     return () => controller.abort();
   }, [includeInactive, t]);
+
+  // MMD-FULLSTACK-13C: Fetch page-level create capability once on mount.
+  useEffect(() => {
+    const controller = new AbortController();
+    reasonCodeApi
+      .getCapabilities(controller.signal)
+      .then((cap) => setRcCapabilities(cap))
+      .catch((err) => {
+        if (err?.name === "AbortError") return;
+        // On failure, leave null — Create button stays disabled; backend 403 is final guard.
+      });
+    return () => controller.abort();
+  }, []);
 
   const availableDomains = useMemo(() => {
     const seen = new Set<string>();
@@ -261,12 +280,13 @@ export function ReasonCodes() {
             <h1 className="text-2xl font-bold text-slate-900">{t("reasonCodes.title")}</h1>
             <ScreenStatusBadge phase="PARTIAL" />
           </div>
-          {/* Create button — server-derived: can_create_sibling from any loaded row.
-              Empty-list fallback: always enabled; backend 403 is final guard.
-              See: MMD-FULLSTACK-13B empty-list capability gap documentation. */}
+          {/* Create button — page-level backend-derived capability (MMD-FULLSTACK-13C).
+              Disabled until rcCapabilities resolves; can_create=false disables with hint.
+              Backend 403 remains final authority if user bypasses the UI guard. */}
           <button
             onClick={() => { setCreateOpen(true); setActionError(null); setActionMessage(null); }}
-            disabled={actionBusy || (codes.length > 0 && !codes.some((c) => c.allowed_actions.can_create_sibling))}
+            disabled={actionBusy || !rcCapabilities?.can_create}
+            title={rcCapabilities?.can_create === false ? t("rcWrite.tooltip.createForbidden") : ""}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed border border-blue-700"
           >
             {t("reasonCodes.action.create")}

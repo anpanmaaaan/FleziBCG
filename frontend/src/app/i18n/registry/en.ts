@@ -1352,6 +1352,7 @@ export const enRegistry: I18nRegistry = {
   "rcWrite.tooltip.editDraftOnly": "Edit is available for DRAFT reason codes only.",
   "rcWrite.tooltip.releaseDraftOnly": "Release is available for DRAFT reason codes only.",
   "rcWrite.tooltip.retireNotRetired": "This reason code is already retired.",
+  "rcWrite.tooltip.createForbidden": "Admin permission required to create reason codes.",
 
   // ── operationTimeline ──
   "operationTimeline.title": "Operation Event Timeline",
