@@ -4,18 +4,17 @@ API-layer coverage proving that when multiple approval rules have matching
 action_type and tenant scope, all their role_codes are included in the
 allowed_roles set and each is consistently accepted at the HTTP decision boundary.
 
-SCOPE NOTE (P0-A-17 partial delivery — see stop report):
-  T-TIE-API-02 (scope-specific tie) and T-TIE-API-03 (governed_resource_type tie)
-  require scope_ref and governed_resource_type fields on ApprovalRule (P0-A-15A)
-  and the scoring system (P0-A-15B), which are not yet implemented.
-  T-TIE-API-05 (lower-score wildcard rejected) requires the P0-A-14/P0-A-15B
-  "first non-empty level wins" scoring system, which is not yet implemented.
-  These three tests are deferred to the slice that implements P0-A-15A/B.
+P0-A-17B (deferred completion on autocode after P0-A-15A/B merge):
+  T-TIE-API-02 (scope-specific tie), T-TIE-API-03 (governed_resource_type tie),
+  and T-TIE-API-05 (lower-score wildcard rejected) have been completed in this file.
+  Prerequisites confirmed present on autocode: ApprovalRule.scope_ref /
+  governed_resource_type / governed_action_type / priority (P0-A-15A) and the
+  _score_rule / get_rules_for_action scoring system (P0-A-15B).
 
-  The 10 tests in this file cover the determinism and invariants that ARE testable
-  against the current source: multi-rule allowed_roles membership, role exclusion,
-  stability across fresh requests, tenant isolation, SoD, terminal guard, and
-  SecurityEventLog taxonomy.
+  The full 15-test suite (01a/b, 02a/b, 03a/b, 04, 05, 06–12) covers:
+  multi-rule allowed_roles membership, scope-specific tie groups, governed resource
+  tie groups, lower-score wildcard rejection, role exclusion, stability across fresh
+  requests, tenant isolation, SoD, terminal guard, and SecurityEventLog taxonomy.
 
 Current matching behavior (approval_repository.py as of P0-A-17):
   get_rules_for_action returns ALL active rules where:
@@ -156,16 +155,20 @@ def _rule(
     action_type: str = "QC_HOLD",
     approver_role_code: str,
     tenant_id: str = "*",
+    scope_ref: str | None = None,
+    governed_resource_type: str | None = None,
+    governed_action_type: str | None = None,
+    priority: int | None = None,
 ) -> ApprovalRule:
-    """Create an ApprovalRule using the current model fields only.
-
-    NOTE: scope_ref, governed_resource_type, governed_action_type, priority are
-    NOT on the current ApprovalRule model (P0-A-15A not yet implemented).
-    """
+    """Create an ApprovalRule with optional scope applicability fields (P0-A-15A)."""
     return ApprovalRule(
         action_type=action_type,
         approver_role_code=approver_role_code,
         tenant_id=tenant_id,
+        scope_ref=scope_ref,
+        governed_resource_type=governed_resource_type,
+        governed_action_type=governed_action_type,
+        priority=priority,
         is_active=True,
     )
 
@@ -188,6 +191,37 @@ def _legacy_payload(action_type: str = "QC_HOLD") -> dict[str, Any]:
     }
 
 
+def _scope_payload(
+    *,
+    action_type: str = "QC_HOLD",
+    scope_ref: str = "plant:LINE-1",
+) -> dict[str, Any]:
+    """Payload carrying governed_resource_scope_ref so scope rules are matched."""
+    return {
+        "action_type": action_type,
+        "subject_type": "work_order",
+        "subject_ref": "wo-001",
+        "reason": "scope-specific tie test",
+        "governed_resource_scope_ref": scope_ref,
+    }
+
+
+def _governed_resource_payload(
+    *,
+    action_type: str = "QC_HOLD",
+    governed_resource_type: str = "WORK_ORDER",
+) -> dict[str, Any]:
+    """Payload carrying governed_resource_type so governed-resource rules are matched."""
+    return {
+        "action_type": action_type,
+        "subject_type": "work_order",
+        "subject_ref": "wo-001",
+        "reason": "governed-resource tie test",
+        "governed_resource_type": governed_resource_type,
+        "governed_resource_id": "wo-001",
+    }
+
+
 def _create_and_get_id(client: TestClient, payload: dict[str, Any]) -> int:
     resp = client.post("/api/v1/approvals", json=payload)
     assert resp.status_code == 201
@@ -204,8 +238,6 @@ def _decide(
 
 # ── T-TIE-API-01 ─────────────────────────────────────────────────────────────
 # Tests both wildcard rules at the same matching level → both roles accepted.
-# [T-TIE-API-02 and T-TIE-API-03 deferred: require scope_ref / governed_resource_type
-#  on ApprovalRule (P0-A-15A) and the scoring system (P0-A-15B).]
 
 
 def test_ttieapi01a_multi_rule_same_scope_qal_accepted() -> None:
@@ -256,6 +288,134 @@ def test_ttieapi01b_multi_rule_same_scope_pmg_accepted() -> None:
     assert resp.json()["decision"] == "APPROVED"
 
 
+# ── T-TIE-API-02 ─────────────────────────────────────────────────────────────
+
+
+def test_ttieapi02a_scope_specific_tie_qal_accepted() -> None:
+    """T-TIE-API-02a: Two scope-specific rules (same scope_ref) in same-score group — QAL accepted.
+
+    Rules:
+      (QC_HOLD, QAL, tenant-a, scope_ref="plant:LINE-1")  → score = 8 + 4 = 12
+      (QC_HOLD, PMG, tenant-a, scope_ref="plant:LINE-1")  → score = 8 + 4 = 12
+    Both rules are at max_score=12 → allowed_roles={QAL, PMG}.
+    Request carries governed_resource_scope_ref="plant:LINE-1" so scope rules match.
+    QAL decider → 200.
+    """
+    db = _make_session()
+    _seed(
+        db,
+        _rule(approver_role_code="QAL", tenant_id="tenant-a", scope_ref="plant:LINE-1"),
+        _rule(approver_role_code="PMG", tenant_id="tenant-a", scope_ref="plant:LINE-1"),
+    )
+    create_identity = _make_create_identity(tenant_id="tenant-a")
+    decide_qal = _make_decide_identity(role_code="QAL", tenant_id="tenant-a")
+    client = _build_app(db, create_identity, decide_qal)
+
+    req_id = _create_and_get_id(client, _scope_payload(scope_ref="plant:LINE-1"))
+    resp = _decide(client, req_id)
+
+    assert resp.status_code == 200
+    assert resp.json()["decision"] == "APPROVED"
+
+
+def test_ttieapi02b_scope_specific_tie_pmg_accepted() -> None:
+    """T-TIE-API-02b: Two scope-specific rules (same scope_ref) in same-score group — PMG accepted.
+
+    Identical rule setup to 02a on a fresh DB, proving both roles in the
+    scope-specific same-score group are independently authorized.
+    PMG decider → 200.
+    """
+    db = _make_session()
+    _seed(
+        db,
+        _rule(approver_role_code="QAL", tenant_id="tenant-a", scope_ref="plant:LINE-1"),
+        _rule(approver_role_code="PMG", tenant_id="tenant-a", scope_ref="plant:LINE-1"),
+    )
+    create_identity = _make_create_identity(tenant_id="tenant-a")
+    decide_pmg = _make_decide_identity(role_code="PMG", tenant_id="tenant-a")
+    client = _build_app(db, create_identity, decide_pmg)
+
+    req_id = _create_and_get_id(client, _scope_payload(scope_ref="plant:LINE-1"))
+    resp = _decide(client, req_id)
+
+    assert resp.status_code == 200
+    assert resp.json()["decision"] == "APPROVED"
+
+
+# ── T-TIE-API-03 ─────────────────────────────────────────────────────────────
+
+
+def test_ttieapi03a_governed_resource_tie_qal_accepted() -> None:
+    """T-TIE-API-03a: Two governed-resource rules (same governed_resource_type) in same-score group — QAL accepted.
+
+    Rules:
+      (QC_HOLD, QAL, tenant-a, governed_resource_type="WORK_ORDER")  → score = 8 + 2 = 10
+      (QC_HOLD, PMG, tenant-a, governed_resource_type="WORK_ORDER")  → score = 8 + 2 = 10
+    Both rules are at max_score=10 → allowed_roles={QAL, PMG}.
+    Request carries governed_resource_type="WORK_ORDER" so governed rules match.
+    QAL decider → 200.
+    """
+    db = _make_session()
+    _seed(
+        db,
+        _rule(
+            approver_role_code="QAL",
+            tenant_id="tenant-a",
+            governed_resource_type="WORK_ORDER",
+        ),
+        _rule(
+            approver_role_code="PMG",
+            tenant_id="tenant-a",
+            governed_resource_type="WORK_ORDER",
+        ),
+    )
+    create_identity = _make_create_identity(tenant_id="tenant-a")
+    decide_qal = _make_decide_identity(role_code="QAL", tenant_id="tenant-a")
+    client = _build_app(db, create_identity, decide_qal)
+
+    req_id = _create_and_get_id(
+        client, _governed_resource_payload(governed_resource_type="WORK_ORDER")
+    )
+    resp = _decide(client, req_id)
+
+    assert resp.status_code == 200
+    assert resp.json()["decision"] == "APPROVED"
+
+
+def test_ttieapi03b_governed_resource_tie_pmg_accepted() -> None:
+    """T-TIE-API-03b: Two governed-resource rules (same governed_resource_type) in same-score group — PMG accepted.
+
+    Identical rule setup to 03a on a fresh DB, proving both roles in the
+    governed-resource same-score group are independently authorized.
+    PMG decider → 200.
+    """
+    db = _make_session()
+    _seed(
+        db,
+        _rule(
+            approver_role_code="QAL",
+            tenant_id="tenant-a",
+            governed_resource_type="WORK_ORDER",
+        ),
+        _rule(
+            approver_role_code="PMG",
+            tenant_id="tenant-a",
+            governed_resource_type="WORK_ORDER",
+        ),
+    )
+    create_identity = _make_create_identity(tenant_id="tenant-a")
+    decide_pmg = _make_decide_identity(role_code="PMG", tenant_id="tenant-a")
+    client = _build_app(db, create_identity, decide_pmg)
+
+    req_id = _create_and_get_id(
+        client, _governed_resource_payload(governed_resource_type="WORK_ORDER")
+    )
+    resp = _decide(client, req_id)
+
+    assert resp.status_code == 200
+    assert resp.json()["decision"] == "APPROVED"
+
+
 # ── T-TIE-API-04 ─────────────────────────────────────────────────────────────
 
 
@@ -272,6 +432,40 @@ def test_ttieapi04_role_not_in_any_rule_is_forbidden() -> None:
         db,
         _rule(approver_role_code="QAL", tenant_id="tenant-a"),
         _rule(approver_role_code="PMG", tenant_id="tenant-a"),
+    )
+    create_identity = _make_create_identity(tenant_id="tenant-a")
+    decide_wrk = _make_decide_identity(role_code="WRK", tenant_id="tenant-a")
+    client = _build_app(db, create_identity, decide_wrk)
+
+    req_id = _create_and_get_id(client, _legacy_payload())
+    resp = _decide(client, req_id)
+
+    assert resp.status_code == 403
+
+
+# ── T-TIE-API-05 ─────────────────────────────────────────────────────────────
+
+
+def test_ttieapi05_lower_score_wildcard_rejected_when_higher_score_group_exists() -> None:
+    """T-TIE-API-05: Lower-score wildcard role is rejected when a higher-score same-score group exists.
+
+    "First non-empty level wins" (P0-A-14 §7 / P0-A-15B):
+    When tenant-specific rules exist (score=8), the wildcard rule (score=0) is
+    excluded from allowed_roles even though WRK has a valid wildcard rule.
+
+    Rules:
+      (QC_HOLD, QAL, tenant-a)  → score = 8  ← max group
+      (QC_HOLD, PMG, tenant-a)  → score = 8  ← max group
+      (QC_HOLD, WRK, "*")       → score = 0  ← excluded: not in max group
+    max_score = 8 → allowed_roles = {QAL, PMG}.
+    WRK is NOT in allowed_roles → PermissionError → 403.
+    """
+    db = _make_session()
+    _seed(
+        db,
+        _rule(approver_role_code="QAL", tenant_id="tenant-a"),
+        _rule(approver_role_code="PMG", tenant_id="tenant-a"),
+        _rule(approver_role_code="WRK", tenant_id="*"),
     )
     create_identity = _make_create_identity(tenant_id="tenant-a")
     decide_wrk = _make_decide_identity(role_code="WRK", tenant_id="tenant-a")
