@@ -1186,6 +1186,97 @@ if (/rcWrite\.error\.manageForbidden/.test(i18nJa)) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Section L — Reason Code Server-Derived Capability Guard (MMD-FULLSTACK-13B)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const apiIndexSrc = await readSource("app/api/index.ts");
+
+// L1 — ReasonCodeAllowedActions type exists in reasonCodeApi.ts
+if (/ReasonCodeAllowedActions/.test(reasonCodeApi)) {
+  pass("rc_api_allowed_actions_type_exists");
+} else {
+  fail("rc_api_allowed_actions_type_exists", "reasonCodeApi.ts missing ReasonCodeAllowedActions type (MMD-FULLSTACK-13B)");
+}
+
+// L2 — ReasonCodeItemFromAPI includes allowed_actions field
+if (/allowed_actions\s*:\s*ReasonCodeAllowedActions/.test(reasonCodeApi)) {
+  pass("rc_item_has_allowed_actions_field");
+} else {
+  fail("rc_item_has_allowed_actions_field", "ReasonCodeItemFromAPI missing allowed_actions: ReasonCodeAllowedActions (MMD-FULLSTACK-13B)");
+}
+
+// L3 — ReasonCodeAllowedActions has can_update
+if (/can_update\s*:/.test(reasonCodeApi)) {
+  pass("rc_allowed_actions_has_can_update");
+} else {
+  fail("rc_allowed_actions_has_can_update", "ReasonCodeAllowedActions missing can_update field (MMD-FULLSTACK-13B)");
+}
+
+// L4 — ReasonCodeAllowedActions has can_release
+if (/can_release\s*:/.test(reasonCodeApi)) {
+  pass("rc_allowed_actions_has_can_release");
+} else {
+  fail("rc_allowed_actions_has_can_release", "ReasonCodeAllowedActions missing can_release field (MMD-FULLSTACK-13B)");
+}
+
+// L5 — ReasonCodeAllowedActions has can_retire
+if (/can_retire\s*:/.test(reasonCodeApi)) {
+  pass("rc_allowed_actions_has_can_retire");
+} else {
+  fail("rc_allowed_actions_has_can_retire", "ReasonCodeAllowedActions missing can_retire field (MMD-FULLSTACK-13B)");
+}
+
+// L6 — ReasonCodeAllowedActions has can_create_sibling
+if (/can_create_sibling\s*:/.test(reasonCodeApi)) {
+  pass("rc_allowed_actions_has_can_create_sibling");
+} else {
+  fail("rc_allowed_actions_has_can_create_sibling", "ReasonCodeAllowedActions missing can_create_sibling field (MMD-FULLSTACK-13B)");
+}
+
+// L7 — ReasonCodes page consumes allowed_actions.can_update (not lifecycle alone)
+if (/aa\.can_update/.test(reasonCodesPage)) {
+  pass("rc_page_uses_can_update");
+} else {
+  fail("rc_page_uses_can_update", "ReasonCodes.tsx not consuming allowed_actions.can_update for write gate (MMD-FULLSTACK-13B)");
+}
+
+// L8 — ReasonCodes page consumes allowed_actions.can_release
+if (/aa\.can_release/.test(reasonCodesPage)) {
+  pass("rc_page_uses_can_release");
+} else {
+  fail("rc_page_uses_can_release", "ReasonCodes.tsx not consuming allowed_actions.can_release for write gate (MMD-FULLSTACK-13B)");
+}
+
+// L9 — ReasonCodes page consumes allowed_actions.can_retire
+if (/aa\.can_retire/.test(reasonCodesPage)) {
+  pass("rc_page_uses_can_retire");
+} else {
+  fail("rc_page_uses_can_retire", "ReasonCodes.tsx not consuming allowed_actions.can_retire for write gate (MMD-FULLSTACK-13B)");
+}
+
+// L10 — ReasonCodes page consumes allowed_actions.can_create_sibling (or documents fallback)
+if (/can_create_sibling/.test(reasonCodesPage)) {
+  pass("rc_page_uses_can_create_sibling");
+} else {
+  fail("rc_page_uses_can_create_sibling", "ReasonCodes.tsx not consuming allowed_actions.can_create_sibling for create gate (MMD-FULLSTACK-13B)");
+}
+
+// L11 — ReasonCodes page does not use lifecycle_status alone as write gate
+// (isDraft/isRetired variables replaced by server-derived aa.can_* checks)
+if (!/const isDraft\s*=/.test(reasonCodesPage) && !/const isRetired\s*=/.test(reasonCodesPage)) {
+  pass("rc_page_no_lifecycle_only_gate");
+} else {
+  fail("rc_page_no_lifecycle_only_gate", "ReasonCodes.tsx still derives write gates from lifecycle_status alone (isDraft/isRetired) — MMD-FULLSTACK-13B not applied");
+}
+
+// L12 — ReasonCodeAllowedActions exported from api/index.ts
+if (apiIndexSrc && /ReasonCodeAllowedActions/.test(apiIndexSrc)) {
+  pass("rc_allowed_actions_exported_from_index");
+} else {
+  fail("rc_allowed_actions_exported_from_index", "ReasonCodeAllowedActions not exported from api/index.ts (MMD-FULLSTACK-13B)");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Final summary
 // ═══════════════════════════════════════════════════════════════════════════════
 

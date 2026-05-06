@@ -74,6 +74,7 @@ export { mapExecutionStatusText, mapExecutionStatusBadgeVariant, getProgressPerc
 export { reasonCodeApi } from "./reasonCodeApi";
 export type {
   ReasonCodeItemFromAPI,
+  ReasonCodeAllowedActions,
   ListReasonCodesParams,
   ReasonCodeCreateRequest,
   ReasonCodeUpdateRequest,
