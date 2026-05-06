@@ -99,11 +99,16 @@ class TestListReasonCodes:
     """Test list_reason_codes service function."""
 
     def test_list_reason_codes_returns_released_active_by_default(self, db: Session):
-        """Default filter returns RELEASED + is_active=true codes."""
+        """Default filter (no lifecycle_status, include_inactive=False) returns all active codes.
+
+        Changed in MMD-FULLSTACK-13D: the default no longer filters to RELEASED only.
+        RC-004 (DRAFT+inactive) is still excluded because include_inactive defaults to False.
+        """
         _populate_test_codes(db)
 
         result = list_reason_codes(db, tenant_id="tenant-A")
 
+        # RC-001, RC-002, RC-003 (active, any status); RC-004 excluded (inactive)
         assert len(result) == 3
         ids = {item.reason_code_id for item in result}
         assert ids == {"RC-001", "RC-002", "RC-003"}
@@ -154,17 +159,20 @@ class TestListReasonCodes:
         assert result[0].reason_code_id == "RC-004"
 
     def test_list_reason_codes_can_include_inactive(self, db: Session):
-        """include_inactive flag allows filtering to all codes of default lifecycle_status."""
+        """include_inactive=True returns all lifecycle statuses including inactive codes.
+
+        Changed in MMD-FULLSTACK-13D: default no longer filters to RELEASED.
+        With include_inactive=True and no lifecycle_status filter, all 4 codes are returned.
+        """
         _populate_test_codes(db)
 
-        # With include_inactive=True but default lifecycle_status=RELEASED,
-        # we get all RELEASED codes (active and inactive)
-        # RC-004 is DRAFT, so it's excluded
+        # include_inactive=True + no lifecycle_status = all statuses + all active states
         result = list_reason_codes(db, tenant_id="tenant-A", include_inactive=True)
 
-        assert len(result) == 3
+        # RC-001, RC-002, RC-003 (RELEASED) + RC-004 (DRAFT+inactive)
+        assert len(result) == 4
         ids = {item.reason_code_id for item in result}
-        assert ids == {"RC-001", "RC-002", "RC-003"}
+        assert ids == {"RC-001", "RC-002", "RC-003", "RC-004"}
 
     def test_list_reason_codes_tenant_scoped(self, db: Session):
         """Results are scoped by tenant_id."""
@@ -191,6 +199,7 @@ class TestListReasonCodes:
 
         # Query for tenant-A should not include tenant-B codes
         result_a = list_reason_codes(db, tenant_id="tenant-A")
+        # 3 active codes (RC-004 is inactive, excluded by default)
         assert len(result_a) == 3
         assert all(item.tenant_id == "tenant-A" for item in result_a)
 
@@ -205,12 +214,11 @@ class TestListReasonCodes:
 
         result = list_reason_codes(db, tenant_id="tenant-A", include_inactive=True)
 
-        # With include_inactive=True but default lifecycle_status=RELEASED,
-        # we get 3 codes (RC-004 is DRAFT, excluded)
-        assert len(result) == 3
-        # DOWNTIME codes come first, then SCRAP
+        # With include_inactive=True and no lifecycle_status filter, all 4 codes returned.
+        # Ordering: DOWNTIME before SCRAP; within DOWNTIME by sort_order.
+        assert len(result) == 4
         domains = [item.reason_domain for item in result]
-        assert domains == ["DOWNTIME", "DOWNTIME", "SCRAP"]
+        assert domains == ["DOWNTIME", "DOWNTIME", "DOWNTIME", "SCRAP"]
 
 
 class TestGetReasonCode:

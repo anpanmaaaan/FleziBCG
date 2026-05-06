@@ -9,6 +9,8 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker
 
 import app.api.v1.reason_codes as reason_codes_router_module
+from app.db.base import Base
+import app.models.rbac  # noqa: F401 — ensures RBAC tables (user_role_assignments etc.) are registered
 from app.models.reason_code import ReasonCode
 from app.models.security_event import SecurityEventLog
 from app.security.dependencies import RequestIdentity, require_authenticated_identity
@@ -30,8 +32,7 @@ def _make_session_factory():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    ReasonCode.__table__.create(bind=engine)
-    SecurityEventLog.__table__.create(bind=engine)
+    Base.metadata.create_all(bind=engine)
     return sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
@@ -43,7 +44,7 @@ def _make_session():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    ReasonCode.__table__.create(bind=engine)
+    Base.metadata.create_all(bind=engine)
     session_local = sessionmaker(bind=engine, autoflush=False, autocommit=False)
     return session_local()
 
@@ -157,6 +158,19 @@ def _populate_test_codes(db):
             is_active=False,  # Inactive
             sort_order=15,
         ),
+        ReasonCode(
+            reason_code_id="RC-005",
+            tenant_id="test-tenant",
+            reason_domain="SCRAP",
+            reason_category="Surface Defect",
+            reason_code="SC-SURF-01",
+            reason_name="Surface Scratch",
+            description="Draft reason code not yet released",
+            lifecycle_status="DRAFT",  # DRAFT — must appear in default list (MMD-FULLSTACK-13D)
+            requires_comment=False,
+            is_active=True,
+            sort_order=20,
+        ),
     ]
     for code in codes:
         db.add(code)
@@ -166,8 +180,15 @@ def _populate_test_codes(db):
 class TestListReasonCodesAPI:
     """Test GET /api/v1/reason-codes endpoint."""
 
-    def test_list_reason_codes_returns_default_released_active_codes(self):
-        """GET /reason-codes returns RELEASED + active codes by default."""
+    def test_list_reason_codes_default_returns_all_statuses_active_only(self):
+        """GET /reason-codes with no filters returns all lifecycle statuses, active only.
+
+        Default behavior changed in MMD-FULLSTACK-13D: the repository no longer filters
+        to RELEASED by default. All statuses (DRAFT, RELEASED, RETIRED) are returned
+        unless lifecycle_status is explicitly specified. This allows the management page
+        to show newly created DRAFT codes immediately after creation.
+        Operational callers that want only RELEASED must pass ?lifecycle_status=RELEASED.
+        """
         identity = RequestIdentity(
             user_id="user-1",
             username="testuser",
@@ -188,10 +209,16 @@ class TestListReasonCodesAPI:
 
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 3  # RC-001, RC-002, RC-003 (RC-004 is inactive)
+        # RC-001, RC-002, RC-003 (RELEASED+active) + RC-005 (DRAFT+active); RC-004 excluded (inactive)
+        assert len(data) == 4
 
         ids = {item["reason_code_id"] for item in data}
-        assert ids == {"RC-001", "RC-002", "RC-003"}
+        assert ids == {"RC-001", "RC-002", "RC-003", "RC-005"}
+
+        # DRAFT code is now visible in default list
+        draft_items = [item for item in data if item["lifecycle_status"] == "DRAFT"]
+        assert len(draft_items) == 1
+        assert draft_items[0]["reason_code_id"] == "RC-005"
 
     def test_list_reason_codes_filters_by_domain(self):
         """GET /reason-codes?domain=DOWNTIME filters by domain."""
@@ -292,10 +319,10 @@ class TestListReasonCodesAPI:
 
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 4  # RC-001, RC-002, RC-003, RC-004
+        assert len(data) == 5  # RC-001, RC-002, RC-003, RC-004 (inactive), RC-005 (DRAFT)
 
         ids = {item["reason_code_id"] for item in data}
-        assert ids == {"RC-001", "RC-002", "RC-003", "RC-004"}
+        assert ids == {"RC-001", "RC-002", "RC-003", "RC-004", "RC-005"}
 
     def test_list_reason_codes_requires_auth(self):
         """GET /reason-codes requires authentication."""
