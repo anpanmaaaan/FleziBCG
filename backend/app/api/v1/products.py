@@ -245,9 +245,7 @@ def update_product_version(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
-@router.post(
-    "/{product_id}/versions/{version_id}/release", response_model=ProductVersionItem
-)
+@router.post("/{product_id}/versions/{version_id}/release", response_model=ProductVersionItem)
 def release_product_version(
     product_id: str,
     version_id: str,
@@ -270,9 +268,7 @@ def release_product_version(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
-@router.post(
-    "/{product_id}/versions/{version_id}/retire", response_model=ProductVersionItem
-)
+@router.post("/{product_id}/versions/{version_id}/retire", response_model=ProductVersionItem)
 def retire_product_version(
     product_id: str,
     version_id: str,
