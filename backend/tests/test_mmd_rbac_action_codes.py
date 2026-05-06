@@ -181,15 +181,19 @@ def test_product_version_read_endpoints_do_not_require_manage_action():
 
 
 def test_product_version_write_routes_use_product_version_action_code():
-    required_markers = [
-        '@router.post("/{product_id}/versions"',
-        '@router.patch("/{product_id}/versions/{version_id}"',
-        '@router.post("/{product_id}/versions/{version_id}/release"',
-        '@router.post("/{product_id}/versions/{version_id}/retire"',
+    # Use regex matching so the assertion is robust to single-line vs multi-line
+    # decorator formatting (e.g. ruff format may split long decorator lines).
+    # Pattern: @router.<method>( optionally followed by whitespace, then the path string.
+    required_routes = [
+        ("post", r"/{product_id}/versions"),
+        ("patch", r"/{product_id}/versions/{version_id}"),
+        ("post", r"/{product_id}/versions/{version_id}/release"),
+        ("post", r"/{product_id}/versions/{version_id}/retire"),
     ]
-    for marker in required_markers:
-        assert marker in PRODUCTS_SRC, (
-            f"Missing Product Version write route marker: {marker}"
+    for method, path in required_routes:
+        pattern = rf'@router\.{method}\s*\(\s*"{re.escape(path)}"'
+        assert re.search(pattern, PRODUCTS_SRC), (
+            f"Missing Product Version write route: {method.upper()} {path}"
         )
 
     count = PRODUCTS_SRC.count('"admin.master_data.product_version.manage"')
