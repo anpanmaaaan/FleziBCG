@@ -1,2 +1,13 @@
 * text=auto
-*.md text eol=lf
+
+# Backend formatting stability — BACKEND-QA-CRLF-STABILITY-01
+# Enforce LF for all source/config files to prevent ruff format churn on Windows.
+*.py   text eol=lf
+*.toml text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.md   text eol=lf
+*.ini  text eol=lf
+*.cfg  text eol=lf
+*.txt  text eol=lf
+*.sh   text eol=lf
