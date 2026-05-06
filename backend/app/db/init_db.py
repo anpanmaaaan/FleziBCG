@@ -41,6 +41,7 @@ from app.models.product import Product  # noqa: F401
 from app.models.product_version import ProductVersion  # noqa: F401
 from app.models.reason_code import ReasonCode  # noqa: F401
 from app.models.bom import Bom, BomItem  # noqa: F401
+from app.models.product_version_bom_binding import ProductVersionBomBinding  # noqa: F401
 from app.models.routing import Routing, RoutingOperation  # noqa: F401
 from app.models.resource_requirement import ResourceRequirement  # noqa: F401
 from app.models.station_session import StationSession  # noqa: F401

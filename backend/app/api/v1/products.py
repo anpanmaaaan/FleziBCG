@@ -11,12 +11,19 @@ from app.schemas.bom import (
     BomUpdateRequest,
 )
 from app.schemas.product import (
+    BomBindingCreateRequest,
     ProductCreateRequest,
     ProductItem,
     ProductUpdateRequest,
+    ProductVersionBomBindingResponse,
     ProductVersionCreateRequest,
     ProductVersionItem,
     ProductVersionUpdateRequest,
+)
+from app.services.product_version_bom_binding_service import (
+    bind_bom_to_product_version as bind_bom_service,
+    get_product_version_bom_binding as get_bom_binding_service,
+    unbind_bom_from_product_version as unbind_bom_service,
 )
 from app.security.dependencies import RequestIdentity, require_action, require_authenticated_identity
 from app.security.rbac import has_action
@@ -515,4 +522,92 @@ def remove_bom_item(
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+# ─── BOM Binding endpoints — MMD-BE-14 ───────────────────────────────────────
+
+
+@router.get(
+    "/{product_id}/versions/{version_id}/bom-binding",
+    response_model=ProductVersionBomBindingResponse,
+)
+def get_bom_binding(
+    product_id: str,
+    version_id: str,
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(require_authenticated_identity),
+) -> ProductVersionBomBindingResponse:
+    has_bom_manage = has_action(db, identity, "admin.master_data.bom.manage")
+    has_pv_manage = has_action(db, identity, "admin.master_data.product_version.manage")
+    try:
+        return get_bom_binding_service(
+            db,
+            tenant_id=identity.tenant_id,
+            product_id=product_id,
+            product_version_id=version_id,
+            has_both_permissions=(has_bom_manage and has_pv_manage),
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.post(
+    "/{product_id}/versions/{version_id}/bom-binding",
+    response_model=ProductVersionBomBindingResponse,
+    status_code=201,
+)
+def bind_bom(
+    product_id: str,
+    version_id: str,
+    payload: BomBindingCreateRequest,
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(
+        require_action("admin.master_data.bom.manage")
+    ),
+) -> ProductVersionBomBindingResponse:
+    if not has_action(db, identity, "admin.master_data.product_version.manage"):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    try:
+        return bind_bom_service(
+            db,
+            tenant_id=identity.tenant_id,
+            actor_user_id=identity.user_id,
+            product_id=product_id,
+            product_version_id=version_id,
+            payload=payload,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        if "already exists" in str(exc):
+            raise HTTPException(status_code=409, detail=str(exc))
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@router.delete(
+    "/{product_id}/versions/{version_id}/bom-binding",
+    status_code=204,
+)
+def unbind_bom(
+    product_id: str,
+    version_id: str,
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(
+        require_action("admin.master_data.bom.manage")
+    ),
+) -> None:
+    if not has_action(db, identity, "admin.master_data.product_version.manage"):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    try:
+        unbind_bom_service(
+            db,
+            tenant_id=identity.tenant_id,
+            actor_user_id=identity.user_id,
+            product_id=product_id,
+            product_version_id=version_id,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
