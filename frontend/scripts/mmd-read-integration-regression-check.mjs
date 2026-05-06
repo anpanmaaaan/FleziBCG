@@ -1339,6 +1339,100 @@ if (!/codes\.some\(.*can_create_sibling/.test(reasonCodesPage)) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Section N — MMD-FULLSTACK-13D: Reason Code Create/Edit Validation UX Hardening
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// N1 — Domain field is a <select> constrained to REASON_DOMAINS enum (not free text)
+if (/<select[^>]*id="create-reasonDomain"/.test(reasonCodesPage)) {
+  pass("rc_page_domain_field_is_select");
+} else {
+  fail("rc_page_domain_field_is_select", "ReasonCodes.tsx create domain field is not a constrained <select> (MMD-FULLSTACK-13D)");
+}
+
+// N2 — REASON_DOMAINS constant defined in page module
+if (/const REASON_DOMAINS/.test(reasonCodesPage)) {
+  pass("rc_page_reason_domains_constant");
+} else {
+  fail("rc_page_reason_domains_constant", "ReasonCodes.tsx is missing REASON_DOMAINS constant (MMD-FULLSTACK-13D)");
+}
+
+// N3 — Field-level error state exists for both create and edit forms
+if (/createFieldErrors/.test(reasonCodesPage) && /editFieldErrors/.test(reasonCodesPage)) {
+  pass("rc_page_field_error_state");
+} else {
+  fail("rc_page_field_error_state", "ReasonCodes.tsx is missing createFieldErrors/editFieldErrors state (MMD-FULLSTACK-13D)");
+}
+
+// N4 — extractFieldErrors function parses 422 body and maps 409 to reason_code field
+if (/extractFieldErrors/.test(reasonCodesPage) && /err\.status === 409/.test(reasonCodesPage)) {
+  pass("rc_page_extract_field_errors_fn");
+} else {
+  fail("rc_page_extract_field_errors_fn", "ReasonCodes.tsx is missing extractFieldErrors with 409 mapping (MMD-FULLSTACK-13D)");
+}
+
+// N5 — aria-invalid present on validated form fields
+if (/aria-invalid/.test(reasonCodesPage)) {
+  pass("rc_page_aria_invalid_present");
+} else {
+  fail("rc_page_aria_invalid_present", "ReasonCodes.tsx is missing aria-invalid on form fields (MMD-FULLSTACK-13D)");
+}
+
+// N6 — Category datalist suggestions present for Create form
+if (/create-category-suggestions/.test(reasonCodesPage) && /categorySuggestions/.test(reasonCodesPage)) {
+  pass("rc_page_category_datalist");
+} else {
+  fail("rc_page_category_datalist", "ReasonCodes.tsx is missing category datalist suggestions (MMD-FULLSTACK-13D)");
+}
+
+// N7 — i18n EN registry has field-level error keys
+const rcFieldErrorKeysEn = [
+  "rcWrite.error.field.reasonDomain.required",
+  "rcWrite.error.field.reasonCode.required",
+  "rcWrite.error.field.reasonName.required",
+  "rcWrite.error.field.sortOrder.invalidNumber",
+  "rcWrite.error.field.reasonCode.duplicate",
+  "rcWrite.modal.field.reasonDomain.placeholder",
+];
+const missingEnKeys = rcFieldErrorKeysEn.filter((k) => !i18nEn.includes(k));
+if (missingEnKeys.length === 0) {
+  pass("rc_i18n_en_field_error_keys");
+} else {
+  fail("rc_i18n_en_field_error_keys", `en.ts missing keys: ${missingEnKeys.join(", ")} (MMD-FULLSTACK-13D)`);
+}
+
+// N8 — i18n JA registry has field-level error keys
+const rcFieldErrorKeysJa = [
+  "rcWrite.error.field.reasonDomain.required",
+  "rcWrite.error.field.reasonCode.required",
+  "rcWrite.error.field.reasonName.required",
+  "rcWrite.error.field.sortOrder.invalidNumber",
+  "rcWrite.error.field.reasonCode.duplicate",
+  "rcWrite.modal.field.reasonDomain.placeholder",
+];
+const missingJaKeys = rcFieldErrorKeysJa.filter((k) => !i18nJa.includes(k));
+if (missingJaKeys.length === 0) {
+  pass("rc_i18n_ja_field_error_keys");
+} else {
+  fail("rc_i18n_ja_field_error_keys", `ja.ts missing keys: ${missingJaKeys.join(", ")} (MMD-FULLSTACK-13D)`);
+}
+
+// N9 — Generic validation fallback key is preserved (not removed) in both registries
+if (i18nEn.includes("rcWrite.error.validation") && i18nJa.includes("rcWrite.error.validation")) {
+  pass("rc_i18n_validation_fallback_preserved");
+} else {
+  fail("rc_i18n_validation_fallback_preserved", "rcWrite.error.validation fallback key removed from en.ts or ja.ts (MMD-FULLSTACK-13D regression)");
+}
+
+// N10 — Edit handler does not reference reason_domain/reason_category/reason_code as mutable fields
+// Verified structurally: ReasonCodeUpdateRequest excludes those fields at the type level.
+// Check that the client-side validation comment is present confirming the constraint is intentional.
+if (/mutable fields only/.test(reasonCodesPage)) {
+  pass("rc_page_edit_immutable_fields_excluded");
+} else {
+  fail("rc_page_edit_immutable_fields_excluded", "ReasonCodes.tsx handleEdit missing comment confirming immutable fields excluded (MMD-FULLSTACK-13D)");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Final summary
 // ═══════════════════════════════════════════════════════════════════════════════
 

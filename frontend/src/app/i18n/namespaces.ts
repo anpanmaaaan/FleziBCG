@@ -27,6 +27,7 @@ export const I18N_NAMESPACES = {
   oeeDeepDive: "oeeDeepDive",
   ganttStressTest: "ganttStressTest",
   topBar: "topBar",
+  appHeader: "appHeader",
   accessDenied: "accessDenied",
   impersonation: "impersonation",
   addPO: "addPO",

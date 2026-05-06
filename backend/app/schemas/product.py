@@ -76,6 +76,7 @@ class ProductVersionItem(BaseModel):
     effective_from: date | None = None
     effective_to: date | None = None
     description: str | None = None
+    bom_binding_required_for_release: bool = False
     created_at: datetime
     updated_at: datetime
     allowed_actions: ProductVersionAllowedActions
@@ -89,6 +90,7 @@ class ProductVersionCreateRequest(BaseModel):
     effective_from: date | None = None
     effective_to: date | None = None
     description: str | None = None
+    bom_binding_required_for_release: bool = False
 
 
 class ProductVersionUpdateRequest(BaseModel):
@@ -98,6 +100,7 @@ class ProductVersionUpdateRequest(BaseModel):
     effective_from: date | None = None
     effective_to: date | None = None
     description: str | None = None
+    bom_binding_required_for_release: bool | None = None
 
 
 # ─── BOM Binding schemas — MMD-BE-14 ─────────────────────────────────────────
