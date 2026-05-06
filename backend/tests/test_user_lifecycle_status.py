@@ -248,7 +248,7 @@ def test_user_status_migration_does_not_touch_unrelated_tables():
     migration_path = (
         BACKEND_DIR / "alembic" / "versions" / "0004_add_user_lifecycle_status.py"
     )
-    source = migration_path.read_text()
+    source = migration_path.read_text(encoding="utf-8")
     tree = ast.parse(source)
 
     table_args: list[str] = []
