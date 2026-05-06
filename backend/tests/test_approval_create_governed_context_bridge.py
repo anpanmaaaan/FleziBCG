@@ -354,7 +354,9 @@ def test_subject_type_and_subject_ref_remain_present_and_correct() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_arbitrary_governed_action_type_is_accepted_without_registry_enforcement() -> None:
+def test_arbitrary_governed_action_type_is_accepted_without_registry_enforcement() -> (
+    None
+):
     """T-CB-07: governed_action_type is stored as nullable context; no registry validation."""
     db = _make_db()
     req = _create_request(

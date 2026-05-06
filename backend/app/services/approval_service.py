@@ -155,8 +155,7 @@ def create_approval_request(
             f"action_type={action_type}"
             f" requester_role={requester_role_code}"
             f" subject_type={request_data.subject_type}"
-            f" subject_ref={request_data.subject_ref}"
-            + _governed_ctx
+            f" subject_ref={request_data.subject_ref}" + _governed_ctx
         ),
         commit=False,
     )
