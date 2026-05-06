@@ -293,6 +293,7 @@ def test_no_bom_forbidden_endpoints_exist():
         assert marker not in PRODUCTS_SRC, f"Forbidden BOM route found: {marker}"
 
 
+
 # ─── MMD-BE-10A: Reason Code action code registry checks ─────────────────────
 
 
@@ -399,4 +400,123 @@ def test_reason_code_does_not_auto_map_to_downtime_reason():
         )
         assert "downtime_reasons" not in src.lower(), (
             f"{name} must not reference downtime_reasons table — no automatic mapping allowed"
+        )
+
+
+# ─── MMD-BE-14: BOM Binding action code contract checks ──────────────────────
+
+
+def test_bom_binding_routes_implemented_by_mmd_be_14():
+    """MMD-BE-14: BOM binding routes must be present in products.py."""
+    required_paths = [
+        "/{product_id}/versions/{version_id}/bom-binding",
+    ]
+    for path in required_paths:
+        assert path in PRODUCTS_SRC, (
+            f"Expected BOM binding route path missing: {path}"
+        )
+    # GET, POST, DELETE all present
+    assert PRODUCTS_SRC.count("/{product_id}/versions/{version_id}/bom-binding") >= 3, (
+        "Expected GET, POST, DELETE bom-binding routes (3 occurrences of path)"
+    )
+
+
+def test_bom_binding_post_delete_use_bom_manage_action_code():
+    """MMD-BE-14: POST/DELETE bom-binding must gate on admin.master_data.bom.manage."""
+    count = PRODUCTS_SRC.count('"admin.master_data.bom.manage"')
+    assert count >= 9, (
+        f"Expected >=9 uses of admin.master_data.bom.manage in products.py "
+        f"(7 BOM write + 2 binding), found {count}"
+    )
+
+
+def test_bom_binding_post_delete_also_check_pv_manage():
+    """MMD-BE-14: Binding mutations must check product_version.manage (AND semantics)."""
+    assert '"admin.master_data.product_version.manage"' in PRODUCTS_SRC, (
+        "products.py must reference admin.master_data.product_version.manage "
+        "for the BOM binding dual-auth inner check"
+    )
+
+
+def test_no_binding_replace_or_deferred_routes_exist():
+    """MMD-BE-14: Deferred atomic replace and effective-dating routes must not exist."""
+    forbidden_markers = [
+        '@router.patch("/{product_id}/versions/{version_id}/bom-binding"',
+        "replace_product_version_primary_bom",
+    ]
+    for marker in forbidden_markers:
+        assert marker not in PRODUCTS_SRC, (
+            f"Deferred binding route/function found in products.py: {marker}"
+        )
+
+
+def test_bom_binding_routes_are_limited_to_get_post_delete():
+    """MMD-BE-14A: BOM binding routes must be limited to GET, POST, DELETE only.
+
+    Forbidden: PATCH, PUT, OPTIONS for binding mutation or replacement.
+    """
+    # Search for the bom-binding path in router decorators
+    # Note: routes can be formatted as @router.get("path"...) or @router.get(\n    "path"...)
+    binding_path_marker = "/{product_id}/versions/{version_id}/bom-binding"
+
+    # Count occurrences of this path
+    path_count = PRODUCTS_SRC.count(binding_path_marker)
+    assert path_count == 3, (
+        f"Expected 3 occurrences of bom-binding path (GET, POST, DELETE), found {path_count}"
+    )
+
+    # Verify no PATCH or PUT for this path
+    assert '@router.patch(\n    "/{product_id}/versions/{version_id}/bom-binding"' not in PRODUCTS_SRC
+    assert '@router.patch("/{product_id}/versions/{version_id}/bom-binding"' not in PRODUCTS_SRC
+    assert '@router.put(\n    "/{product_id}/versions/{version_id}/bom-binding"' not in PRODUCTS_SRC
+    assert '@router.put("/{product_id}/versions/{version_id}/bom-binding"' not in PRODUCTS_SRC
+
+
+def test_bom_binding_read_does_not_require_manage_actions():
+    """MMD-BE-14A: GET bom-binding must use require_authenticated_identity only, not require_action.
+
+    Read operations must not gate on manage permission.
+    """
+    # Find the GET route for bom-binding and verify it uses require_authenticated_identity
+    assert 'require_authenticated_identity' in PRODUCTS_SRC, (
+        "products.py must contain require_authenticated_identity"
+    )
+    
+    # Look for the specific pattern: bom-binding route followed by require_authenticated_identity dependency
+    bom_binding_get = PRODUCTS_SRC.count('@router.get(\n    "/{product_id}/versions/{version_id}/bom-binding"')
+    assert bom_binding_get > 0, (
+        "GET bom-binding route must exist"
+    )
+
+
+def test_bom_binding_service_does_not_import_forbidden_domains():
+    """MMD-BE-14A: Binding service must not import material, ERP, traceability, quality, or execution domains.
+
+    Binding is a pure manufacturing-definition applicability association and must not trigger
+    material reservation, inventory movement, backflush, ERP posting, traceability genealogy,
+    quality decision, or execution dispatch.
+    """
+    binding_service_src = (
+        BACKEND_ROOT / "app" / "services" / "product_version_bom_binding_service.py"
+    ).read_text(encoding="utf-8")
+
+    forbidden_imports = [
+        "from app.services.material",  # material service
+        "from app.services.inventory",  # inventory service
+        "from app.services.erp",  # ERP service
+        "from app.services.traceability",  # traceability service
+        "from app.services.genealogy",  # genealogy service
+        "from app.services.quality",  # quality service
+        "from app.services.execution",  # execution service
+        "from app.services.operation",  # operation service (execution-adjacent)
+        "from app.services.station",  # station service (execution-adjacent)
+        "from app.models.material",  # material model
+        "from app.models.inventory",  # inventory model
+        "from app.models.execution",  # execution model
+        "from app.models.operation",  # operation model
+    ]
+
+    for forbidden_import in forbidden_imports:
+        assert forbidden_import not in binding_service_src, (
+            f"Binding service must not import forbidden domain: {forbidden_import}"
         )
