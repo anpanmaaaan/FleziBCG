@@ -1068,6 +1068,28 @@ def test_update_released_product_version_cannot_set_bom_binding_required_for_rel
     assert response.status_code == 400
 
 
+def test_update_retired_product_version_cannot_set_bom_binding_required_for_release():
+    """RETIRED PV update is rejected by existing lifecycle guard (only DRAFT can update)."""
+    identity = _make_identity()
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    version = _mk_version(db, "tenant_a", product_id, "v1", lifecycle_status="RETIRED")
+    db.close()
+
+    app = _build_app(identity, session_local)
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/versions/{version_id}", "PATCH", identity
+    )
+    client = TestClient(app)
+
+    response = client.patch(
+        f"/api/v1/products/{product_id}/versions/{version.product_version_id}",
+        json={"bom_binding_required_for_release": True},
+    )
+    assert response.status_code == 400
+
+
 def test_release_product_version_without_binding_required_flag_succeeds():
     """Default flag=false: release proceeds unchanged (no binding required)."""
     identity = _make_identity()
@@ -1381,3 +1403,60 @@ def test_release_validation_does_not_import_or_call_forbidden_domains():
         assert pattern not in service_src.lower(), (
             f"product_version_service imports or references forbidden domain: {pattern!r}"
         )
+
+
+def test_release_validation_does_not_mutate_bom_or_binding():
+    """Release validation must not mutate BOM lifecycle_status or binding binding_status.
+
+    After a successful release (flag=true + RELEASED BOM + ACTIVE binding),
+    the BOM must still be RELEASED and the binding must still be ACTIVE.
+    """
+    identity = _make_identity()
+    _, session_local = _make_session_full()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    version = _mk_version(db, "tenant_a", product_id, "v1")
+    version.bom_binding_required_for_release = True
+    db.commit()
+    version_id = version.product_version_id
+    bom = _mk_bom(db, "tenant_a", product_id, lifecycle_status="RELEASED")
+    bom_id = bom.bom_id
+    binding = _mk_binding(db, "tenant_a", product_id, version_id, bom_id)
+    binding_id = binding.binding_id
+    db.close()
+
+    app = _build_app_release(identity, session_local)
+    _override_action_dependency(
+        app,
+        "/api/v1/products/{product_id}/versions/{version_id}/release",
+        "POST",
+        identity,
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        f"/api/v1/products/{product_id}/versions/{version_id}/release"
+    )
+    assert response.status_code == 200
+
+    check_db = session_local()
+    from sqlalchemy import select
+
+    bom_row = check_db.scalars(
+        select(Bom).where(Bom.bom_id == bom_id)
+    ).first()
+    binding_row = check_db.scalars(
+        select(ProductVersionBomBinding).where(
+            ProductVersionBomBinding.binding_id == binding_id
+        )
+    ).first()
+    check_db.close()
+
+    assert bom_row is not None
+    assert bom_row.lifecycle_status == "RELEASED", (
+        f"BOM must not be mutated by release validation; got {bom_row.lifecycle_status}"
+    )
+    assert binding_row is not None
+    assert binding_row.binding_status == "ACTIVE", (
+        f"Binding must not be mutated by release validation; got {binding_row.binding_status}"
+    )

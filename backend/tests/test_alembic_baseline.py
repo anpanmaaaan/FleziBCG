@@ -114,4 +114,30 @@ def test_alembic_upgrade_head_live(db_engine):
     with db_engine.connect() as conn:
         result = conn.execute(text("SELECT version_num FROM alembic_version"))
         rows = [r[0] for r in result]
-    assert "0010" in rows, f"Expected 0010 in alembic_version, got: {rows}"
+    assert "0014" in rows, f"Expected 0014 in alembic_version, got: {rows}"
+
+
+def test_bom_binding_required_for_release_migration_default_false():
+    """Migration 0014 must add bom_binding_required_for_release with NOT NULL and
+    server_default=false so existing Product Versions retain release eligibility."""
+    migration_path = (
+        BACKEND_DIR
+        / "alembic"
+        / "versions"
+        / "0014_add_bom_binding_required_for_release_to_product_versions.py"
+    )
+    assert migration_path.exists(), "Migration 0014 file not found"
+    src = migration_path.read_text(encoding="utf-8")
+    assert 'revision: str = "0014"' in src, "Migration must declare revision 0014"
+    assert 'down_revision' in src and '"0013"' in src, (
+        "Migration 0014 must chain from 0013"
+    )
+    assert "bom_binding_required_for_release" in src, (
+        "Migration must reference bom_binding_required_for_release column"
+    )
+    assert "nullable=False" in src, (
+        "bom_binding_required_for_release must be NOT NULL"
+    )
+    assert "server_default=sa.false()" in src, (
+        "bom_binding_required_for_release must default to false to preserve existing PVs"
+    )
