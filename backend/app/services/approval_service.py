@@ -110,6 +110,13 @@ def create_approval_request(
         subject_ref=request_data.subject_ref,
         reason=request_data.reason.strip(),
         status="PENDING",
+        # P0-A-15C: Persist optional governed context for scope-aware matching (P0-A-15B)
+        governed_resource_type=request_data.governed_resource_type,
+        governed_resource_id=request_data.governed_resource_id,
+        governed_resource_display_ref=request_data.governed_resource_display_ref,
+        governed_resource_tenant_id=request_data.governed_resource_tenant_id,
+        governed_resource_scope_ref=request_data.governed_resource_scope_ref,
+        governed_action_type=request_data.governed_action_type,
     )
     db.add(appr_req)
     db.flush()
@@ -125,6 +132,18 @@ def create_approval_request(
         detail=f"action_type={action_type}",
     )
 
+    _governed_ctx = ""
+    if (
+        request_data.governed_resource_type
+        or request_data.governed_resource_scope_ref
+        or request_data.governed_action_type
+    ):
+        _governed_ctx = (
+            f" governed_resource_type={request_data.governed_resource_type}"
+            f" governed_resource_scope_ref={request_data.governed_resource_scope_ref}"
+            f" governed_action_type={request_data.governed_action_type}"
+        )
+
     record_security_event(
         db,
         tenant_id=tenant_id,
@@ -137,6 +156,7 @@ def create_approval_request(
             f" requester_role={requester_role_code}"
             f" subject_type={request_data.subject_type}"
             f" subject_ref={request_data.subject_ref}"
+            + _governed_ctx
         ),
         commit=False,
     )
