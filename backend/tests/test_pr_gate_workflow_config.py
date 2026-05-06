@@ -68,3 +68,10 @@ def test_approval_governed_context_api_tests_are_in_pr_gate() -> None:
     # If this assertion fails, re-add tests/test_approval_governed_context_api.py to pr-gate.yml.
     text = _workflow_text()
     assert "test_approval_governed_context_api.py" in text
+
+
+def test_approval_decision_governed_context_api_tests_are_in_pr_gate() -> None:
+    # P0-A-15E: Decision API governed context coverage must stay in PR gate.
+    # If this assertion fails, re-add tests/test_approval_decision_governed_context_api.py to pr-gate.yml.
+    text = _workflow_text()
+    assert "test_approval_decision_governed_context_api.py" in text

@@ -318,6 +318,15 @@ jobs:
             tests/test_approval_governed_context_api.py \
             --tb=short
 
+      # ── P0-A-15E: Approval decision API governed context matching coverage ────
+      - name: P0-A-15E tests — approval decision governed context API coverage
+        shell: bash
+        run: |
+          cd backend
+          python -m pytest -q \
+            tests/test_approval_decision_governed_context_api.py \
+            --tb=short
+
       # ── P0-A-09: IEP CONFIGURE family boundary lock ──────────────────────────
       - name: P0-A-09 tests — IEP CONFIGURE family boundary lock
         shell: bash
