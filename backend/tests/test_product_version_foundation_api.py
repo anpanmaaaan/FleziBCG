@@ -15,8 +15,10 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import app.api.v1.products as product_router_module
+from app.models.bom import Bom, BomItem
 from app.models.product import Product
 from app.models.product_version import ProductVersion
+from app.models.product_version_bom_binding import ProductVersionBomBinding
 from app.models.security_event import SecurityEventLog
 from app.schemas.product import ProductCreateRequest
 from app.security.dependencies import RequestIdentity, require_authenticated_identity
@@ -51,6 +53,29 @@ def _make_session():
     ProductVersion.__table__.create(bind=engine)
     SecurityEventLog.__table__.create(bind=engine)
     session_local = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+    return engine, session_local
+
+
+def _make_session_full():
+    """Session factory that also creates Bom and ProductVersionBomBinding tables.
+
+    Required for release validation tests that need BOM and binding rows.
+    """
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        future=True,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Product.__table__.create(bind=engine)
+    ProductVersion.__table__.create(bind=engine)
+    Bom.__table__.create(bind=engine)
+    BomItem.__table__.create(bind=engine)
+    ProductVersionBomBinding.__table__.create(bind=engine)
+    SecurityEventLog.__table__.create(bind=engine)
+    session_local = sessionmaker(
+        bind=engine, autoflush=False, autocommit=False, expire_on_commit=False
+    )
     return engine, session_local
 
 
@@ -894,3 +919,465 @@ def test_read_endpoints_return_200_for_non_manage_user():
         assert get_resp.status_code == 200
     finally:
         products_module.has_action = original
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MMD-BE-14C: bom_binding_required_for_release field + release validation tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _mk_bom(
+    db,
+    tenant_id: str,
+    product_id: str,
+    *,
+    lifecycle_status: str = "RELEASED",
+) -> Bom:
+    row = Bom(
+        bom_id=uuid.uuid4().hex,
+        tenant_id=tenant_id,
+        product_id=product_id,
+        bom_code=f"BOM-{uuid.uuid4().hex[:6]}",
+        bom_name="Test BOM",
+        lifecycle_status=lifecycle_status,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def _mk_binding(
+    db,
+    tenant_id: str,
+    product_id: str,
+    product_version_id: str,
+    bom_id: str,
+    *,
+    binding_status: str = "ACTIVE",
+) -> ProductVersionBomBinding:
+    row = ProductVersionBomBinding(
+        binding_id=uuid.uuid4().hex,
+        tenant_id=tenant_id,
+        product_id=product_id,
+        product_version_id=product_version_id,
+        bom_id=bom_id,
+        binding_type="PRIMARY",
+        binding_status=binding_status,
+        created_by="admin-a",
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def _build_app_release(identity: RequestIdentity, session_local) -> FastAPI:
+    from app.api.v1.products import get_db
+
+    app = FastAPI()
+    app.include_router(product_router_module.router, prefix="/api/v1")
+    app.dependency_overrides[require_authenticated_identity] = lambda: identity
+    app.dependency_overrides[get_db] = lambda: session_local()
+    product_router_module.has_action = lambda db, ident, action_code, *a, **kw: True
+    return app
+
+
+def test_create_product_version_defaults_bom_binding_required_false():
+    identity = _make_identity()
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    db.close()
+
+    app = _build_app(identity, session_local)
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/versions", "POST", identity
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        f"/api/v1/products/{product_id}/versions", json={"version_code": "v1.0"}
+    )
+    assert response.status_code == 200
+    assert response.json()["bom_binding_required_for_release"] is False
+
+
+def test_create_product_version_can_set_bom_binding_required_true():
+    identity = _make_identity()
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    db.close()
+
+    app = _build_app(identity, session_local)
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/versions", "POST", identity
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        f"/api/v1/products/{product_id}/versions",
+        json={"version_code": "v1.0", "bom_binding_required_for_release": True},
+    )
+    assert response.status_code == 200
+    assert response.json()["bom_binding_required_for_release"] is True
+
+
+def test_update_draft_product_version_can_set_bom_binding_required_for_release():
+    identity = _make_identity()
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    version = _mk_version(db, "tenant_a", product_id, "v1")
+    db.close()
+
+    app = _build_app(identity, session_local)
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/versions/{version_id}", "PATCH", identity
+    )
+    client = TestClient(app)
+
+    response = client.patch(
+        f"/api/v1/products/{product_id}/versions/{version.product_version_id}",
+        json={"bom_binding_required_for_release": True},
+    )
+    assert response.status_code == 200
+    assert response.json()["bom_binding_required_for_release"] is True
+
+
+def test_update_released_product_version_cannot_set_bom_binding_required_for_release():
+    identity = _make_identity()
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    version = _mk_version(db, "tenant_a", product_id, "v1", lifecycle_status="RELEASED")
+    db.close()
+
+    app = _build_app(identity, session_local)
+    _override_action_dependency(
+        app, "/api/v1/products/{product_id}/versions/{version_id}", "PATCH", identity
+    )
+    client = TestClient(app)
+
+    response = client.patch(
+        f"/api/v1/products/{product_id}/versions/{version.product_version_id}",
+        json={"bom_binding_required_for_release": True},
+    )
+    # RELEASED PV update is rejected (existing guard: only DRAFT can update)
+    assert response.status_code == 400
+
+
+def test_release_product_version_without_binding_required_flag_succeeds():
+    """Default flag=false: release proceeds unchanged (no binding required)."""
+    identity = _make_identity()
+    _, session_local = _make_session_full()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    version = _mk_version(db, "tenant_a", product_id, "v1")
+    db.close()
+
+    app = _build_app_release(identity, session_local)
+    _override_action_dependency(
+        app,
+        "/api/v1/products/{product_id}/versions/{version_id}/release",
+        "POST",
+        identity,
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        f"/api/v1/products/{product_id}/versions/{version.product_version_id}/release"
+    )
+    assert response.status_code == 200
+    assert response.json()["lifecycle_status"] == "RELEASED"
+
+
+def test_release_product_version_with_binding_required_and_released_bom_succeeds():
+    """flag=true + ACTIVE PRIMARY binding to RELEASED BOM: release succeeds."""
+    identity = _make_identity()
+    _, session_local = _make_session_full()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    version = _mk_version(db, "tenant_a", product_id, "v1")
+    version.bom_binding_required_for_release = True
+    db.commit()
+    bom = _mk_bom(db, "tenant_a", product_id, lifecycle_status="RELEASED")
+    _mk_binding(db, "tenant_a", product_id, version.product_version_id, bom.bom_id)
+    db.close()
+
+    app = _build_app_release(identity, session_local)
+    _override_action_dependency(
+        app,
+        "/api/v1/products/{product_id}/versions/{version_id}/release",
+        "POST",
+        identity,
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        f"/api/v1/products/{product_id}/versions/{version.product_version_id}/release"
+    )
+    assert response.status_code == 200
+    assert response.json()["lifecycle_status"] == "RELEASED"
+
+
+def test_release_product_version_with_binding_required_and_no_binding_returns_422():
+    """flag=true + no active binding: release returns 400 (ValueError → 400)."""
+    identity = _make_identity()
+    _, session_local = _make_session_full()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    version = _mk_version(db, "tenant_a", product_id, "v1")
+    version.bom_binding_required_for_release = True
+    db.commit()
+    db.close()
+
+    app = _build_app_release(identity, session_local)
+    _override_action_dependency(
+        app,
+        "/api/v1/products/{product_id}/versions/{version_id}/release",
+        "POST",
+        identity,
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        f"/api/v1/products/{product_id}/versions/{version.product_version_id}/release"
+    )
+    assert response.status_code == 400
+
+
+def test_release_product_version_with_binding_required_and_draft_bom_returns_422():
+    """flag=true + ACTIVE PRIMARY binding to DRAFT BOM: release returns 400 (ValueError → 400)."""
+    identity = _make_identity()
+    _, session_local = _make_session_full()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    version = _mk_version(db, "tenant_a", product_id, "v1")
+    version.bom_binding_required_for_release = True
+    db.commit()
+    bom = _mk_bom(db, "tenant_a", product_id, lifecycle_status="DRAFT")
+    _mk_binding(db, "tenant_a", product_id, version.product_version_id, bom.bom_id)
+    db.close()
+
+    app = _build_app_release(identity, session_local)
+    _override_action_dependency(
+        app,
+        "/api/v1/products/{product_id}/versions/{version_id}/release",
+        "POST",
+        identity,
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        f"/api/v1/products/{product_id}/versions/{version.product_version_id}/release"
+    )
+    assert response.status_code == 400
+
+
+def test_release_product_version_with_binding_required_and_retired_bom_returns_422():
+    """flag=true + ACTIVE PRIMARY binding to RETIRED BOM: release returns 400 (ValueError → 400)."""
+    identity = _make_identity()
+    _, session_local = _make_session_full()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    version = _mk_version(db, "tenant_a", product_id, "v1")
+    version.bom_binding_required_for_release = True
+    db.commit()
+    bom = _mk_bom(db, "tenant_a", product_id, lifecycle_status="RETIRED")
+    _mk_binding(db, "tenant_a", product_id, version.product_version_id, bom.bom_id)
+    db.close()
+
+    app = _build_app_release(identity, session_local)
+    _override_action_dependency(
+        app,
+        "/api/v1/products/{product_id}/versions/{version_id}/release",
+        "POST",
+        identity,
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        f"/api/v1/products/{product_id}/versions/{version.product_version_id}/release"
+    )
+    assert response.status_code == 400
+
+
+def test_release_product_version_with_binding_required_and_removed_binding_returns_422():
+    """flag=true + binding exists but REMOVED (no ACTIVE): release returns 400 (ValueError → 400)."""
+    identity = _make_identity()
+    _, session_local = _make_session_full()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    version = _mk_version(db, "tenant_a", product_id, "v1")
+    version.bom_binding_required_for_release = True
+    db.commit()
+    bom = _mk_bom(db, "tenant_a", product_id, lifecycle_status="RELEASED")
+    _mk_binding(
+        db,
+        "tenant_a",
+        product_id,
+        version.product_version_id,
+        bom.bom_id,
+        binding_status="REMOVED",
+    )
+    db.close()
+
+    app = _build_app_release(identity, session_local)
+    _override_action_dependency(
+        app,
+        "/api/v1/products/{product_id}/versions/{version_id}/release",
+        "POST",
+        identity,
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        f"/api/v1/products/{product_id}/versions/{version.product_version_id}/release"
+    )
+    assert response.status_code == 400
+
+
+def test_release_blocked_by_binding_validation_emits_no_released_event():
+    """Blocked release must not emit PRODUCT_VERSION.RELEASED event."""
+    identity = _make_identity()
+    _, session_local = _make_session_full()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    version = _mk_version(db, "tenant_a", product_id, "v1")
+    version.bom_binding_required_for_release = True
+    db.commit()
+    version_id = version.product_version_id
+    db.close()
+
+    app = _build_app_release(identity, session_local)
+    _override_action_dependency(
+        app,
+        "/api/v1/products/{product_id}/versions/{version_id}/release",
+        "POST",
+        identity,
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        f"/api/v1/products/{product_id}/versions/{version_id}/release"
+    )
+    assert response.status_code == 400
+
+    check_db = session_local()
+    from sqlalchemy import select
+    from app.models.security_event import SecurityEventLog
+
+    events = list(
+        check_db.scalars(
+            select(SecurityEventLog).where(
+                SecurityEventLog.resource_id == version_id,
+                SecurityEventLog.event_type == "PRODUCT_VERSION.RELEASED",
+            )
+        )
+    )
+    check_db.close()
+    assert events == [], f"Unexpected RELEASED event emitted: {events}"
+
+
+def test_release_with_valid_binding_emits_released_event():
+    """Successful release with flag=true must emit PRODUCT_VERSION.RELEASED event."""
+    identity = _make_identity()
+    _, session_local = _make_session_full()
+    db = session_local()
+    product_id = _mk_product(db, "tenant_a")
+    version = _mk_version(db, "tenant_a", product_id, "v1")
+    version.bom_binding_required_for_release = True
+    db.commit()
+    version_id = version.product_version_id
+    bom = _mk_bom(db, "tenant_a", product_id, lifecycle_status="RELEASED")
+    _mk_binding(db, "tenant_a", product_id, version_id, bom.bom_id)
+    db.close()
+
+    app = _build_app_release(identity, session_local)
+    _override_action_dependency(
+        app,
+        "/api/v1/products/{product_id}/versions/{version_id}/release",
+        "POST",
+        identity,
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        f"/api/v1/products/{product_id}/versions/{version_id}/release"
+    )
+    assert response.status_code == 200
+
+    check_db = session_local()
+    from sqlalchemy import select
+
+    events = list(
+        check_db.scalars(
+            select(SecurityEventLog).where(
+                SecurityEventLog.resource_id == version_id,
+                SecurityEventLog.event_type == "PRODUCT_VERSION.RELEASED",
+            )
+        )
+    )
+    check_db.close()
+    assert len(events) == 1, f"Expected exactly one RELEASED event, got {len(events)}"
+
+
+def test_release_validation_does_not_require_bom_manage():
+    """PV release endpoint must not require admin.master_data.bom.manage action code."""
+    src = PRODUCTS_SRC
+    # Find the PV-specific release route block (versions/{version_id}/release)
+    release_block_match = re.search(
+        r'@router\.post\("[^"]*versions/\{version_id\}/release".*?(?=@router\.|\Z)',
+        src,
+        flags=re.DOTALL,
+    )
+    assert release_block_match is not None, "PV release route block not found"
+    release_block = release_block_match.group(0)
+    assert "admin.master_data.bom.manage" not in release_block, (
+        "PV release route must not require bom.manage"
+    )
+
+
+def test_release_endpoint_still_requires_product_version_manage_only():
+    """PV release endpoint must be protected by product_version.manage action code."""
+    src = PRODUCTS_SRC
+    release_block_match = re.search(
+        r'@router\.post\("[^"]*versions/\{version_id\}/release".*?(?=@router\.|\Z)',
+        src,
+        flags=re.DOTALL,
+    )
+    assert release_block_match is not None, "PV release route block not found"
+    release_block = release_block_match.group(0)
+    assert "admin.master_data.product_version.manage" in release_block, (
+        "PV release route must require product_version.manage"
+    )
+
+
+def test_release_validation_does_not_import_or_call_forbidden_domains():
+    """product_version_service must not import material/ERP/traceability/quality/execution modules."""
+    service_src_path = (
+        Path(__file__).parent.parent
+        / "app"
+        / "services"
+        / "product_version_service.py"
+    )
+    service_src = service_src_path.read_text(encoding="utf-8")
+    forbidden_patterns = [
+        "material",
+        "inventory",
+        "backflush",
+        "erp",
+        "traceability",
+        "genealogy",
+        "quality",
+        "execution",
+        "dispatch",
+        "aps",
+        "production_order",
+    ]
+    for pattern in forbidden_patterns:
+        assert pattern not in service_src.lower(), (
+            f"product_version_service imports or references forbidden domain: {pattern!r}"
+        )
