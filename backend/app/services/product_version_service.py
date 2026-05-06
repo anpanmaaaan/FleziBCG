@@ -15,6 +15,10 @@ from app.repositories.product_version_repository import (
     list_product_versions_by_product,
     update_product_version as update_product_version_row,
 )
+from app.repositories.product_version_bom_binding_repository import (
+    get_active_binding_by_version,
+)
+from app.repositories.bom_repository import get_bom_row
 from app.schemas.product import (
     ProductVersionAllowedActions,
     ProductVersionCreateRequest,
@@ -66,6 +70,7 @@ def _to_version_item(
         effective_from=row.effective_from,
         effective_to=row.effective_to,
         description=row.description,
+        bom_binding_required_for_release=row.bom_binding_required_for_release,
         created_at=row.created_at,
         updated_at=row.updated_at,
         allowed_actions=_compute_allowed_actions(row, has_manage),
@@ -200,6 +205,7 @@ def create_product_version(
         effective_from=payload.effective_from,
         effective_to=payload.effective_to,
         description=payload.description,
+        bom_binding_required_for_release=payload.bom_binding_required_for_release,
     )
     row = create_product_version_row(db, row=row)
     _emit_product_version_event(
@@ -277,6 +283,14 @@ def update_product_version(
         row.description = payload.description
         changed_fields.append("description")
 
+    if (
+        payload.bom_binding_required_for_release is not None
+        and payload.bom_binding_required_for_release
+        != row.bom_binding_required_for_release
+    ):
+        row.bom_binding_required_for_release = payload.bom_binding_required_for_release
+        changed_fields.append("bom_binding_required_for_release")
+
     if not changed_fields:
         return _to_version_item(row, has_manage=True)
 
@@ -315,6 +329,21 @@ def release_product_version(
 
     if row.lifecycle_status != "DRAFT":
         raise ValueError("Only DRAFT product versions can be released")
+
+    if row.bom_binding_required_for_release:
+        binding = get_active_binding_by_version(
+            db, tenant_id=tenant_id, product_version_id=product_version_id
+        )
+        if binding is None:
+            raise ValueError(
+                "Product Version requires an active PRIMARY BOM binding "
+                "bound to a RELEASED BOM before release"
+            )
+        bom = get_bom_row(db, tenant_id=tenant_id, bom_id=binding.bom_id)
+        if bom is None or bom.lifecycle_status != "RELEASED":
+            raise ValueError(
+                "Bound BOM must be RELEASED before releasing Product Version"
+            )
 
     row.lifecycle_status = "RELEASED"
     row = update_product_version_row(db, row=row)

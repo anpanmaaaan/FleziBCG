@@ -43,6 +43,20 @@ function LifecycleBadge({ status }: { status: string }) {
   );
 }
 
+// MMD-FULLSTACK-13D: Approved Reason Code domain enum values.
+// Source: reason-code-foundation-contract.md §2. Backend remains final validator.
+const REASON_DOMAINS = [
+  "EXECUTION_PAUSE",
+  "DOWNTIME",
+  "SCRAP",
+  "QUALITY_HOLD",
+  "MAINTENANCE",
+  "MATERIAL",
+  "REWORK",
+  "EXCEPTION",
+  "GENERAL",
+] as const;
+
 export function ReasonCodes() {
   const { t } = useI18n();
 
@@ -86,6 +100,10 @@ export function ReasonCodes() {
   const [confirmRelease, setConfirmRelease] = useState<ReasonCodeItemFromAPI | null>(null);
   const [confirmRetire, setConfirmRetire] = useState<ReasonCodeItemFromAPI | null>(null);
 
+  // MMD-FULLSTACK-13D: Field-level validation error state.
+  const [createFieldErrors, setCreateFieldErrors] = useState<Record<string, string>>({});
+  const [editFieldErrors, setEditFieldErrors] = useState<Record<string, string>>({});
+
   const resolveWriteError = (err: unknown): string => {
     if (err instanceof HttpError) {
       if (err.status === 401) return t("rcWrite.error.unauthorized");
@@ -96,6 +114,35 @@ export function ReasonCodes() {
       if (typeof err.message === "string" && err.message.trim().length > 0) return err.message;
     }
     return t("rcWrite.error.actionFailed");
+  };
+
+  // MMD-FULLSTACK-13D: Extract field-level errors from backend 422 or 409 responses.
+  // 422: FastAPI detail array → [{loc: ["body", "field"], msg: "..."}]
+  // 409 duplicate code → maps to reason_code field
+  const extractFieldErrors = (err: unknown): Record<string, string> | null => {
+    if (!(err instanceof HttpError)) return null;
+    if (err.status === 422) {
+      const detail = err.detail;
+      if (Array.isArray(detail) && detail.length > 0) {
+        const fieldErrors: Record<string, string> = {};
+        for (const item of detail) {
+          if (item && typeof item === "object" && "loc" in item && Array.isArray((item as { loc: unknown[] }).loc)) {
+            const loc = (item as { loc: string[]; msg?: string }).loc;
+            const rawField = String(loc[loc.length - 1]);
+            const msg =
+              typeof (item as { msg?: string }).msg === "string" && (item as { msg?: string }).msg!.trim()
+                ? (item as { msg: string }).msg
+                : t("rcWrite.error.validation");
+            fieldErrors[rawField] = msg;
+          }
+        }
+        if (Object.keys(fieldErrors).length > 0) return fieldErrors;
+      }
+    }
+    if (err.status === 409) {
+      return { reason_code: t("rcWrite.error.field.reasonCode.duplicate") };
+    }
+    return null;
   };
 
   const refreshCodes = () => {
@@ -167,10 +214,50 @@ export function ReasonCodes() {
     });
   }, [codes, domainFilter, search]);
 
+  // MMD-FULLSTACK-13D: Category suggestions from existing loaded data, filtered by selected domain.
+  // Backend is source of truth; free text allowed if no suggestions exist for the domain.
+  const categorySuggestions = useMemo(() => {
+    const seen = new Set<string>();
+    for (const c of codes) {
+      if (!createForm.reasonDomain || c.reason_domain === createForm.reasonDomain) {
+        seen.add(c.reason_category);
+      }
+    }
+    return Array.from(seen).sort();
+  }, [codes, createForm.reasonDomain]);
+
   // ── Write handlers ──────────────────────────────────────────────────────────
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // MMD-FULLSTACK-13D: Client-side field validation before submit.
+    const errs: Record<string, string> = {};
+    if (!createForm.reasonDomain) errs.reason_domain = t("rcWrite.error.field.reasonDomain.required");
+    if (!createForm.reasonCategory.trim()) errs.reason_category = t("rcWrite.error.field.reasonCategory.required");
+    if (!createForm.reasonCode.trim()) errs.reason_code = t("rcWrite.error.field.reasonCode.required");
+    if (!createForm.reasonName.trim()) errs.reason_name = t("rcWrite.error.field.reasonName.required");
+    if (createForm.sortOrder !== "" && !Number.isInteger(Number(createForm.sortOrder))) {
+      errs.sort_order = t("rcWrite.error.field.sortOrder.invalidNumber");
+    }
+    if (Object.keys(errs).length > 0) {
+      setCreateFieldErrors(errs);
+      const focusOrder = ["reason_domain", "reason_category", "reason_code", "reason_name", "sort_order"];
+      const firstKey = focusOrder.find((k) => errs[k]);
+      if (firstKey) {
+        const idMap: Record<string, string> = {
+          reason_domain: "create-reasonDomain",
+          reason_category: "create-reasonCategory",
+          reason_code: "create-reasonCode",
+          reason_name: "create-reasonName",
+          sort_order: "create-sortOrder",
+        };
+        document.getElementById(idMap[firstKey])?.focus();
+      }
+      return;
+    }
+
+    setCreateFieldErrors({});
     setActionBusy(true);
     setActionError(null);
     setActionMessage(null);
@@ -187,10 +274,29 @@ export function ReasonCodes() {
       await reasonCodeApi.createReasonCode(payload);
       setCreateOpen(false);
       setCreateForm({ reasonDomain: "", reasonCategory: "", reasonCode: "", reasonName: "", description: "", requiresComment: false, sortOrder: "" });
+      setCreateFieldErrors({});
       setActionMessage(t("rcWrite.message.created"));
       refreshCodes();
     } catch (err) {
-      setActionError(resolveWriteError(err));
+      const fieldErrors = extractFieldErrors(err);
+      if (fieldErrors) {
+        setCreateFieldErrors(fieldErrors);
+        const focusOrder = ["reason_domain", "reason_category", "reason_code", "reason_name", "sort_order"];
+        const firstKey = focusOrder.find((k) => fieldErrors[k]);
+        if (firstKey) {
+          const idMap: Record<string, string> = {
+            reason_domain: "create-reasonDomain",
+            reason_category: "create-reasonCategory",
+            reason_code: "create-reasonCode",
+            reason_name: "create-reasonName",
+            sort_order: "create-sortOrder",
+          };
+          document.getElementById(idMap[firstKey])?.focus();
+        }
+        setActionError(t("rcWrite.error.validation"));
+      } else {
+        setActionError(resolveWriteError(err));
+      }
     } finally {
       setActionBusy(false);
     }
@@ -205,6 +311,7 @@ export function ReasonCodes() {
       sortOrder: String(code.sort_order),
       isActive: code.is_active,
     });
+    setEditFieldErrors({});
     setActionError(null);
     setActionMessage(null);
   };
@@ -212,6 +319,23 @@ export function ReasonCodes() {
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTarget) return;
+
+    // MMD-FULLSTACK-13D: Client-side validation for mutable fields only.
+    // reason_code, reason_domain, reason_category are immutable — never validated here.
+    const errs: Record<string, string> = {};
+    if (!editForm.reasonName.trim()) errs.reason_name = t("rcWrite.error.field.reasonName.required");
+    if (editForm.sortOrder !== "" && !Number.isInteger(Number(editForm.sortOrder))) {
+      errs.sort_order = t("rcWrite.error.field.sortOrder.invalidNumber");
+    }
+    if (Object.keys(errs).length > 0) {
+      setEditFieldErrors(errs);
+      const firstKey = Object.keys(errs)[0];
+      const idMap: Record<string, string> = { reason_name: "edit-reasonName", sort_order: "edit-sortOrder" };
+      document.getElementById(idMap[firstKey] ?? "")?.focus();
+      return;
+    }
+
+    setEditFieldErrors({});
     setActionBusy(true);
     setActionError(null);
     setActionMessage(null);
@@ -225,10 +349,20 @@ export function ReasonCodes() {
       };
       await reasonCodeApi.updateReasonCode(editTarget.reason_code_id, payload);
       setEditTarget(null);
+      setEditFieldErrors({});
       setActionMessage(t("rcWrite.message.updated"));
       refreshCodes();
     } catch (err) {
-      setActionError(resolveWriteError(err));
+      const fieldErrors = extractFieldErrors(err);
+      if (fieldErrors) {
+        setEditFieldErrors(fieldErrors);
+        const firstKey = Object.keys(fieldErrors)[0];
+        const idMap: Record<string, string> = { reason_name: "edit-reasonName", sort_order: "edit-sortOrder" };
+        document.getElementById(idMap[firstKey] ?? "")?.focus();
+        setActionError(t("rcWrite.error.validation"));
+      } else {
+        setActionError(resolveWriteError(err));
+      }
     } finally {
       setActionBusy(false);
     }
@@ -447,45 +581,75 @@ export function ReasonCodes() {
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
                   <span className="text-xs font-medium text-gray-700">{t("rcWrite.modal.field.reasonDomain")} *</span>
-                  <input
-                    type="text"
-                    required
+                  <select
+                    id="create-reasonDomain"
                     value={createForm.reasonDomain}
-                    onChange={(e) => setCreateForm((f) => ({ ...f, reasonDomain: e.target.value }))}
-                    className="mt-1 w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                    onChange={(e) => setCreateForm((f) => ({ ...f, reasonDomain: e.target.value, reasonCategory: "" }))}
+                    aria-invalid={!!createFieldErrors.reason_domain}
+                    aria-describedby={createFieldErrors.reason_domain ? "create-reasonDomain-error" : undefined}
+                    className={`mt-1 w-full px-2 py-1.5 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white ${createFieldErrors.reason_domain ? "border-red-400" : "border-gray-300"}`}
+                  >
+                    <option value="">{t("rcWrite.modal.field.reasonDomain.placeholder")}</option>
+                    {REASON_DOMAINS.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                  {createFieldErrors.reason_domain && (
+                    <p id="create-reasonDomain-error" role="alert" className="mt-0.5 text-xs text-red-600">{createFieldErrors.reason_domain}</p>
+                  )}
                 </label>
                 <label className="block">
                   <span className="text-xs font-medium text-gray-700">{t("rcWrite.modal.field.reasonCategory")} *</span>
                   <input
+                    id="create-reasonCategory"
                     type="text"
-                    required
+                    list="create-category-suggestions"
                     value={createForm.reasonCategory}
                     onChange={(e) => setCreateForm((f) => ({ ...f, reasonCategory: e.target.value }))}
-                    className="mt-1 w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    aria-invalid={!!createFieldErrors.reason_category}
+                    aria-describedby={createFieldErrors.reason_category ? "create-reasonCategory-error" : undefined}
+                    className={`mt-1 w-full px-2 py-1.5 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${createFieldErrors.reason_category ? "border-red-400" : "border-gray-300"}`}
                   />
+                  <datalist id="create-category-suggestions">
+                    {categorySuggestions.map((cat) => (
+                      <option key={cat} value={cat} />
+                    ))}
+                  </datalist>
+                  {createFieldErrors.reason_category && (
+                    <p id="create-reasonCategory-error" role="alert" className="mt-0.5 text-xs text-red-600">{createFieldErrors.reason_category}</p>
+                  )}
                 </label>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
                   <span className="text-xs font-medium text-gray-700">{t("rcWrite.modal.field.reasonCode")} *</span>
                   <input
+                    id="create-reasonCode"
                     type="text"
-                    required
                     value={createForm.reasonCode}
                     onChange={(e) => setCreateForm((f) => ({ ...f, reasonCode: e.target.value }))}
-                    className="mt-1 w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    aria-invalid={!!createFieldErrors.reason_code}
+                    aria-describedby={createFieldErrors.reason_code ? "create-reasonCode-error" : undefined}
+                    className={`mt-1 w-full px-2 py-1.5 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${createFieldErrors.reason_code ? "border-red-400" : "border-gray-300"}`}
                   />
+                  {createFieldErrors.reason_code && (
+                    <p id="create-reasonCode-error" role="alert" className="mt-0.5 text-xs text-red-600">{createFieldErrors.reason_code}</p>
+                  )}
                 </label>
                 <label className="block">
                   <span className="text-xs font-medium text-gray-700">{t("rcWrite.modal.field.reasonName")} *</span>
                   <input
+                    id="create-reasonName"
                     type="text"
-                    required
                     value={createForm.reasonName}
                     onChange={(e) => setCreateForm((f) => ({ ...f, reasonName: e.target.value }))}
-                    className="mt-1 w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    aria-invalid={!!createFieldErrors.reason_name}
+                    aria-describedby={createFieldErrors.reason_name ? "create-reasonName-error" : undefined}
+                    className={`mt-1 w-full px-2 py-1.5 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${createFieldErrors.reason_name ? "border-red-400" : "border-gray-300"}`}
                   />
+                  {createFieldErrors.reason_name && (
+                    <p id="create-reasonName-error" role="alert" className="mt-0.5 text-xs text-red-600">{createFieldErrors.reason_name}</p>
+                  )}
                 </label>
               </div>
               <label className="block">
@@ -497,8 +661,8 @@ export function ReasonCodes() {
                   className="mt-1 w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </label>
-              <div className="grid grid-cols-2 gap-3 items-center">
-                <label className="flex items-center gap-2 cursor-pointer">
+              <div className="grid grid-cols-2 gap-3 items-start">
+                <label className="flex items-center gap-2 cursor-pointer mt-1">
                   <input
                     type="checkbox"
                     checked={createForm.requiresComment}
@@ -510,11 +674,17 @@ export function ReasonCodes() {
                 <label className="block">
                   <span className="text-xs font-medium text-gray-700">{t("rcWrite.modal.field.sortOrder")}</span>
                   <input
+                    id="create-sortOrder"
                     type="number"
                     value={createForm.sortOrder}
                     onChange={(e) => setCreateForm((f) => ({ ...f, sortOrder: e.target.value }))}
-                    className="mt-1 w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    aria-invalid={!!createFieldErrors.sort_order}
+                    aria-describedby={createFieldErrors.sort_order ? "create-sortOrder-error" : undefined}
+                    className={`mt-1 w-full px-2 py-1.5 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${createFieldErrors.sort_order ? "border-red-400" : "border-gray-300"}`}
                   />
+                  {createFieldErrors.sort_order && (
+                    <p id="create-sortOrder-error" role="alert" className="mt-0.5 text-xs text-red-600">{createFieldErrors.sort_order}</p>
+                  )}
                 </label>
               </div>
               {actionError && (
@@ -523,7 +693,7 @@ export function ReasonCodes() {
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => { setCreateOpen(false); setActionError(null); }}
+                  onClick={() => { setCreateOpen(false); setCreateFieldErrors({}); setActionError(null); }}
                   className="px-3 py-1.5 rounded text-sm border border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
                   {t("common.action.cancel")}
@@ -551,12 +721,17 @@ export function ReasonCodes() {
               <label className="block">
                 <span className="text-xs font-medium text-gray-700">{t("rcWrite.modal.field.reasonName")} *</span>
                 <input
+                  id="edit-reasonName"
                   type="text"
-                  required
                   value={editForm.reasonName}
                   onChange={(e) => setEditForm((f) => ({ ...f, reasonName: e.target.value }))}
-                  className="mt-1 w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  aria-invalid={!!editFieldErrors.reason_name}
+                  aria-describedby={editFieldErrors.reason_name ? "edit-reasonName-error" : undefined}
+                  className={`mt-1 w-full px-2 py-1.5 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${editFieldErrors.reason_name ? "border-red-400" : "border-gray-300"}`}
                 />
+                {editFieldErrors.reason_name && (
+                  <p id="edit-reasonName-error" role="alert" className="mt-0.5 text-xs text-red-600">{editFieldErrors.reason_name}</p>
+                )}
               </label>
               <label className="block">
                 <span className="text-xs font-medium text-gray-700">{t("rcWrite.modal.field.description")}</span>
@@ -590,11 +765,17 @@ export function ReasonCodes() {
               <label className="block">
                 <span className="text-xs font-medium text-gray-700">{t("rcWrite.modal.field.sortOrder")}</span>
                 <input
+                  id="edit-sortOrder"
                   type="number"
                   value={editForm.sortOrder}
                   onChange={(e) => setEditForm((f) => ({ ...f, sortOrder: e.target.value }))}
-                  className="mt-1 w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  aria-invalid={!!editFieldErrors.sort_order}
+                  aria-describedby={editFieldErrors.sort_order ? "edit-sortOrder-error" : undefined}
+                  className={`mt-1 w-full px-2 py-1.5 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${editFieldErrors.sort_order ? "border-red-400" : "border-gray-300"}`}
                 />
+                {editFieldErrors.sort_order && (
+                  <p id="edit-sortOrder-error" role="alert" className="mt-0.5 text-xs text-red-600">{editFieldErrors.sort_order}</p>
+                )}
               </label>
               {actionError && (
                 <p className="text-xs text-red-600">{actionError}</p>
@@ -602,7 +783,7 @@ export function ReasonCodes() {
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => { setEditTarget(null); setActionError(null); }}
+                  onClick={() => { setEditTarget(null); setEditFieldErrors({}); setActionError(null); }}
                   className="px-3 py-1.5 rounded text-sm border border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
                   {t("common.action.cancel")}
