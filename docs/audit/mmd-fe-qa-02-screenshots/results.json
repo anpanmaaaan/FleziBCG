@@ -1,0 +1,63 @@
+{
+  "screenshots": [
+    {
+      "status": "ok",
+      "file": "docs\\audit\\mmd-fe-qa-02-screenshots\\01-products-list-desktop.png"
+    },
+    {
+      "status": "ok",
+      "file": "docs\\audit\\mmd-fe-qa-02-screenshots\\02-products-list-tablet.png"
+    },
+    {
+      "status": "ok",
+      "file": "docs\\audit\\mmd-fe-qa-02-screenshots\\03-product-detail-pv-manage-desktop.png"
+    },
+    {
+      "status": "ok",
+      "file": "docs\\audit\\mmd-fe-qa-02-screenshots\\04-product-detail-pv-readonly-desktop.png"
+    },
+    {
+      "status": "ok",
+      "file": "docs\\audit\\mmd-fe-qa-02-screenshots\\05-bom-list-manage-desktop.png"
+    },
+    {
+      "status": "ok",
+      "file": "docs\\audit\\mmd-fe-qa-02-screenshots\\06-bom-list-manage-tablet.png"
+    },
+    {
+      "status": "ok",
+      "file": "docs\\audit\\mmd-fe-qa-02-screenshots\\07-bom-detail-manage-draft-desktop.png"
+    },
+    {
+      "status": "ok",
+      "file": "docs\\audit\\mmd-fe-qa-02-screenshots\\08-bom-detail-readonly-desktop.png"
+    },
+    {
+      "status": "ok",
+      "file": "docs\\audit\\mmd-fe-qa-02-screenshots\\09-reason-codes-manage-desktop.png"
+    },
+    {
+      "status": "ok",
+      "file": "docs\\audit\\mmd-fe-qa-02-screenshots\\10-reason-codes-manage-tablet.png"
+    },
+    {
+      "status": "ok",
+      "file": "docs\\audit\\mmd-fe-qa-02-screenshots\\11-reason-codes-manage-mobile.png"
+    },
+    {
+      "status": "ok",
+      "file": "docs\\audit\\mmd-fe-qa-02-screenshots\\12-reason-codes-readonly-desktop.png"
+    },
+    {
+      "status": "ok",
+      "file": "docs\\audit\\mmd-fe-qa-02-screenshots\\13-reason-codes-empty-manage-desktop.png"
+    },
+    {
+      "status": "ok",
+      "file": "docs\\audit\\mmd-fe-qa-02-screenshots\\14-reason-codes-empty-readonly-desktop.png"
+    }
+  ],
+  "total": 14,
+  "ok": 14,
+  "errors": 0
+}
