@@ -5,6 +5,7 @@
 | Date | Version | Change |
 |---|---|---|
 | 2026-04-23 | v1.1 | Revised to align role taxonomy, ownership direction, eventing note, and domain boundaries. |
+| 2026-05-04 | v1.2 | Clarified manufacturing profile configuration: tenant default/capability only; actual manufacturing mode is resolved by plant/scope/manufacturing definition/runtime profile. |
 
 ## Status
 
@@ -138,6 +139,37 @@ This means platform-level vocabulary should remain broad enough to support:
 
 The canonical hierarchy remains stable, but plant-specific semantics may be mapped onto it through equipment/resource typing and level aliases. See `manufacturing-mode-hierarchy-mapping.md`.
 
+## 3.4 Manufacturing profile configuration principle
+
+FleziBCG supports manufacturing-mode-neutral operation through configurable manufacturing profiles.
+
+Manufacturing mode must not be hard-coded as a tenant-wide product fork.
+
+Tenant-level configuration may define:
+- default manufacturing profile
+- enabled manufacturing capabilities
+- governance defaults
+- onboarding templates
+- default hierarchy alias profile
+
+Actual manufacturing behavior is resolved through hierarchical and domain context:
+
+1. tenant default profile
+2. plant manufacturing profile
+3. area / line / station / equipment override where applicable
+4. manufacturing definition type, such as BOM/routing or recipe/formula/procedure/phase
+5. backend runtime execution profile
+
+Supported manufacturing mode values include:
+- `DISCRETE`
+- `BATCH`
+- `CONTINUOUS`
+- `HYBRID`
+
+Current implementation remains automotive discrete-first, primarily through Station Execution, but the platform design must not become discrete-only.
+
+Full Batch / Process Execution, ISA-88-style recipe execution, phase state machines, and continuous run orchestration are deferred future capabilities unless explicitly pulled forward by customer scope.
+
 ---
 
 ## 4. Core Mission
@@ -245,6 +277,7 @@ This module family includes:
 - audit
 - plant hierarchy
 - master data governance
+- manufacturing profile governance, including tenant defaults, plant profile assignment, scope-level overrides, and auditable profile changes
 
 This is foundational to all other platform modules.
 
@@ -265,6 +298,13 @@ This module is the canonical home for:
 - BOM
 - product structure
 - recipe-like manufacturing definitions
+
+Manufacturing definitions may carry or derive manufacturing-mode behavior, such as:
+- routing-operation execution for discrete manufacturing
+- recipe / formula / procedure / phase execution for batch or process manufacturing
+- continuous-run context for continuous manufacturing where applicable
+
+This does not mean FleziBCG implements full Batch / Process Execution in the current phase. It means product definitions must remain compatible with future execution models.
 
 It is intentionally separate from traceability, because these definitions are shared by:
 - execution
@@ -615,6 +655,10 @@ Quality, maintenance, material flow, and inventory/WIP context should remain exe
 ## 11.6 Stay manufacturing-mode-neutral at platform level
 
 Future growth must not accidentally reduce FleziBCG into a discrete-only platform model.
+
+Extensions must not introduce tenant-level hard-coding that prevents a tenant from operating multiple manufacturing modes across different plants, areas, lines, work centers, stations, or equipment.
+
+Tenant defaults may guide onboarding, but manufacturing mode must remain overridable at the appropriate operational scope and manufacturing-definition level.
 
 ---
 
