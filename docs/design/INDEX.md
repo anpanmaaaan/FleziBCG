@@ -64,3 +64,11 @@ Latest accepted additions:
 - `docs/governance/CODING_RULES.md` v2.0
 - `docs/roadmap/flezibcg-overall-roadmap-latest.md`
 - `docs/implementation/task5-p0-a-foundation-database-implementation-prompt.md`
+
+---
+
+## Latest Pack Addendum — 2026-05-06 (MMD-FULLSTACK-13D)
+
+Latest accepted additions:
+
+- `docs/design/02_domain/product_definition/reason-code-validation-ux-contract.md` — Field-level validation UX, backend error mapping, field ownership, mutability, i18n, and accessibility contract for Reason Code Create/Edit forms. Companion to `reason-code-foundation-contract.md` and `reason-code-write-governance-contract.md`. Added by MMD-FULLSTACK-13D.

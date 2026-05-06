@@ -32,6 +32,13 @@
 ## Product definition truth
 - `02_domain/product_definition/manufacturing-master-data-and-product-definition-domain.md`
 
+## Reason Code write and validation UX truth
+- `02_domain/product_definition/reason-code-foundation-contract.md` — entity shape, lifecycle, domain enum, boundary lock (MMD-BE-06)
+- `02_domain/product_definition/reason-code-write-governance-contract.md` — write-path governance, payload boundaries, lifecycle enforcement (MMD-BE-10)
+- `02_domain/product_definition/reason-code-validation-ux-contract.md` — Reason Code Create/Edit form field ownership and mutability; client-side and backend error mapping to UI; REASON_DOMAINS enum UX constraint; category datalist behavior; aria/i18n/accessibility requirements (MMD-FULLSTACK-13D)
+
+> Note: `reason-code-validation-ux-contract.md` is the UI validation UX companion to the foundation and write-governance contracts. It does not override or replace them.
+
 ---
 
 ## Latest Pack Addendum — 2026-04-27
