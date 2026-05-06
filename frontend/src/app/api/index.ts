@@ -51,6 +51,8 @@ export type {
   BomUpdateRequest,
   ProductItemFromAPI,
   ProductVersionAllowedActions,
+  ProductVersionBomBindingCreateRequest,
+  ProductVersionBomBindingResponse,
   ProductVersionCreateRequest,
   ProductVersionItemFromAPI,
   ProductVersionProductCapabilities,

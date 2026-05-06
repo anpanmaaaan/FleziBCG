@@ -41,6 +41,7 @@ export interface ProductVersionItemFromAPI {
   effective_from?: string | null;
   effective_to?: string | null;
   description?: string | null;
+  bom_binding_required_for_release: boolean;
   created_at: string;
   updated_at: string;
   allowed_actions: ProductVersionAllowedActions;
@@ -52,6 +53,7 @@ export interface ProductVersionCreateRequest {
   effective_from?: string;
   effective_to?: string;
   description?: string;
+  bom_binding_required_for_release?: boolean;
 }
 
 export interface ProductVersionUpdateRequest {
@@ -59,6 +61,32 @@ export interface ProductVersionUpdateRequest {
   effective_from?: string;
   effective_to?: string;
   description?: string;
+  bom_binding_required_for_release?: boolean;
+}
+
+export interface ProductVersionBomBindingAllowedActions {
+  can_remove: boolean;
+}
+
+export interface ProductVersionBomBindingResponse {
+  binding_id: string;
+  tenant_id: string;
+  product_id: string;
+  product_version_id: string;
+  bom_id: string;
+  binding_type: "PRIMARY";
+  binding_status: "ACTIVE" | "REMOVED";
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  updated_by?: string | null;
+  allowed_actions: ProductVersionBomBindingAllowedActions;
+}
+
+export interface ProductVersionBomBindingCreateRequest {
+  bom_id: string;
+  notes?: string | null;
 }
 
 export interface BomAllowedActions {
@@ -205,6 +233,39 @@ export const productApi = {
       `${BASE_PATH}/${encodeURIComponent(productId)}/versions/${encodeURIComponent(versionId)}/retire`,
       {
         method: "POST",
+        signal,
+      },
+    );
+  },
+
+  getProductVersionBomBinding(productId: string, versionId: string, signal?: AbortSignal) {
+    return request<ProductVersionBomBindingResponse>(
+      `${BASE_PATH}/${encodeURIComponent(productId)}/versions/${encodeURIComponent(versionId)}/bom-binding`,
+      { signal },
+    );
+  },
+
+  bindBomToProductVersion(
+    productId: string,
+    versionId: string,
+    payload: ProductVersionBomBindingCreateRequest,
+    signal?: AbortSignal,
+  ) {
+    return request<ProductVersionBomBindingResponse>(
+      `${BASE_PATH}/${encodeURIComponent(productId)}/versions/${encodeURIComponent(versionId)}/bom-binding`,
+      {
+        method: "POST",
+        body: payload,
+        signal,
+      },
+    );
+  },
+
+  unbindBomFromProductVersion(productId: string, versionId: string, signal?: AbortSignal) {
+    return request<void>(
+      `${BASE_PATH}/${encodeURIComponent(productId)}/versions/${encodeURIComponent(versionId)}/bom-binding`,
+      {
+        method: "DELETE",
         signal,
       },
     );

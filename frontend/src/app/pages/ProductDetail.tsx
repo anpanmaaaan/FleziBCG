@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router";
 import { toast } from "sonner";
 import {
@@ -11,7 +11,9 @@ import {
 import {
   HttpError,
   productApi,
+  type BomItemFromAPI,
   type ProductItemFromAPI,
+  type ProductVersionBomBindingResponse,
   type ProductVersionCreateRequest,
   type ProductVersionItemFromAPI,
   type ProductVersionUpdateRequest,
@@ -58,9 +60,16 @@ export function ProductDetail() {
   const [missingProductId, setMissingProductId] = useState(false);
 
   const [versions, setVersions] = useState<ProductVersionItemFromAPI[]>([]);
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [versionsLoading, setVersionsLoading] = useState(false);
   const [versionsError, setVersionsError] = useState<string | null>(null);
   const [versionActionError, setVersionActionError] = useState<string | null>(null);
+  const [binding, setBinding] = useState<ProductVersionBomBindingResponse | null>(null);
+  const [bindingLoading, setBindingLoading] = useState(false);
+  const [bindingError, setBindingError] = useState<string | null>(null);
+  const [bindBomId, setBindBomId] = useState("");
+  const [boms, setBoms] = useState<BomItemFromAPI[]>([]);
+  const [bomsLoading, setBomsLoading] = useState(false);
   const [createForm, setCreateForm] = useState<CreateVersionFormState>(EMPTY_CREATE_FORM);
   const [editingVersionId, setEditingVersionId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditVersionFormState>(EMPTY_EDIT_FORM);
@@ -69,6 +78,52 @@ export function ProductDetail() {
   const editingVersion = editingVersionId
     ? versions.find((version) => version.product_version_id === editingVersionId) ?? null
     : null;
+
+  const selectedVersion = useMemo(() => {
+    if (versions.length === 0) {
+      return null;
+    }
+    if (selectedVersionId) {
+      return versions.find((version) => version.product_version_id === selectedVersionId) ?? null;
+    }
+    return versions.find((version) => version.is_current) ?? versions[0];
+  }, [selectedVersionId, versions]);
+
+  const selectedBoundBom = useMemo(() => {
+    if (!binding) {
+      return null;
+    }
+    return boms.find((bom) => bom.bom_id === binding.bom_id) ?? null;
+  }, [binding, boms]);
+
+  const bindableBoms = useMemo(() => boms.filter((bom) => bom.lifecycle_status !== "RETIRED"), [boms]);
+
+  const selectedVersionIsDraft = selectedVersion?.lifecycle_status === "DRAFT";
+  const selectedVersionCanToggleFlag = Boolean(selectedVersionIsDraft);
+  const canShowBindIntent = Boolean(selectedVersionIsDraft && !binding);
+  const canShowUnbindIntent = Boolean(selectedVersionIsDraft && binding && binding.allowed_actions?.can_remove);
+
+  const selectedVersionReadiness = useMemo(() => {
+    if (!selectedVersion) {
+      return "UNKNOWN" as const;
+    }
+    if (!selectedVersion.bom_binding_required_for_release) {
+      return "NOT_REQUIRED" as const;
+    }
+    if (!binding) {
+      return "BLOCKED_NO_BINDING" as const;
+    }
+    if (selectedBoundBom?.lifecycle_status === "RELEASED") {
+      return "READY" as const;
+    }
+    if (selectedBoundBom?.lifecycle_status === "DRAFT") {
+      return "BLOCKED_DRAFT_BOM" as const;
+    }
+    if (selectedBoundBom?.lifecycle_status === "RETIRED") {
+      return "BLOCKED_RETIRED_BOM" as const;
+    }
+    return "BLOCKED_BOM_NOT_RELEASED" as const;
+  }, [binding, selectedBoundBom, selectedVersion]);
 
   const normalizeOptionalText = (value: string): string | undefined => {
     const trimmed = value.trim();
@@ -99,12 +154,31 @@ export function ProductDetail() {
         return t("productDetail.versions.error.updateDraftOnly");
       case "Only DRAFT product versions can be released":
         return t("productDetail.versions.error.releaseDraftOnly");
+      case "Product Version requires an active PRIMARY BOM binding bound to a RELEASED BOM before release":
+        return t("productDetail.versions.error.releaseBindingRequired");
+      case "Bound BOM must be RELEASED before releasing Product Version":
+        return t("productDetail.versions.error.releaseBindingBomReleasedRequired");
       case "Product version is already RETIRED":
         return t("productDetail.versions.error.alreadyRetired");
       case "Current product version cannot be retired":
         return t("productDetail.versions.error.currentRetireBlocked");
       case "Only DRAFT or RELEASED product versions can be retired":
         return t("productDetail.versions.error.retireLifecycleBlocked");
+      case "Product Version must be DRAFT to add a binding; current status: RELEASED":
+      case "Product Version must be DRAFT to add a binding; current status: RETIRED":
+      case "Product Version must be DRAFT to add a binding":
+        return t("productDetail.binding.error.bindDraftOnly");
+      case "BOM with status RETIRED cannot be newly bound":
+        return t("productDetail.binding.error.bindRetiredBom");
+      case "An ACTIVE PRIMARY BOM binding already exists for this product version":
+        return t("productDetail.binding.error.bindingAlreadyExists");
+      case "Product Version must be DRAFT to remove a binding; current status: RELEASED":
+      case "Product Version must be DRAFT to remove a binding; current status: RETIRED":
+      case "Product Version must be DRAFT to remove a binding":
+        return t("productDetail.binding.error.unbindDraftOnly");
+      case "No active BOM binding found for this product version":
+      case "No active BOM binding for this product version":
+        return t("productDetail.binding.error.noActiveBinding");
       default:
         return null;
     }
@@ -228,6 +302,109 @@ export function ProductDetail() {
       if (!signal?.aborted) {
         setVersionsLoading(false);
       }
+    }
+  };
+
+  const loadBoms = async (signal?: AbortSignal) => {
+    if (!productId) return;
+    setBomsLoading(true);
+    try {
+      const rows = await productApi.listProductBoms(productId, signal);
+      if (!signal?.aborted) {
+        setBoms(rows);
+      }
+    } catch {
+      if (signal?.aborted) return;
+      setBoms([]);
+    } finally {
+      if (!signal?.aborted) {
+        setBomsLoading(false);
+      }
+    }
+  };
+
+  const loadBinding = async (versionId: string, signal?: AbortSignal) => {
+    if (!productId) return;
+    setBindingLoading(true);
+    setBindingError(null);
+    try {
+      const row = await productApi.getProductVersionBomBinding(productId, versionId, signal);
+      if (!signal?.aborted) {
+        setBinding(row);
+      }
+    } catch (error) {
+      if (signal?.aborted) return;
+      if (error instanceof HttpError && error.status === 404) {
+        setBinding(null);
+        return;
+      }
+      setBinding(null);
+      setBindingError(t("productDetail.binding.error.load"));
+    } finally {
+      if (!signal?.aborted) {
+        setBindingLoading(false);
+      }
+    }
+  };
+
+  const toggleBindingRequiredFlag = async (next: boolean) => {
+    if (!productId || !selectedVersion) {
+      return;
+    }
+    setMutationBusyKey(`toggle-required:${selectedVersion.product_version_id}`);
+    setVersionActionError(null);
+    try {
+      await productApi.updateProductVersion(
+        productId,
+        selectedVersion.product_version_id,
+        { bom_binding_required_for_release: next },
+      );
+      toast.success(t("productDetail.binding.success.policyUpdated"));
+      await loadVersions();
+    } catch (error) {
+      setVersionActionError(resolveVersionActionError(error));
+    } finally {
+      setMutationBusyKey(null);
+    }
+  };
+
+  const bindSelectedVersionBom = async () => {
+    if (!productId || !selectedVersion || !bindBomId) {
+      return;
+    }
+    setMutationBusyKey(`bind:${selectedVersion.product_version_id}`);
+    setVersionActionError(null);
+    try {
+      await productApi.bindBomToProductVersion(productId, selectedVersion.product_version_id, { bom_id: bindBomId });
+      toast.success(t("productDetail.binding.success.bound"));
+      await loadBinding(selectedVersion.product_version_id);
+      await loadVersions();
+    } catch (error) {
+      setVersionActionError(resolveVersionActionError(error));
+    } finally {
+      setMutationBusyKey(null);
+    }
+  };
+
+  const unbindSelectedVersionBom = async () => {
+    if (!productId || !selectedVersion) {
+      return;
+    }
+    if (!window.confirm(t("productDetail.binding.confirm.unbind"))) {
+      return;
+    }
+    setMutationBusyKey(`unbind:${selectedVersion.product_version_id}`);
+    setVersionActionError(null);
+    try {
+      await productApi.unbindBomFromProductVersion(productId, selectedVersion.product_version_id);
+      toast.success(t("productDetail.binding.success.unbound"));
+      setBinding(null);
+      await loadBinding(selectedVersion.product_version_id);
+      await loadVersions();
+    } catch (error) {
+      setVersionActionError(resolveVersionActionError(error));
+    } finally {
+      setMutationBusyKey(null);
     }
   };
 
@@ -355,8 +532,38 @@ export function ProductDetail() {
 
     void loadProduct(controller.signal);
     void loadVersions(controller.signal);
+    void loadBoms(controller.signal);
     return () => controller.abort();
   }, [productId, t]);
+
+  useEffect(() => {
+    if (versions.length === 0) {
+      setSelectedVersionId(null);
+      setBinding(null);
+      return;
+    }
+
+    const selected = selectedVersionId
+      ? versions.find((version) => version.product_version_id === selectedVersionId)
+      : null;
+
+    const fallback = selected ?? versions.find((version) => version.is_current) ?? versions[0];
+    if (!selectedVersionId || !selected) {
+      setSelectedVersionId(fallback.product_version_id);
+    }
+    if (!bindBomId && bindableBoms.length > 0) {
+      setBindBomId(bindableBoms[0].bom_id);
+    }
+  }, [bindBomId, bindableBoms, selectedVersionId, versions]);
+
+  useEffect(() => {
+    if (!selectedVersion?.product_version_id) {
+      return;
+    }
+    const controller = new AbortController();
+    void loadBinding(selectedVersion.product_version_id, controller.signal);
+    return () => controller.abort();
+  }, [selectedVersion?.product_version_id]);
 
   return (
     <div className="h-full flex flex-col bg-white">
@@ -543,6 +750,7 @@ export function ProductDetail() {
                         <th className="py-2 pr-4 font-medium">{t("productDetail.versions.col.versionCode")}</th>
                         <th className="py-2 pr-4 font-medium">{t("productDetail.versions.col.versionName")}</th>
                         <th className="py-2 pr-4 font-medium">{t("productDetail.versions.col.lifecycle")}</th>
+                        <th className="py-2 pr-4 font-medium">{t("productDetail.versions.col.bindingRequired")}</th>
                         <th className="py-2 pr-4 font-medium">{t("productDetail.versions.col.isCurrent")}</th>
                         <th className="py-2 pr-4 font-medium">{t("productDetail.versions.col.effectiveFrom")}</th>
                         <th className="py-2 pr-4 font-medium">{t("productDetail.versions.col.effectiveTo")}</th>
@@ -551,13 +759,28 @@ export function ProductDetail() {
                     </thead>
                     <tbody>
                       {versions.map((v) => (
-                        <tr key={v.product_version_id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <tr
+                          key={v.product_version_id}
+                          className={`border-b border-gray-100 hover:bg-gray-50 ${selectedVersion?.product_version_id === v.product_version_id ? "bg-blue-50" : ""}`}
+                          onClick={() => setSelectedVersionId(v.product_version_id)}
+                        >
                           <td className="py-2 pr-4 font-mono text-xs text-gray-800">{v.version_code}</td>
                           <td className="py-2 pr-4 text-gray-700">{v.version_name ?? t("common.na")}</td>
                           <td className="py-2 pr-4">
                             <span className="inline-block rounded px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700">
                               {v.lifecycle_status}
                             </span>
+                          </td>
+                          <td className="py-2 pr-4">
+                            {v.bom_binding_required_for_release ? (
+                              <span className="inline-block rounded px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800">
+                                {t("common.yes")}
+                              </span>
+                            ) : (
+                              <span className="inline-block rounded px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600">
+                                {t("common.no")}
+                              </span>
+                            )}
                           </td>
                           <td className="py-2 pr-4">
                             {v.is_current ? (
@@ -602,6 +825,127 @@ export function ProductDetail() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {selectedVersion && (
+                <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="text-sm font-semibold text-slate-900">{t("productDetail.binding.title")}</h3>
+                    <span className="rounded bg-white px-2 py-1 text-xs font-medium text-slate-700">
+                      {selectedVersion.version_code}
+                    </span>
+                  </div>
+
+                  <p className="mt-2 text-xs text-slate-700">{t("productDetail.binding.notice.backendAuth")}</p>
+
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    <div className="rounded border border-slate-200 bg-white p-3 text-sm">
+                      <p className="font-medium text-slate-900">{t("productDetail.binding.label.policy")}</p>
+                      <p className="mt-1 text-slate-700">
+                        {selectedVersion.bom_binding_required_for_release
+                          ? t("productDetail.binding.policy.required")
+                          : t("productDetail.binding.policy.notRequired")}
+                      </p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void toggleBindingRequiredFlag(true)}
+                          disabled={mutationBusyKey !== null || !selectedVersionCanToggleFlag || selectedVersion.bom_binding_required_for_release}
+                          className="rounded border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-400"
+                        >
+                          {t("productDetail.binding.action.require")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void toggleBindingRequiredFlag(false)}
+                          disabled={mutationBusyKey !== null || !selectedVersionCanToggleFlag || !selectedVersion.bom_binding_required_for_release}
+                          className="rounded border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-400"
+                        >
+                          {t("productDetail.binding.action.notRequired")}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="rounded border border-slate-200 bg-white p-3 text-sm">
+                      <p className="font-medium text-slate-900">{t("productDetail.binding.label.releaseReadiness")}</p>
+                      <p className="mt-1 text-slate-700">
+                        {selectedVersionReadiness === "NOT_REQUIRED" && t("productDetail.binding.readiness.notRequired")}
+                        {selectedVersionReadiness === "READY" && t("productDetail.binding.readiness.ready")}
+                        {selectedVersionReadiness === "BLOCKED_NO_BINDING" && t("productDetail.binding.readiness.blockedNoBinding")}
+                        {selectedVersionReadiness === "BLOCKED_DRAFT_BOM" && t("productDetail.binding.readiness.blockedDraftBom")}
+                        {selectedVersionReadiness === "BLOCKED_RETIRED_BOM" && t("productDetail.binding.readiness.blockedRetiredBom")}
+                        {selectedVersionReadiness === "BLOCKED_BOM_NOT_RELEASED" && t("productDetail.binding.readiness.blockedBomNotReleased")}
+                        {selectedVersionReadiness === "UNKNOWN" && t("productDetail.binding.readiness.unknown")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 rounded border border-slate-200 bg-white p-3 text-sm">
+                    <p className="font-medium text-slate-900">{t("productDetail.binding.label.currentBinding")}</p>
+                    {bindingLoading && <p className="mt-1 text-slate-600">{t("productDetail.binding.loading")}</p>}
+                    {!bindingLoading && bindingError && <p className="mt-1 text-red-700">{bindingError}</p>}
+                    {!bindingLoading && !binding && (
+                      <p className="mt-1 text-slate-600">{t("productDetail.binding.empty")}</p>
+                    )}
+                    {!bindingLoading && binding && (
+                      <div className="mt-1 space-y-1 text-slate-700">
+                        <p>
+                          {t("productDetail.binding.field.bom")}: {selectedBoundBom?.bom_code ?? binding.bom_id}
+                        </p>
+                        <p>
+                          {t("productDetail.binding.field.status")}: {binding.binding_status}
+                        </p>
+                        <p>
+                          {t("productDetail.binding.field.type")}: {binding.binding_type}
+                        </p>
+                        <p>
+                          {t("productDetail.binding.field.bomLifecycle")}: {selectedBoundBom?.lifecycle_status ?? t("common.na")}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {canShowBindIntent && (
+                    <div className="mt-3 rounded border border-slate-200 bg-white p-3 text-sm">
+                      <p className="font-medium text-slate-900">{t("productDetail.binding.label.bindIntent")}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <select
+                          value={bindBomId}
+                          onChange={(event) => setBindBomId(event.target.value)}
+                          disabled={mutationBusyKey !== null || bomsLoading || bindableBoms.length === 0}
+                          className="min-w-64 rounded border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 disabled:cursor-not-allowed disabled:bg-gray-100"
+                        >
+                          {bindableBoms.map((bom) => (
+                            <option key={bom.bom_id} value={bom.bom_id}>
+                              {bom.bom_code} ({bom.lifecycle_status})
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => void bindSelectedVersionBom()}
+                          disabled={mutationBusyKey !== null || !bindBomId || bindableBoms.length === 0}
+                          className="rounded border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-400"
+                        >
+                          {t("productDetail.binding.action.bind")}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {canShowUnbindIntent && (
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        onClick={() => void unbindSelectedVersionBom()}
+                        disabled={mutationBusyKey !== null}
+                        className="rounded border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-400"
+                      >
+                        {t("productDetail.binding.action.unbind")}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
