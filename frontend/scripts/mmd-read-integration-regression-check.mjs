@@ -465,8 +465,8 @@ if (/versions\.notice\.governance|manageForbidden|resolveVersionActionError/.tes
 }
 
 // G12 — Forbidden Product Version commands remain absent from ProductDetail
-if (/deleteProductVersion|reactivateProductVersion|setCurrentProductVersion|cloneProductVersion|bindBom|bindRouting|bindResourceRequirement/i.test(productDetail)) {
-  fail("pv_product_detail_excludes_forbidden_write_intents", "ProductDetail.tsx references out-of-scope Product Version commands");
+if (/deleteProductVersion|reactivateProductVersion|setCurrentProductVersion|cloneProductVersion|bindRouting|bindResourceRequirement/i.test(productDetail)) {
+  fail("pv_product_detail_excludes_forbidden_write_intents", "ProductDetail.tsx references out-of-scope Product Version commands (excluding BOM binding which is allowed in MMD-FULLSTACK-14)");
 } else {
   pass("pv_product_detail_excludes_forbidden_write_intents");
 }
@@ -1430,6 +1430,90 @@ if (/mutable fields only/.test(reasonCodesPage)) {
   pass("rc_page_edit_immutable_fields_excluded");
 } else {
   fail("rc_page_edit_immutable_fields_excluded", "ReasonCodes.tsx handleEdit missing comment confirming immutable fields excluded (MMD-FULLSTACK-13D)");
+}
+
+// O1 — Product Version BOM binding helper: get
+if (/getProductVersionBomBinding/.test(productApi)) {
+  pass("pv_binding_helper_get_exists");
+} else {
+  fail("pv_binding_helper_get_exists", "productApi.ts missing getProductVersionBomBinding helper (MMD-FULLSTACK-14)");
+}
+
+// O2 — Product Version BOM binding helper: bind
+if (/bindBomToProductVersion/.test(productApi)) {
+  pass("pv_binding_helper_bind_exists");
+} else {
+  fail("pv_binding_helper_bind_exists", "productApi.ts missing bindBomToProductVersion helper (MMD-FULLSTACK-14)");
+}
+
+// O3 — Product Version BOM binding helper: unbind
+if (/unbindBomFromProductVersion/.test(productApi)) {
+  pass("pv_binding_helper_unbind_exists");
+} else {
+  fail("pv_binding_helper_unbind_exists", "productApi.ts missing unbindBomFromProductVersion helper (MMD-FULLSTACK-14)");
+}
+
+// O4 — Product Version type includes bom_binding_required_for_release
+if (/bom_binding_required_for_release/.test(productApi)) {
+  pass("pv_type_includes_binding_required_flag");
+} else {
+  fail("pv_type_includes_binding_required_flag", "productApi.ts missing bom_binding_required_for_release in Product Version type (MMD-FULLSTACK-14)");
+}
+
+// O5 — ProductDetail references bom_binding_required_for_release
+if (/bom_binding_required_for_release/.test(productDetail)) {
+  pass("product_detail_references_binding_required_flag");
+} else {
+  fail("product_detail_references_binding_required_flag", "ProductDetail.tsx does not reference bom_binding_required_for_release (MMD-FULLSTACK-14)");
+}
+
+// O6 — ProductDetail contains BOM binding section references
+if (/productDetail\.binding\.title|productDetail\.binding\.label\.currentBinding/.test(productDetail)) {
+  pass("product_detail_references_binding_section");
+} else {
+  fail("product_detail_references_binding_section", "ProductDetail.tsx missing BOM binding section references (MMD-FULLSTACK-14)");
+}
+
+// O7 — ProductDetail contains release readiness references
+if (/productDetail\.binding\.label\.releaseReadiness|productDetail\.binding\.readiness\./.test(productDetail)) {
+  pass("product_detail_references_release_readiness");
+} else {
+  fail("product_detail_references_release_readiness", "ProductDetail.tsx missing release readiness references (MMD-FULLSTACK-14)");
+}
+
+// O8 — ProductDetail must not reference forbidden binding routes
+const forbiddenRouteFragments = [
+  "/replace",
+  "/set-current",
+  "/material-reserve",
+  "/backflush",
+  "/erp-post",
+  "/create-genealogy",
+  "/quality-accept",
+];
+const foundForbiddenRoute = forbiddenRouteFragments.find((fragment) => productDetail.includes(fragment));
+if (foundForbiddenRoute) {
+  fail("product_detail_forbidden_binding_routes_absent", `ProductDetail.tsx references forbidden route fragment: ${foundForbiddenRoute}`);
+} else {
+  pass("product_detail_forbidden_binding_routes_absent");
+}
+
+// O9 — ProductDetail must not reference forbidden runtime labels
+const forbiddenRuntimeLabels = [
+  "MaterialReserved",
+  "MaterialConsumed",
+  "BackflushPosted",
+  "ERPPosted",
+  "GenealogyCreated",
+  "QualityAccepted",
+  "ExecutionStarted",
+  "OperationConfirmed",
+];
+const foundForbiddenLabel = forbiddenRuntimeLabels.find((label) => productDetail.includes(label));
+if (foundForbiddenLabel) {
+  fail("product_detail_forbidden_runtime_labels_absent", `ProductDetail.tsx references forbidden runtime label: ${foundForbiddenLabel}`);
+} else {
+  pass("product_detail_forbidden_runtime_labels_absent");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
