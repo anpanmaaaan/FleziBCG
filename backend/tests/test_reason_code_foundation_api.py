@@ -12,7 +12,6 @@ import app.api.v1.reason_codes as reason_codes_router_module
 from app.db.base import Base
 import app.models.rbac  # noqa: F401 — ensures RBAC tables (user_role_assignments etc.) are registered
 from app.models.reason_code import ReasonCode
-from app.models.security_event import SecurityEventLog
 from app.security.dependencies import RequestIdentity, require_authenticated_identity
 
 

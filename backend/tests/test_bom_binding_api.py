@@ -857,7 +857,6 @@ def test_get_binding_allowed_actions_without_perms():
 
 def test_bom_binding_routes_exist_in_products_src():
     """MMD-BE-14: binding route paths must be present in products.py source."""
-    import re
     from pathlib import Path
 
     src = (Path(__file__).parent.parent / "app" / "api" / "v1" / "products.py").read_text(
