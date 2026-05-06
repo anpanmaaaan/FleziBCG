@@ -65,14 +65,14 @@ export const stationApi = {
   openSession(payload: OpenStationSessionPayload) {
     return request<StationSessionItem>("/v1/station/sessions", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: payload,
     });
   },
 
   closeSession(sessionId: string) {
     return request<StationSessionItem>(`/v1/station/sessions/${sessionId}/close`, {
       method: "POST",
-      body: JSON.stringify({}),
+      body: {},
     });
   },
 };
