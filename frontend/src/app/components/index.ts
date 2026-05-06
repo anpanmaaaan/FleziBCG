@@ -12,7 +12,6 @@ export { ActiveImpersonationBanner } from "./ActiveImpersonationBanner";
 export { ImpersonationSwitcher } from "./ImpersonationSwitcher";
 export { AddProductionOrderDialog } from "./AddProductionOrderDialog";
 export { Layout } from "./Layout";
-export { TopBar } from "./TopBar";
 export { ScreenStatusBadge } from "./ScreenStatusBadge";
 export { MockWarningBanner } from "./MockWarningBanner";
 export { RouteStatusBanner } from "./RouteStatusBanner";

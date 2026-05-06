@@ -987,6 +987,18 @@ export const enRegistry: I18nRegistry = {
   "topBar.menu.logout": "Logout",
   "topBar.menu.signingOut": "Signing out...",
 
+  // ── appHeader ──
+  "appHeader.domain.unknown": "Operational Context",
+  "appHeader.context.tenant": "Tenant",
+  "appHeader.context.role": "Role",
+  "appHeader.context.scope": "Scope",
+  "appHeader.context.pending": "Context pending",
+  "appHeader.action.openNavigation": "Open navigation drawer",
+  "appHeader.action.changeLanguage": "Change language",
+  "appHeader.action.openUserMenu": "Open user menu",
+  "appHeader.user.fallbackName": "User",
+  "appHeader.user.fallbackEmail": "No email",
+
   // ── accessDenied ──
   "accessDenied.title": "Access Denied",
   "accessDenied.message": "User role is not configured. Please contact your FleziBCG Administrator.",

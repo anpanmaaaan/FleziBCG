@@ -62,8 +62,8 @@ import {
 } from "@/app/persona";
 import { AccessDeniedScreen } from "./AccessDeniedScreen";
 import { ActiveImpersonationBanner } from "./ActiveImpersonationBanner";
+import { AppHeader } from "./AppHeader";
 import { RouteStatusBanner } from "./RouteStatusBanner";
-import { TopBar } from "./TopBar";
 import { useImpersonation } from "@/app/impersonation";
 import { useI18n } from "@/app/i18n";
 
@@ -535,7 +535,7 @@ export function Layout() {
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <TopBar currentPage={currentPageTitle} showMobileMenuButton mobileMenuOpen={mobileSidebarOpen} menuButtonRef={menuButtonRef} onOpenSidebar={() => setMobileSidebarOpen(true)} />
+        <AppHeader currentPage={currentPageTitle} showMobileMenuButton mobileMenuOpen={mobileSidebarOpen} menuButtonRef={menuButtonRef} onOpenSidebar={() => setMobileSidebarOpen(true)} />
         <ActiveImpersonationBanner />
         <RouteStatusBanner />
         <div className="min-w-0 flex-1 overflow-auto">
