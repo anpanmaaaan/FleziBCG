@@ -8,7 +8,7 @@
 - `00_platform/domain-boundary-map.md`
 - `00_platform/authorization-model-overview.md`
 - `00_platform/material-traceability-vs-inventory-boundary.md`
-- `00_platform/manufacturing-mode-hierarchy-mapping.md`
+- `00_platform/manufacturing-mode-hierarchy-mapping.md` — canonical mapping and configuration-resolution note for manufacturing-mode-neutral hierarchy
 - `00_platform/eventing-and-projection-architecture.md`
 
 ## Foundation/governance truth
@@ -44,3 +44,4 @@
 | Engineering coding rules | `docs/governance/CODING_RULES.md` |
 | Current roadmap | `docs/roadmap/flezibcg-overall-roadmap-latest.md` |
 | Task 5 implementation prompt | `docs/implementation/task5-p0-a-foundation-database-implementation-prompt.md` |
+| Manufacturing mode profile configuration | `docs/design/00_platform/manufacturing-mode-hierarchy-mapping.md` |

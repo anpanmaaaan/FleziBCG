@@ -63,6 +63,32 @@ Task 5 — Write P0-A Foundation Database Implementation Prompt
 
 Không code ngay bằng prompt rộng. Phải viết prompt slice thật chặt.
 
+## 0.3 Product alignment patch before or alongside P0-A
+
+Before broad implementation continues, add a small design clarification for manufacturing-mode profile configuration.
+
+Task:
+
+```text
+DESIGN-MFGMODE-01 — Manufacturing Mode Profile Configuration Clarification
+```
+
+Purpose:
+- clarify tenant default versus plant/scope manufacturing profile
+- preserve discrete-first implementation without becoming discrete-only
+- document that Batch / Process / Continuous are design-supported future modes
+- prevent implementation agents from hard-coding manufacturing mode at tenant level
+
+This is a documentation/design patch only.
+
+It must not implement:
+- Batch Execution
+- Process Execution
+- ISA-88 phase state machine
+- continuous run orchestration
+- ERP integration
+- SCADA/Historian integration
+
 ---
 
 # Phase 1 — P0-A Foundation Database Slice
@@ -145,6 +171,10 @@ Tạo nền dữ liệu sản xuất tối thiểu để Execution Core có th�
 
 ## Scope
 
+P0-B may include manufacturing-mode-compatible metadata where needed, but only to prevent future refactor.
+
+P0-B must not expand into full Batch / Process Execution.
+
 | Area | Build |
 |---|---|
 | Product | product, product version |
@@ -158,6 +188,7 @@ Tạo nền dữ liệu sản xuất tối thiểu để Execution Core có th�
 
 ```text id="zxdvl6"
 Recipe/phase ISA-88 full model
+Manufacturing mode runtime switching beyond profile metadata
 Backflush rule
 Acceptance policy
 ERP master data sync
@@ -177,6 +208,10 @@ Vì MMD cần tenant/scope/plant hierarchy trước. Nếu build MMD trước fo
 Xây execution core production-grade nhưng vẫn giới hạn P0.
 
 ## Scope
+
+P0-B may include manufacturing-mode-compatible metadata where needed, but only to prevent future refactor.
+
+P0-B must not expand into full Batch / Process Execution.
 
 | Area | Build |
 |---|---|
@@ -229,6 +264,10 @@ Thêm quality tối thiểu để execution có inspection/measurement/result vi
 
 ## Scope
 
+P0-B may include manufacturing-mode-compatible metadata where needed, but only to prevent future refactor.
+
+P0-B must not expand into full Batch / Process Execution.
+
 | Area | Build |
 |---|---|
 | QC requirement | operation/product quality requirement |
@@ -263,6 +302,10 @@ Tạo visibility cho supervisor/manager dựa trên execution truth.
 
 ## Scope
 
+P0-B may include manufacturing-mode-compatible metadata where needed, but only to prevent future refactor.
+
+P0-B must not expand into full Batch / Process Execution.
+
 | Area | Build |
 |---|---|
 | Global operations dashboard | current operations |
@@ -295,6 +338,10 @@ Supervisory layer đọc từ projection/read model, không tự tạo truth.
 Chuẩn bị nền integration nhưng chưa thay ERP.
 
 ## Scope
+
+P0-B may include manufacturing-mode-compatible metadata where needed, but only to prevent future refactor.
+
+P0-B must not expand into full Batch / Process Execution.
 
 | Area | Build |
 |---|---|
@@ -329,6 +376,10 @@ Nâng Quality Lite thành operational quality gate có kiểm soát.
 
 ## Scope
 
+P0-B may include manufacturing-mode-compatible metadata where needed, but only to prevent future refactor.
+
+P0-B must not expand into full Batch / Process Execution.
+
 | Area | Build |
 |---|---|
 | Acceptance Gate definition | gate definition |
@@ -359,6 +410,10 @@ Document control
 Đưa material/WIP vào execution context nhưng vẫn không thay ERP/WMS.
 
 ## Scope
+
+P0-B may include manufacturing-mode-compatible metadata where needed, but only to prevent future refactor.
+
+P0-B must not expand into full Batch / Process Execution.
 
 | Area | Build |
 |---|---|
@@ -402,6 +457,10 @@ Tạo deterministic reporting trước khi AI.
 
 ## Scope
 
+P0-B may include manufacturing-mode-compatible metadata where needed, but only to prevent future refactor.
+
+P0-B must not expand into full Batch / Process Execution.
+
 | Area | Build |
 |---|---|
 | OEE formula | Availability × Performance × Quality |
@@ -433,6 +492,10 @@ Thêm coordination layer cho shopfloor.
 
 ## Scope
 
+P0-B may include manufacturing-mode-compatible metadata where needed, but only to prevent future refactor.
+
+P0-B must not expand into full Batch / Process Execution.
+
 | Area | Build |
 |---|---|
 | Andon trigger | raise issue from station/operation |
@@ -460,6 +523,10 @@ Complex notification workflow
 Mở rộng cho process/batch/hybrid manufacturing.
 
 ## Scope
+
+P0-B may include manufacturing-mode-compatible metadata where needed, but only to prevent future refactor.
+
+P0-B must not expand into full Batch / Process Execution.
 
 | Area | Build |
 |---|---|
@@ -492,6 +559,10 @@ regulated production
 Planning support nhưng không overwrite execution.
 
 ## Scope
+
+P0-B may include manufacturing-mode-compatible metadata where needed, but only to prevent future refactor.
+
+P0-B must not expand into full Batch / Process Execution.
 
 | Area | Build |
 |---|---|
@@ -548,6 +619,10 @@ Operational twin, not 3D-first.
 
 ## Scope
 
+P0-B may include manufacturing-mode-compatible metadata where needed, but only to prevent future refactor.
+
+P0-B must not expand into full Batch / Process Execution.
+
 | Area | Build |
 |---|---|
 | Operational graph | line/station/equipment/WO/WIP |
@@ -572,6 +647,10 @@ Không bao giờ là source of truth.
 Support regulated operation if needed.
 
 ## Scope
+
+P0-B may include manufacturing-mode-compatible metadata where needed, but only to prevent future refactor.
+
+P0-B must not expand into full Batch / Process Execution.
 
 | Area | Build |
 |---|---|
