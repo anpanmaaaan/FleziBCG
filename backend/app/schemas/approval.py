@@ -12,6 +12,13 @@ class ApprovalCreateRequest(BaseModel):
     subject_type: str | None = Field(default=None, max_length=64)
     subject_ref: str | None = Field(default=None, max_length=256)
     reason: str = Field(..., min_length=1, max_length=512)
+    # P0-A-15C: Optional governed context — persisted to ApprovalRequest for scope-aware matching
+    governed_resource_type: str | None = Field(default=None, max_length=128)
+    governed_resource_id: str | None = Field(default=None, max_length=256)
+    governed_resource_display_ref: str | None = Field(default=None, max_length=256)
+    governed_resource_tenant_id: str | None = Field(default=None, max_length=64)
+    governed_resource_scope_ref: str | None = Field(default=None, max_length=256)
+    governed_action_type: str | None = Field(default=None, max_length=128)
 
     @field_validator("action_type")
     @classmethod
