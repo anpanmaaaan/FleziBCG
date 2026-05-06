@@ -99,7 +99,7 @@ def test_list_reason_codes_includes_allowed_actions():
     app = _build_app(identity, session_local, has_manage=True)
     client = TestClient(app)
 
-    response = client.get("/api/v1/reason-codes")
+    response = client.get("/api/v1/reason-codes?lifecycle_status=DRAFT")
     assert response.status_code == 200
     items = response.json()
     assert len(items) == 1
@@ -151,7 +151,7 @@ def test_reason_code_allowed_actions_all_false_without_manage():
     app = _build_app(identity, session_local, has_manage=False)
     client = TestClient(app)
 
-    response = client.get("/api/v1/reason-codes")
+    response = client.get("/api/v1/reason-codes?lifecycle_status=DRAFT")
     assert response.status_code == 200
     items = response.json()
     assert len(items) == 1
@@ -178,7 +178,7 @@ def test_draft_reason_code_allowed_actions_all_true_with_manage():
     app = _build_app(identity, session_local, has_manage=True)
     client = TestClient(app)
 
-    response = client.get("/api/v1/reason-codes")
+    response = client.get("/api/v1/reason-codes?lifecycle_status=DRAFT")
     assert response.status_code == 200
     aa = response.json()[0]["allowed_actions"]
     assert aa["can_update"] is True
@@ -222,7 +222,7 @@ def test_retired_reason_code_allowed_actions_sibling_only_with_manage():
     app = _build_app(identity, session_local, has_manage=True)
     client = TestClient(app)
 
-    response = client.get("/api/v1/reason-codes")
+    response = client.get("/api/v1/reason-codes?lifecycle_status=RETIRED")
     assert response.status_code == 200
     aa = response.json()[0]["allowed_actions"]
     assert aa["can_update"] is False

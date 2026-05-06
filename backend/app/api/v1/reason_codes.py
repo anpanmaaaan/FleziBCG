@@ -12,7 +12,7 @@ from app.security.dependencies import (
     require_action,
     require_authenticated_identity,
 )
-from app.security.rbac import has_action
+from app.security.rbac import has_action, IdentityLike
 from app.services.reason_code_service import (
     create_reason_code as create_reason_code_service,
     get_reason_code as get_reason_code_service,
@@ -45,7 +45,7 @@ def list_reason_codes(
     db: Session = Depends(get_db),
     identity: RequestIdentity = Depends(require_authenticated_identity),
 ) -> list[ReasonCodeItem]:
-    has_manage = has_action(db, identity, "admin.master_data.reason_code.manage")
+    has_manage = has_action(db, IdentityLike(user_id=identity.user_id, tenant_id=identity.tenant_id, is_authenticated=identity.is_authenticated, acting_role_code=identity.acting_role_code), "admin.master_data.reason_code.manage")
     return list_reason_codes_service(
         db,
         tenant_id=identity.tenant_id,
@@ -63,7 +63,7 @@ def get_reason_code(
     db: Session = Depends(get_db),
     identity: RequestIdentity = Depends(require_authenticated_identity),
 ) -> ReasonCodeItem:
-    has_manage = has_action(db, identity, "admin.master_data.reason_code.manage")
+    has_manage = has_action(db, IdentityLike(user_id=identity.user_id, tenant_id=identity.tenant_id, is_authenticated=identity.is_authenticated, acting_role_code=identity.acting_role_code), "admin.master_data.reason_code.manage")
     code = get_reason_code_service(
         db,
         tenant_id=identity.tenant_id,
@@ -94,7 +94,8 @@ def create_reason_code(
             payload=payload,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        status = 409 if "Duplicate" in str(exc) else 400
+        raise HTTPException(status_code=status, detail=str(exc)) from exc
 
 
 @router.patch("/{reason_code_id}", response_model=ReasonCodeItem)
@@ -117,7 +118,8 @@ def update_reason_code(
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        status = 400 if "cannot be empty" in str(exc) else 409
+        raise HTTPException(status_code=status, detail=str(exc)) from exc
 
 
 @router.post("/{reason_code_id}/release", response_model=ReasonCodeItem)
