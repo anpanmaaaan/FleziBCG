@@ -7,10 +7,9 @@ import { reasonCodeApi } from "@/app/api/reasonCodeApi";
 import type { ReasonCodeItemFromAPI, ReasonCodeCreateRequest, ReasonCodeUpdateRequest } from "@/app/api/reasonCodeApi";
 
 // MMD-FULLSTACK-13: Write-intent controls added.
+// MMD-FULLSTACK-13B: Write controls now governed by backend-derived allowed_actions.
 // Backend remains authorization truth. Frontend sends intent only.
 // No lifecycle_status, no downtime_reason_id, no execution/quality/material/ERP behavior.
-// No server-derived allowed_actions returned — lifecycle-gated controls + backend 403 enforced.
-// Known gap: MMD-FULLSTACK-13B deferred for server-derived capability guard.
 
 function DomainBadge({ domain }: { domain: string }) {
   const upper = domain.toUpperCase();
@@ -262,9 +261,12 @@ export function ReasonCodes() {
             <h1 className="text-2xl font-bold text-slate-900">{t("reasonCodes.title")}</h1>
             <ScreenStatusBadge phase="PARTIAL" />
           </div>
+          {/* Create button — server-derived: can_create_sibling from any loaded row.
+              Empty-list fallback: always enabled; backend 403 is final guard.
+              See: MMD-FULLSTACK-13B empty-list capability gap documentation. */}
           <button
             onClick={() => { setCreateOpen(true); setActionError(null); setActionMessage(null); }}
-            disabled={actionBusy}
+            disabled={actionBusy || (codes.length > 0 && !codes.some((c) => c.allowed_actions.can_create_sibling))}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed border border-blue-700"
           >
             {t("reasonCodes.action.create")}
@@ -358,8 +360,7 @@ export function ReasonCodes() {
                   </tr>
                 ) : (
                   filtered.map((c) => {
-                    const isDraft = c.lifecycle_status === "DRAFT";
-                    const isRetired = c.lifecycle_status === "RETIRED";
+                    const aa = c.allowed_actions;
                     return (
                       <tr key={c.reason_code_id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 font-mono text-xs font-medium text-slate-700">{c.reason_code}</td>
@@ -379,25 +380,25 @@ export function ReasonCodes() {
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => openEdit(c)}
-                              disabled={!isDraft || actionBusy}
+                              disabled={!aa.can_update || actionBusy}
                               className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 disabled:text-gray-400 disabled:cursor-not-allowed"
-                              title={isDraft ? "" : t("rcWrite.tooltip.editDraftOnly")}
+                              title={!aa.can_update ? t("rcWrite.tooltip.editDraftOnly") : ""}
                             >
                               {t("reasonCodes.action.edit")}
                             </button>
                             <button
                               onClick={() => { setConfirmRelease(c); setActionError(null); setActionMessage(null); }}
-                              disabled={!isDraft || actionBusy}
+                              disabled={!aa.can_release || actionBusy}
                               className="inline-flex items-center gap-1 text-xs text-green-700 hover:text-green-900 disabled:text-gray-400 disabled:cursor-not-allowed"
-                              title={isDraft ? "" : t("rcWrite.tooltip.releaseDraftOnly")}
+                              title={!aa.can_release ? t("rcWrite.tooltip.releaseDraftOnly") : ""}
                             >
                               {t("reasonCodes.action.release")}
                             </button>
                             <button
                               onClick={() => { setConfirmRetire(c); setActionError(null); setActionMessage(null); }}
-                              disabled={isRetired || actionBusy}
+                              disabled={!aa.can_retire || actionBusy}
                               className="inline-flex items-center gap-1 text-xs text-orange-700 hover:text-orange-900 disabled:text-gray-400 disabled:cursor-not-allowed"
-                              title={isRetired ? t("rcWrite.tooltip.retireNotRetired") : ""}
+                              title={!aa.can_retire ? t("rcWrite.tooltip.retireNotRetired") : ""}
                             >
                               {t("reasonCodes.action.retire")}
                             </button>

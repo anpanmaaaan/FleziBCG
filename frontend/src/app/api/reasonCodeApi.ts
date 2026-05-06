@@ -2,7 +2,19 @@ import { request } from "./httpClient";
 
 // MMD-FULLSTACK-08: Reason Code read-only API type.
 // MMD-FULLSTACK-13: Write helpers added. No downtime_reason integration.
-// Shape mirrors backend ReasonCodeItem schema (backend/app/schemas/reason_code.py).
+// MMD-FULLSTACK-13B: Server-derived allowed_actions added. Mirrors BOM pattern.
+// Shape mirrors backend ReasonCodeItem + ReasonCodeAllowedActions schemas.
+
+// Server-derived write capability guard (MMD-FULLSTACK-13B).
+// Backend computes this from admin.master_data.reason_code.manage + lifecycle.
+// Frontend must NOT enable write controls based on lifecycle_status alone.
+export interface ReasonCodeAllowedActions {
+  can_update: boolean;
+  can_release: boolean;
+  can_retire: boolean;
+  can_create_sibling: boolean;
+}
+
 export interface ReasonCodeItemFromAPI {
   reason_code_id: string;
   tenant_id: string;
@@ -17,6 +29,7 @@ export interface ReasonCodeItemFromAPI {
   sort_order: number;
   created_at: string;
   updated_at: string;
+  allowed_actions: ReasonCodeAllowedActions;
 }
 
 export interface ListReasonCodesParams {
