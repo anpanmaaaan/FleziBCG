@@ -98,3 +98,33 @@ class ProductVersionUpdateRequest(BaseModel):
     effective_from: date | None = None
     effective_to: date | None = None
     description: str | None = None
+
+
+# ─── BOM Binding schemas — MMD-BE-14 ─────────────────────────────────────────
+
+
+class BomBindingCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    bom_id: str
+    notes: str | None = None
+
+
+class ProductVersionBomBindingAllowedActions(BaseModel):
+    can_remove: bool
+
+
+class ProductVersionBomBindingResponse(BaseModel):
+    binding_id: str
+    tenant_id: str
+    product_id: str
+    product_version_id: str
+    bom_id: str
+    binding_type: str
+    binding_status: str
+    notes: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    created_by: str
+    updated_by: str | None = None
+    allowed_actions: ProductVersionBomBindingAllowedActions
