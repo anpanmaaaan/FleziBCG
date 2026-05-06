@@ -977,6 +977,18 @@ export const jaRegistry: I18nRegistry = {
   "topBar.menu.logout": "ログアウト",
   "topBar.menu.signingOut": "サインアウト中...",
 
+  // ── appHeader ──
+  "appHeader.domain.unknown": "オペレーションコンテキスト",
+  "appHeader.context.tenant": "テナント",
+  "appHeader.context.role": "ロール",
+  "appHeader.context.scope": "スコープ",
+  "appHeader.context.pending": "コンテキスト待機中",
+  "appHeader.action.openNavigation": "ナビゲーションドロワーを開く",
+  "appHeader.action.changeLanguage": "言語を変更",
+  "appHeader.action.openUserMenu": "ユーザーメニューを開く",
+  "appHeader.user.fallbackName": "ユーザー",
+  "appHeader.user.fallbackEmail": "メール未設定",
+
   // ── accessDenied ──
   "accessDenied.title": "アクセス拒否",
   "accessDenied.message": "ユーザーロールが設定されていません。FleziBCG管理者にお問い合わせください。",
