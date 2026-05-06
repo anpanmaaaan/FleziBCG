@@ -178,6 +178,7 @@ jobs:
               tests/test_approval_create_governed_context_bridge.py \
               tests/test_approval_governed_context_api.py \
               tests/test_approval_decision_governed_context_api.py \
+              tests/test_approval_decision_specificity_api.py \
               tests/test_rbac_configure_family_boundary.py || python -m pytest -q
           elif [ -d tests ]; then
             python -m pytest -q
