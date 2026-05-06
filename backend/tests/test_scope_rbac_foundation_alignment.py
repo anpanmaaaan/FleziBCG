@@ -8,6 +8,9 @@ This suite locks the canonical foundation to existing RBAC models:
 It also prevents accidental introduction of duplicate scope model names.
 """
 
+from typing import Any
+from typing import cast
+
 from app.models import rbac as rbac_models
 from app.models.rbac import RoleScope, Scope, UserRoleAssignment
 
@@ -33,10 +36,11 @@ def test_scope_is_tenant_aware_and_hierarchical() -> None:
 
 
 def test_scope_uniqueness_constraint_exists() -> None:
+    scope_table = cast(Any, Scope.__table__)
     unique_names = {
         c.name
-        for c in Scope.__table__.constraints
-        if getattr(c, "name", None)  # type: ignore[attr-defined]
+        for c in scope_table.constraints
+        if getattr(c, "name", None)
     }
     assert "uq_scope_tenant_type_value" in unique_names
 
