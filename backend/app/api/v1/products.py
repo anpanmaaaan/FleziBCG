@@ -550,8 +550,6 @@ def remove_bom_item(
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-<<<<<<< HEAD
-=======
 
 
 # ─── BOM Binding endpoints — MMD-BE-14 ───────────────────────────────────────
@@ -640,5 +638,3 @@ def unbind_bom(
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
-
->>>>>>> 4f3c7a92 (feat(mmd): add BOM Product Version binding API)

@@ -89,3 +89,10 @@ def test_approval_decision_tenant_override_api_tests_are_in_pr_gate() -> None:
     # If this assertion fails, re-add tests/test_approval_decision_tenant_override_api.py to pr-gate.yml.
     text = _workflow_text()
     assert "test_approval_decision_tenant_override_api.py" in text
+
+
+def test_approval_decision_same_score_api_tests_are_in_pr_gate() -> None:
+    # P0-A-17: Same-score role group determinism coverage must stay in PR gate.
+    # If this assertion fails, re-add tests/test_approval_decision_same_score_api.py to pr-gate.yml.
+    text = _workflow_text()
+    assert "test_approval_decision_same_score_api.py" in text
