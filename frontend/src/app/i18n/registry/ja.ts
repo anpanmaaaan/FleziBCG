@@ -1342,6 +1342,7 @@ export const jaRegistry: I18nRegistry = {
   "rcWrite.tooltip.editDraftOnly": "編集は DRAFT の理由コードのみ可能です。",
   "rcWrite.tooltip.releaseDraftOnly": "リリースは DRAFT の理由コードのみ可能です。",
   "rcWrite.tooltip.retireNotRetired": "この理由コードはすでに廃止されています。",
+  "rcWrite.tooltip.createForbidden": "理由コードを作成するには管理者権限が必要です。",
 
   // ── operationTimeline ──
   "operationTimeline.title": "作業イベントタイムライン",

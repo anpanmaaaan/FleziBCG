@@ -3,7 +3,16 @@ import { request } from "./httpClient";
 // MMD-FULLSTACK-08: Reason Code read-only API type.
 // MMD-FULLSTACK-13: Write helpers added. No downtime_reason integration.
 // MMD-FULLSTACK-13B: Server-derived allowed_actions added. Mirrors BOM pattern.
+// MMD-FULLSTACK-13C: Page-level create capability added (GET /reason-codes/capabilities).
 // Shape mirrors backend ReasonCodeItem + ReasonCodeAllowedActions schemas.
+
+// Page-level create capability (MMD-FULLSTACK-13C).
+// Backend computes this from admin.master_data.reason_code.manage.
+// Read does not require manage permission. Frontend must NOT infer from persona or lifecycle.
+export interface ReasonCodeCapabilities {
+  can_create: boolean;
+  reason?: string | null;
+}
 
 // Server-derived write capability guard (MMD-FULLSTACK-13B).
 // Backend computes this from admin.master_data.reason_code.manage + lifecycle.
@@ -110,5 +119,11 @@ export const reasonCodeApi = {
       `${BASE_PATH}/${encodeURIComponent(reasonCodeId)}/retire`,
       { method: "POST", signal },
     );
+  },
+
+  // MMD-FULLSTACK-13C: Page-level create capability.
+  // Read does not require manage permission — any authenticated user may call.
+  getCapabilities(signal?: AbortSignal) {
+    return request<ReasonCodeCapabilities>(`${BASE_PATH}/capabilities`, { signal });
   },
 };

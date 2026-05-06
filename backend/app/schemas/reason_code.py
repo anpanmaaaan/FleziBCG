@@ -5,6 +5,18 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 
+class ReasonCodeCapabilities(BaseModel):
+    """Page-level Reason Code create capability (MMD-FULLSTACK-13C).
+
+    Returned by GET /reason-codes/capabilities.
+    can_create = user has admin.master_data.reason_code.manage.
+    Read does not require manage — any authenticated user may read.
+    """
+
+    can_create: bool
+    reason: str | None = None
+
+
 class ReasonCodeAllowedActions(BaseModel):
     """Server-derived Reason Code write capability guard (MMD-FULLSTACK-13B).
 
