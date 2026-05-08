@@ -14,6 +14,7 @@ import {
   type BomItemFromAPI,
   type ProductItemFromAPI,
   type ProductVersionBomBindingResponse,
+  type ProductVersionBomBindingCapabilities,
   type ProductVersionCreateRequest,
   type ProductVersionItemFromAPI,
   type ProductVersionUpdateRequest,
@@ -65,6 +66,7 @@ export function ProductDetail() {
   const [versionsError, setVersionsError] = useState<string | null>(null);
   const [versionActionError, setVersionActionError] = useState<string | null>(null);
   const [binding, setBinding] = useState<ProductVersionBomBindingResponse | null>(null);
+  const [capabilities, setCapabilities] = useState<ProductVersionBomBindingCapabilities | null>(null);
   const [bindingLoading, setBindingLoading] = useState(false);
   const [bindingError, setBindingError] = useState<string | null>(null);
   const [bindBomId, setBindBomId] = useState("");
@@ -90,18 +92,17 @@ export function ProductDetail() {
   }, [selectedVersionId, versions]);
 
   const selectedBoundBom = useMemo(() => {
-    if (!binding) {
+    if (!binding?.binding) {
       return null;
     }
-    return boms.find((bom) => bom.bom_id === binding.bom_id) ?? null;
+    return boms.find((bom) => bom.bom_id === binding.binding!.bom_id) ?? null;
   }, [binding, boms]);
 
   const bindableBoms = useMemo(() => boms.filter((bom) => bom.lifecycle_status !== "RETIRED"), [boms]);
 
-  const selectedVersionIsDraft = selectedVersion?.lifecycle_status === "DRAFT";
-  const selectedVersionCanToggleFlag = Boolean(selectedVersionIsDraft);
-  const canShowBindIntent = Boolean(selectedVersionIsDraft && !binding);
-  const canShowUnbindIntent = Boolean(selectedVersionIsDraft && binding && binding.allowed_actions?.can_remove);
+  const selectedVersionCanToggleFlag = Boolean(capabilities?.can_toggle_bom_binding_required_for_release);
+  const canShowBindIntent = Boolean(capabilities?.can_bind);
+  const canShowUnbindIntent = Boolean(capabilities?.can_unbind);
 
   const selectedVersionReadiness = useMemo(() => {
     if (!selectedVersion) {
@@ -110,7 +111,7 @@ export function ProductDetail() {
     if (!selectedVersion.bom_binding_required_for_release) {
       return "NOT_REQUIRED" as const;
     }
-    if (!binding) {
+    if (!binding?.binding) {
       return "BLOCKED_NO_BINDING" as const;
     }
     if (selectedBoundBom?.lifecycle_status === "RELEASED") {
@@ -328,17 +329,15 @@ export function ProductDetail() {
     setBindingLoading(true);
     setBindingError(null);
     try {
-      const row = await productApi.getProductVersionBomBinding(productId, versionId, signal);
+      const response = await productApi.getProductVersionBomBinding(productId, versionId, signal);
       if (!signal?.aborted) {
-        setBinding(row);
+        setBinding(response);
+        setCapabilities(response.capabilities);
       }
     } catch (error) {
       if (signal?.aborted) return;
-      if (error instanceof HttpError && error.status === 404) {
-        setBinding(null);
-        return;
-      }
       setBinding(null);
+      setCapabilities(null);
       setBindingError(t("productDetail.binding.error.load"));
     } finally {
       if (!signal?.aborted) {
@@ -398,7 +397,6 @@ export function ProductDetail() {
     try {
       await productApi.unbindBomFromProductVersion(productId, selectedVersion.product_version_id);
       toast.success(t("productDetail.binding.success.unbound"));
-      setBinding(null);
       await loadBinding(selectedVersion.product_version_id);
       await loadVersions();
     } catch (error) {
@@ -540,6 +538,7 @@ export function ProductDetail() {
     if (versions.length === 0) {
       setSelectedVersionId(null);
       setBinding(null);
+      setCapabilities(null);
       return;
     }
 
@@ -885,19 +884,19 @@ export function ProductDetail() {
                     <p className="font-medium text-slate-900">{t("productDetail.binding.label.currentBinding")}</p>
                     {bindingLoading && <p className="mt-1 text-slate-600">{t("productDetail.binding.loading")}</p>}
                     {!bindingLoading && bindingError && <p className="mt-1 text-red-700">{bindingError}</p>}
-                    {!bindingLoading && !binding && (
+                    {!bindingLoading && !binding?.binding && (
                       <p className="mt-1 text-slate-600">{t("productDetail.binding.empty")}</p>
                     )}
-                    {!bindingLoading && binding && (
+                    {!bindingLoading && binding?.binding && (
                       <div className="mt-1 space-y-1 text-slate-700">
                         <p>
-                          {t("productDetail.binding.field.bom")}: {selectedBoundBom?.bom_code ?? binding.bom_id}
+                          {t("productDetail.binding.field.bom")}: {selectedBoundBom?.bom_code ?? binding.binding.bom_id}
                         </p>
                         <p>
-                          {t("productDetail.binding.field.status")}: {binding.binding_status}
+                          {t("productDetail.binding.field.status")}: {binding.binding.binding_status}
                         </p>
                         <p>
-                          {t("productDetail.binding.field.type")}: {binding.binding_type}
+                          {t("productDetail.binding.field.type")}: {binding.binding.binding_type}
                         </p>
                         <p>
                           {t("productDetail.binding.field.bomLifecycle")}: {selectedBoundBom?.lifecycle_status ?? t("common.na")}

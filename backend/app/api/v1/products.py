@@ -15,6 +15,7 @@ from app.schemas.product import (
     ProductCreateRequest,
     ProductItem,
     ProductUpdateRequest,
+    ProductVersionBomBindingData,
     ProductVersionBomBindingResponse,
     ProductVersionCreateRequest,
     ProductVersionItem,
@@ -573,7 +574,8 @@ def get_bom_binding(
             tenant_id=identity.tenant_id,
             product_id=product_id,
             product_version_id=version_id,
-            has_both_permissions=(has_bom_manage and has_pv_manage),
+            has_pv_manage=has_pv_manage,
+            has_bom_manage=has_bom_manage,
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
@@ -581,7 +583,7 @@ def get_bom_binding(
 
 @router.post(
     "/{product_id}/versions/{version_id}/bom-binding",
-    response_model=ProductVersionBomBindingResponse,
+    response_model=ProductVersionBomBindingData,
     status_code=201,
 )
 def bind_bom(

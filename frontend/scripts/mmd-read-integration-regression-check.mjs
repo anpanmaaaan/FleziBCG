@@ -1517,6 +1517,68 @@ if (foundForbiddenLabel) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Section P — MMD-FULLSTACK-14B: Server-derived capability guard
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// P1 — ProductVersionBomBindingCapabilities type exists in productApi
+if (/ProductVersionBomBindingCapabilities/.test(productApi)) {
+  pass("pv_binding_capabilities_type_exists");
+} else {
+  fail("pv_binding_capabilities_type_exists", "productApi.ts missing ProductVersionBomBindingCapabilities interface (MMD-FULLSTACK-14B)");
+}
+
+// P2 — ProductVersionBomBindingResponse includes capabilities field
+if (/capabilities:\s*ProductVersionBomBindingCapabilities/.test(productApi)) {
+  pass("pv_binding_response_includes_capabilities_field");
+} else {
+  fail("pv_binding_response_includes_capabilities_field", "productApi.ts ProductVersionBomBindingResponse missing capabilities field (MMD-FULLSTACK-14B)");
+}
+
+// P3 — ProductVersionBomBindingData type exists (separate from response wrapper)
+if (/ProductVersionBomBindingData/.test(productApi)) {
+  pass("pv_binding_data_type_exists");
+} else {
+  fail("pv_binding_data_type_exists", "productApi.ts missing ProductVersionBomBindingData interface (MMD-FULLSTACK-14B)");
+}
+
+// P4 — ProductDetail consumes capabilities.can_bind
+if (/capabilities\?\.can_bind/.test(productDetail)) {
+  pass("product_detail_consumes_can_bind");
+} else {
+  fail("product_detail_consumes_can_bind", "ProductDetail.tsx must use capabilities?.can_bind for bind intent gating (MMD-FULLSTACK-14B)");
+}
+
+// P5 — ProductDetail consumes capabilities.can_unbind
+if (/capabilities\?\.can_unbind/.test(productDetail)) {
+  pass("product_detail_consumes_can_unbind");
+} else {
+  fail("product_detail_consumes_can_unbind", "ProductDetail.tsx must use capabilities?.can_unbind for unbind intent gating (MMD-FULLSTACK-14B)");
+}
+
+// P6 — ProductDetail consumes capabilities.can_toggle_bom_binding_required_for_release
+if (/capabilities\?\.can_toggle_bom_binding_required_for_release/.test(productDetail)) {
+  pass("product_detail_consumes_can_toggle");
+} else {
+  fail("product_detail_consumes_can_toggle", "ProductDetail.tsx must use capabilities?.can_toggle_bom_binding_required_for_release (MMD-FULLSTACK-14B)");
+}
+
+// P7 — ProductDetail does NOT gate bind button solely on selectedVersionIsDraft && !binding (lifecycle-only inference)
+// The old pattern was: `selectedVersionIsDraft && !binding` (direct)
+// The new pattern must use capabilities
+if (/selectedVersionIsDraft\s*&&\s*!binding[^?.]/.test(productDetail)) {
+  fail("product_detail_no_lifecycle_only_bind_gate", "ProductDetail.tsx still gates bind solely on selectedVersionIsDraft && !binding — must use capabilities?.can_bind (MMD-FULLSTACK-14B)");
+} else {
+  pass("product_detail_no_lifecycle_only_bind_gate");
+}
+
+// P8 — ProductDetail still handles 403 errors
+if (/error\.status === 403/.test(productDetail)) {
+  pass("product_detail_handles_403");
+} else {
+  fail("product_detail_handles_403", "ProductDetail.tsx must handle 403 errors from binding mutations (MMD-FULLSTACK-14B)");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Final summary
 // ═══════════════════════════════════════════════════════════════════════════════
 

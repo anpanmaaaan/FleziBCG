@@ -117,7 +117,9 @@ class ProductVersionBomBindingAllowedActions(BaseModel):
     can_remove: bool
 
 
-class ProductVersionBomBindingResponse(BaseModel):
+class ProductVersionBomBindingData(BaseModel):
+    """Binding data returned by POST (create binding). Also embedded in GET wrapper."""
+
     binding_id: str
     tenant_id: str
     product_id: str
@@ -131,3 +133,28 @@ class ProductVersionBomBindingResponse(BaseModel):
     created_by: str
     updated_by: str | None = None
     allowed_actions: ProductVersionBomBindingAllowedActions
+
+
+# ─── BOM Binding capability schema — MMD-FULLSTACK-14B ───────────────────────
+
+
+class ProductVersionBomBindingCapabilities(BaseModel):
+    """Server-derived write capabilities for the BOM binding section of a Product Version.
+
+    Computed from PV lifecycle, active binding existence, and authenticated user permissions.
+    Capabilities are advisory: backend mutation routes still enforce authorization independently.
+    """
+
+    can_bind: bool
+    can_unbind: bool
+    can_toggle_bom_binding_required_for_release: bool
+    reason: str | None = None
+
+
+class ProductVersionBomBindingResponse(BaseModel):
+    """GET bom-binding wrapper response — includes binding (nullable) and capabilities."""
+
+    product_id: str
+    product_version_id: str
+    binding: ProductVersionBomBindingData | None
+    capabilities: ProductVersionBomBindingCapabilities

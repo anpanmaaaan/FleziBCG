@@ -19,6 +19,8 @@ from app.repositories.product_version_repository import (
 from app.schemas.product import (
     BomBindingCreateRequest,
     ProductVersionBomBindingAllowedActions,
+    ProductVersionBomBindingCapabilities,
+    ProductVersionBomBindingData,
     ProductVersionBomBindingResponse,
 )
 from app.services.security_event_service import record_security_event
@@ -37,12 +39,35 @@ def _compute_allowed_actions(
     )
 
 
-def _to_binding_response(
+def _compute_capabilities(
+    pv_lifecycle: str,
+    has_active_binding: bool,
+    has_pv_manage: bool,
+    has_bom_manage: bool,
+) -> ProductVersionBomBindingCapabilities:
+    """Derive write capabilities from PV lifecycle, binding existence, and permissions.
+
+    Decision rules (governance contract §8 + user spec):
+    - can_bind: DRAFT PV + no active binding + BOTH bom.manage AND pv.manage
+    - can_unbind: DRAFT PV + active binding + BOTH bom.manage AND pv.manage
+    - can_toggle: DRAFT PV + pv.manage only
+    - RELEASED or RETIRED PV: all false regardless of permissions
+    """
+    is_draft = pv_lifecycle == "DRAFT"
+    has_both = has_pv_manage and has_bom_manage
+    return ProductVersionBomBindingCapabilities(
+        can_bind=is_draft and not has_active_binding and has_both,
+        can_unbind=is_draft and has_active_binding and has_both,
+        can_toggle_bom_binding_required_for_release=is_draft and has_pv_manage,
+    )
+
+
+def _to_binding_data(
     row: ProductVersionBomBinding,
     pv_lifecycle: str,
     has_both_permissions: bool,
-) -> ProductVersionBomBindingResponse:
-    return ProductVersionBomBindingResponse(
+) -> ProductVersionBomBindingData:
+    return ProductVersionBomBindingData(
         binding_id=row.binding_id,
         tenant_id=row.tenant_id,
         product_id=row.product_id,
@@ -97,11 +122,14 @@ def get_product_version_bom_binding(
     tenant_id: str,
     product_id: str,
     product_version_id: str,
-    has_both_permissions: bool = False,
+    has_pv_manage: bool = False,
+    has_bom_manage: bool = False,
 ) -> ProductVersionBomBindingResponse:
-    """Return the current ACTIVE binding for a Product Version.
+    """Return the wrapper response for GET bom-binding.
 
-    Raises LookupError if PV not found or no active binding exists.
+    Returns binding (nullable) and server-derived capabilities.
+    Raises LookupError only when PV is not found.
+    Returns binding=None (not 404) when PV exists but has no active binding.
     """
     pv = get_product_version_row(
         db,
@@ -115,10 +143,25 @@ def get_product_version_bom_binding(
     row = get_active_binding_by_version(
         db, tenant_id=tenant_id, product_version_id=product_version_id
     )
-    if row is None:
-        raise LookupError("No active BOM binding for this product version")
+    has_active_binding = row is not None
+    has_both = has_pv_manage and has_bom_manage
 
-    return _to_binding_response(row, pv.lifecycle_status, has_both_permissions)
+    binding_data = (
+        _to_binding_data(row, pv.lifecycle_status, has_both) if row is not None else None
+    )
+    capabilities = _compute_capabilities(
+        pv.lifecycle_status,
+        has_active_binding=has_active_binding,
+        has_pv_manage=has_pv_manage,
+        has_bom_manage=has_bom_manage,
+    )
+
+    return ProductVersionBomBindingResponse(
+        product_id=product_id,
+        product_version_id=product_version_id,
+        binding=binding_data,
+        capabilities=capabilities,
+    )
 
 
 def bind_bom_to_product_version(
@@ -129,7 +172,7 @@ def bind_bom_to_product_version(
     product_id: str,
     product_version_id: str,
     payload: BomBindingCreateRequest,
-) -> ProductVersionBomBindingResponse:
+) -> ProductVersionBomBindingData:
     """Bind a BOM to a Product Version.
 
     Invariants enforced (governance contract §6, §7, §10):
@@ -197,7 +240,7 @@ def bind_bom_to_product_version(
         row=row,
     )
 
-    return _to_binding_response(row, pv.lifecycle_status, has_both_permissions=True)
+    return _to_binding_data(row, pv.lifecycle_status, has_both_permissions=True)
 
 
 def unbind_bom_from_product_version(

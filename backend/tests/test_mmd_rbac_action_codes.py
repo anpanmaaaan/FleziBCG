@@ -489,6 +489,36 @@ def test_bom_binding_read_does_not_require_manage_actions():
     )
 
 
+def test_bom_binding_get_response_schema_includes_capabilities():
+    """MMD-FULLSTACK-14B: ProductVersionBomBindingCapabilities and new response wrapper must be in schemas."""
+    from pathlib import Path
+
+    schema_src = (BACKEND_ROOT / "app" / "schemas" / "product.py").read_text(encoding="utf-8")
+
+    assert "ProductVersionBomBindingCapabilities" in schema_src, (
+        "product.py schemas must define ProductVersionBomBindingCapabilities (MMD-FULLSTACK-14B)"
+    )
+    assert "can_bind" in schema_src, (
+        "ProductVersionBomBindingCapabilities must have can_bind field"
+    )
+    assert "can_unbind" in schema_src, (
+        "ProductVersionBomBindingCapabilities must have can_unbind field"
+    )
+    assert "can_toggle_bom_binding_required_for_release" in schema_src, (
+        "ProductVersionBomBindingCapabilities must have can_toggle_bom_binding_required_for_release field"
+    )
+    assert "ProductVersionBomBindingData" in schema_src, (
+        "product.py schemas must define ProductVersionBomBindingData (binding data type)"
+    )
+    # New wrapper response must have binding and capabilities fields
+    assert "binding: ProductVersionBomBindingData | None" in schema_src, (
+        "ProductVersionBomBindingResponse must include binding: ProductVersionBomBindingData | None"
+    )
+    assert "capabilities: ProductVersionBomBindingCapabilities" in schema_src, (
+        "ProductVersionBomBindingResponse must include capabilities: ProductVersionBomBindingCapabilities"
+    )
+
+
 def test_bom_binding_service_does_not_import_forbidden_domains():
     """MMD-BE-14A: Binding service must not import material, ERP, traceability, quality, or execution domains.
 

@@ -68,7 +68,7 @@ export interface ProductVersionBomBindingAllowedActions {
   can_remove: boolean;
 }
 
-export interface ProductVersionBomBindingResponse {
+export interface ProductVersionBomBindingData {
   binding_id: string;
   tenant_id: string;
   product_id: string;
@@ -82,6 +82,20 @@ export interface ProductVersionBomBindingResponse {
   created_by: string;
   updated_by?: string | null;
   allowed_actions: ProductVersionBomBindingAllowedActions;
+}
+
+export interface ProductVersionBomBindingCapabilities {
+  can_bind: boolean;
+  can_unbind: boolean;
+  can_toggle_bom_binding_required_for_release: boolean;
+  reason?: string | null;
+}
+
+export interface ProductVersionBomBindingResponse {
+  product_id: string;
+  product_version_id: string;
+  binding: ProductVersionBomBindingData | null;
+  capabilities: ProductVersionBomBindingCapabilities;
 }
 
 export interface ProductVersionBomBindingCreateRequest {
@@ -251,7 +265,7 @@ export const productApi = {
     payload: ProductVersionBomBindingCreateRequest,
     signal?: AbortSignal,
   ) {
-    return request<ProductVersionBomBindingResponse>(
+    return request<ProductVersionBomBindingData>(
       `${BASE_PATH}/${encodeURIComponent(productId)}/versions/${encodeURIComponent(versionId)}/bom-binding`,
       {
         method: "POST",

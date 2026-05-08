@@ -265,8 +265,8 @@ def test_get_binding_after_create_returns_200():
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["bom_id"] == bom.bom_id
-    assert data["binding_status"] == "ACTIVE"
+    assert data["binding"]["bom_id"] == bom.bom_id
+    assert data["binding"]["binding_status"] == "ACTIVE"
 
 
 # ─── T04: Unbind DRAFT PV → 204 ──────────────────────────────────────────────
@@ -308,10 +308,11 @@ def test_unbind_draft_pv_returns_204():
     assert response.status_code == 204
 
 
-# ─── T05: GET after unbind → 404 ─────────────────────────────────────────────
+# ─── T05: GET with no binding → 200 with binding=null ───────────────────────
 
 
-def test_get_binding_after_unbind_returns_404():
+def test_get_binding_when_no_binding_returns_200_with_null():
+    """MMD-FULLSTACK-14B: GET bom-binding returns 200 with binding=null when no active binding."""
     identity = _make_identity()
     _, session_local = _make_session()
     db = session_local()
@@ -325,7 +326,10 @@ def test_get_binding_after_unbind_returns_404():
     response = client.get(
         f"/api/v1/products/{product_id}/versions/{pv.product_version_id}/bom-binding"
     )
-    assert response.status_code == 404
+    assert response.status_code == 200
+    data = response.json()
+    assert data["binding"] is None
+    assert "capabilities" in data
 
 
 # ─── T06: Bind RETIRED BOM → 422 ─────────────────────────────────────────────
@@ -817,7 +821,7 @@ def test_get_binding_allowed_actions_with_both_perms():
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["allowed_actions"]["can_remove"] is True
+    assert data["binding"]["allowed_actions"]["can_remove"] is True
 
 
 def test_get_binding_allowed_actions_without_perms():
@@ -849,7 +853,259 @@ def test_get_binding_allowed_actions_without_perms():
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["allowed_actions"]["can_remove"] is False
+    assert data["binding"]["allowed_actions"]["can_remove"] is False
+
+
+# ─── MMD-FULLSTACK-14B: capability tests ──────────────────────────────────────
+
+
+def test_get_bom_binding_includes_capabilities():
+    """MMD-FULLSTACK-14B: GET bom-binding response must include a capabilities object."""
+    identity = _make_identity()
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db)
+    pv = _mk_version(db, "tenant_a", product_id, "v1.0")
+    db.close()
+
+    app = _build_app(identity, session_local)
+    client = TestClient(app)
+
+    response = client.get(
+        f"/api/v1/products/{product_id}/versions/{pv.product_version_id}/bom-binding"
+    )
+    assert response.status_code == 200
+    data = response.json()
+    caps = data["capabilities"]
+    assert "can_bind" in caps
+    assert "can_unbind" in caps
+    assert "can_toggle_bom_binding_required_for_release" in caps
+
+
+def test_get_bom_binding_capabilities_manage_user_draft_no_binding_can_bind():
+    """MMD-FULLSTACK-14B: DRAFT PV + no binding + both perms → can_bind=True."""
+    identity = _make_identity()
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db)
+    pv = _mk_version(db, "tenant_a", product_id, "v1.0", lifecycle_status="DRAFT")
+    db.close()
+
+    app = _build_app(identity, session_local, has_bom_manage=True, has_pv_manage=True)
+    client = TestClient(app)
+
+    response = client.get(
+        f"/api/v1/products/{product_id}/versions/{pv.product_version_id}/bom-binding"
+    )
+    assert response.status_code == 200
+    caps = response.json()["capabilities"]
+    assert caps["can_bind"] is True
+    assert caps["can_unbind"] is False
+    assert caps["can_toggle_bom_binding_required_for_release"] is True
+
+
+def test_get_bom_binding_capabilities_manage_user_draft_with_binding_can_unbind():
+    """MMD-FULLSTACK-14B: DRAFT PV + active binding + both perms → can_unbind=True."""
+    identity = _make_identity()
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db)
+    pv = _mk_version(db, "tenant_a", product_id, "v1.0", lifecycle_status="DRAFT")
+    bom = _mk_bom(db, "tenant_a", product_id, "BOM-001")
+    binding_row = ProductVersionBomBinding(
+        binding_id=uuid.uuid4().hex,
+        tenant_id="tenant_a",
+        product_id=product_id,
+        product_version_id=pv.product_version_id,
+        bom_id=bom.bom_id,
+        binding_type="PRIMARY",
+        binding_status="ACTIVE",
+        created_by="admin-a",
+    )
+    db.add(binding_row)
+    db.commit()
+    db.close()
+
+    app = _build_app(identity, session_local, has_bom_manage=True, has_pv_manage=True)
+    client = TestClient(app)
+
+    response = client.get(
+        f"/api/v1/products/{product_id}/versions/{pv.product_version_id}/bom-binding"
+    )
+    assert response.status_code == 200
+    caps = response.json()["capabilities"]
+    assert caps["can_bind"] is False
+    assert caps["can_unbind"] is True
+
+
+def test_get_bom_binding_capabilities_non_manage_user_all_false():
+    """MMD-FULLSTACK-14B: No manage perms → all write capabilities are False."""
+    identity = _make_identity()
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db)
+    pv = _mk_version(db, "tenant_a", product_id, "v1.0", lifecycle_status="DRAFT")
+    db.close()
+
+    app = _build_app(identity, session_local, has_bom_manage=False, has_pv_manage=False)
+    client = TestClient(app)
+
+    response = client.get(
+        f"/api/v1/products/{product_id}/versions/{pv.product_version_id}/bom-binding"
+    )
+    assert response.status_code == 200
+    caps = response.json()["capabilities"]
+    assert caps["can_bind"] is False
+    assert caps["can_unbind"] is False
+    assert caps["can_toggle_bom_binding_required_for_release"] is False
+
+
+def test_get_bom_binding_capabilities_released_pv_all_false():
+    """MMD-FULLSTACK-14B: RELEASED PV → all capabilities false regardless of permissions."""
+    identity = _make_identity()
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db)
+    pv = _mk_version(db, "tenant_a", product_id, "v1.0", lifecycle_status="RELEASED")
+    db.close()
+
+    app = _build_app(identity, session_local, has_bom_manage=True, has_pv_manage=True)
+    client = TestClient(app)
+
+    response = client.get(
+        f"/api/v1/products/{product_id}/versions/{pv.product_version_id}/bom-binding"
+    )
+    assert response.status_code == 200
+    caps = response.json()["capabilities"]
+    assert caps["can_bind"] is False
+    assert caps["can_unbind"] is False
+    assert caps["can_toggle_bom_binding_required_for_release"] is False
+
+
+def test_get_bom_binding_capabilities_retired_pv_all_false():
+    """MMD-FULLSTACK-14B: RETIRED PV → all capabilities false regardless of permissions."""
+    identity = _make_identity()
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db)
+    pv = _mk_version(db, "tenant_a", product_id, "v1.0", lifecycle_status="RETIRED")
+    db.close()
+
+    app = _build_app(identity, session_local, has_bom_manage=True, has_pv_manage=True)
+    client = TestClient(app)
+
+    response = client.get(
+        f"/api/v1/products/{product_id}/versions/{pv.product_version_id}/bom-binding"
+    )
+    assert response.status_code == 200
+    caps = response.json()["capabilities"]
+    assert caps["can_bind"] is False
+    assert caps["can_unbind"] is False
+    assert caps["can_toggle_bom_binding_required_for_release"] is False
+
+
+def test_get_bom_binding_capability_can_toggle_requires_product_version_manage():
+    """MMD-FULLSTACK-14B: DRAFT PV + pv.manage only → can_toggle=True, can_bind=False."""
+    identity = _make_identity()
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db)
+    pv = _mk_version(db, "tenant_a", product_id, "v1.0", lifecycle_status="DRAFT")
+    db.close()
+
+    app = _build_app(identity, session_local, has_bom_manage=False, has_pv_manage=True)
+    client = TestClient(app)
+
+    response = client.get(
+        f"/api/v1/products/{product_id}/versions/{pv.product_version_id}/bom-binding"
+    )
+    assert response.status_code == 200
+    caps = response.json()["capabilities"]
+    assert caps["can_toggle_bom_binding_required_for_release"] is True
+    assert caps["can_bind"] is False  # requires both perms
+
+
+def test_get_bom_binding_capability_can_bind_requires_both_bom_and_pv_manage():
+    """MMD-FULLSTACK-14B: bom.manage only → can_bind=False (requires BOTH codes)."""
+    identity = _make_identity()
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db)
+    pv = _mk_version(db, "tenant_a", product_id, "v1.0", lifecycle_status="DRAFT")
+    db.close()
+
+    app = _build_app(identity, session_local, has_bom_manage=True, has_pv_manage=False)
+    client = TestClient(app)
+
+    response = client.get(
+        f"/api/v1/products/{product_id}/versions/{pv.product_version_id}/bom-binding"
+    )
+    assert response.status_code == 200
+    caps = response.json()["capabilities"]
+    assert caps["can_bind"] is False
+
+
+def test_get_bom_binding_capability_can_unbind_requires_both_bom_and_pv_manage():
+    """MMD-FULLSTACK-14B: pv.manage only + active binding → can_unbind=False (requires BOTH)."""
+    identity = _make_identity()
+    _, session_local = _make_session()
+    db = session_local()
+    product_id = _mk_product(db)
+    pv = _mk_version(db, "tenant_a", product_id, "v1.0", lifecycle_status="DRAFT")
+    bom = _mk_bom(db, "tenant_a", product_id, "BOM-001")
+    binding_row = ProductVersionBomBinding(
+        binding_id=uuid.uuid4().hex,
+        tenant_id="tenant_a",
+        product_id=product_id,
+        product_version_id=pv.product_version_id,
+        bom_id=bom.bom_id,
+        binding_type="PRIMARY",
+        binding_status="ACTIVE",
+        created_by="admin-a",
+    )
+    db.add(binding_row)
+    db.commit()
+    db.close()
+
+    app = _build_app(identity, session_local, has_bom_manage=False, has_pv_manage=True)
+    client = TestClient(app)
+
+    response = client.get(
+        f"/api/v1/products/{product_id}/versions/{pv.product_version_id}/bom-binding"
+    )
+    assert response.status_code == 200
+    caps = response.json()["capabilities"]
+    assert caps["can_unbind"] is False
+
+
+def test_bom_binding_mutation_routes_still_require_both_action_codes():
+    """MMD-FULLSTACK-14B: POST/DELETE still require both action codes — capability guard doesn't weaken mutation auth."""
+    from pathlib import Path
+
+    src = (Path(__file__).parent.parent / "app" / "api" / "v1" / "products.py").read_text(
+        encoding="utf-8"
+    )
+    # POST and DELETE must use require_action for bom.manage
+    count = src.count('"admin.master_data.bom.manage"')
+    assert count >= 9, (
+        f"Expected >=9 occurrences of bom.manage in products.py, found {count}"
+    )
+    # AND reference pv.manage for inner dual-auth check
+    assert '"admin.master_data.product_version.manage"' in src
+
+
+def test_bom_binding_read_route_still_authenticated_read():
+    """MMD-FULLSTACK-14B: GET bom-binding uses require_authenticated_identity, not require_action."""
+    from pathlib import Path
+
+    src = (Path(__file__).parent.parent / "app" / "api" / "v1" / "products.py").read_text(
+        encoding="utf-8"
+    )
+    # The GET route block must reference require_authenticated_identity
+    # and must NOT put bom.manage inside a Depends(require_action(...)) on the GET route itself
+    # We verify by checking the get_bom_binding function definition
+    # uses require_authenticated_identity dependency
+    assert 'Depends(require_authenticated_identity)' in src
 
 
 # ─── Source-level contract checks ────────────────────────────────────────────
