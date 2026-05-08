@@ -308,15 +308,15 @@ export const SCREEN_STATUS_REGISTRY: Record<string, ScreenStatusEntry> = {
   },
   measurementEntry: {
     routePattern: "/quality-measurements",
-    phase: "SHELL",
-    dataSource: "NONE",
-    notes: "Measurement entry shell. Pass/fail evaluation and disposition are managed by the backend quality domain.",
+    phase: "PARTIAL",
+    dataSource: "BACKEND_API",
+    notes: "Connected to quality measurement submit API with backend-derived quality and quantity-effect response. Template/requirement retrieval remains follow-up scope.",
   },
   qualityHolds: {
     routePattern: "/quality-holds",
-    phase: "SHELL",
-    dataSource: "MOCK_FIXTURE",
-    notes: "Quality holds shell for supervisory review. Hold release and approval are managed by the backend quality domain.",
+    phase: "PARTIAL",
+    dataSource: "BACKEND_API",
+    notes: "Connected to quality hold list and disposition APIs. Backend remains source of truth for authority checks and quantity effects.",
   },
   materialReadiness: {
     routePattern: "/material-readiness",

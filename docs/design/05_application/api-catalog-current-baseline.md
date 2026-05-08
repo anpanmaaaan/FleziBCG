@@ -58,9 +58,35 @@ Status: Transition API inventory note.
 ## 3. Quality API families
 - `GET /quality/operations/{operation_id}/requirements`
 - `GET /quality/operations/{operation_id}/template`
-- `POST /quality/operations/{operation_id}/measurements`
+- `POST /quality/measurements`
 - `GET /quality/operations/{operation_id}/result`
-- `POST /quality/reviews/{review_id}/disposition` later
+- `GET /quality/holds`
+- `POST /quality/reviews/{review_id}/disposition`
+
+## 3.1 Quality-to-execution progression gate baseline
+
+- Active quality hold blocks execution progression commands:
+	- resume
+	- complete
+- Allowed-actions projection must suppress blocked commands when hold is active.
+- `REQUIRE_RECHECK` does not count as hold release:
+	- active hold remains in effect
+	- execution progression remains blocked until a release-like disposition resolves the hold
+
+## 3.2 Quality quantity-effect response baseline
+
+- `POST /quality/measurements` evaluates submitted values against backend-owned requirement/template items and spec limits:
+	- request measurement rows are operator-observed facts only (`item_code`, `measured_value`)
+	- unsupported `item_code` values are rejected server-side
+	- client-supplied threshold overrides do not control pass/fail and are rejected by the request contract
+	- strict completeness: all required template items must be present in a submit request
+- `POST /quality/measurements` response includes backend-derived quantity effects:
+	- `accepted_good_release_qty`
+	- `held_pending_good_qty`
+- `POST /quality/reviews/{review_id}/disposition` response includes backend-derived quantity effects:
+	- `accepted_good_release_qty`
+	- `held_pending_good_qty`
+- Quantity effects are derived server-side from quality outcome/disposition and current reported-good context.
 
 ## 4. Important transition note
 

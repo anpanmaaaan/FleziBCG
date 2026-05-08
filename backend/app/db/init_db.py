@@ -44,6 +44,12 @@ from app.models.bom import Bom, BomItem  # noqa: F401
 from app.models.product_version_bom_binding import ProductVersionBomBinding  # noqa: F401
 from app.models.routing import Routing, RoutingOperation  # noqa: F401
 from app.models.resource_requirement import ResourceRequirement  # noqa: F401
+from app.models.quality import (  # noqa: F401
+    QualityMeasurementRecord,  # noqa: F401
+    QualityMeasurementValue,  # noqa: F401
+    QualityHold,  # noqa: F401
+    QualityDispositionDecision,  # noqa: F401
+)
 from app.models.station_session import StationSession  # noqa: F401
 from app.models.refresh_token import RefreshToken  # noqa: F401
 from app.models.plant_hierarchy import (  # noqa: F401
@@ -59,6 +65,10 @@ from app.services.approval_service import seed_approval_rules
 from app.services.user_service import seed_demo_users
 from scripts.seed_default_tenant import seed_tenant_row
 
+import logging as _logging
+
+_log = _logging.getLogger(__name__)
+
 # ---------------------------------------------------------------------------
 # Alembic live migration driver
 # ---------------------------------------------------------------------------
@@ -70,6 +80,152 @@ _ALEMBIC_UPGRADE_RAN = False
 _ALEMBIC_UPGRADE_LOCK = Lock()
 
 
+def _repair_schema_drift() -> None:
+    """Apply missing DDL that Alembic skipped due to a create_all stamping bug.
+
+    BACKGROUND: An earlier startup path called ``create_all(checkfirst=True)``
+    and then immediately stamped at Alembic ``head``.  ``create_all`` skips
+    tables that already exist — it does NOT add new columns to existing tables.
+    This leaves the DB missing columns that were added in ALTER-based Alembic
+    revisions (0004, 0011, 0012) whose parent tables were created by the legacy
+    SQL scripts before Alembic took over.
+
+    This function detects and applies only those known missing columns.  Every
+    operation is idempotent (checks column presence before acting).  It is
+    safe to call on any DB state and is a no-op once the columns are present.
+
+    Migrations repaired here (in chronological order):
+      0004 — users.lifecycle_status (VARCHAR 32, NOT NULL after backfill)
+      0011 — approval_requests governed_resource_* columns (nullable)
+      0012 — approval_rules scope applicability columns (nullable)
+    """
+    from sqlalchemy import inspect as sa_inspect, text as sa_text
+
+    with engine.begin() as conn:
+        insp = sa_inspect(conn)
+
+        # ---- 0004: users.lifecycle_status --------------------------------
+        user_cols = {c["name"] for c in insp.get_columns("users")}
+        if "lifecycle_status" not in user_cols:
+            _log.warning("schema-repair: adding users.lifecycle_status (0004 drift)")
+            conn.execute(sa_text(
+                "ALTER TABLE users ADD COLUMN lifecycle_status VARCHAR(32)"
+            ))
+            conn.execute(sa_text(
+                "UPDATE users SET lifecycle_status = 'ACTIVE' WHERE is_active = true"
+            ))
+            conn.execute(sa_text(
+                "UPDATE users SET lifecycle_status = 'DISABLED' WHERE is_active = false"
+            ))
+            conn.execute(sa_text(
+                "UPDATE users SET lifecycle_status = 'ACTIVE' WHERE lifecycle_status IS NULL"
+            ))
+            conn.execute(sa_text(
+                "ALTER TABLE users ALTER COLUMN lifecycle_status SET NOT NULL"
+            ))
+            conn.execute(sa_text(
+                "CREATE INDEX IF NOT EXISTS ix_users_lifecycle_status"
+                " ON users (lifecycle_status)"
+            ))
+
+        # ---- 0011: approval_requests governed_resource_* columns ----------
+        ar_cols = {c["name"] for c in insp.get_columns("approval_requests")}
+        _GOVERNED_REQUEST_COLS: list[tuple[str, str]] = [
+            ("governed_resource_type", "VARCHAR(64)"),
+            ("governed_resource_id", "VARCHAR(128)"),
+            ("governed_resource_display_ref", "VARCHAR(256)"),
+            ("governed_resource_tenant_id", "VARCHAR(64)"),
+            ("governed_resource_scope_ref", "VARCHAR(256)"),
+            ("governed_action_type", "VARCHAR(64)"),
+        ]
+        for col, dtype in _GOVERNED_REQUEST_COLS:
+            if col not in ar_cols:
+                _log.warning(
+                    "schema-repair: adding approval_requests.%s (0011 drift)", col
+                )
+                conn.execute(sa_text(
+                    f"ALTER TABLE approval_requests ADD COLUMN {col} {dtype}"
+                ))
+
+        # ---- 0012: approval_rules scope applicability columns -------------
+        aru_cols = {c["name"] for c in insp.get_columns("approval_rules")}
+        _SCOPE_RULE_COLS: list[tuple[str, str]] = [
+            ("governed_action_type", "VARCHAR(64)"),
+            ("governed_resource_type", "VARCHAR(64)"),
+            ("scope_ref", "VARCHAR(256)"),
+            ("scope_type", "VARCHAR(32)"),
+            ("priority", "INTEGER"),
+            ("effective_from", "TIMESTAMPTZ"),
+            ("effective_to", "TIMESTAMPTZ"),
+        ]
+        for col, dtype in _SCOPE_RULE_COLS:
+            if col not in aru_cols:
+                _log.warning(
+                    "schema-repair: adding approval_rules.%s (0012 drift)", col
+                )
+                conn.execute(sa_text(
+                    f"ALTER TABLE approval_rules ADD COLUMN {col} {dtype}"
+                ))
+
+
+def _bootstrap_state() -> str:
+    """Classify the DB state to choose the correct startup migration path.
+
+    Returns one of three values:
+
+    ``"alembic"``
+        ``alembic_version`` table exists and has at least one row.  The DB has
+        been managed by Alembic before.  Normal ``upgrade head`` is sufficient.
+
+    ``"legacy"``
+        No ``alembic_version`` row/table, but other application tables already
+        exist.  This happens when:
+          - the DB was provisioned by the legacy SQL scripts
+            (``scripts/migrations/``) without ever stamping Alembic, OR
+          - a previous startup ran ``Base.metadata.create_all()`` on an *older*
+            schema version (missing later ALTER-added columns) and the volume
+            was reused without wiping it.
+
+        In this case the correct path is to stamp at ``0001`` (the no-op
+        baseline that corresponds to the legacy SQL schema) and then run
+        ``upgrade head`` so each ALTER-based revision adds the missing columns
+        to the already-existing tables.
+
+    ``"fresh"``
+        No ``alembic_version`` AND no application tables at all.  Truly clean
+        Docker volume.  Use ``Base.metadata.create_all()`` + ``stamp head`` so
+        that the full current schema is created in one pass and Alembic sees no
+        pending migrations.
+
+    WHY this matters:
+        The 0001 Alembic baseline is an *intentional no-op* — it was designed
+        to be stamped against a DB that already had its schema.  Running the
+        chain from scratch on a clean DB fails on ALTER-based revisions (e.g.
+        0003 adds columns to ``routing_operations``, which was never created by
+        Alembic itself).  Detecting the state correctly routes to the one safe
+        path for each scenario.
+    """
+    from sqlalchemy import inspect as sa_inspect, text as sa_text
+
+    with engine.connect() as conn:
+        insp = sa_inspect(conn)
+        tables = set(insp.get_table_names())
+
+        if "alembic_version" in tables:
+            result = conn.execute(sa_text("SELECT COUNT(*) FROM alembic_version"))
+            if result.scalar() > 0:
+                return "alembic"
+
+        # No valid alembic stamp — check whether any application tables exist.
+        # Use approval_rules as the sentinel: it is created by the legacy SQL
+        # scripts but never by an Alembic CREATE TABLE migration, so its
+        # presence reliably indicates a pre-Alembic or mismatched-schema state.
+        if "approval_rules" in tables:
+            return "legacy"
+
+        return "fresh"
+
+
 def run_alembic_upgrade() -> None:
     """Run ``alembic upgrade head`` programmatically.
 
@@ -77,10 +233,17 @@ def run_alembic_upgrade() -> None:
     It is idempotent — running it against an already-current schema is a no-op.
     It respects the migration history recorded in ``alembic_version``.
 
+    Bootstrap paths (see ``_bootstrap_state`` for full rationale):
+
+    - ``"fresh"``: ``create_all()`` builds the complete current schema, then
+      ``stamp head`` registers it.  ``upgrade head`` is then a no-op.
+    - ``"legacy"``: stamp at ``0001`` (the no-op baseline) so Alembic knows the
+      legacy SQL schema is already in place, then ``upgrade head`` applies every
+      ALTER/CREATE migration from 0002 onwards.
+    - ``"alembic"``: ``upgrade head`` only (normal path).
+
     SAFETY: Guarded by a module-level lock and a flag so that multiple
     threads/workers on the same process only run it once per process lifetime.
-    Cross-process serialization is handled by Alembic's own locking if
-    the DB supports advisory locks (PostgreSQL).
     """
     global _ALEMBIC_UPGRADE_RAN
 
@@ -95,7 +258,26 @@ def run_alembic_upgrade() -> None:
         from alembic.config import Config
 
         cfg = Config(str(_ALEMBIC_INI))
+        state = _bootstrap_state()
+
+        if state == "fresh":
+            # Truly clean volume: build the full schema from ORM models in one
+            # pass, then stamp at head so upgrade below is a no-op.
+            Base.metadata.create_all(bind=engine)
+            command.stamp(cfg, "head")
+        elif state == "legacy":
+            # Legacy SQL tables already exist without an Alembic stamp.
+            # Stamp at 0001 (the no-op baseline) so Alembic knows the base
+            # schema is present, then let upgrade head add the missing columns.
+            command.stamp(cfg, "0001")
+
         command.upgrade(cfg, "head")
+
+        # SCHEMA DRIFT REPAIR: idempotent guard for columns that were missed
+        # by an erroneous create_all+stamp path on a partially-provisioned DB.
+        # No-op once the columns are present.
+        _repair_schema_drift()
+
         _ALEMBIC_UPGRADE_RAN = True
 
 

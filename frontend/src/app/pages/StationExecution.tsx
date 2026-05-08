@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router";
 import { PageHeader } from "@/app/components";
 import { MockWarningBanner } from "@/app/components";
 import { toast } from "sonner";
-import { RefreshCw, Lock, X, RotateCcw, Info } from "lucide-react";
+import { RefreshCw, Lock, X, RotateCcw, Info, AlertTriangle } from "lucide-react";
 import { StationExecutionHeader } from "@/app/components/station-execution/StationExecutionHeader";
 import { StationQueuePanel } from "@/app/components/station-execution/StationQueuePanel";
 import { ExecutionStateHero } from "@/app/components/station-execution/ExecutionStateHero";
@@ -365,6 +365,9 @@ export function StationExecution() {
       return t("station.closed.guidance");
     }
     if (!canExecute) return t("station.ownership.required");
+    if (operation?.quality_hold_open) {
+      return t("station.hint.nextAction.resolveQcHold");
+    }
     if (operation?.status === "BLOCKED" && operation.downtime_open) {
       return t("station.hint.nextAction.endDowntime");
     }
@@ -898,6 +901,17 @@ export function StationExecution() {
               onFilterChange={setQueueFilter}
               onSelect={(item) => void selectQueueOperation(item)}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Quality Hold banner — shown when an active hold blocks progression */}
+      {operation?.quality_hold_open && (
+        <div className="mx-3 mt-2 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 sm:mx-4">
+          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
+          <div>
+            <span className="font-semibold">{t("station.qcHold.banner")}</span>
+            <span className="ml-1 text-xs text-amber-600">{t("station.qcHold.linkHint")}</span>
           </div>
         </div>
       )}

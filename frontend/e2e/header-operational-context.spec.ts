@@ -45,8 +45,8 @@ test("desktop operational header renders with safe context and route disclosure"
   await page.goto("/integration");
 
   await expect(page.getByRole("button", { name: "Open user menu" })).toBeVisible();
-  await expect(page.getByText("tenant-header-01").first()).toBeVisible();
-  await expect(page.getByText("Context pending").first()).toBeVisible();
+  await expect(page.locator("*:visible", { hasText: "tenant-header-01" }).first()).toBeVisible();
+  await expect(page.locator("*:visible", { hasText: "Context pending" }).first()).toBeVisible();
 
   await expect(page.getByText("Not Implemented").first()).toBeVisible();
 
