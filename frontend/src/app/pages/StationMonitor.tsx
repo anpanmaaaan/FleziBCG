@@ -126,20 +126,20 @@ export function StationMonitor() {
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               <div>
-                <span className="text-gray-500 text-xs">Station</span>
+                <span className="text-gray-500 text-xs">{t("stationMonitor.label.station")}</span>
                 <div className="text-gray-800 font-medium">{station?.name}</div>
               </div>
               <div>
-                <span className="text-gray-500 text-xs">ID</span>
+                <span className="text-gray-500 text-xs">{t("stationMonitor.label.id")}</span>
                 <div className="text-gray-800">{selectedStation}</div>
               </div>
               <div>
-                <span className="text-gray-500 text-xs">Status</span>
-                <div className="text-green-700 font-medium">RUNNING</div>
+                <span className="text-gray-500 text-xs">{t("common.status")}</span>
+                <div className="text-green-700 font-medium">{t("stationMonitor.label.running")}</div>
               </div>
               <div>
-                <span className="text-gray-500 text-xs">Operator</span>
-                <div className="text-gray-800">J. Smith</div>
+                <span className="text-gray-500 text-xs">{t("stationMonitor.label.operator")}</span>
+                <div className="text-gray-800">{t("stationMonitor.label.j_smith")}</div>
               </div>
             </div>
           </div>
@@ -151,15 +151,15 @@ export function StationMonitor() {
             </div>
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
-                <div className="text-xl font-bold text-gray-800">82%</div>
+                <div className="text-xl font-bold text-gray-800">{t("stationMonitor.label.82")}</div>
                 <div className="text-xs text-gray-500">{t("stationMonitor.metrics.utilization")}</div>
               </div>
               <div>
-                <div className="text-xl font-bold text-amber-700">22 min</div>
+                <div className="text-xl font-bold text-amber-700">{t("stationMonitor.label.22_min")}</div>
                 <div className="text-xs text-gray-500">{t("stationMonitor.metrics.downtime")}</div>
               </div>
               <div>
-                <div className="text-xl font-bold text-blue-700">18 pcs</div>
+                <div className="text-xl font-bold text-blue-700">{t("stationMonitor.label.18_pcs")}</div>
                 <div className="text-xs text-gray-500">{t("stationMonitor.metrics.throughput")}</div>
               </div>
             </div>

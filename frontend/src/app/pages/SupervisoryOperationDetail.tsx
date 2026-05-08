@@ -49,7 +49,7 @@ export function SupervisoryOperationDetail() {
           <button
             disabled
             className="flex items-center gap-1 px-3 py-1.5 rounded border border-gray-200 bg-gray-50 text-gray-400 text-xs cursor-not-allowed"
-            title="Backend supervisory workflow required"
+            title={t("common.notice.supervisoryRequired")}
           >
             {t("supervisoryOpDetail.action.releaseBlock")}
             <Lock className="w-3 h-3" />
@@ -57,7 +57,7 @@ export function SupervisoryOperationDetail() {
           <button
             disabled
             className="flex items-center gap-1 px-3 py-1.5 rounded border border-gray-200 bg-gray-50 text-gray-400 text-xs cursor-not-allowed"
-            title="Backend supervisory workflow required"
+            title={t("common.notice.supervisoryRequired")}
           >
             {t("supervisoryOpDetail.action.overrideStatus")}
             <Lock className="w-3 h-3" />
@@ -65,7 +65,7 @@ export function SupervisoryOperationDetail() {
           <button
             disabled
             className="flex items-center gap-1 px-3 py-1.5 rounded border border-gray-200 bg-gray-50 text-gray-400 text-xs cursor-not-allowed"
-            title="Backend supervisory workflow required"
+            title={t("common.notice.supervisoryRequired")}
           >
             {t("supervisoryOpDetail.action.approveException")}
             <Lock className="w-3 h-3" />
@@ -73,7 +73,7 @@ export function SupervisoryOperationDetail() {
           <button
             disabled
             className="flex items-center gap-1 px-3 py-1.5 rounded border border-gray-200 bg-gray-50 text-gray-400 text-xs cursor-not-allowed"
-            title="Backend supervisory workflow required"
+            title={t("common.notice.supervisoryRequired")}
           >
             {t("supervisoryOpDetail.action.reassignOperator")}
             <Lock className="w-3 h-3" />
@@ -91,36 +91,36 @@ export function SupervisoryOperationDetail() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <div>
-            <span className="text-xs text-gray-500">Operation Code</span>
-            <div className="text-gray-400 italic">—</div>
+            <span className="text-xs text-gray-500">{t("supervisoryOperationDetail.label.operation_code")}</span>
+            <div className="text-gray-400 italic">{t("common.na")}</div>
           </div>
           <div>
-            <span className="text-xs text-gray-500">Operation Name</span>
-            <div className="text-gray-400 italic">—</div>
+            <span className="text-xs text-gray-500">{t("supervisoryOperationDetail.label.operation_name")}</span>
+            <div className="text-gray-400 italic">{t("common.na")}</div>
           </div>
           <div>
-            <span className="text-xs text-gray-500">Work Order</span>
-            <div className="text-gray-400 italic">—</div>
+            <span className="text-xs text-gray-500">{t("supervisoryOperationDetail.label.work_order")}</span>
+            <div className="text-gray-400 italic">{t("common.na")}</div>
           </div>
           <div>
-            <span className="text-xs text-gray-500">Status</span>
-            <div className="text-gray-400 italic">— (backend)</div>
+            <span className="text-xs text-gray-500">{t("common.status")}</span>
+            <div className="text-gray-400 italic">{t("supervisoryOperationDetail.label._backend")}</div>
           </div>
           <div>
-            <span className="text-xs text-gray-500">Station</span>
-            <div className="text-gray-400 italic">—</div>
+            <span className="text-xs text-gray-500">{t("supervisoryOperationDetail.label.station")}</span>
+            <div className="text-gray-400 italic">{t("common.na")}</div>
           </div>
           <div>
-            <span className="text-xs text-gray-500">Operator</span>
-            <div className="text-gray-400 italic">—</div>
+            <span className="text-xs text-gray-500">{t("supervisoryOperationDetail.label.operator")}</span>
+            <div className="text-gray-400 italic">{t("common.na")}</div>
           </div>
           <div>
-            <span className="text-xs text-gray-500">Planned Qty</span>
-            <div className="text-gray-400 italic">—</div>
+            <span className="text-xs text-gray-500">{t("supervisoryOperationDetail.label.planned_qty")}</span>
+            <div className="text-gray-400 italic">{t("common.na")}</div>
           </div>
           <div>
-            <span className="text-xs text-gray-500">Completed Qty</span>
-            <div className="text-gray-400 italic">—</div>
+            <span className="text-xs text-gray-500">{t("supervisoryOperationDetail.label.completed_qty")}</span>
+            <div className="text-gray-400 italic">{t("common.na")}</div>
           </div>
         </div>
         <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
@@ -142,7 +142,7 @@ export function SupervisoryOperationDetail() {
           <button
             disabled
             className="flex items-center gap-1 px-3 py-1.5 rounded border border-gray-200 bg-gray-50 text-gray-400 text-xs cursor-not-allowed"
-            title="Backend supervisory workflow required"
+            title={t("common.notice.supervisoryRequired")}
           >
             {t("supervisoryOpDetail.action.acknowledgeBlocker")}
             <Lock className="w-3 h-3" />
@@ -156,7 +156,7 @@ export function SupervisoryOperationDetail() {
           <ShieldAlert className="w-4 h-4 text-indigo-500" />
           {t("supervisoryOpDetail.section.quality")}
         </div>
-        <p className="text-sm text-gray-400 italic">Quality context — backend quality system required.</p>
+        <p className="text-sm text-gray-400 italic">{t("supervisoryOperationDetail.label.quality_context_backend_quality_system_r")}</p>
       </div>
 
       {/* Material Context */}
@@ -165,7 +165,7 @@ export function SupervisoryOperationDetail() {
           <Package className="w-4 h-4 text-purple-500" />
           {t("supervisoryOpDetail.section.material")}
         </div>
-        <p className="text-sm text-gray-400 italic">Material context — backend material/inventory system required.</p>
+        <p className="text-sm text-gray-400 italic">{t("supervisoryOperationDetail.label.material_context_backend_materialinvento")}</p>
       </div>
 
       {/* Supervisory Actions History */}

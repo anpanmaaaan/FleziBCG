@@ -18,6 +18,7 @@ Use this checklist for every Quality-related PR to keep docs aligned with code.
 ## 3. API and schema documentation
 
 - [ ] Updated endpoint/request/response/error docs for all API contract changes
+- [ ] Updated gate-type vocabulary docs (for example, if backend enum currently allows only `PRE_ACCEPTANCE`, UI/docs do not claim unsupported values)
 - [ ] Updated migration notes for table/column/constraint changes
 - [ ] Documented tenant/scope/auth constraints for new or changed Quality actions
 - [ ] Documented event names and payload changes when eventing changed
@@ -33,6 +34,7 @@ Use this checklist for every Quality-related PR to keep docs aligned with code.
 
 - [ ] Updated UI docs for backend-authoritative quality truth
 - [ ] Updated screen notes for shell/mock to integrated behavior transitions
+- [ ] Updated QC admin page docs (QC checkpoints, defects, holds, measurement) to match actual connected vs shell behavior
 - [ ] Updated en/ja i18n keys in the same PR when text keys changed
 
 ## 6. Tests and evidence

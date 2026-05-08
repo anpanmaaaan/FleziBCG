@@ -113,15 +113,15 @@ export function PlantHierarchy() {
 
   return (
     <GovernancePageShell
-      title="Plant Hierarchy"
-      subtitle="Organizational structure and asset hierarchy"
+      title={t("plantHierarchy.tooltip.plant_hierarchy")}
+      subtitle={t("plantHierarchy.tooltip.organizational_structure_and_asset_hiera")}
       phase="SHELL"
       bannerNote="Plant hierarchy structure is managed by backend master data system. Frontend hierarchy visualization is read-only."
       actions={
         <button
           disabled
           className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-2"
-          title="Backend master data system manages hierarchy"
+          title={t("common.notice.hierarchyLocked")}
         >
           <Lock className="w-4 h-4" />
           Add Node (Future)
@@ -132,7 +132,7 @@ export function PlantHierarchy() {
       <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded flex items-start gap-3">
         <Layers className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
         <div className="text-sm text-blue-700">
-          <strong>Hierarchy Structure:</strong> Tenant → Plant → Area → Line → Station → Equipment
+          <strong>{t("plantHierarchy.label.hierarchy_structure")}</strong> Tenant → Plant → Area → Line → Station → Equipment
         </div>
       </div>
 
@@ -141,11 +141,11 @@ export function PlantHierarchy() {
         <table className="w-full min-w-[560px]">
           <thead className="bg-gray-50 border-b sticky top-0">
               <tr>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Name</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Code</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Type</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Items</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("plantHierarchy.label.name")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("plantHierarchy.label.code")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("plantHierarchy.label.type")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("plantHierarchy.label.items")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("plantHierarchy.label.actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -169,7 +169,7 @@ export function PlantHierarchy() {
                       disabled
                       aria-label="Add child node (backend master data manages hierarchy)"
                       className="p-1.5 text-gray-400 cursor-not-allowed"
-                      title="Backend master data system manages hierarchy"
+                      title={t("common.notice.hierarchyLocked")}
                     >
                       <Plus className="w-4 h-4" />
                     </button>
@@ -183,7 +183,7 @@ export function PlantHierarchy() {
       {/* Backend notice */}
       <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded text-sm text-slate-700 flex items-start gap-2">
         <Lock className="w-4 h-4 mt-0.5 flex-shrink-0" />
-        <span>Hierarchy structure is defined and managed exclusively by backend master data system.</span>
+        <span>{t("plantHierarchy.label.hierarchy_structure_is_defined_and_manag")}</span>
       </div>
     </GovernancePageShell>
   );

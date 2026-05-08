@@ -121,7 +121,7 @@ export function BomDetail() {
     return () => controller.abort();
   }, [productId, bomId]);
 
-  const runAction = async (action: () => Promise<void>, successMessage: string) => {
+  const runAction = async (action: () => unknown, successMessage: string) => {
     setActionBusy(true);
     setActionError(null);
     setActionMessage(null);

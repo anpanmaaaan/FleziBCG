@@ -185,7 +185,7 @@ export function ResourceRequirements() {
           <button
             disabled
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-            title="Backend MMD governance workflow required"
+            title={t("common.notice.mmdRequired")}
           >
             <Lock className="w-3.5 h-3.5" />
             {t("resourceReqs.action.assign")}
@@ -255,7 +255,7 @@ export function ResourceRequirements() {
                     <td className="px-4 py-3 text-xs text-gray-600 max-w-[240px]">{r.notes ?? "—"}</td>
                     <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
                     <td className="px-4 py-3">
-                      <button disabled className="inline-flex items-center gap-1 text-xs text-gray-400 cursor-not-allowed" title="Backend MMD governance workflow required">
+                      <button disabled className="inline-flex items-center gap-1 text-xs text-gray-400 cursor-not-allowed" title={t("common.notice.mmdRequired")}>
                         <Lock className="w-3 h-3" />
                         Edit
                       </button>

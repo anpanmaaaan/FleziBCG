@@ -49,15 +49,15 @@ export function SessionManagement() {
 
   return (
     <GovernancePageShell
-      title="Session Management"
-      subtitle="Active user sessions and revocation controls"
+      title={t("sessionManagement.tooltip.session_management")}
+      subtitle={t("sessionManagement.tooltip.active_user_sessions_and_revocation_cont")}
       phase="SHELL"
       bannerNote="Session management is not yet connected to backend. Backend authentication system remains source of truth for active sessions and revocation."
       actions={
         <button
           disabled
           className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-2"
-          title="This action requires backend session management"
+          title={t("common.notice.sessionRequired")}
         >
           <Lock className="w-4 h-4" />
           Revoke All Sessions (Future)
@@ -70,13 +70,13 @@ export function SessionManagement() {
         <table className="w-full min-w-[700px]">
           <thead className="bg-gray-50 border-b sticky top-0">
               <tr>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">User</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Device</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">IP Address</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Started</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Last Activity</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Status</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("sessionManagement.label.user")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("sessionManagement.label.device")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("sessionManagement.label.ip_address")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("sessionManagement.label.started")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("sessionManagement.label.last_activity")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("common.status")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("sessionManagement.label.actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -108,7 +108,7 @@ export function SessionManagement() {
                       disabled
                       aria-label="Revoke session (requires backend session management)"
                       className="p-2 text-gray-400 cursor-not-allowed"
-                      title="This action requires backend session management"
+                      title={t("common.notice.sessionRequired")}
                     >
                       <LogOut className="w-4 h-4" />
                     </button>

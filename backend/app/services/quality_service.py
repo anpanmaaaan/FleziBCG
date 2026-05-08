@@ -7,21 +7,43 @@ from sqlalchemy.orm import Session
 from app.models.execution import ExecutionEvent
 from app.models.master import Operation
 from app.models.quality import (
+    QualityDeviationRequestStatusEnum,
+    QualityGateDefinitionStatusEnum,
+    QualityGateInstanceStatusEnum,
+    QualityGateTypeEnum,
     QualityHoldStatusEnum,
     QualityReviewStatusEnum,
     QualityStatusEnum,
 )
 from app.repositories.operation_repository import get_operation_by_id
 from app.repositories.quality_repository import (
+    create_quality_gate_definition,
+    create_quality_gate_instance,
     create_disposition_decision,
     create_measurement_record,
     create_measurement_values,
     create_quality_hold,
+    get_active_quality_gate_instance_for_operation,
+    get_quality_gate_instance_by_id,
+    get_quality_gate_definition_by_id,
     get_hold_by_id,
+    get_open_deviation_request_for_hold,
+    get_deviation_request_by_id,
     get_measurement_record_by_id,
+    list_quality_gate_definitions as list_quality_gate_definitions_repo,
     list_active_holds,
+    create_deviation_request,
+    create_nonconformance,
+    list_nonconformances_by_hold,
+    get_nonconformance_by_code,
+    list_nonconformances as list_nonconformances_repo,
+    list_deviation_requests as list_deviation_requests_repo,
 )
 from app.schemas.quality import (
+    QualityGateDefinitionCreateRequest,
+    QualityGateDefinitionResponse,
+    QualityGateInstanceOpenRequest,
+    QualityGateInstanceResponse,
     QualityDispositionRequest,
     QualityDispositionResponse,
     QualityHoldItem,
@@ -30,6 +52,11 @@ from app.schemas.quality import (
     QualityOperationRequirementsResponse,
     QualityRequirementItem,
     QualityMeasurementValueResult,
+    QualityDeviationRequestCreate,
+    QualityDeviationResolveRequest,
+    QualityDeviationRequestItem,
+    QualityNonconformanceCreateRequest,
+    QualityNonconformanceItem,
 )
 from app.services.security_event_service import record_security_event
 
@@ -102,6 +129,158 @@ def _resolve_operation_for_tenant(
     if operation is None or operation.tenant_id != tenant_id:
         raise ValueError("Operation not found")
     return operation
+
+
+def create_quality_gate_definition_service(
+    db: Session,
+    *,
+    tenant_id: str,
+    actor_user_id: str,
+    payload: QualityGateDefinitionCreateRequest,
+) -> QualityGateDefinitionResponse:
+    gate_type = payload.gate_type.strip().upper()
+    if gate_type not in {v.value for v in QualityGateTypeEnum}:
+        raise ValueError(f"Unsupported gate_type={gate_type!r}")
+
+    existing = [
+        row
+        for row in list_quality_gate_definitions_repo(db, tenant_id=tenant_id)
+        if row.code == payload.code
+    ]
+    if existing:
+        raise ValueError("Duplicate quality gate code in tenant")
+
+    row = create_quality_gate_definition(
+        db,
+        code=payload.code,
+        name=payload.name,
+        status=QualityGateDefinitionStatusEnum.DRAFT.value,
+        gate_type=gate_type,
+        rule_set_version=payload.rule_set_version,
+        applicability_scope_type=payload.applicability_scope_type,
+        applicability_scope_value=payload.applicability_scope_value,
+        tenant_id=tenant_id,
+        created_by=actor_user_id,
+    )
+
+    db.commit()
+    db.refresh(row)
+
+    return QualityGateDefinitionResponse(
+        gate_definition_id=row.id,
+        code=row.code,
+        name=row.name,
+        status=row.status,
+        gate_type=row.gate_type,
+        rule_set_version=row.rule_set_version,
+        applicability_scope_type=row.applicability_scope_type,
+        applicability_scope_value=row.applicability_scope_value,
+        tenant_id=row.tenant_id,
+        created_by=row.created_by,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+    )
+
+
+def list_quality_gate_definitions_service(
+    db: Session,
+    *,
+    tenant_id: str,
+) -> list[QualityGateDefinitionResponse]:
+    rows = list_quality_gate_definitions_repo(db, tenant_id=tenant_id)
+    return [
+        QualityGateDefinitionResponse(
+            gate_definition_id=row.id,
+            code=row.code,
+            name=row.name,
+            status=row.status,
+            gate_type=row.gate_type,
+            rule_set_version=row.rule_set_version,
+            applicability_scope_type=row.applicability_scope_type,
+            applicability_scope_value=row.applicability_scope_value,
+            tenant_id=row.tenant_id,
+            created_by=row.created_by,
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+        for row in rows
+    ]
+
+
+def open_quality_gate_instance_service(
+    db: Session,
+    *,
+    tenant_id: str,
+    actor_user_id: str,
+    payload: QualityGateInstanceOpenRequest,
+) -> QualityGateInstanceResponse:
+    gate_definition = get_quality_gate_definition_by_id(
+        db,
+        gate_definition_id=payload.gate_definition_id,
+        tenant_id=tenant_id,
+    )
+    if gate_definition is None:
+        raise LookupError("Quality gate definition not found")
+    if gate_definition.status not in (
+        QualityGateDefinitionStatusEnum.ACTIVE.value,
+        QualityGateDefinitionStatusEnum.DRAFT.value,
+    ):
+        raise ValueError("Quality gate definition is not openable")
+
+    operation = _resolve_operation_for_tenant(
+        db,
+        operation_id=payload.operation_id,
+        tenant_id=tenant_id,
+    )
+
+    active_gate = get_active_quality_gate_instance_for_operation(
+        db,
+        operation_id=operation.id,
+        tenant_id=tenant_id,
+    )
+    if active_gate is not None:
+        raise QualityConflictError("QUALITY_GATE_INSTANCE_ALREADY_ACTIVE")
+
+    instance = create_quality_gate_instance(
+        db,
+        gate_definition_id=payload.gate_definition_id,
+        operation_id=operation.id,
+        status=QualityGateInstanceStatusEnum.PENDING_MEASUREMENT.value,
+        review_status=QualityReviewStatusEnum.NO_REVIEW.value,
+        opened_by=actor_user_id,
+        tenant_id=tenant_id,
+    )
+
+    db.add(
+        ExecutionEvent(
+            event_type="quality_gate_instance_opened",
+            production_order_id=operation.work_order.production_order_id,
+            work_order_id=operation.work_order_id,
+            operation_id=operation.id,
+            payload={
+                "gate_instance_id": instance.id,
+                "gate_definition_id": instance.gate_definition_id,
+                "status": instance.status,
+                "opened_by": actor_user_id,
+            },
+            tenant_id=tenant_id,
+        )
+    )
+    db.commit()
+    db.refresh(instance)
+
+    return QualityGateInstanceResponse(
+        gate_instance_id=instance.id,
+        gate_definition_id=instance.gate_definition_id,
+        operation_id=instance.operation_id,
+        status=instance.status,
+        review_status=instance.review_status,
+        opened_by=instance.opened_by,
+        closed_by=instance.closed_by,
+        tenant_id=instance.tenant_id,
+        created_at=instance.created_at,
+        updated_at=instance.updated_at,
+    )
 
 
 def _derive_quantity_effects(
@@ -206,6 +385,39 @@ def submit_qc_measurement(
         raise QualityConflictError("QC_NOT_REQUIRED")
 
     requirement_map = _get_requirement_map_for_operation(operation)
+    active_gate_instance = get_active_quality_gate_instance_for_operation(
+        db,
+        operation_id=operation.id,
+        tenant_id=tenant_id,
+    )
+
+    gate_instance_id = payload.gate_instance_id
+    gate_instance = None
+    if gate_instance_id is None and active_gate_instance is not None:
+        raise QualityConflictError("QUALITY_GATE_INSTANCE_CONTEXT_REQUIRED")
+    if gate_instance_id is not None:
+        gate_instance = get_quality_gate_instance_by_id(
+            db,
+            gate_instance_id=gate_instance_id,
+            tenant_id=tenant_id,
+        )
+        if gate_instance is None:
+            raise LookupError("Quality gate instance not found")
+        if gate_instance.operation_id != operation.id:
+            raise QualityConflictError("QUALITY_GATE_INSTANCE_OPERATION_MISMATCH")
+        if (
+            active_gate_instance is not None
+            and active_gate_instance.id != gate_instance.id
+        ):
+            raise QualityConflictError("QUALITY_GATE_INSTANCE_OPERATION_MISMATCH")
+        if gate_instance.status not in (
+            QualityGateInstanceStatusEnum.PENDING_MEASUREMENT.value,
+            QualityGateInstanceStatusEnum.RECHECK_REQUIRED.value,
+        ):
+            raise QualityConflictError("QUALITY_GATE_INSTANCE_NOT_MEASURABLE")
+
+        gate_instance.status = QualityGateInstanceStatusEnum.PENDING_EVALUATION.value
+        gate_instance.review_status = QualityReviewStatusEnum.NO_REVIEW.value
     evaluated = _evaluate_values(
         payload.measurements,
         requirement_map=requirement_map,
@@ -242,6 +454,7 @@ def submit_qc_measurement(
     record = create_measurement_record(
         db,
         operation_id=operation.id,
+        gate_instance_id=gate_instance_id,
         submitted_by=actor_user_id,
         quality_status=quality_status,
         review_status=review_status,
@@ -301,6 +514,9 @@ def submit_qc_measurement(
     )
 
     if hold_id is not None:
+        if gate_instance is not None:
+            gate_instance.status = QualityGateInstanceStatusEnum.HOLD_ACTIVE.value
+            gate_instance.review_status = QualityReviewStatusEnum.DECISION_PENDING.value
         db.add(
             ExecutionEvent(
                 event_type="qc_hold_applied",
@@ -317,6 +533,9 @@ def submit_qc_measurement(
                 tenant_id=tenant_id,
             )
         )
+    elif gate_instance is not None:
+        gate_instance.status = QualityGateInstanceStatusEnum.PASSED.value
+        gate_instance.review_status = QualityReviewStatusEnum.NO_REVIEW.value
 
     db.commit()
     db.refresh(record)
@@ -324,6 +543,7 @@ def submit_qc_measurement(
     return QualityMeasurementSubmitResponse(
         measurement_record_id=record.id,
         operation_id=record.operation_id,
+        gate_instance_id=record.gate_instance_id,
         quality_status=quality_status,
         review_status=review_status,
         accepted_good_release_qty=accepted_good_release_qty,
@@ -361,6 +581,295 @@ def list_quality_holds(db: Session, *, tenant_id: str) -> list[QualityHoldItem]:
     ]
 
 
+def request_quality_deviation(
+    db: Session,
+    *,
+    hold_id: int,
+    tenant_id: str,
+    actor_user_id: str,
+    payload: QualityDeviationRequestCreate,
+) -> QualityDeviationRequestItem:
+    hold = get_hold_by_id(db, hold_id=hold_id, tenant_id=tenant_id)
+    if hold is None:
+        raise LookupError("Quality hold not found")
+    if hold.status != QualityHoldStatusEnum.ACTIVE.value:
+        raise QualityConflictError("HOLD_NOT_ACTIVE")
+
+    existing = get_open_deviation_request_for_hold(
+        db,
+        hold_id=hold_id,
+        tenant_id=tenant_id,
+    )
+    if existing is not None:
+        raise QualityConflictError("DEVIATION_REQUEST_ALREADY_OPEN")
+
+    measurement_record = get_measurement_record_by_id(
+        db,
+        measurement_record_id=hold.measurement_record_id,
+        tenant_id=tenant_id,
+    )
+    if measurement_record is None:
+        raise LookupError("Quality measurement record not found")
+    operation = _resolve_operation_for_tenant(
+        db,
+        operation_id=measurement_record.operation_id,
+        tenant_id=tenant_id,
+    )
+
+    row = create_deviation_request(
+        db,
+        hold_id=hold.id,
+        gate_instance_id=measurement_record.gate_instance_id,
+        requested_by=actor_user_id,
+        reason=payload.reason,
+        tenant_id=tenant_id,
+    )
+
+    db.add(
+        ExecutionEvent(
+            event_type="quality_deviation_requested",
+            production_order_id=operation.work_order.production_order_id,
+            work_order_id=operation.work_order_id,
+            operation_id=operation.id,
+            payload={
+                "hold_id": hold.id,
+                "deviation_request_id": row.id,
+                "requested_by": actor_user_id,
+                "reason": payload.reason,
+            },
+            tenant_id=tenant_id,
+        )
+    )
+    db.commit()
+    db.refresh(row)
+
+    return QualityDeviationRequestItem(
+        deviation_request_id=row.id,
+        hold_id=row.hold_id,
+        gate_instance_id=row.gate_instance_id,
+        status=row.status,
+        requested_by=row.requested_by,
+        reason=row.reason,
+        requested_at=row.requested_at,
+        resolved_by=row.resolved_by,
+        resolved_at=row.resolved_at,
+        resolution_comment=row.resolution_comment,
+    )
+
+
+def list_quality_deviation_requests(
+    db: Session,
+    *,
+    tenant_id: str,
+) -> list[QualityDeviationRequestItem]:
+    rows = list_deviation_requests_repo(db, tenant_id=tenant_id)
+    return [
+        QualityDeviationRequestItem(
+            deviation_request_id=row.id,
+            hold_id=row.hold_id,
+            gate_instance_id=row.gate_instance_id,
+            status=row.status,
+            requested_by=row.requested_by,
+            reason=row.reason,
+            requested_at=row.requested_at,
+            resolved_by=row.resolved_by,
+            resolved_at=row.resolved_at,
+            resolution_comment=row.resolution_comment,
+        )
+        for row in rows
+    ]
+
+
+def resolve_quality_deviation(
+    db: Session,
+    *,
+    deviation_request_id: int,
+    tenant_id: str,
+    actor_user_id: str,
+    actor_role_code: str | None,
+    payload: QualityDeviationResolveRequest,
+) -> QualityDeviationRequestItem:
+    if (actor_role_code or "").upper() != "QAL":
+        raise PermissionError("Only QAL may resolve quality deviation by default")
+
+    row = get_deviation_request_by_id(
+        db,
+        deviation_request_id=deviation_request_id,
+        tenant_id=tenant_id,
+    )
+    if row is None:
+        raise LookupError("Quality deviation request not found")
+    if row.status != QualityDeviationRequestStatusEnum.OPEN.value:
+        raise QualityConflictError("DEVIATION_REQUEST_NOT_OPEN")
+
+    resolution_status = payload.resolution_status.strip().upper()
+    if resolution_status not in {
+        QualityDeviationRequestStatusEnum.APPROVED.value,
+        QualityDeviationRequestStatusEnum.REJECTED.value,
+        QualityDeviationRequestStatusEnum.CLOSED.value,
+    }:
+        raise ValueError(f"Unsupported resolution_status={resolution_status!r}")
+
+    hold = get_hold_by_id(db, hold_id=row.hold_id, tenant_id=tenant_id)
+    if hold is None:
+        raise LookupError("Quality hold not found")
+    measurement_record = get_measurement_record_by_id(
+        db,
+        measurement_record_id=hold.measurement_record_id,
+        tenant_id=tenant_id,
+    )
+    if measurement_record is None:
+        raise LookupError("Quality measurement record not found")
+    operation = _resolve_operation_for_tenant(
+        db,
+        operation_id=measurement_record.operation_id,
+        tenant_id=tenant_id,
+    )
+
+    row.status = resolution_status
+    row.resolved_by = actor_user_id
+    row.resolution_comment = payload.resolution_comment
+    row.resolved_at = _utcnow()
+
+    if row.gate_instance_id is not None:
+        gate_instance = get_quality_gate_instance_by_id(
+            db,
+            gate_instance_id=row.gate_instance_id,
+            tenant_id=tenant_id,
+        )
+        if gate_instance is not None and resolution_status == QualityDeviationRequestStatusEnum.APPROVED.value:
+            gate_instance.status = QualityGateInstanceStatusEnum.DEVIATION_PENDING.value
+            gate_instance.review_status = QualityReviewStatusEnum.DECISION_PENDING.value
+
+    db.add(
+        ExecutionEvent(
+            event_type="quality_deviation_resolved",
+            production_order_id=operation.work_order.production_order_id,
+            work_order_id=operation.work_order_id,
+            operation_id=operation.id,
+            payload={
+                "deviation_request_id": row.id,
+                "hold_id": row.hold_id,
+                "resolution_status": row.status,
+                "resolved_by": actor_user_id,
+            },
+            tenant_id=tenant_id,
+        )
+    )
+    db.commit()
+    db.refresh(row)
+
+    return QualityDeviationRequestItem(
+        deviation_request_id=row.id,
+        hold_id=row.hold_id,
+        gate_instance_id=row.gate_instance_id,
+        status=row.status,
+        requested_by=row.requested_by,
+        reason=row.reason,
+        requested_at=row.requested_at,
+        resolved_by=row.resolved_by,
+        resolved_at=row.resolved_at,
+        resolution_comment=row.resolution_comment,
+    )
+
+
+def create_quality_nonconformance(
+    db: Session,
+    *,
+    tenant_id: str,
+    actor_user_id: str,
+    payload: QualityNonconformanceCreateRequest,
+) -> QualityNonconformanceItem:
+    operation = _resolve_operation_for_tenant(
+        db,
+        operation_id=payload.operation_id,
+        tenant_id=tenant_id,
+    )
+
+    if payload.hold_id is not None:
+        hold = get_hold_by_id(db, hold_id=payload.hold_id, tenant_id=tenant_id)
+        if hold is None:
+            raise LookupError("Quality hold not found")
+        if hold.operation_id != operation.id:
+            raise QualityConflictError("NONCONFORMANCE_HOLD_OPERATION_MISMATCH")
+
+    existing = get_nonconformance_by_code(
+        db,
+        nc_code=payload.nc_code,
+        tenant_id=tenant_id,
+    )
+    if existing is not None:
+        raise ValueError("Duplicate nonconformance code in tenant")
+
+    row = create_nonconformance(
+        db,
+        nc_code=payload.nc_code,
+        operation_id=operation.id,
+        hold_id=payload.hold_id,
+        severity=payload.severity.strip().upper(),
+        description=payload.description,
+        reported_by=actor_user_id,
+        tenant_id=tenant_id,
+    )
+
+    db.add(
+        ExecutionEvent(
+            event_type="quality_nonconformance_recorded",
+            production_order_id=operation.work_order.production_order_id,
+            work_order_id=operation.work_order_id,
+            operation_id=operation.id,
+            payload={
+                "nonconformance_id": row.id,
+                "nc_code": row.nc_code,
+                "hold_id": row.hold_id,
+                "severity": row.severity,
+                "reported_by": actor_user_id,
+            },
+            tenant_id=tenant_id,
+        )
+    )
+    db.commit()
+    db.refresh(row)
+
+    return QualityNonconformanceItem(
+        nonconformance_id=row.id,
+        nc_code=row.nc_code,
+        operation_id=row.operation_id,
+        hold_id=row.hold_id,
+        status=row.status,
+        severity=row.severity,
+        description=row.description,
+        disposition_code=row.disposition_code,
+        reported_by=row.reported_by,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+    )
+
+
+def list_quality_nonconformances(
+    db: Session,
+    *,
+    tenant_id: str,
+) -> list[QualityNonconformanceItem]:
+    rows = list_nonconformances_repo(db, tenant_id=tenant_id)
+    return [
+        QualityNonconformanceItem(
+            nonconformance_id=row.id,
+            nc_code=row.nc_code,
+            operation_id=row.operation_id,
+            hold_id=row.hold_id,
+            status=row.status,
+            severity=row.severity,
+            description=row.description,
+            disposition_code=row.disposition_code,
+            reported_by=row.reported_by,
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+        for row in rows
+    ]
+
+
 def record_quality_disposition(
     db: Session,
     *,
@@ -395,6 +904,13 @@ def record_quality_disposition(
         operation_id=record.operation_id,
         tenant_id=tenant_id,
     )
+    gate_instance = None
+    if record.gate_instance_id is not None:
+        gate_instance = get_quality_gate_instance_by_id(
+            db,
+            gate_instance_id=record.gate_instance_id,
+            tenant_id=tenant_id,
+        )
     reported_good_qty = max(int(operation.good_qty or 0), 0)
     accepted_good_release_qty, held_pending_good_qty = _derive_quantity_effects(
         reported_good_qty=reported_good_qty,
@@ -411,16 +927,31 @@ def record_quality_disposition(
         tenant_id=tenant_id,
     )
 
+    linked_ncs = list_nonconformances_by_hold(
+        db,
+        hold_id=hold.id,
+        tenant_id=tenant_id,
+    )
+    for nc in linked_ncs:
+        nc.disposition_code = disposition_code
+        nc.status = "DISPOSITIONED"
+
     record.quality_status = _DISPOSITION_STATUS_MAP[disposition_code]
 
     if disposition_code == "REQUIRE_RECHECK":
         hold.status = QualityHoldStatusEnum.ACTIVE.value
         hold.review_status = QualityReviewStatusEnum.DECISION_PENDING.value
         record.review_status = QualityReviewStatusEnum.DECISION_PENDING.value
+        if gate_instance is not None:
+            gate_instance.status = QualityGateInstanceStatusEnum.RECHECK_REQUIRED.value
+            gate_instance.review_status = QualityReviewStatusEnum.DECISION_PENDING.value
     else:
         hold.status = QualityHoldStatusEnum.RELEASED.value
         hold.review_status = QualityReviewStatusEnum.DISPOSITION_DONE.value
         record.review_status = QualityReviewStatusEnum.DISPOSITION_DONE.value
+        if gate_instance is not None:
+            gate_instance.status = QualityGateInstanceStatusEnum.RELEASED.value
+            gate_instance.review_status = QualityReviewStatusEnum.DISPOSITION_DONE.value
 
     db.add(
         ExecutionEvent(
@@ -440,6 +971,21 @@ def record_quality_disposition(
             tenant_id=tenant_id,
         )
     )
+    if linked_ncs:
+        db.add(
+            ExecutionEvent(
+                event_type="quality_nonconformance_disposition_linked",
+                production_order_id=operation.work_order.production_order_id,
+                work_order_id=operation.work_order_id,
+                operation_id=record.operation_id,
+                payload={
+                    "hold_id": hold.id,
+                    "disposition_code": disposition_code,
+                    "nonconformance_ids": [nc.id for nc in linked_ncs],
+                },
+                tenant_id=tenant_id,
+            )
+        )
     if disposition_code == "REQUIRE_RECHECK":
         db.add(
             ExecutionEvent(

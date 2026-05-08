@@ -33,3 +33,21 @@ class StationQueueItem(BaseModel):
 class StationQueueResponse(BaseModel):
     items: list[StationQueueItem]
     station_scope_value: str
+
+
+class LineMonitorStationItem(BaseModel):
+    station_id: str
+    station_name: str
+    line_code: str
+    line_name: str | None = None
+    status: str
+    operator_user_id: str | None = None
+    current_operation_id: int | None = None
+    current_operation_number: str | None = None
+    current_operation_name: str | None = None
+    wip_count: int = 0
+    downtime_open: bool = False
+
+
+class LineMonitorResponse(BaseModel):
+    items: list[LineMonitorStationItem]

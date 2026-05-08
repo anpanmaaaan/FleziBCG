@@ -86,7 +86,7 @@ def test_alembic_baseline_is_root_revision():
 def test_alembic_head_is_baseline():
     """HEAD must resolve to the latest revision in the chain.
 
-    Updated: 0014 (add_bom_binding_required_for_release_to_product_versions) is now head;
+    Updated: 0020 (quality_measurement_gate_instance_link) is now head;
     chain is 0001 -> 0002 (add_refresh_tokens) -> 0003 (routing_operation_extended_fields)
     -> 0004 (add_user_lifecycle_status) -> 0005 (add_plant_hierarchy)
     -> 0006 (add_tenant_lifecycle_anchor) -> 0007 (product_versions)
@@ -94,13 +94,19 @@ def test_alembic_head_is_baseline():
     -> 0011 (add_governed_resource_identity_to_approvals)
     -> 0012 (add_scope_applicability_to_approval_rules)
     -> 0013 (product_version_bom_bindings)
-    -> 0014 (add_bom_binding_required_for_release_to_product_versions).
+    -> 0014 (add_bom_binding_required_for_release_to_product_versions)
+    -> 0015 (quality_measurement_foundation)
+    -> 0016 (quality_disposition_decisions)
+    -> 0017 (quality_gate_foundation)
+    -> 0018 (quality_policy_and_catalog_foundation)
+    -> 0019 (quality_deviation_and_nonconformance_foundation)
+    -> 0020 (quality_measurement_gate_instance_link).
     This test validates the migration chain is linear and has a single head.
     """
     script_dir = _get_script_dir()
     heads = script_dir.get_heads()
     assert len(heads) == 1, f"Expected exactly one head, got: {heads}"
-    assert "0014" in heads, f"Expected 0014 as head, got: {heads}"
+    assert "0020" in heads, f"Expected 0020 as head, got: {heads}"
 
 
 def test_alembic_upgrade_head_live(db_engine):
@@ -114,7 +120,7 @@ def test_alembic_upgrade_head_live(db_engine):
     with db_engine.connect() as conn:
         result = conn.execute(text("SELECT version_num FROM alembic_version"))
         rows = [r[0] for r in result]
-    assert "0014" in rows, f"Expected 0014 in alembic_version, got: {rows}"
+    assert "0020" in rows, f"Expected 0020 in alembic_version, got: {rows}"
 
 
 def test_bom_binding_required_for_release_migration_default_false():

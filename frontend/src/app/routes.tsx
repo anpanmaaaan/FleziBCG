@@ -46,6 +46,8 @@ import { SupervisoryOperationDetail } from "./pages/SupervisoryOperationDetail";
 import { QualityDashboard } from "./pages/QualityDashboard";
 import { MeasurementEntry } from "./pages/MeasurementEntry";
 import { QualityHolds } from "./pages/QualityHolds";
+import { QualityDeviations } from "./pages/QualityDeviations";
+import { QualityNonconformances } from "./pages/QualityNonconformances";
 import { MaterialReadiness } from "./pages/MaterialReadiness";
 import { StagingKitting } from "./pages/StagingKitting";
 import { WipBuffers } from "./pages/WipBuffers";
@@ -146,6 +148,8 @@ export const router = createBrowserRouter([
       { path: "quality-dashboard", Component: QualityDashboard },
       { path: "quality-measurements", Component: MeasurementEntry },
       { path: "quality-holds", Component: QualityHolds },
+      { path: "quality-deviations", Component: QualityDeviations },
+      { path: "quality-nonconformances", Component: QualityNonconformances },
       { path: "material-readiness", Component: MaterialReadiness },
       { path: "staging-kitting", Component: StagingKitting },
       { path: "wip-buffers", Component: WipBuffers },

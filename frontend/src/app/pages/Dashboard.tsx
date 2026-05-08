@@ -23,6 +23,7 @@ import {
   ResponsiveContainer
 } from "recharts";
 import { dashboardApi, type DashboardHealthResponse, type DashboardSummaryResponse } from "@/app/api";
+import { useI18n } from "@/app/i18n";
 
 interface KPICardProps {
   title: string;
@@ -61,6 +62,7 @@ function KPICard({ title, value, change, trend, icon, iconBgColor, subtitle }: K
 }
 
 export function Dashboard() {
+  const { t } = useI18n();
   const [summaryData, setSummaryData] = useState<DashboardSummaryResponse | null>(null);
   const [healthData, setHealthData] = useState<DashboardHealthResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -148,7 +150,7 @@ export function Dashboard() {
       <div className="flex-1 overflow-y-auto p-6">
         {loading && (
           <div className="mb-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
-            <p className="text-sm text-blue-800">dashboard.loading</p>
+            <p className="text-sm text-blue-800">{t("dashboard.label.dashboardloading")}</p>
           </div>
         )}
 
@@ -178,7 +180,7 @@ export function Dashboard() {
               to="/performance/oee-deep-dive"
               className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors whitespace-nowrap"
             >
-              <span className="font-medium">View OEE Deep Dive</span>
+              <span className="font-medium">{t("dashboard.label.view_oee_deep_dive")}</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -187,30 +189,30 @@ export function Dashboard() {
         {/* KPI Cards Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           <KPICard
-            title="Overall Equipment Effectiveness"
+            title={t("dashboard.tooltip.overall_equipment_effectiveness")}
             value="--"
             trend="neutral"
             icon={<Target className="w-6 h-6 text-blue-600" />}
             iconBgColor="bg-blue-100"
-            subtitle="dashboard.kpi.oee.unavailable"
+            subtitle={t("dashboard.tooltip.dashboardkpioeeunavailable")}
           />
           <KPICard
-            title="Production Volume"
+            title={t("dashboard.tooltip.production_volume")}
             value={summaryData?.workOrders.total ?? "--"}
             icon={<Package className="w-6 h-6 text-green-600" />}
             iconBgColor="bg-green-100"
-            subtitle="dashboard.kpi.work_orders.total"
+            subtitle={t("dashboard.tooltip.dashboardkpiworkorderstotal")}
           />
           <KPICard
-            title="Quality Rate"
+            title={t("dashboard.tooltip.quality_rate")}
             value="--"
             trend="neutral"
             icon={<CheckCircle2 className="w-6 h-6 text-purple-600" />}
             iconBgColor="bg-purple-100"
-            subtitle="dashboard.kpi.quality.unavailable"
+            subtitle={t("dashboard.tooltip.dashboardkpiqualityunavailable")}
           />
           <KPICard
-            title="Alerts"
+            title={t("dashboard.tooltip.alerts")}
             value={summaryData?.alerts.count ?? "--"}
             trend="neutral"
             icon={<Activity className="w-6 h-6 text-indigo-600" />}
@@ -224,45 +226,45 @@ export function Dashboard() {
           <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl border-2 border-purple-200 shadow-lg p-6">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h3 className="text-lg font-bold text-purple-900 mb-2">OEE Performance Summary</h3>
-                <p className="text-sm text-gray-700">Quick overview of equipment effectiveness metrics</p>
+                <h3 className="text-lg font-bold text-purple-900 mb-2">{t("dashboard.label.oee_performance_summary")}</h3>
+                <p className="text-sm text-gray-700">{t("dashboard.label.quick_overview_of_equipment_effectivenes")}</p>
               </div>
               <Link
                 to="/performance/oee-deep-dive"
                 className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
               >
-                <span className="font-medium">Deep Dive →</span>
+                <span className="font-medium">{t("dashboard.label.deep_dive")}</span>
               </Link>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white rounded-lg p-4 border border-purple-100">
-                <div className="text-sm text-gray-600 mb-1">work_orders.on_time</div>
+                <div className="text-sm text-gray-600 mb-1">{t("dashboard.label.workordersontime")}</div>
                 <div className="text-2xl font-bold text-blue-600">{summaryData?.workOrders.onTime ?? "--"}</div>
                 <div className="flex items-center gap-1 text-xs text-blue-600 mt-1">
                   <TrendingUp className="w-3 h-3" />
-                  <span>dashboard.kpi.work_orders.on_time</span>
+                  <span>{t("dashboard.label.dashboardkpiworkordersontime")}</span>
                 </div>
               </div>
               <div className="bg-white rounded-lg p-4 border border-purple-100">
-                <div className="text-sm text-gray-600 mb-1">operations.in_progress</div>
+                <div className="text-sm text-gray-600 mb-1">{t("dashboard.label.operationsinprogress")}</div>
                 <div className="text-2xl font-bold text-green-600">{summaryData?.operations.inProgress ?? "--"}</div>
                 <div className="flex items-center gap-1 text-xs text-green-600 mt-1">
                   <TrendingUp className="w-3 h-3" />
-                  <span>dashboard.kpi.operations.in_progress</span>
+                  <span>{t("dashboard.label.dashboardkpioperationsinprogress")}</span>
                 </div>
               </div>
               <div className="bg-white rounded-lg p-4 border border-purple-100">
-                <div className="text-sm text-gray-600 mb-1">operations.blocked</div>
+                <div className="text-sm text-gray-600 mb-1">{t("dashboard.label.operationsblocked")}</div>
                 <div className="text-2xl font-bold text-emerald-600">{summaryData?.operations.blocked ?? "--"}</div>
                 <div className="flex items-center gap-1 text-xs text-emerald-600 mt-1">
                   <TrendingUp className="w-3 h-3" />
-                  <span>dashboard.kpi.operations.blocked</span>
+                  <span>{t("dashboard.label.dashboardkpioperationsblocked")}</span>
                 </div>
               </div>
             </div>
             <div className="mt-4 p-3 bg-purple-100 rounded-lg">
               <p className="text-sm text-purple-900">
-                <strong>dashboard.top_issue:</strong> {bottleneckStatusKey}
+                <strong>{t("dashboard.label.dashboardtopissue")}</strong> {bottleneckStatusKey}
                 {topBottleneck ? ` · ${topBottleneck.scopeCode}` : ""}
               </p>
             </div>
@@ -275,12 +277,12 @@ export function Dashboard() {
           <div className="bg-white rounded-xl border shadow-lg p-6" key="production-chart">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Production Trend</h3>
-                <p className="text-sm text-gray-500">Planned vs Actual Output</p>
+                <h3 className="text-lg font-bold text-gray-900">{t("dashboard.label.production_trend")}</h3>
+                <p className="text-sm text-gray-500">{t("dashboard.label.planned_vs_actual_output")}</p>
               </div>
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-green-600" />
-                <span className="text-sm font-semibold text-green-600">dashboard.trend.summary</span>
+                <span className="text-sm font-semibold text-green-600">{t("dashboard.label.dashboardtrendsummary")}</span>
               </div>
             </div>
             <ResponsiveContainer width="100%" height={300} key="production-responsive">
@@ -321,12 +323,12 @@ export function Dashboard() {
           <div className="bg-white rounded-xl border shadow-lg p-6" key="quality-chart">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Quality Rate Trend</h3>
-                <p className="text-sm text-gray-500">Daily quality performance</p>
+                <h3 className="text-lg font-bold text-gray-900">{t("dashboard.label.quality_rate_trend")}</h3>
+                <p className="text-sm text-gray-500">{t("dashboard.label.daily_quality_performance")}</p>
               </div>
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-purple-600" />
-                <span className="text-sm font-semibold text-purple-600">dashboard.trend.pending_backend</span>
+                <span className="text-sm font-semibold text-purple-600">{t("dashboard.label.dashboardtrendpendingbackend")}</span>
               </div>
             </div>
             <ResponsiveContainer width="100%" height={300} key="quality-responsive">

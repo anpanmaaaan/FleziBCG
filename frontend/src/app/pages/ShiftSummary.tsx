@@ -90,42 +90,42 @@ export function ShiftSummary() {
             <CheckCircle className="w-3 h-3" />
             {t("shiftSummary.metric.opsCompleted")}
           </div>
-          <div className="text-2xl font-bold text-green-800">24</div>
+          <div className="text-2xl font-bold text-green-800">{"24"}</div>
         </div>
         <div className="bg-blue-50 rounded-lg border border-blue-200 p-3">
           <div className="flex items-center gap-1 text-xs text-blue-600 mb-1">
             <Clock className="w-3 h-3" />
             {t("shiftSummary.metric.opsInProgress")}
           </div>
-          <div className="text-2xl font-bold text-blue-800">6</div>
+          <div className="text-2xl font-bold text-blue-800">{"6"}</div>
         </div>
         <div className="bg-red-50 rounded-lg border border-red-200 p-3">
           <div className="flex items-center gap-1 text-xs text-red-600 mb-1">
             <AlertTriangle className="w-3 h-3" />
             {t("shiftSummary.metric.opsBlocked")}
           </div>
-          <div className="text-2xl font-bold text-red-800">1</div>
+          <div className="text-2xl font-bold text-red-800">{"1"}</div>
         </div>
         <div className="bg-amber-50 rounded-lg border border-amber-200 p-3">
           <div className="flex items-center gap-1 text-xs text-amber-600 mb-1">
             <Clock className="w-3 h-3" />
             {t("shiftSummary.metric.totalDowntime")}
           </div>
-          <div className="text-2xl font-bold text-amber-800">145 min</div>
+          <div className="text-2xl font-bold text-amber-800">{t("shiftSummary.label.145_min")}</div>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-3">
           <div className="flex items-center gap-1 text-xs text-gray-600 mb-1">
             <Package className="w-3 h-3" />
             {t("shiftSummary.metric.qtyProduced")}
           </div>
-          <div className="text-2xl font-bold text-gray-800">312</div>
+          <div className="text-2xl font-bold text-gray-800">{"312"}</div>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-3">
           <div className="flex items-center gap-1 text-xs text-gray-600 mb-1">
             <Zap className="w-3 h-3" />
             {t("shiftSummary.metric.defects")}
           </div>
-          <div className="text-2xl font-bold text-gray-800">4</div>
+          <div className="text-2xl font-bold text-gray-800">{"4"}</div>
         </div>
       </div>
 
@@ -157,7 +157,7 @@ export function ShiftSummary() {
         <div className="flex items-center gap-2 text-sm font-semibold text-indigo-700 border-b border-indigo-100 pb-2 mb-3">
           <Zap className="w-4 h-4 text-indigo-400" />
           {t("shiftSummary.aiSummary.label")}
-          <span className="text-xs font-normal text-indigo-400 ml-1">(Future / Demo)</span>
+          <span className="text-xs font-normal text-indigo-400 ml-1">{t("shiftSummary.label.future_demo")}</span>
         </div>
         <p className="text-sm text-indigo-500 italic">{t("shiftSummary.aiSummary.demo")}</p>
       </div>

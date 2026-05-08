@@ -49,6 +49,8 @@ from app.models.quality import (  # noqa: F401
     QualityMeasurementValue,  # noqa: F401
     QualityHold,  # noqa: F401
     QualityDispositionDecision,  # noqa: F401
+    QualityGateDefinition,  # noqa: F401
+    QualityGateInstance,  # noqa: F401
 )
 from app.models.station_session import StationSession  # noqa: F401
 from app.models.refresh_token import RefreshToken  # noqa: F401

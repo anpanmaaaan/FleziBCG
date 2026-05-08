@@ -57,10 +57,16 @@ Status: Transition API inventory note.
 
 ## 3. Quality API families
 - `GET /quality/operations/{operation_id}/requirements`
-- `GET /quality/operations/{operation_id}/template`
+- `GET /quality/gates/definitions`
+- `POST /quality/gates/definitions`
+- `POST /quality/gates/instances/open`
 - `POST /quality/measurements`
-- `GET /quality/operations/{operation_id}/result`
 - `GET /quality/holds`
+- `GET /quality/deviations`
+- `POST /quality/holds/{hold_id}/deviations`
+- `POST /quality/deviations/{deviation_request_id}/resolve`
+- `GET /quality/nonconformances`
+- `POST /quality/nonconformances`
 - `POST /quality/reviews/{review_id}/disposition`
 
 ## 3.1 Quality-to-execution progression gate baseline
@@ -87,6 +93,12 @@ Status: Transition API inventory note.
 	- `accepted_good_release_qty`
 	- `held_pending_good_qty`
 - Quantity effects are derived server-side from quality outcome/disposition and current reported-good context.
+
+## 3.3 Quality gate/admin baseline
+
+- Gate definition create currently accepts `gate_type=PRE_ACCEPTANCE`.
+- Gate open, deviation resolve, and disposition decision are approval-governed actions (`APPROVE` permission).
+- Frontend quality admin pages must send intent only; backend remains source of truth for gate validity, hold lifecycle, and quality outcome.
 
 ## 4. Important transition note
 

@@ -51,6 +51,10 @@ export interface StationSessionItem {
   closed_at: string | null;
 }
 
+export interface StationSessionCurrentResponse {
+  session: StationSessionItem | null;
+}
+
 const STATION_BASE_PATH = "/v1/station/queue";
 
 export const stationApi = {
@@ -69,10 +73,36 @@ export const stationApi = {
     });
   },
 
+  getCurrentSession(stationId: string) {
+    const query = encodeURIComponent(stationId);
+    return request<StationSessionCurrentResponse>(
+      `/v1/station/sessions/current?station_id=${query}`
+    );
+  },
+
+  identifyOperator(sessionId: string, operatorUserId: string) {
+    return request<StationSessionItem>(
+      `/v1/station/sessions/${sessionId}/identify-operator`,
+      {
+        method: "POST",
+        body: { operator_user_id: operatorUserId },
+      }
+    );
+  },
+
+  bindEquipment(sessionId: string, equipmentId: string) {
+    return request<StationSessionItem>(
+      `/v1/station/sessions/${sessionId}/bind-equipment`,
+      {
+        method: "POST",
+        body: { equipment_id: equipmentId },
+      }
+    );
+  },
+
   closeSession(sessionId: string) {
     return request<StationSessionItem>(`/v1/station/sessions/${sessionId}/close`, {
       method: "POST",
-      body: {},
     });
   },
 };

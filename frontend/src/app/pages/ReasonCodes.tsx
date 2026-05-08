@@ -525,9 +525,9 @@ export function ReasonCodes() {
                         <td className="px-4 py-3"><LifecycleBadge status={c.lifecycle_status} /></td>
                         <td className="px-4 py-3 text-center">
                           {c.requires_comment ? (
-                            <span className="inline-block w-4 h-4 rounded-full bg-amber-400" title="Comment required" />
+                            <span className="inline-block w-4 h-4 rounded-full bg-amber-400" title={t("reasonCodes.tooltip.comment_required")} />
                           ) : (
-                            <span className="inline-block w-4 h-4 rounded-full bg-gray-200" title="Comment optional" />
+                            <span className="inline-block w-4 h-4 rounded-full bg-gray-200" title={t("reasonCodes.tooltip.comment_optional")} />
                           )}
                         </td>
                         <td className="px-4 py-3">

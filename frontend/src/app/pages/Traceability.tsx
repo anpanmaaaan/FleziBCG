@@ -173,7 +173,7 @@ export function Traceability() {
       <div className="flex-1 flex flex-col p-6">
         {/* Page header with status badge */}
         <div className="flex items-center gap-3 mb-6">
-          <h1 className="text-2xl font-bold">Traceability Search</h1>
+          <h1 className="text-2xl font-bold">{t("traceability.label.traceability_search")}</h1>
           <ScreenStatusBadge phase="MOCK" />
         </div>
 
@@ -211,7 +211,7 @@ export function Traceability() {
                 if (selectedSerial) {
                   setView('genealogy');
                 } else {
-                  toast.warning('Please select a serial number first');
+                  toast.warning(t("traceability.notice.please_select_a_serial_number_first"));
                 }
               }}
               className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
@@ -223,9 +223,9 @@ export function Traceability() {
             </button>
             <button
               disabled
-              onClick={() => toast.info('Export feature coming soon')}
+              onClick={() => toast.info(t("common.notice.comingSoon"))}
               className="px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed flex items-center gap-2"
-              title="This action is not available for mock data"
+              title={t("common.notice.mockUnavailable")}
             >
               <Lock className="w-4 h-4" />
               Export (Future)

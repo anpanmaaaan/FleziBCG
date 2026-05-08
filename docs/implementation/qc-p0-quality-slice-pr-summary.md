@@ -12,6 +12,8 @@ This summary is intentionally scoped to the Quality P0 vertical slice delivered 
 - Measurement submit contract is narrowed to operator-observed facts only.
 - Strict completeness is enforced: all required template item codes must be present at submit.
 - Frontend submit affordance and payload are aligned to backend contract.
+- Gate definition create flow is constrained to `PRE_ACCEPTANCE` gate type (current backend enum).
+- QC admin pages render connected data without legacy backend-note banners on page body.
 
 ## Files in scope
 
@@ -30,7 +32,9 @@ This summary is intentionally scoped to the Quality P0 vertical slice delivered 
 ### Frontend
 
 - frontend/src/app/api/qualityApi.ts
+- frontend/src/app/pages/QCCheckpoints.tsx
 - frontend/src/app/pages/MeasurementEntry.tsx
+- frontend/src/app/pages/DefectManagement.tsx
 - frontend/src/app/pages/QualityHolds.tsx
 - frontend/src/app/i18n/registry/en.ts
 - frontend/src/app/i18n/registry/ja.ts
@@ -102,4 +106,5 @@ npx playwright test
 - Confirm recheck disposition does not release active hold or execution gate.
 - Confirm strict completeness reject path emits no release-like events and no false accepted-good increments.
 - Confirm frontend payload to submit endpoint includes only observed facts.
+- Confirm gate-definition create payload uses supported `gate_type` values only (`PRE_ACCEPTANCE` at current baseline).
 - Confirm E2E selector assertions use visible-targeted locators where duplicated hidden text exists.

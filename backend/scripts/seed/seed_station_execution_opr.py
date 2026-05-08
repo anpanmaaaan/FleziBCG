@@ -28,7 +28,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import NotRequired, TypedDict
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, text
 
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
@@ -42,6 +42,7 @@ from app.schemas.operation import (
     OperationStartDowntimeRequest,
     OperationStartRequest,
 )
+from app.security.dependencies import RequestIdentity
 from app.services.operation_service import (
     complete_operation,
     end_downtime,
@@ -49,6 +50,10 @@ from app.services.operation_service import (
     report_quantity,
     start_downtime,
     start_operation,
+)
+from app.services.station_session_service import (
+    get_current_station_session,
+    open_station_session,
 )
 
 
@@ -66,7 +71,7 @@ SEED_PREFIX = "PH6-STATION"
 TENANT_ID = "default"
 STATION_SCOPE = "STATION_01"
 OPERATOR_USER_ID = "opr-001"
-SEED_ACTOR = "seed-user"
+SEED_ACTOR = OPERATOR_USER_ID
 
 
 def _dt(value: str) -> datetime:
@@ -95,6 +100,35 @@ def _reset_station_seed(db) -> None:
             db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids)))
         )
         if operation_ids:
+            operation_claims_table_exists = bool(
+                db.scalar(text("SELECT to_regclass('public.operation_claims') IS NOT NULL"))
+            )
+            if operation_claims_table_exists:
+                operation_claim_audit_logs_table_exists = bool(
+                    db.scalar(
+                        text(
+                            "SELECT to_regclass('public.operation_claim_audit_logs') IS NOT NULL"
+                        )
+                    )
+                )
+                if operation_claim_audit_logs_table_exists:
+                    db.execute(
+                        text(
+                            "DELETE FROM operation_claim_audit_logs "
+                            "WHERE claim_id IN ("
+                            "SELECT id FROM operation_claims "
+                            "WHERE operation_id = ANY(:operation_ids)"
+                            ")"
+                        ),
+                        {"operation_ids": operation_ids},
+                    )
+                db.execute(
+                    text(
+                        "DELETE FROM operation_claims "
+                        "WHERE operation_id = ANY(:operation_ids)"
+                    ),
+                    {"operation_ids": operation_ids},
+                )
             db.execute(
                 delete(ExecutionEvent).where(
                     ExecutionEvent.operation_id.in_(operation_ids)
@@ -225,6 +259,26 @@ def seed_station_execution_for_opr() -> None:
         for spec in op_specs:
             db.add(_make_operation(work_order_id=work_order.id, **spec))
         db.commit()
+
+        identity = RequestIdentity(
+            user_id=OPERATOR_USER_ID,
+            username="operator",
+            email=None,
+            tenant_id=TENANT_ID,
+            role_code="OPR",
+            is_authenticated=True,
+        )
+        current_session = get_current_station_session(
+            db,
+            identity,
+            station_id=STATION_SCOPE,
+        )
+        if current_session is None:
+            open_station_session(
+                db,
+                identity,
+                station_id=STATION_SCOPE,
+            )
 
         def _op(suffix: str) -> Operation:
             op = db.scalar(

@@ -71,8 +71,8 @@ export function AuditLog() {
 
   return (
     <GovernancePageShell
-      title="Audit Log"
-      subtitle="Immutable operational event history"
+      title={t("auditLog.tooltip.audit_log")}
+      subtitle={t("auditLog.tooltip.immutable_operational_event_history")}
       phase="SHELL"
       bannerNote="Audit log is displayed for visualization only. Backend audit and compliance system remains source of truth for all operational events."
     >
@@ -92,7 +92,7 @@ export function AuditLog() {
           <button
             disabled
             className="px-4 py-2 border border-gray-300 bg-gray-50 text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-2"
-            title="This action requires backend audit export"
+            title={t("common.notice.auditRequired")}
           >
             <Filter className="w-4 h-4" />
             Filter (Future)
@@ -100,7 +100,7 @@ export function AuditLog() {
           <button
             disabled
             className="px-4 py-2 border border-gray-300 bg-gray-50 text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-2"
-            title="This action requires backend audit export"
+            title={t("common.notice.auditRequired")}
           >
             <Download className="w-4 h-4" />
             Export (Future)
@@ -112,12 +112,12 @@ export function AuditLog() {
         <table className="w-full min-w-[640px]">
           <thead className="bg-gray-50 border-b sticky top-0">
               <tr>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Timestamp</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Actor</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Action</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Resource</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Status</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Details</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("auditLog.label.timestamp")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("auditLog.label.actor")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("auditLog.label.action")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("auditLog.label.resource")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("common.status")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("auditLog.label.details")}</th>
               </tr>
             </thead>
             <tbody>
@@ -148,7 +148,7 @@ export function AuditLog() {
       {/* Note */}
       <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded text-sm text-slate-700 flex items-start gap-2">
         <Lock className="w-4 h-4 mt-0.5 flex-shrink-0" />
-        <span>All audit events are immutable records managed by backend compliance system.</span>
+        <span>{t("auditLog.label.all_audit_events_are_immutable_records_m")}</span>
       </div>
     </GovernancePageShell>
   );

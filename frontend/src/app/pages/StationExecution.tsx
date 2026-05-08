@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { PageHeader } from "@/app/components";
 import { MockWarningBanner } from "@/app/components";
 import { toast } from "sonner";
@@ -227,6 +227,7 @@ export function StationExecution() {
 
   const { t } = useI18n();
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryOperationId = searchParams.get("operationId") || "";
 
@@ -731,6 +732,48 @@ export function StationExecution() {
       setSessionLoading(false);
     }
   };
+
+  const goToOperatorIdentification = () => {
+    const params = new URLSearchParams();
+    if (stationScope && stationScope !== "-") {
+      params.set("stationId", stationScope);
+    }
+    if (ownershipState?.session_id) {
+      params.set("sessionId", ownershipState.session_id);
+    }
+    if (operation?.id) {
+      params.set("operationId", String(operation.id));
+    }
+    const query = params.toString();
+    navigate(query ? `/operator-identification?${query}` : "/operator-identification");
+  };
+
+  const goToEquipmentBinding = () => {
+    const params = new URLSearchParams();
+    if (stationScope && stationScope !== "-") {
+      params.set("stationId", stationScope);
+    }
+    if (ownershipState?.session_id) {
+      params.set("sessionId", ownershipState.session_id);
+    }
+    if (operation?.id) {
+      params.set("operationId", String(operation.id));
+    }
+    const query = params.toString();
+    navigate(query ? `/equipment-binding?${query}` : "/equipment-binding");
+  };
+
+  const goToStationSession = () => {
+    const params = new URLSearchParams();
+    if (stationScope && stationScope !== "-") {
+      params.set("stationId", stationScope);
+    }
+    if (ownershipState?.session_id) {
+      params.set("sessionId", ownershipState.session_id);
+    }
+    const query = params.toString();
+    navigate(query ? `/station-session?${query}` : "/station-session");
+  };
   // ── MODE A  EOperation Selection ──────────────────────────────────────────
   if (!isExecutionMode) {
     return (
@@ -798,14 +841,40 @@ export function StationExecution() {
                   {t("stationSession.action.openSession")}
                 </button>
               ) : ownerState === "mine" ? (
-                <button
-                  type="button"
-                  onClick={() => void closeStationSession()}
-                  disabled={sessionLoading}
-                  className="min-h-10 px-4 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 active:scale-95 transition disabled:opacity-50"
-                >
-                  {t("stationSession.action.closeSession")}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={goToStationSession}
+                    disabled={sessionLoading}
+                    className="min-h-10 px-4 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 active:scale-95 transition disabled:opacity-50"
+                  >
+                    {t("station.session.viewSession")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goToOperatorIdentification}
+                    disabled={sessionLoading}
+                    className="min-h-10 px-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100 active:scale-95 transition disabled:opacity-50"
+                  >
+                    {t("station.session.identifyOperator")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goToEquipmentBinding}
+                    disabled={sessionLoading}
+                    className="min-h-10 px-4 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-100 active:scale-95 transition disabled:opacity-50"
+                  >
+                    {t("station.session.bindEquipment")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void closeStationSession()}
+                    disabled={sessionLoading}
+                    className="min-h-10 px-4 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 active:scale-95 transition disabled:opacity-50"
+                  >
+                    {t("stationSession.action.closeSession")}
+                  </button>
+                </div>
               ) : null}
             </div>
           )}
