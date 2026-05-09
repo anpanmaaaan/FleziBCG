@@ -8,6 +8,7 @@ import { PageHeader } from "@/app/components";
 import { StatusBadge } from "@/app/components";
 import { StatsCard } from "@/app/components";
 import { toast } from "sonner";
+import { useI18n } from "@/app/i18n";
 import {
   productionOrderApi,
   type ProductionOrderDetailFromAPI,
@@ -106,6 +107,7 @@ const mapBackendStatus = (status: string): WorkOrderExecution['status'] => {
 };
 
 export function OperationList() {
+  const { t } = useI18n();
   const { orderId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -224,13 +226,13 @@ export function OperationList() {
     <div className="h-full flex flex-col bg-white">
       {/* Header */}
       <PageHeader
-        title="Execution – Work Orders"
+        title={t("operationList.tooltip.execution_work_orders")}
         subtitle={subtitle}
         breadcrumb={
           <div className="flex items-center gap-2 text-sm text-gray-500">
-            <span>Execution</span>
+            <span>{t("operationList.label.execution")}</span>
             <span>{">"}</span>
-            <span className="font-medium text-gray-700">Work Orders</span>
+            <span className="font-medium text-gray-700">{t("operationList.label.work_orders")}</span>
           </div>
         }
         showBackButton={hasProductionOrderFilter}
@@ -240,11 +242,11 @@ export function OperationList() {
           {error ? (
             <div className="text-red-600 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4" />
-              <span className="text-sm">Error loading data</span>
+              <span className="text-sm">{t("operationList.label.error_loading_data")}</span>
             </div>
           ) : (
             <div>
-              <span className="text-sm text-gray-500">Context: </span>
+              <span className="text-sm text-gray-500">{t("operationList.label.context")} </span>
               <span className="font-medium">{hasProductionOrderFilter ? `Production Order ${orderId}` : "All Work Orders"}</span>
             </div>
           )}
@@ -264,7 +266,7 @@ export function OperationList() {
         {loading && (
           <div className="text-center py-12">
             <Clock className="w-12 h-12 mx-auto mb-3 text-blue-500 animate-spin" style={{ animationDuration: '2s' }} />
-            <div className="text-lg font-medium text-gray-600">Loading work orders...</div>
+            <div className="text-lg font-medium text-gray-600">{t("operationList.label.loading_work_orders")}</div>
           </div>
         )}
 
@@ -274,7 +276,7 @@ export function OperationList() {
             <div className="flex gap-3">
               <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-semibold text-red-900">Failed to load work orders</h3>
+                <h3 className="font-semibold text-red-900">{t("operationList.label.failed_to_load_work_orders")}</h3>
                 <p className="text-red-700 text-sm mt-1">{error}</p>
               </div>
             </div>
@@ -286,34 +288,34 @@ export function OperationList() {
           <>
             <div className="grid grid-cols-6 gap-4 mb-6">
               <StatsCard
-                title="Total WOs"
+                title={t("operationList.tooltip.total_wos")}
                 value={stats.total}
                 color="blue"
               />
               <StatsCard
-                title="Completed"
+                title={t("operationList.tooltip.completed")}
                 value={stats.completed}
                 color="green"
                 icon={CheckCircle}
               />
               <StatsCard
-                title="In Progress"
+                title={t("operationList.tooltip.in_progress")}
                 value={stats.inProgress}
                 color="purple"
               />
               <StatsCard
-                title="Pending"
+                title={t("operationList.tooltip.pending")}
                 value={stats.pending}
                 color="gray"
               />
               <StatsCard
-                title="Late"
+                title={t("operationList.tooltip.late")}
                 value={stats.late}
                 color="red"
                 icon={AlertCircle}
               />
               <StatsCard
-                title="Overall Progress"
+                title={t("operationList.tooltip.overall_progress")}
                 value={`${stats.overallProgress}%`}
                 color="orange"
               />
@@ -322,21 +324,21 @@ export function OperationList() {
             {/* Filters */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-4">
-                <h2 className="text-xl font-bold">Work Orders</h2>
+                <h2 className="text-xl font-bold">{t("operationList.label.work_orders")}</h2>
 
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
                   className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
                 >
-                  <option value="all">All Status</option>
-                  <option value="Pending">Pending</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Late">Late</option>
-                  <option value="Completed">Completed</option>
-                  <option value="Completed Late">Completed Late</option>
-                  <option value="Blocked">Blocked</option>
-                  <option value="Aborted">Aborted</option>
+                  <option value="all">{t("operationList.label.all_status")}</option>
+                  <option value="Pending">{t("operationList.label.pending")}</option>
+                  <option value="In Progress">{t("operationList.label.in_progress")}</option>
+                  <option value="Late">{t("operationList.label.late")}</option>
+                  <option value="Completed">{t("operationList.label.completed")}</option>
+                  <option value="Completed Late">{t("operationList.label.completed_late")}</option>
+                  <option value="Blocked">{t("operationList.label.blocked")}</option>
+                  <option value="Aborted">{t("operationList.label.aborted")}</option>
                 </select>
 
                 <div className="text-sm text-gray-600">
@@ -385,15 +387,15 @@ export function OperationList() {
                       </div>
                       <div className="flex items-center gap-6 text-sm text-gray-600">
                         <span>{wo.productName}</span>
-                        <span>•</span>
+                        <span aria-hidden="true">{String.fromCharCode(8226)}</span>
                         <span>{wo.productionLine}</span>
-                        <span>•</span>
+                        <span aria-hidden="true">{String.fromCharCode(8226)}</span>
                         <span>
                           Operations: {wo.completedOperations}/{wo.operationsCount}
                         </span>
                         {wo.currentOperation && (
                           <>
-                            <span>•</span>
+                            <span aria-hidden="true">{String.fromCharCode(8226)}</span>
                             <span className="font-medium text-blue-600">Current: {wo.currentOperation}</span>
                           </>
                         )}
@@ -403,7 +405,7 @@ export function OperationList() {
                     {/* Progress */}
                     <div className="flex-shrink-0 w-48">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-gray-500">Progress</span>
+                        <span className="text-xs text-gray-500">{t("common.progress")}</span>
                         <span className="text-sm font-bold">{wo.overallProgress}%</span>
                       </div>
                       <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -427,7 +429,7 @@ export function OperationList() {
                         navigate(`/work-orders/${wo.id}/operations`);
                       }}
                     >
-                      <span className="font-medium">View</span>
+                      <span className="font-medium">{t("common.action.view")}</span>
                       <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
@@ -438,8 +440,8 @@ export function OperationList() {
             {filteredWorkOrders.length === 0 && (
               <div className="text-center py-12 text-gray-500">
                 <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <div className="text-lg font-medium mb-1">No work orders found</div>
-                <div className="text-sm">Try adjusting your filters or search criteria</div>
+                <div className="text-lg font-medium mb-1">{t("operationList.label.no_work_orders_found")}</div>
+                <div className="text-sm">{t("operationList.label.try_adjusting_your_filters_or_search_cri")}</div>
               </div>
             )}
           </>

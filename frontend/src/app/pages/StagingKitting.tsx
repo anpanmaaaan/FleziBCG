@@ -75,8 +75,8 @@ export function StagingKitting() {
                 <th className="px-4 py-2 text-left">{t("stagingKitting.col.workOrder")}</th>
                 <th className="px-4 py-2 text-left">{t("stagingKitting.col.station")}</th>
                 <th className="px-4 py-2 text-left">{t("stagingKitting.col.status")}</th>
-                <th className="px-4 py-2 text-center">Components</th>
-                <th className="px-4 py-2 text-center">Actions</th>
+                <th className="px-4 py-2 text-center">{t("stagingKitting.label.components")}</th>
+                <th className="px-4 py-2 text-center">{t("stagingKitting.label.actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -95,7 +95,7 @@ export function StagingKitting() {
                     <button
                       disabled
                       className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-gray-300 text-gray-600 cursor-not-allowed mx-auto"
-                      title="Backend WMS required"
+                      title={t("common.notice.wmsRequired")}
                     >
                       <Lock className="w-3 h-3" />
                       Confirm

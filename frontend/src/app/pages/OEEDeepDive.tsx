@@ -166,7 +166,7 @@ export function OEEDeepDive() {
             <h3 className="text-sm font-semibold text-purple-900 mb-1">{title}</h3>
             {confidence && (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-600">Confidence:</span>
+                <span className="text-xs text-gray-600">{t("oEEDeepDive.label.confidence")}</span>
                 <div className="flex gap-1">
                   {[...Array(5)].map((_, i) => (
                     <div
@@ -206,7 +206,7 @@ export function OEEDeepDive() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-gray-900">OEE Deep Dive Dashboard</h1>
+                <h1 className="text-2xl font-bold text-gray-900">{t("oEEDeepDive.label.oee_deep_dive_dashboard")}</h1>
                 <ScreenStatusBadge phase="MOCK" />
               </div>
               <p className="text-sm text-gray-600 mt-1">
@@ -251,9 +251,9 @@ export function OEEDeepDive() {
               onChange={(e) => setShift(e.target.value as ShiftType)}
               className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
             >
-              <option value="all">All Shifts</option>
-              <option value="day">Day Shift</option>
-              <option value="night">Night Shift</option>
+              <option value="all">{t("oEEDeepDive.label.all_shifts")}</option>
+              <option value="day">{t("oEEDeepDive.label.day_shift")}</option>
+              <option value="night">{t("oEEDeepDive.label.night_shift")}</option>
             </select>
 
             {/* Line Selector */}
@@ -262,12 +262,12 @@ export function OEEDeepDive() {
               onChange={(e) => setSelectedLines([e.target.value])}
               className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
             >
-              <option value="all">All Lines</option>
-              <option value="line1">Line 1</option>
-              <option value="line2">Line 2</option>
-              <option value="line3">Line 3</option>
-              <option value="line4">Line 4</option>
-              <option value="line5">Line 5</option>
+              <option value="all">{t("oEEDeepDive.label.all_lines")}</option>
+              <option value="line1">{t("oEEDeepDive.label.line_1")}</option>
+              <option value="line2">{t("oEEDeepDive.label.line_2")}</option>
+              <option value="line3">{t("oEEDeepDive.label.line_3")}</option>
+              <option value="line4">{t("oEEDeepDive.label.line_4")}</option>
+              <option value="line5">{t("oEEDeepDive.label.line_5")}</option>
             </select>
 
             {/* Active Filter Badge */}
@@ -301,11 +301,11 @@ export function OEEDeepDive() {
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
               <div>
-                <h3 className="text-sm font-semibold text-red-900">OEE Alert: Line 3 downtime exceeded 30 minutes</h3>
-                <p className="text-sm text-red-700 mt-1">Equipment failure detected. Maintenance team notified.</p>
+                <h3 className="text-sm font-semibold text-red-900">{t("oEEDeepDive.label.oee_alert_line_3_downtime_exceeded_30_mi")}</h3>
+                <p className="text-sm text-red-700 mt-1">{t("oEEDeepDive.label.equipment_failure_detected_maintenance_t")}</p>
                 <div className="flex items-center gap-3 mt-2">
-                  <button className="text-sm font-medium text-red-700 hover:text-red-900">View Details</button>
-                  <button className="text-sm font-medium text-red-700 hover:text-red-900">Snooze 15 min</button>
+                  <button className="text-sm font-medium text-red-700 hover:text-red-900">{t("oEEDeepDive.label.view_details")}</button>
+                  <button className="text-sm font-medium text-red-700 hover:text-red-900">{t("oEEDeepDive.label.snooze_15_min")}</button>
                 </div>
               </div>
             </div>
@@ -318,28 +318,28 @@ export function OEEDeepDive() {
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <KPICard
-            title="Overall OEE"
+            title={t("oEEDeepDive.tooltip.overall_oee")}
             value={currentMetrics.oee}
             trend={currentMetrics.trends.oee}
             icon={Activity}
             color="text-purple-600"
           />
           <KPICard
-            title="Availability"
+            title={t("oEEDeepDive.tooltip.availability")}
             value={currentMetrics.availability}
             trend={currentMetrics.trends.availability}
             icon={Clock}
             color="text-blue-600"
           />
           <KPICard
-            title="Performance"
+            title={t("oEEDeepDive.tooltip.performance")}
             value={currentMetrics.performance}
             trend={currentMetrics.trends.performance}
             icon={Zap}
             color="text-green-600"
           />
           <KPICard
-            title="Quality"
+            title={t("oEEDeepDive.tooltip.quality")}
             value={currentMetrics.quality}
             trend={currentMetrics.trends.quality}
             icon={CheckCircle}
@@ -351,13 +351,13 @@ export function OEEDeepDive() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <AIInsightCard
             icon={Sparkles}
-            title="AI Insight - Biggest OEE Impact Today"
+            title={t("oEEDeepDive.tooltip.ai_insight_biggest_oee_impact_today")}
             confidence="High"
             content={
               <div className="space-y-2">
-                <p className="font-semibold text-purple-900">Equipment Failure – 48 min</p>
-                <p className="text-sm text-gray-600">Impact: -5.2% OEE</p>
-                <p className="text-sm text-gray-600">Suggested focus: <span className="font-medium">Line 3</span></p>
+                <p className="font-semibold text-purple-900">{t("oEEDeepDive.label.equipment_failure_48_min")}</p>
+                <p className="text-sm text-gray-600">{t("oEEDeepDive.label.impact_52_oee")}</p>
+                <p className="text-sm text-gray-600">{t("oEEDeepDive.label.suggested_focus")} <span className="font-medium">{t("oEEDeepDive.label.line_3")}</span></p>
                 <div className="flex gap-2 mt-3">
                   <button className="text-xs px-3 py-1.5 bg-purple-600 text-white rounded hover:bg-purple-700">
                     🔧 Create Work Order
@@ -371,37 +371,37 @@ export function OEEDeepDive() {
           />
           <AIInsightCard
             icon={Target}
-            title="AI Prediction - Next Shift OEE Risk"
+            title={t("oEEDeepDive.tooltip.ai_prediction_next_shift_oee_risk")}
             content={
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded">Medium Risk</span>
-                  <span className="text-xs text-gray-600">Next shift: 2:00 PM - 10:00 PM</span>
+                  <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded">{t("oEEDeepDive.label.medium_risk")}</span>
+                  <span className="text-xs text-gray-600">{t("oEEDeepDive.label.next_shift_200_pm_1000_pm")}</span>
                 </div>
-                <p className="text-sm font-medium text-gray-900 mt-3">Reasons:</p>
+                <p className="text-sm font-medium text-gray-900 mt-3">{t("oEEDeepDive.label.reasons")}</p>
                 <ul className="text-sm text-gray-700 space-y-1 list-disc list-inside">
-                  <li>High downtime frequency</li>
-                  <li>Slow recovery after stops</li>
+                  <li>{t("oEEDeepDive.label.high_downtime_frequency")}</li>
+                  <li>{t("oEEDeepDive.label.slow_recovery_after_stops")}</li>
                 </ul>
-                <p className="text-sm font-medium text-purple-900 mt-3">💡 Recommended actions:</p>
+                <p className="text-sm font-medium text-purple-900 mt-3">{t("oEEDeepDive.label._recommended_actions")}</p>
                 <ul className="text-xs text-gray-600 space-y-1 list-disc list-inside">
-                  <li>Pre-position maintenance team</li>
-                  <li>Check spare parts availability</li>
+                  <li>{t("oEEDeepDive.label.preposition_maintenance_team")}</li>
+                  <li>{t("oEEDeepDive.label.check_spare_parts_availability")}</li>
                 </ul>
               </div>
             }
           />
           <AIInsightCard
             icon={Lightbulb}
-            title="What If... (AI Estimation)"
+            title={t("oEEDeepDive.tooltip.what_if_ai_estimation")}
             content={
               <div className="space-y-2">
-                <p className="text-sm text-gray-700">Reduce <span className="font-semibold">setup loss by 10%</span></p>
+                <p className="text-sm text-gray-700">{t("oEEDeepDive.label.reduce")} <span className="font-semibold">{t("oEEDeepDive.label.setup_loss_by_10")}</span></p>
                 <div className="flex items-center gap-2 mt-2">
-                  <span className="text-2xl font-bold text-purple-900">+3.4%</span>
-                  <span className="text-sm text-gray-600">OEE gain</span>
+                  <span className="text-2xl font-bold text-purple-900">{t("oEEDeepDive.label.34")}</span>
+                  <span className="text-sm text-gray-600">{t("oEEDeepDive.label.oee_gain")}</span>
                 </div>
-                <p className="text-xs text-gray-600 mt-2">New projected OEE: <span className="font-semibold">88.6%</span></p>
+                <p className="text-xs text-gray-600 mt-2">{t("oEEDeepDive.label.new_projected_oee")} <span className="font-semibold">{t("oEEDeepDive.label.886")}</span></p>
                 <div className="flex gap-2 mt-3">
                   <button className="text-xs px-3 py-1.5 bg-purple-100 text-purple-700 rounded hover:bg-purple-200">
                     🎯 Simulate 20%
@@ -460,7 +460,7 @@ export function OEEDeepDive() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Downtime Pareto */}
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Downtime Causes - This Week</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">{t("oEEDeepDive.label.top_downtime_causes_this_week")}</h2>
             <ResponsiveContainer width="100%" height={300}>
               <ComposedChart data={downtimeData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -488,13 +488,13 @@ export function OEEDeepDive() {
               </ComposedChart>
             </ResponsiveContainer>
             <div className="mt-3 text-sm text-gray-600 text-center">
-              <span className="font-medium text-orange-600">80%</span> of losses from top 3 causes (Pareto Rule)
+              <span className="font-medium text-orange-600">{t("oEEDeepDive.label.80")}</span> of losses from top 3 causes (Pareto Rule)
             </div>
           </div>
 
           {/* OEE Trend */}
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">OEE Trend - Last 30 Days</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">{t("oEEDeepDive.label.oee_trend_last_30_days")}</h2>
             <ResponsiveContainer width="100%" height={300}>
               <ComposedChart data={trendData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -557,7 +557,7 @@ export function OEEDeepDive() {
         {/* Line Comparison Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="px-6 py-4 border-b">
-            <h2 className="text-lg font-semibold text-gray-900">Production Lines Comparison - Today</h2>
+            <h2 className="text-lg font-semibold text-gray-900">{t("oEEDeepDive.label.production_lines_comparison_today")}</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">

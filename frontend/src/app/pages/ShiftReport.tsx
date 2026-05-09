@@ -58,7 +58,7 @@ export function ShiftReport() {
               <Clock className="w-3 h-3" />
               {label}
             </div>
-            <div className="text-2xl font-bold text-slate-600">—</div>
+            <div className="text-2xl font-bold text-slate-600">{t("common.na")}</div>
           </div>
         ))}
       </div>

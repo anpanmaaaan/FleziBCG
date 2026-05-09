@@ -140,7 +140,7 @@ export function DispatchQueue() {
       <div className="flex-1 flex flex-col p-6">
         {/* Page header with status badge */}
         <div className="flex items-center gap-3 mb-6">
-          <h1 className="text-2xl font-bold">Dispatch Queue</h1>
+          <h1 className="text-2xl font-bold">{t("dispatchQueue.label.dispatch_queue")}</h1>
           <ScreenStatusBadge phase="MOCK" />
         </div>
 
@@ -179,7 +179,7 @@ export function DispatchQueue() {
               disabled
               onClick={() => toast.info(t("dispatch.toast.comingSoon"))}
               className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed"
-              title="Resequence is not available for mock data"
+              title={t("common.notice.mockUnavailable")}
             >
               {t("dispatch.action.resequence")}
             </button>
@@ -260,7 +260,7 @@ export function DispatchQueue() {
                           disabled
                           onClick={() => handleStart(item)}
                           className="p-2 text-gray-400 cursor-not-allowed"
-                          title="This action is not available for mock data"
+                          title={t("common.notice.mockUnavailable")}
                         >
                           <Lock className="w-4 h-4" />
                         </button>
@@ -270,7 +270,7 @@ export function DispatchQueue() {
                           disabled
                           onClick={() => handlePause(item)}
                           className="p-2 text-gray-400 cursor-not-allowed"
-                          title="This action is not available for mock data"
+                          title={t("common.notice.mockUnavailable")}
                         >
                           <Lock className="w-4 h-4" />
                         </button>
@@ -279,7 +279,7 @@ export function DispatchQueue() {
                         disabled
                         onClick={() => handleRemove(item)}
                         className="p-2 text-gray-400 cursor-not-allowed"
-                        title="This action is not available for mock data"
+                        title={t("common.notice.mockUnavailable")}
                       >
                         <Lock className="w-4 h-4" />
                       </button>

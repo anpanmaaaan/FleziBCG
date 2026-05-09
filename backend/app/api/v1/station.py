@@ -4,12 +4,15 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.schemas.operation import OperationDetail
 from app.schemas.station import (
+    LineMonitorResponse,
+    LineMonitorStationItem,
     StationQueueItem,
     StationQueueResponse,
 )
 from app.security.dependencies import RequestIdentity, require_authenticated_identity
 from app.services.operation_service import derive_operation_detail
 from app.services.station_queue_service import (
+    get_line_monitor_projection,
     get_station_scoped_operation,
     get_station_queue,
 )
@@ -57,3 +60,19 @@ def get_station_operation_detail(
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/line-monitor", response_model=LineMonitorResponse)
+def read_line_monitor_projection(
+    line_code: str | None = None,
+    db: Session = Depends(get_db),
+    identity: RequestIdentity = Depends(require_authenticated_identity),
+):
+    items = get_line_monitor_projection(
+        db,
+        identity,
+        line_code=line_code,
+    )
+    return LineMonitorResponse(
+        items=[LineMonitorStationItem.model_validate(item) for item in items]
+    )

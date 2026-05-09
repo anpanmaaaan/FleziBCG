@@ -402,13 +402,13 @@ export function GlobalOperationList() {
   return (
     <div className="h-full flex flex-col bg-white">
       <PageHeader
-        title="Execution - Operations"
+        title={t("globalOperationList.tooltip.execution_operations")}
         subtitle={subtitle}
         breadcrumb={
           <div className="flex items-center gap-2 text-sm text-gray-500">
-            <span>Execution</span>
+            <span>{t("globalOperationList.label.execution")}</span>
             <span>{">"}</span>
-            <span className="font-medium text-gray-700">Operations</span>
+            <span className="font-medium text-gray-700">{t("globalOperationList.label.operations")}</span>
           </div>
         }
       />
@@ -424,7 +424,7 @@ export function GlobalOperationList() {
         {loading && (
           <div className="text-center py-12">
             <Clock className="w-12 h-12 mx-auto mb-3 text-blue-500 animate-spin" style={{ animationDuration: "2s" }} />
-            <div className="text-lg font-medium text-gray-600">Loading operations...</div>
+            <div className="text-lg font-medium text-gray-600">{t("globalOperationList.label.loading_operations")}</div>
           </div>
         )}
 
@@ -433,7 +433,7 @@ export function GlobalOperationList() {
             <div className="flex gap-3">
               <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-semibold text-red-900">Failed to load operations</h3>
+                <h3 className="font-semibold text-red-900">{t("globalOperationList.label.failed_to_load_operations")}</h3>
                 <p className="text-red-700 text-sm mt-1">{error}</p>
               </div>
             </div>
@@ -443,12 +443,12 @@ export function GlobalOperationList() {
         {!loading && !error && (
           <>
             <div className="grid grid-cols-4 gap-4 mb-6">
-              <StatsCard title="Total Operations" value={stats.total} color="blue" />
+              <StatsCard title={t("globalOperationList.tooltip.total_operations")} value={stats.total} color="blue" />
               {selectedLens === "SUPERVISOR" || selectedLens === "QC" ? (
                 <>
                   <StatsCard title={t("operations.supervisor.stats.blocked", "Blocked")} value={stats.blocked} color="red" icon={AlertTriangle} />
                   <StatsCard title={t("operations.supervisor.stats.delayed", "Delayed")} value={stats.delayed} color="yellow" icon={Clock} />
-                  <StatsCard title="In Progress" value={stats.inProgress} color="purple" icon={CheckCircle} />
+                  <StatsCard title={t("globalOperationList.tooltip.in_progress")} value={stats.inProgress} color="purple" icon={CheckCircle} />
                 </>
               ) : (
                 <>
@@ -505,7 +505,7 @@ export function GlobalOperationList() {
                         {t("operations.supervisor.filter.default", "Supervisor Default (Blocked, Delayed, In Progress)")}
                       </option>
                     )}
-                    <option value="all">All Statuses</option>
+                    <option value="all">{t("globalOperationList.label.all_statuses")}</option>
                     {(selectedLens === "SUPERVISOR" || selectedLens === "QC") && (
                       <option value="BLOCKED">{t("operations.supervisor.status.blocked", "Blocked")}</option>
                     )}
@@ -523,7 +523,7 @@ export function GlobalOperationList() {
                     onChange={(event) => setSelectedProductionOrderId(event.target.value)}
                     className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
                   >
-                    <option value="all">All Production Orders</option>
+                    <option value="all">{t("globalOperationList.label.all_production_orders")}</option>
                     {productionOrderFilters.map((productionOrder) => (
                       <option key={productionOrder.id} value={productionOrder.id}>
                         {productionOrder.label}
@@ -624,7 +624,7 @@ export function GlobalOperationList() {
                           </span>
                         )}
                         {operation.qcRiskFlag && (
-                          <span className="px-2 py-1 rounded-full bg-orange-100 text-orange-700">QC Risk</span>
+                          <span className="px-2 py-1 rounded-full bg-orange-100 text-orange-700">{t("globalOperationList.label.qc_risk")}</span>
                         )}
                         {operation.workCenter && (
                           <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700">WC: {operation.workCenter}</span>
@@ -634,7 +634,7 @@ export function GlobalOperationList() {
 
                     <div className="flex-shrink-0">
                       <div className="flex items-center gap-2 text-gray-400 group-hover:text-blue-600 transition-colors">
-                        <span className="text-sm font-medium">View Detail</span>
+                        <span className="text-sm font-medium">{t("globalOperationList.label.view_detail")}</span>
                         <ChevronRight className="w-4 h-4" />
                       </div>
                     </div>
@@ -675,7 +675,7 @@ export function GlobalOperationList() {
                               )}
                             </div>
                             <div className="text-sm text-gray-400 group-hover:text-blue-600 transition-colors flex items-center gap-1">
-                              <span>View Detail</span>
+                              <span>{t("globalOperationList.label.view_detail")}</span>
                               <ChevronRight className="w-4 h-4" />
                             </div>
                           </div>
@@ -690,8 +690,8 @@ export function GlobalOperationList() {
             {sortedOperations.length === 0 && (
               <div className="text-center py-12 text-gray-500">
                 <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <div className="text-lg font-medium mb-1">No operations found</div>
-                <div className="text-sm">Try adjusting filters or search criteria</div>
+                <div className="text-lg font-medium mb-1">{t("globalOperationList.label.no_operations_found")}</div>
+                <div className="text-sm">{t("globalOperationList.label.try_adjusting_filters_or_search_criteria")}</div>
               </div>
             )}
           </>

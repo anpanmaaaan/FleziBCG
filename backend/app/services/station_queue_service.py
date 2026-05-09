@@ -7,7 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.master import Operation, ProductionOrder, StatusEnum, WorkOrder
+from app.models.plant_hierarchy import Line, Station
 from app.models.rbac import Role, Scope, UserRoleAssignment
+from app.models.station_session import StationSession
 from app.repositories.station_session_repository import (
     get_active_station_session_for_station,
 )
@@ -213,3 +215,160 @@ def get_station_queue(db: Session, identity: RequestIdentity) -> tuple[str, list
         )
 
     return station_scope.scope_value, items
+
+
+def get_line_monitor_projection(
+    db: Session,
+    identity: RequestIdentity,
+    *,
+    line_code: str | None = None,
+) -> list[dict]:
+    active_queue_statuses = {
+        StatusEnum.planned.value,
+        StatusEnum.in_progress.value,
+        StatusEnum.paused.value,
+        StatusEnum.blocked.value,
+    }
+
+    operations = list(
+        db.scalars(
+            select(Operation)
+            .where(Operation.tenant_id == identity.tenant_id)
+            .order_by(
+                Operation.planned_start.asc().nullslast(),
+                Operation.id.asc(),
+            )
+        )
+    )
+    operation_ids = [operation.id for operation in operations]
+    runtime_projection_by_operation_id = derive_operation_runtime_projection_for_ids(
+        db,
+        tenant_id=identity.tenant_id,
+        operation_ids=operation_ids,
+    )
+
+    station_rows: dict[str, list[tuple[Operation, str, bool]]] = {}
+    for operation in operations:
+        station_id = (operation.station_scope_value or "").strip()
+        if not station_id:
+            continue
+        runtime_projection = runtime_projection_by_operation_id.get(operation.id)
+        if runtime_projection is None:
+            continue
+        if runtime_projection.status not in active_queue_statuses:
+            continue
+        station_rows.setdefault(station_id, []).append(
+            (operation, runtime_projection.status, runtime_projection.downtime_open)
+        )
+
+    if not station_rows:
+        return []
+
+    station_ids = list(station_rows.keys())
+
+    station_metadata_rows = db.execute(
+        select(
+            Station.station_id,
+            Station.station_name,
+            Line.line_code,
+            Line.line_name,
+        )
+        .join(Line, Line.line_id == Station.line_id)
+        .where(
+            Station.tenant_id == identity.tenant_id,
+            Station.station_id.in_(station_ids),
+            Line.tenant_id == identity.tenant_id,
+        )
+    ).all()
+    station_metadata_by_station_id = {
+        station_id: {
+            "station_name": station_name,
+            "line_code": line_code_value,
+            "line_name": line_name,
+        }
+        for station_id, station_name, line_code_value, line_name in station_metadata_rows
+    }
+
+    open_session_rows = db.execute(
+        select(StationSession.station_id, StationSession.operator_user_id).where(
+            StationSession.tenant_id == identity.tenant_id,
+            StationSession.station_id.in_(station_ids),
+            StationSession.status == "OPEN",
+            StationSession.closed_at.is_(None),
+        )
+    ).all()
+    operator_by_station_id: dict[str, str | None] = {}
+    for station_id, operator_user_id in open_session_rows:
+        operator_by_station_id[station_id] = operator_user_id
+
+    normalized_line_code = (line_code or "").strip().upper()
+    status_priority = {
+        "BLOCKED": 0,
+        "DOWNTIME": 1,
+        "RUNNING": 2,
+        "IDLE": 3,
+    }
+
+    def _derive_station_status(rows: list[tuple[Operation, str, bool]]) -> str:
+        if any(runtime_status == StatusEnum.blocked.value and operation.status == StatusEnum.blocked.value for operation, runtime_status, _ in rows):
+            return "BLOCKED"
+        if any(downtime_open for _, _, downtime_open in rows):
+            return "DOWNTIME"
+        if any(runtime_status == StatusEnum.in_progress.value for _, runtime_status, _ in rows):
+            return "RUNNING"
+        return "IDLE"
+
+    projection_items: list[dict] = []
+    for station_id, rows in station_rows.items():
+        metadata = station_metadata_by_station_id.get(station_id)
+        resolved_line_code = (
+            metadata["line_code"] if metadata is not None else "UNASSIGNED"
+        )
+        if normalized_line_code and resolved_line_code.upper() != normalized_line_code:
+            continue
+
+        station_status = _derive_station_status(rows)
+        sorted_rows = sorted(
+            rows,
+            key=lambda row: (
+                status_priority.get(
+                    "BLOCKED"
+                    if row[1] == StatusEnum.blocked.value and row[0].status == StatusEnum.blocked.value
+                    else "DOWNTIME"
+                    if row[2]
+                    else "RUNNING"
+                    if row[1] == StatusEnum.in_progress.value
+                    else "IDLE",
+                    99,
+                ),
+                row[0].planned_start or datetime.max,
+                row[0].id,
+            ),
+        )
+        current_operation = sorted_rows[0][0]
+
+        projection_items.append(
+            {
+                "station_id": station_id,
+                "station_name": (
+                    metadata["station_name"] if metadata is not None else station_id
+                ),
+                "line_code": resolved_line_code,
+                "line_name": metadata["line_name"] if metadata is not None else None,
+                "status": station_status,
+                "operator_user_id": operator_by_station_id.get(station_id),
+                "current_operation_id": current_operation.id,
+                "current_operation_number": current_operation.operation_number,
+                "current_operation_name": current_operation.name,
+                "wip_count": len(rows),
+                "downtime_open": any(downtime_open for _, _, downtime_open in rows),
+            }
+        )
+
+    projection_items.sort(
+        key=lambda item: (
+            item["line_code"],
+            item["station_id"],
+        )
+    )
+    return projection_items

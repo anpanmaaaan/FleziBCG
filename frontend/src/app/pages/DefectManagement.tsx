@@ -1,411 +1,390 @@
-import { useState, useMemo } from "react";
-import { Search, Plus, AlertTriangle, CheckCircle, Clock, XCircle, Filter, Lock } from "lucide-react";
-import { toast } from "sonner";
-import { MockWarningBanner, ScreenStatusBadge } from "@/app/components";
+import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, CheckCircle, Clock, Plus, RefreshCw } from "lucide-react";
+import { ScreenStatusBadge } from "@/app/components";
+import {
+  HttpError,
+  qualityApi,
+  type QualityNonconformanceCreateRequest,
+  type QualityNonconformanceItem,
+} from "@/app/api";
 import { useI18n } from "@/app/i18n";
 
-interface Defect {
-  id: string;
-  defect_no: string;
-  wo_id: string;
-  product_id: string;
-  product_name: string;
-  serial_no?: string;
-  station_id: string;
-  station_name: string;
-  operator_id: string;
-  defect_type: 'Dimensional' | 'Visual' | 'Assembly' | 'Material' | 'Process';
-  severity: 'Critical' | 'Major' | 'Minor';
-  description: string;
-  root_cause?: string;
-  detected_at: string;
-  status: 'Open' | 'In Repair' | 'Repaired' | 'Verified' | 'Rejected' | 'Scrapped';
-  assigned_to?: string;
-  resolution_time?: number; // minutes
-  repair_station?: string;
+const EMPTY_FORM: QualityNonconformanceCreateRequest = {
+  operation_id: 0,
+  nc_code: "",
+  severity: "MAJOR",
+  description: "",
+};
+
+function defectSeverityKey(severity: string) {
+  switch (severity) {
+    case "CRITICAL":
+      return "defects.filter.severity.critical";
+    case "MAJOR":
+      return "defects.filter.severity.major";
+    case "MINOR":
+      return "defects.filter.severity.minor";
+    default:
+      return null;
+  }
 }
 
-const mockDefects: Defect[] = [
-  {
-    id: 'DEF-001',
-    defect_no: 'DEF-2024-001',
-    wo_id: 'WO-2024-001',
-    product_id: 'PROD-001',
-    product_name: 'Engine Block',
-    serial_no: 'SN-001234',
-    station_id: 'ST-01',
-    station_name: 'Machining Center 1',
-    operator_id: 'OP-123',
-    defect_type: 'Dimensional',
-    severity: 'Critical',
-    description: 'Bore diameter out of tolerance: 50.10mm (spec: 50.00±0.05mm)',
-    root_cause: 'Tool wear detected',
-    detected_at: '2024-04-15 08:30',
-    status: 'In Repair',
-    assigned_to: 'OP-456',
-    repair_station: 'REPAIR-01',
-  },
-  {
-    id: 'DEF-002',
-    defect_no: 'DEF-2024-002',
-    wo_id: 'WO-2024-003',
-    product_id: 'PROD-003',
-    product_name: 'Cylinder Head',
-    serial_no: 'SN-001235',
-    station_id: 'ST-02',
-    station_name: 'Assembly Line 1',
-    operator_id: 'OP-124',
-    defect_type: 'Assembly',
-    severity: 'Major',
-    description: 'Missing bolt at position A3',
-    detected_at: '2024-04-15 09:15',
-    status: 'Open',
-  },
-  {
-    id: 'DEF-003',
-    defect_no: 'DEF-2024-003',
-    wo_id: 'WO-2024-002',
-    product_id: 'PROD-002',
-    product_name: 'Transmission Housing',
-    serial_no: 'SN-001236',
-    station_id: 'ST-03',
-    station_name: 'Grinding Station',
-    operator_id: 'OP-125',
-    defect_type: 'Visual',
-    severity: 'Minor',
-    description: 'Surface scratch detected, length 5mm',
-    detected_at: '2024-04-15 10:00',
-    status: 'Repaired',
-    assigned_to: 'OP-789',
-    repair_station: 'REPAIR-02',
-    resolution_time: 45,
-  },
-  {
-    id: 'DEF-004',
-    defect_no: 'DEF-2024-004',
-    wo_id: 'WO-2024-005',
-    product_id: 'PROD-004',
-    product_name: 'Camshaft',
-    serial_no: 'SN-001237',
-    station_id: 'ST-04',
-    station_name: 'Heat Treatment',
-    operator_id: 'OP-126',
-    defect_type: 'Material',
-    severity: 'Critical',
-    description: 'Material hardness below specification',
-    root_cause: 'Incorrect heat treatment temperature',
-    detected_at: '2024-04-15 11:20',
-    status: 'Scrapped',
-  },
-  {
-    id: 'DEF-005',
-    defect_no: 'DEF-2024-005',
-    wo_id: 'WO-2024-006',
-    product_id: 'PROD-001',
-    product_name: 'Engine Block',
-    serial_no: 'SN-001238',
-    station_id: 'ST-05',
-    station_name: 'Final Inspection',
-    operator_id: 'QC-001',
-    defect_type: 'Process',
-    severity: 'Major',
-    description: 'Torque verification failed on 3 bolts',
-    detected_at: '2024-04-15 12:00',
-    status: 'Verified',
-    assigned_to: 'OP-456',
-    repair_station: 'REPAIR-01',
-    resolution_time: 30,
-  },
-];
+function defectStatusKey(status: string) {
+  switch (status) {
+    case "OPEN":
+      return "defects.status.open";
+    case "UNDER_REVIEW":
+      return "defects.status.underReview";
+    case "DISPOSITIONED":
+      return "defects.status.dispositioned";
+    case "CLOSED":
+      return "defects.status.closed";
+    default:
+      return null;
+  }
+}
 
 export function DefectManagement() {
   const { t } = useI18n();
-  const [defects, setDefects] = useState(mockDefects);
-  const [searchValue, setSearchValue] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterSeverity, setFilterSeverity] = useState<string>('all');
-  const [filterType, setFilterType] = useState<string>('all');
+  const [defects, setDefects] = useState<QualityNonconformanceItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [form, setForm] = useState<QualityNonconformanceCreateRequest>(EMPTY_FORM);
+  const [searchValue, setSearchValue] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterSeverity, setFilterSeverity] = useState("all");
+
+  const loadDefects = async (silent = false) => {
+    setError(null);
+    if (silent) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      const response = await qualityApi.listNonconformances();
+      setDefects(response);
+    } catch (err) {
+      if (err instanceof HttpError) {
+        setError(typeof err.detail === "string" ? err.detail : t("defects.error.loadFailed"));
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError(t("defects.error.loadFailed"));
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadDefects();
+  }, []);
 
   const filteredDefects = useMemo(() => {
-    let filtered = defects;
+    return defects
+      .filter((item) => {
+        if (filterStatus !== "all" && item.status !== filterStatus) {
+          return false;
+        }
+        if (filterSeverity !== "all" && item.severity !== filterSeverity) {
+          return false;
+        }
+        if (!searchValue.trim()) {
+          return true;
+        }
 
-    if (filterStatus !== 'all') {
-      filtered = filtered.filter(d => d.status === filterStatus);
-    }
+        const q = searchValue.toLowerCase();
+        return (
+          item.nc_code.toLowerCase().includes(q)
+          || item.description.toLowerCase().includes(q)
+          || String(item.operation_id).includes(q)
+        );
+      })
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [defects, filterSeverity, filterStatus, searchValue]);
 
-    if (filterSeverity !== 'all') {
-      filtered = filtered.filter(d => d.severity === filterSeverity);
-    }
+  const statuses = useMemo(
+    () => Array.from(new Set(defects.map((item) => item.status))).sort(),
+    [defects]
+  );
 
-    if (filterType !== 'all') {
-      filtered = filtered.filter(d => d.defect_type === filterType);
-    }
+  const severities = useMemo(
+    () => Array.from(new Set(defects.map((item) => item.severity))).sort(),
+    [defects]
+  );
 
-    if (searchValue) {
-      filtered = filtered.filter(d =>
-        d.defect_no.toLowerCase().includes(searchValue.toLowerCase()) ||
-        d.product_name.toLowerCase().includes(searchValue.toLowerCase()) ||
-        d.description.toLowerCase().includes(searchValue.toLowerCase()) ||
-        d.serial_no?.toLowerCase().includes(searchValue.toLowerCase())
-      );
-    }
-
-    return filtered.sort((a, b) => new Date(b.detected_at).getTime() - new Date(a.detected_at).getTime());
-  }, [defects, filterStatus, filterSeverity, filterType, searchValue]);
+  const stats = useMemo(
+    () => ({
+      open: defects.filter((item) => item.status === "OPEN").length,
+      dispositioned: defects.filter((item) => item.status === "DISPOSITIONED").length,
+      critical: defects.filter((item) => item.severity === "CRITICAL").length,
+      total: defects.length,
+    }),
+    [defects]
+  );
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Open': return 'bg-red-100 text-red-800';
-      case 'In Repair': return 'bg-yellow-100 text-yellow-800';
-      case 'Repaired': return 'bg-blue-100 text-blue-800';
-      case 'Verified': return 'bg-green-100 text-green-800';
-      case 'Rejected': return 'bg-purple-100 text-purple-800';
-      case 'Scrapped': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+    if (status === "OPEN") {
+      return "bg-red-100 text-red-800";
     }
+    if (status === "DISPOSITIONED") {
+      return "bg-green-100 text-green-800";
+    }
+    if (status === "UNDER_REVIEW") {
+      return "bg-yellow-100 text-yellow-800";
+    }
+    if (status === "CLOSED") {
+      return "bg-gray-100 text-gray-800";
+    }
+    return "bg-gray-100 text-gray-700";
   };
 
   const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'Critical': return 'bg-red-100 text-red-800';
-      case 'Major': return 'bg-orange-100 text-orange-800';
-      case 'Minor': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+    if (severity === "CRITICAL") {
+      return "bg-red-100 text-red-800";
     }
+    if (severity === "MAJOR") {
+      return "bg-orange-100 text-orange-800";
+    }
+    if (severity === "MINOR") {
+      return "bg-yellow-100 text-yellow-800";
+    }
+    return "bg-gray-100 text-gray-700";
   };
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'Dimensional': return 'bg-blue-100 text-blue-800';
-      case 'Visual': return 'bg-purple-100 text-purple-800';
-      case 'Assembly': return 'bg-green-100 text-green-800';
-      case 'Material': return 'bg-red-100 text-red-800';
-      case 'Process': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const submitCreate = async () => {
+    if (!form.operation_id || !form.nc_code.trim() || !form.description.trim()) {
+      setError(t("defects.error.invalidForm"));
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      await qualityApi.createNonconformance({
+        ...form,
+        nc_code: form.nc_code.trim(),
+        description: form.description.trim(),
+      });
+      setForm(EMPTY_FORM);
+      setShowCreateForm(false);
+      await loadDefects(true);
+    } catch (err) {
+      if (err instanceof HttpError) {
+        setError(typeof err.detail === "string" ? err.detail : t("defects.error.createFailed"));
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError(t("defects.error.createFailed"));
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
-
-  const stats = useMemo(() => ({
-    open: defects.filter(d => d.status === 'Open').length,
-    inRepair: defects.filter(d => d.status === 'In Repair').length,
-    critical: defects.filter(d => d.severity === 'Critical').length,
-    avgResolutionTime: Math.round(
-      defects.filter(d => d.resolution_time).reduce((acc, d) => acc + (d.resolution_time || 0), 0) /
-      defects.filter(d => d.resolution_time).length
-    ) || 0,
-  }), [defects]);
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      <MockWarningBanner phase="MOCK" note="Defect records are not yet connected to backend truth. Use this for visualization only." />
-      <div className="flex-1 flex flex-col p-6">
-        {/* Page header with status badge */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">Defect Management</h1>
-            <ScreenStatusBadge phase="MOCK" />
-          </div>
+    <div className="flex flex-col gap-4 p-4">
+      <div className="flex items-center gap-3">
+        <h1 className="text-2xl font-semibold text-gray-900">{t("defects.title")}</h1>
+        <ScreenStatusBadge phase="CONNECTED" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+          <div className="mb-1 text-xs text-red-600">{t("defects.stats.openDefects")}</div>
+          <div className="text-2xl font-bold text-red-800">{stats.open}</div>
         </div>
-
-        {/* Filters */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search defects..."
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring w-80"
-              />
-            </div>
-
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
-            >
-              <option value="all">All Status</option>
-              <option value="Open">Open</option>
-              <option value="In Repair">In Repair</option>
-              <option value="Repaired">Repaired</option>
-              <option value="Verified">Verified</option>
-              <option value="Rejected">Rejected</option>
-              <option value="Scrapped">Scrapped</option>
-            </select>
-
-            <select
-              value={filterSeverity}
-              onChange={(e) => setFilterSeverity(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
-            >
-              <option value="all">All Severity</option>
-              <option value="Critical">Critical</option>
-              <option value="Major">Major</option>
-              <option value="Minor">Minor</option>
-            </select>
-
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
-            >
-              <option value="all">All Types</option>
-              <option value="Dimensional">Dimensional</option>
-              <option value="Visual">Visual</option>
-              <option value="Assembly">Assembly</option>
-              <option value="Material">Material</option>
-              <option value="Process">Process</option>
-            </select>
-
-            <div className="text-sm text-gray-600">
-              Total: <strong>{filteredDefects.length}</strong> defects
-            </div>
-          </div>
-
-          <button
-            disabled
-            onClick={() => toast.info('Record Defect feature coming soon')}
-            className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-2"
-            title="This action is not available for mock data"
-          >
-            <Lock className="w-4 h-4" />
-            Record Defect (Future)
-          </button>
+        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+          <div className="mb-1 text-xs text-yellow-600">{t("defects.stats.dispositioned")}</div>
+          <div className="text-2xl font-bold text-yellow-800">{stats.dispositioned}</div>
         </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-red-600 font-medium">Open Defects</div>
-                <div className="text-2xl font-bold text-red-800">{stats.open}</div>
-              </div>
-              <AlertTriangle className="w-8 h-8 text-red-500" />
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg border border-yellow-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-yellow-600 font-medium">In Repair</div>
-                <div className="text-2xl font-bold text-yellow-800">{stats.inRepair}</div>
-              </div>
-              <Clock className="w-8 h-8 text-yellow-500" />
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-orange-600 font-medium">Critical</div>
-                <div className="text-2xl font-bold text-orange-800">{stats.critical}</div>
-              </div>
-              <XCircle className="w-8 h-8 text-orange-500" />
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-blue-600 font-medium">Avg Resolution</div>
-                <div className="text-2xl font-bold text-blue-800">{stats.avgResolutionTime} min</div>
-              </div>
-              <CheckCircle className="w-8 h-8 text-blue-500" />
-            </div>
-          </div>
+        <div className="rounded-lg border border-orange-200 bg-orange-50 p-3">
+          <div className="mb-1 text-xs text-orange-600">{t("defects.stats.critical")}</div>
+          <div className="text-2xl font-bold text-orange-800">{stats.critical}</div>
         </div>
-
-        {/* Table */}
-        <div className="flex-1 overflow-auto border rounded-lg">
-          <table className="w-full">
-            <thead className="bg-gray-50 sticky top-0 z-10">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Defect No
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Product / Serial
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Station
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Severity
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Description
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Detected
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Assigned To
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-background divide-y divide-surface-divider">
-              {filteredDefects.map((defect) => (
-                <tr key={defect.id} className="hover:bg-gray-50 cursor-pointer">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="font-medium text-blue-600">{defect.defect_no}</div>
-                    <div className="text-sm text-gray-500">{defect.wo_id}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="font-medium">{defect.product_name}</div>
-                    <div className="text-sm text-gray-500 font-mono">{defect.serial_no || '-'}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div>{defect.station_id}</div>
-                    <div className="text-sm text-gray-500">{defect.station_name}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(defect.defect_type)}`}>
-                      {defect.defect_type}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getSeverityColor(defect.severity)}`}>
-                      {defect.severity}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 max-w-xs">
-                    <div className="text-sm">{defect.description}</div>
-                    {defect.root_cause && (
-                      <div className="text-xs text-gray-500 mt-1">Root: {defect.root_cause}</div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(defect.status)}`}>
-                      {defect.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm">{defect.detected_at}</div>
-                    {defect.resolution_time && (
-                      <div className="text-xs text-gray-500">Fixed in {defect.resolution_time}m</div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm">{defect.assigned_to || '-'}</div>
-                    {defect.repair_station && (
-                      <div className="text-xs text-gray-500">{defect.repair_station}</div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+          <div className="mb-1 text-xs text-blue-600">{t("defects.stats.total")}</div>
+          <div className="text-2xl font-bold text-blue-800">{stats.total}</div>
         </div>
       </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <input
+            type="text"
+            placeholder={t("defects.search.placeholder")}
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            className="min-w-[240px] flex-1 rounded border border-gray-300 px-3 py-2 text-sm"
+          />
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="rounded border border-gray-300 px-3 py-2 text-sm"
+          >
+            <option value="all">{t("defects.filter.status.all")}</option>
+            {statuses.map((status) => (
+              <option key={status} value={status}>{status}</option>
+            ))}
+          </select>
+          <select
+            value={filterSeverity}
+            onChange={(e) => setFilterSeverity(e.target.value)}
+            className="rounded border border-gray-300 px-3 py-2 text-sm"
+          >
+            <option value="all">{t("defects.filter.severity.all")}</option>
+            {severities.map((severity) => (
+              <option key={severity} value={severity}>{severity}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void loadDefects(true)}
+            disabled={loading || refreshing}
+            className="inline-flex items-center gap-2 rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            {t("defects.action.refresh")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowCreateForm((prev) => !prev)}
+            className="inline-flex items-center gap-2 rounded bg-red-600 px-3 py-2 text-sm text-white hover:bg-red-700"
+          >
+            <Plus className="h-4 w-4" />
+            {showCreateForm ? t("defects.action.cancel") : t("defects.action.record")}
+          </button>
+        </div>
+      </div>
+
+      {showCreateForm ? (
+        <div className="rounded-lg border border-red-200 bg-red-50/60 p-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+            <input
+              type="number"
+              value={form.operation_id || ""}
+              onChange={(e) => setForm((prev) => ({ ...prev, operation_id: Number(e.target.value) || 0 }))}
+              placeholder={t("defects.form.operationId")}
+              className="rounded border border-red-200 bg-white px-3 py-2 text-sm"
+            />
+            <input
+              type="text"
+              value={form.nc_code}
+              onChange={(e) => setForm((prev) => ({ ...prev, nc_code: e.target.value }))}
+              placeholder={t("defects.form.code")}
+              className="rounded border border-red-200 bg-white px-3 py-2 text-sm"
+            />
+            <select
+              value={form.severity}
+              onChange={(e) => setForm((prev) => ({ ...prev, severity: e.target.value }))}
+              className="rounded border border-red-200 bg-white px-3 py-2 text-sm"
+            >
+              <option value="CRITICAL">{t("defects.filter.severity.critical")}</option>
+              <option value="MAJOR">{t("defects.filter.severity.major")}</option>
+              <option value="MINOR">{t("defects.filter.severity.minor")}</option>
+            </select>
+            <input
+              type="number"
+              value={form.hold_id ?? ""}
+              onChange={(e) => {
+                const value = e.target.value;
+                setForm((prev) => ({
+                  ...prev,
+                  hold_id: value ? Number(value) : undefined,
+                }));
+              }}
+              placeholder={t("defects.form.holdId")}
+              className="rounded border border-red-200 bg-white px-3 py-2 text-sm"
+            />
+            <input
+              type="text"
+              value={form.description}
+              onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+              placeholder={t("defects.form.description")}
+              className="rounded border border-red-200 bg-white px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={() => void submitCreate()}
+              disabled={submitting}
+              className="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {t("defects.form.submit")}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="flex items-start gap-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
+      ) : null}
+
+      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+              <th className="px-4 py-2">{t("defects.col.defectNo")}</th>
+              <th className="px-4 py-2">{t("defects.col.operationId")}</th>
+              <th className="px-4 py-2">{t("defects.col.holdId")}</th>
+              <th className="px-4 py-2">{t("defects.col.severity")}</th>
+              <th className="px-4 py-2">{t("defects.col.description")}</th>
+              <th className="px-4 py-2">{t("defects.col.status")}</th>
+              <th className="px-4 py-2">{t("defects.col.detected")}</th>
+              <th className="px-4 py-2">{t("defects.col.reportedBy")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-4 text-sm text-gray-500">
+                  {t("defects.state.loading")}
+                </td>
+              </tr>
+            ) : filteredDefects.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-4 text-sm italic text-gray-500">
+                  {t("defects.state.empty")}
+                </td>
+              </tr>
+            ) : (
+              filteredDefects.map((defect) => (
+                <tr key={defect.nonconformance_id} className="border-t border-gray-100">
+                  <td className="px-4 py-2 font-medium text-blue-700">{defect.nc_code}</td>
+                  <td className="px-4 py-2 text-gray-700">{defect.operation_id}</td>
+                  <td className="px-4 py-2 text-gray-700">{defect.hold_id ?? "-"}</td>
+                  <td className="px-4 py-2">
+                    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getSeverityColor(defect.severity)}`}>
+                      {defectSeverityKey(defect.severity) !== null ? t(defectSeverityKey(defect.severity)!) : defect.severity}
+                    </span>
+                  </td>
+                  <td className="max-w-[360px] px-4 py-2 text-gray-700">{defect.description}</td>
+                  <td className="px-4 py-2">
+                    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(defect.status)}`}>
+                      {defectStatusKey(defect.status) !== null ? t(defectStatusKey(defect.status)!) : defect.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 text-gray-500">{new Date(defect.created_at).toLocaleString()}</td>
+                  <td className="px-4 py-2 text-gray-700">{defect.reported_by}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
     </div>
   );
 }

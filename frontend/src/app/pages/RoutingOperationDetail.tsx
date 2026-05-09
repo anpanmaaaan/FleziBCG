@@ -103,11 +103,11 @@ export function RoutingOperationDetail() {
             <ScreenStatusBadge phase="PARTIAL" />
           </div>
           <div className="flex items-center gap-2">
-            <button disabled className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200" title="Backend MMD governance workflow required">
+            <button disabled className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200" title={t("common.notice.mmdRequired")}>
               <Lock className="w-3.5 h-3.5" />
               {t("routingOpDetail.action.release")}
             </button>
-            <button disabled className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200" title="Backend MMD governance workflow required">
+            <button disabled className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200" title={t("common.notice.mmdRequired")}>
               <Lock className="w-3.5 h-3.5" />
               {t("routingOpDetail.action.edit")}
             </button>
@@ -192,7 +192,7 @@ export function RoutingOperationDetail() {
                   </div>
                 ))}
                 <div className="flex items-center justify-between gap-4 pt-2 border-t border-gray-200">
-                  <div className="text-xs text-gray-400 italic">Resource assignment and validation requires backend MMD and resource applicability check.</div>
+                  <div className="text-xs text-gray-400 italic">{t("routingOperationDetail.label.resource_assignment_and_validation_requi")}</div>
                   {routeId && operationId && (
                     <Link
                       to={`/resource-requirements?routeId=${encodeURIComponent(routeId)}&operationId=${encodeURIComponent(operationId)}`}

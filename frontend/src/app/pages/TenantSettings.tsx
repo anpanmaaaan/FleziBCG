@@ -28,8 +28,8 @@ export function TenantSettings() {
 
   return (
     <GovernancePageShell
-      title="Tenant Settings"
-      subtitle="Tenant configuration and organization metadata"
+      title={t("tenantSettings.tooltip.tenant_settings")}
+      subtitle={t("tenantSettings.tooltip.tenant_configuration_and_organization_me")}
       phase="SHELL"
       bannerNote="Tenant settings and configuration are managed by backend system. Frontend settings panel is visualization only."
     >
@@ -55,7 +55,7 @@ export function TenantSettings() {
             {/* Settings Fields */}
             <div className="space-y-4">
               <div>
-                <label htmlFor="tenant-name" className="block text-sm font-medium text-gray-700 mb-2">Tenant Name</label>
+                <label htmlFor="tenant-name" className="block text-sm font-medium text-gray-700 mb-2">{t("tenantSettings.label.tenant_name")}</label>
                 <input
                   id="tenant-name"
                   disabled
@@ -66,7 +66,7 @@ export function TenantSettings() {
               </div>
 
               <div>
-                <label htmlFor="tenant-code" className="block text-sm font-medium text-gray-700 mb-2">Tenant Code</label>
+                <label htmlFor="tenant-code" className="block text-sm font-medium text-gray-700 mb-2">{t("tenantSettings.label.tenant_code")}</label>
                 <input
                   id="tenant-code"
                   disabled
@@ -77,7 +77,7 @@ export function TenantSettings() {
               </div>
 
               <div>
-                <label htmlFor="tenant-email" className="block text-sm font-medium text-gray-700 mb-2">Contact Email</label>
+                <label htmlFor="tenant-email" className="block text-sm font-medium text-gray-700 mb-2">{t("tenantSettings.label.contact_email")}</label>
                 <input
                   id="tenant-email"
                   disabled
@@ -88,7 +88,7 @@ export function TenantSettings() {
               </div>
 
               <div>
-                <label htmlFor="tenant-admin" className="block text-sm font-medium text-gray-700 mb-2">Administrator</label>
+                <label htmlFor="tenant-admin" className="block text-sm font-medium text-gray-700 mb-2">{t("tenantSettings.label.administrator")}</label>
                 <input
                   id="tenant-admin"
                   disabled
@@ -99,7 +99,7 @@ export function TenantSettings() {
               </div>
 
               <div>
-                <label htmlFor="tenant-created" className="block text-sm font-medium text-gray-700 mb-2">Created</label>
+                <label htmlFor="tenant-created" className="block text-sm font-medium text-gray-700 mb-2">{t("tenantSettings.label.created")}</label>
                 <input
                   id="tenant-created"
                   disabled
@@ -115,23 +115,23 @@ export function TenantSettings() {
               <button
                 disabled
                 className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-2"
-                title="Backend system manages tenant settings"
+                title={t("common.notice.tenantLocked")}
               >
                 <Lock className="w-4 h-4" />
                 Save Changes (Future)
               </button>
-              <p className="text-sm text-gray-500">All changes must be made through backend tenant management.</p>
+              <p className="text-sm text-gray-500">{t("tenantSettings.label.all_changes_must_be_made_through_backend")}</p>
             </div>
           </div>
         </div>
 
       {/* Integration Info */}
       <div className="max-w-2xl p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <h3 className="font-semibold text-blue-900 mb-2">Tenant Integrations</h3>
+        <h3 className="font-semibold text-blue-900 mb-2">{t("tenantSettings.label.tenant_integrations")}</h3>
         <ul className="text-sm text-blue-800 space-y-1">
-          <li>• ERP System: SAP (not yet connected)</li>
-          <li>• Message Queue: RabbitMQ (not yet configured)</li>
-          <li>• Data Warehouse: PostgreSQL (not yet connected)</li>
+          <li>{t("tenantSettings.label._erp_system_sap_not_yet_connected")}</li>
+          <li>{t("tenantSettings.label._message_queue_rabbitmq_not_yet_configur")}</li>
+          <li>{t("tenantSettings.label._data_warehouse_postgresql_not_yet_conne")}</li>
         </ul>
       </div>
     </GovernancePageShell>

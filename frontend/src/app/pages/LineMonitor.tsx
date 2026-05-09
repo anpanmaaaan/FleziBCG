@@ -170,7 +170,7 @@ export function LineMonitor() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-white rounded-lg border border-gray-200 p-3 text-center">
           <div className="text-2xl font-bold text-gray-800">{MOCK_STATIONS.length}</div>
-          <div className="text-xs text-gray-500 mt-1">Total Stations</div>
+          <div className="text-xs text-gray-500 mt-1">{t("lineMonitor.label.total_stations")}</div>
         </div>
         <div className="bg-green-50 rounded-lg border border-green-200 p-3 text-center">
           <div className="text-2xl font-bold text-green-700">{runningCount}</div>

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { PageHeader } from "@/app/components";
 import { MockWarningBanner } from "@/app/components";
 import { toast } from "sonner";
-import { RefreshCw, Lock, X, RotateCcw, Info } from "lucide-react";
+import { RefreshCw, Lock, X, RotateCcw, Info, AlertTriangle } from "lucide-react";
 import { StationExecutionHeader } from "@/app/components/station-execution/StationExecutionHeader";
 import { StationQueuePanel } from "@/app/components/station-execution/StationQueuePanel";
 import { ExecutionStateHero } from "@/app/components/station-execution/ExecutionStateHero";
@@ -227,6 +227,7 @@ export function StationExecution() {
 
   const { t } = useI18n();
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryOperationId = searchParams.get("operationId") || "";
 
@@ -365,6 +366,9 @@ export function StationExecution() {
       return t("station.closed.guidance");
     }
     if (!canExecute) return t("station.ownership.required");
+    if (operation?.quality_hold_open) {
+      return t("station.hint.nextAction.resolveQcHold");
+    }
     if (operation?.status === "BLOCKED" && operation.downtime_open) {
       return t("station.hint.nextAction.endDowntime");
     }
@@ -728,6 +732,48 @@ export function StationExecution() {
       setSessionLoading(false);
     }
   };
+
+  const goToOperatorIdentification = () => {
+    const params = new URLSearchParams();
+    if (stationScope && stationScope !== "-") {
+      params.set("stationId", stationScope);
+    }
+    if (ownershipState?.session_id) {
+      params.set("sessionId", ownershipState.session_id);
+    }
+    if (operation?.id) {
+      params.set("operationId", String(operation.id));
+    }
+    const query = params.toString();
+    navigate(query ? `/operator-identification?${query}` : "/operator-identification");
+  };
+
+  const goToEquipmentBinding = () => {
+    const params = new URLSearchParams();
+    if (stationScope && stationScope !== "-") {
+      params.set("stationId", stationScope);
+    }
+    if (ownershipState?.session_id) {
+      params.set("sessionId", ownershipState.session_id);
+    }
+    if (operation?.id) {
+      params.set("operationId", String(operation.id));
+    }
+    const query = params.toString();
+    navigate(query ? `/equipment-binding?${query}` : "/equipment-binding");
+  };
+
+  const goToStationSession = () => {
+    const params = new URLSearchParams();
+    if (stationScope && stationScope !== "-") {
+      params.set("stationId", stationScope);
+    }
+    if (ownershipState?.session_id) {
+      params.set("sessionId", ownershipState.session_id);
+    }
+    const query = params.toString();
+    navigate(query ? `/station-session?${query}` : "/station-session");
+  };
   // ── MODE A  EOperation Selection ──────────────────────────────────────────
   if (!isExecutionMode) {
     return (
@@ -795,14 +841,40 @@ export function StationExecution() {
                   {t("stationSession.action.openSession")}
                 </button>
               ) : ownerState === "mine" ? (
-                <button
-                  type="button"
-                  onClick={() => void closeStationSession()}
-                  disabled={sessionLoading}
-                  className="min-h-10 px-4 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 active:scale-95 transition disabled:opacity-50"
-                >
-                  {t("stationSession.action.closeSession")}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={goToStationSession}
+                    disabled={sessionLoading}
+                    className="min-h-10 px-4 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 active:scale-95 transition disabled:opacity-50"
+                  >
+                    {t("station.session.viewSession")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goToOperatorIdentification}
+                    disabled={sessionLoading}
+                    className="min-h-10 px-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100 active:scale-95 transition disabled:opacity-50"
+                  >
+                    {t("station.session.identifyOperator")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goToEquipmentBinding}
+                    disabled={sessionLoading}
+                    className="min-h-10 px-4 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-100 active:scale-95 transition disabled:opacity-50"
+                  >
+                    {t("station.session.bindEquipment")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void closeStationSession()}
+                    disabled={sessionLoading}
+                    className="min-h-10 px-4 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 active:scale-95 transition disabled:opacity-50"
+                  >
+                    {t("stationSession.action.closeSession")}
+                  </button>
+                </div>
               ) : null}
             </div>
           )}
@@ -898,6 +970,17 @@ export function StationExecution() {
               onFilterChange={setQueueFilter}
               onSelect={(item) => void selectQueueOperation(item)}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Quality Hold banner — shown when an active hold blocks progression */}
+      {operation?.quality_hold_open && (
+        <div className="mx-3 mt-2 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 sm:mx-4">
+          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
+          <div>
+            <span className="font-semibold">{t("station.qcHold.banner")}</span>
+            <span className="ml-1 text-xs text-amber-600">{t("station.qcHold.linkHint")}</span>
           </div>
         </div>
       )}

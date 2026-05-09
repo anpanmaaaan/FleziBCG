@@ -41,21 +41,21 @@ export function Reconciliation() {
             <XCircle className="w-3 h-3" />
             {t("reconciliation.metric.open")}
           </div>
-          <div className="text-2xl font-bold text-red-800">3</div>
+          <div className="text-2xl font-bold text-red-800">{"3"}</div>
         </div>
         <div className="bg-green-50 rounded-lg border border-green-200 p-3">
           <div className="flex items-center gap-1 text-xs text-green-600 mb-1">
             <CheckCircle2 className="w-3 h-3" />
             {t("reconciliation.metric.matched")}
           </div>
-          <div className="text-2xl font-bold text-green-800">1</div>
+          <div className="text-2xl font-bold text-green-800">{"1"}</div>
         </div>
         <div className="bg-slate-50 rounded-lg border border-slate-200 p-3">
           <div className="flex items-center gap-1 text-xs text-slate-500 mb-1">
             <Scale className="w-3 h-3" />
             {t("reconciliation.metric.total")}
           </div>
-          <div className="text-2xl font-bold text-slate-700">4</div>
+          <div className="text-2xl font-bold text-slate-700">{"4"}</div>
         </div>
       </div>
 

@@ -70,8 +70,8 @@ export function ActionRegistry() {
 
   return (
     <GovernancePageShell
-      title="Action / Permission Registry"
-      subtitle="System actions and their allowed personas"
+      title={t("actionRegistry.tooltip.action_permission_registry")}
+      subtitle={t("actionRegistry.tooltip.system_actions_and_their_allowed_persona")}
       phase="SHELL"
       bannerNote="Action and permission registry is read-only visualization. Backend authorization system remains source of truth for allowed actions."
     >
@@ -94,10 +94,10 @@ export function ActionRegistry() {
         <table className="w-full min-w-[560px]">
           <thead className="bg-gray-50 border-b sticky top-0">
               <tr>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Action Code</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Domain</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Description</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Allowed Personas</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("actionRegistry.label.action_code")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("actionRegistry.label.domain")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("actionRegistry.label.description")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("actionRegistry.label.allowed_personas")}</th>
               </tr>
             </thead>
             <tbody>

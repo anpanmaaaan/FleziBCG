@@ -21,15 +21,15 @@ from app.schemas.product import (
     ProductVersionItem,
     ProductVersionUpdateRequest,
 )
-from app.services.product_version_bom_binding_service import (
-    bind_bom_to_product_version as bind_bom_service,
-    get_product_version_bom_binding as get_bom_binding_service,
-    unbind_bom_from_product_version as unbind_bom_service,
-)
 from app.security.dependencies import (
     RequestIdentity,
     require_action,
     require_authenticated_identity,
+)
+from app.services.product_version_bom_binding_service import (
+    bind_bom_to_product_version as bind_bom_service,
+    get_product_version_bom_binding as get_bom_binding_service,
+    unbind_bom_from_product_version as unbind_bom_service,
 )
 from app.security.rbac import has_action
 from app.services.bom_service import get_bom as get_bom_service

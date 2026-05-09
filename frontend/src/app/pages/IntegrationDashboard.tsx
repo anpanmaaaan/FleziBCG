@@ -35,28 +35,28 @@ export function IntegrationDashboard() {
             <ArrowDownLeft className="w-3 h-3" />
             {t("integrationDashboard.metric.inbound")}
           </div>
-          <div className="text-2xl font-bold text-slate-700">—</div>
+          <div className="text-2xl font-bold text-slate-700">{t("common.na")}</div>
         </div>
         <div className="bg-slate-50 rounded-lg border border-slate-200 p-3">
           <div className="flex items-center gap-1 text-xs text-slate-600 mb-1">
             <ArrowUpRight className="w-3 h-3" />
             {t("integrationDashboard.metric.outbound")}
           </div>
-          <div className="text-2xl font-bold text-slate-700">—</div>
+          <div className="text-2xl font-bold text-slate-700">{t("common.na")}</div>
         </div>
         <div className="bg-slate-50 rounded-lg border border-slate-200 p-3">
           <div className="flex items-center gap-1 text-xs text-slate-600 mb-1">
             <RefreshCw className="w-3 h-3" />
             {t("integrationDashboard.metric.posting")}
           </div>
-          <div className="text-2xl font-bold text-slate-700">—</div>
+          <div className="text-2xl font-bold text-slate-700">{t("common.na")}</div>
         </div>
         <div className="bg-slate-50 rounded-lg border border-slate-200 p-3">
           <div className="flex items-center gap-1 text-xs text-red-500 mb-1">
             <XCircle className="w-3 h-3" />
             {t("integrationDashboard.metric.failures")}
           </div>
-          <div className="text-2xl font-bold text-slate-700">—</div>
+          <div className="text-2xl font-bold text-slate-700">{t("common.na")}</div>
         </div>
       </div>
 

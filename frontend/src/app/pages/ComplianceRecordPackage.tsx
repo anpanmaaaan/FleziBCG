@@ -38,12 +38,12 @@ export function ComplianceRecordPackage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="bg-slate-50 rounded-lg border border-slate-200 p-3">
           <div className="text-xs text-slate-500 mb-1">{t("complianceRecordPackage.meta.packageId")}</div>
-          <div className="text-sm font-medium text-slate-700">PKG-DEMO-001</div>
+          <div className="text-sm font-medium text-slate-700">{t("complianceRecordPackage.label.pkgdemo001")}</div>
           <div className="text-xs text-slate-400 italic">{t("complianceRecordPackage.meta.demo")}</div>
         </div>
         <div className="bg-slate-50 rounded-lg border border-slate-200 p-3">
           <div className="text-xs text-slate-500 mb-1">{t("complianceRecordPackage.meta.productionOrder")}</div>
-          <div className="text-sm font-medium text-slate-700">PO-DEMO-2026</div>
+          <div className="text-sm font-medium text-slate-700">{t("complianceRecordPackage.label.podemo2026")}</div>
           <div className="text-xs text-slate-400 italic">{t("complianceRecordPackage.meta.demo")}</div>
         </div>
         <div className="bg-slate-50 rounded-lg border border-slate-200 p-3">

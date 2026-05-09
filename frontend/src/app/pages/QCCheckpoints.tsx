@@ -1,394 +1,368 @@
-import { useState, useMemo } from "react";
-import { Search, Plus, CheckCircle2, XCircle, AlertCircle, Edit2, Trash2, Lock } from "lucide-react";
-import { toast } from "sonner";
-import { MockWarningBanner, ScreenStatusBadge } from "@/app/components";
+import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, CheckCircle2, Plus, RefreshCw } from "lucide-react";
+import { ScreenStatusBadge } from "@/app/components";
+import {
+  HttpError,
+  qualityApi,
+  type QualityGateDefinitionCreateRequest,
+  type QualityGateDefinitionResponse,
+} from "@/app/api";
 import { useI18n } from "@/app/i18n";
 
-interface QCCheckpoint {
-  id: string;
-  checkpoint_name: string;
-  station_id: string;
-  station_name: string;
-  operation_id?: string;
-  product_id?: string;
-  qc_type: 'Dimensional' | 'Visual' | 'Functional' | 'Torque' | 'Pressure';
-  parameter: string;
-  specification: string;
-  lower_limit?: number;
-  upper_limit?: number;
-  unit: string;
-  frequency: 'Every Unit' | 'First/Last' | 'Hourly' | 'Random';
-  mandatory: boolean;
-  status: 'Active' | 'Inactive';
+const EMPTY_FORM: QualityGateDefinitionCreateRequest = {
+  code: "",
+  name: "",
+  gate_type: "PRE_ACCEPTANCE",
+  rule_set_version: "v1",
+  applicability_scope_type: "OPERATION",
+  applicability_scope_value: "",
+};
+
+function checkpointGateTypeKey(gateType: string) {
+  switch (gateType) {
+    case "PRE_ACCEPTANCE":
+      return "qcCheckpoints.gateType.preAcceptance";
+    case "MEASUREMENT":
+      return "qcCheckpoints.gateType.measurement";
+    case "VISUAL":
+      return "qcCheckpoints.gateType.visual";
+    case "MIXED":
+      return "qcCheckpoints.gateType.mixed";
+    default:
+      return null;
+  }
 }
 
-const mockCheckpoints: QCCheckpoint[] = [
-  {
-    id: 'QC-001',
-    checkpoint_name: 'Bore Diameter Check',
-    station_id: 'ST-01',
-    station_name: 'Machining Center 1',
-    operation_id: 'OP-010',
-    product_id: 'PROD-001',
-    qc_type: 'Dimensional',
-    parameter: 'Bore Diameter',
-    specification: '50.00 ± 0.05 mm',
-    lower_limit: 49.95,
-    upper_limit: 50.05,
-    unit: 'mm',
-    frequency: 'Every Unit',
-    mandatory: true,
-    status: 'Active',
-  },
-  {
-    id: 'QC-002',
-    checkpoint_name: 'Surface Finish Inspection',
-    station_id: 'ST-02',
-    station_name: 'Grinding Station',
-    qc_type: 'Visual',
-    parameter: 'Surface Roughness',
-    specification: 'Ra ≤ 1.6 μm',
-    upper_limit: 1.6,
-    unit: 'μm',
-    frequency: 'First/Last',
-    mandatory: true,
-    status: 'Active',
-  },
-  {
-    id: 'QC-003',
-    checkpoint_name: 'Torque Verification',
-    station_id: 'ST-03',
-    station_name: 'Assembly Line 1',
-    operation_id: 'OP-030',
-    qc_type: 'Torque',
-    parameter: 'Bolt Torque',
-    specification: '25 ± 2 Nm',
-    lower_limit: 23,
-    upper_limit: 27,
-    unit: 'Nm',
-    frequency: 'Every Unit',
-    mandatory: true,
-    status: 'Active',
-  },
-  {
-    id: 'QC-004',
-    checkpoint_name: 'Leak Test',
-    station_id: 'ST-04',
-    station_name: 'Testing Station',
-    qc_type: 'Pressure',
-    parameter: 'Pressure Drop',
-    specification: '≤ 5 kPa/min',
-    upper_limit: 5,
-    unit: 'kPa/min',
-    frequency: 'Every Unit',
-    mandatory: true,
-    status: 'Active',
-  },
-  {
-    id: 'QC-005',
-    checkpoint_name: 'Weight Check',
-    station_id: 'ST-02',
-    station_name: 'Grinding Station',
-    qc_type: 'Dimensional',
-    parameter: 'Component Weight',
-    specification: '2.5 ± 0.1 kg',
-    lower_limit: 2.4,
-    upper_limit: 2.6,
-    unit: 'kg',
-    frequency: 'Hourly',
-    mandatory: false,
-    status: 'Active',
-  },
-];
+function checkpointScopeTypeKey(scopeType: string) {
+  switch (scopeType) {
+    case "OPERATION":
+      return "qcCheckpoints.scopeType.operation";
+    case "WORK_ORDER":
+      return "qcCheckpoints.scopeType.workOrder";
+    default:
+      return null;
+  }
+}
+
+function checkpointStatusKey(status: string) {
+  switch (status) {
+    case "DRAFT":
+      return "qcCheckpoints.status.draft";
+    case "ACTIVE":
+      return "qcCheckpoints.status.active";
+    case "RETIRED":
+      return "qcCheckpoints.status.retired";
+    default:
+      return null;
+  }
+}
 
 export function QCCheckpoints() {
   const { t } = useI18n();
-  const [checkpoints, setCheckpoints] = useState(mockCheckpoints);
-  const [searchValue, setSearchValue] = useState('');
-  const [filterStation, setFilterStation] = useState<string>('all');
-  const [filterType, setFilterType] = useState<string>('all');
+  const [items, setItems] = useState<QualityGateDefinitionResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [searchValue, setSearchValue] = useState("");
+  const [filterType, setFilterType] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [form, setForm] = useState<QualityGateDefinitionCreateRequest>(EMPTY_FORM);
 
-  const stations = useMemo(() => {
-    const uniqueStations = new Set(checkpoints.map(cp => cp.station_id));
-    return Array.from(uniqueStations);
-  }, [checkpoints]);
-
-  const qcTypes = ['Dimensional', 'Visual', 'Functional', 'Torque', 'Pressure'];
-
-  const filteredCheckpoints = useMemo(() => {
-    let filtered = checkpoints;
-
-    if (filterStation !== 'all') {
-      filtered = filtered.filter(cp => cp.station_id === filterStation);
+  const loadGateDefinitions = async (silent = false) => {
+    setError(null);
+    if (silent) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
     }
 
-    if (filterType !== 'all') {
-      filtered = filtered.filter(cp => cp.qc_type === filterType);
+    try {
+      const response = await qualityApi.listGateDefinitions();
+      setItems(response);
+    } catch (err) {
+      if (err instanceof HttpError) {
+        setError(typeof err.detail === "string" ? err.detail : t("qcCheckpoints.error.loadFailed"));
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError(t("qcCheckpoints.error.loadFailed"));
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
+  };
 
-    if (searchValue) {
-      filtered = filtered.filter(cp =>
-        cp.checkpoint_name.toLowerCase().includes(searchValue.toLowerCase()) ||
-        cp.parameter.toLowerCase().includes(searchValue.toLowerCase()) ||
-        cp.station_name.toLowerCase().includes(searchValue.toLowerCase())
+  useEffect(() => {
+    void loadGateDefinitions();
+  }, []);
+
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      if (filterType !== "all" && item.gate_type !== filterType) {
+        return false;
+      }
+      if (filterStatus !== "all" && item.status !== filterStatus) {
+        return false;
+      }
+      if (!searchValue.trim()) {
+        return true;
+      }
+
+      const q = searchValue.toLowerCase();
+      return (
+        item.code.toLowerCase().includes(q)
+        || item.name.toLowerCase().includes(q)
+        || item.applicability_scope_value.toLowerCase().includes(q)
       );
+    });
+  }, [filterStatus, filterType, items, searchValue]);
+
+  const gateTypes = useMemo(
+    () => Array.from(new Set(items.map((item) => item.gate_type))).sort(),
+    [items]
+  );
+  const statuses = useMemo(
+    () => Array.from(new Set(items.map((item) => item.status))).sort(),
+    [items]
+  );
+
+  const activeCount = useMemo(
+    () => items.filter((item) => item.status === "ACTIVE").length,
+    [items]
+  );
+
+  const submitCreate = async () => {
+    if (!form.code.trim() || !form.name.trim() || !form.applicability_scope_value.trim()) {
+      setError(t("qcCheckpoints.error.invalidForm"));
+      return;
     }
 
-    return filtered;
-  }, [checkpoints, filterStation, filterType, searchValue]);
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'Dimensional': return 'bg-blue-100 text-blue-800';
-      case 'Visual': return 'bg-purple-100 text-purple-800';
-      case 'Functional': return 'bg-green-100 text-green-800';
-      case 'Torque': return 'bg-orange-100 text-orange-800';
-      case 'Pressure': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+    setSubmitting(true);
+    setError(null);
+    try {
+      await qualityApi.createGateDefinition({
+        ...form,
+        code: form.code.trim(),
+        name: form.name.trim(),
+        rule_set_version: form.rule_set_version.trim() || "v1",
+        applicability_scope_value: form.applicability_scope_value.trim(),
+      });
+      setForm(EMPTY_FORM);
+      setShowCreateForm(false);
+      await loadGateDefinitions(true);
+    } catch (err) {
+      if (err instanceof HttpError) {
+        setError(typeof err.detail === "string" ? err.detail : t("qcCheckpoints.error.createFailed"));
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError(t("qcCheckpoints.error.createFailed"));
+      }
+    } finally {
+      setSubmitting(false);
     }
-  };
-
-  const getFrequencyColor = (frequency: string) => {
-    switch (frequency) {
-      case 'Every Unit': return 'bg-red-100 text-red-800';
-      case 'First/Last': return 'bg-yellow-100 text-yellow-800';
-      case 'Hourly': return 'bg-blue-100 text-blue-800';
-      case 'Random': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const handleEdit = (checkpoint: QCCheckpoint) => {
-    toast.info(`Edit checkpoint: ${checkpoint.checkpoint_name}`);
-  };
-
-  const handleDelete = (checkpoint: QCCheckpoint) => {
-    toast.error(`Delete checkpoint: ${checkpoint.checkpoint_name}`);
   };
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      <MockWarningBanner phase="MOCK" note="Quality checkpoint configuration is not yet connected to backend truth. Use this for visualization only." />
-      <div className="flex-1 flex flex-col p-6">
-        {/* Page header with status badge */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">Quality Checkpoints</h1>
-            <ScreenStatusBadge phase="MOCK" />
-          </div>
+    <div className="flex flex-col gap-4 p-4">
+      <div className="flex items-center gap-3">
+        <h1 className="text-2xl font-semibold text-gray-900">{t("qcCheckpoints.title")}</h1>
+        <ScreenStatusBadge phase="CONNECTED" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+          <div className="mb-1 text-xs text-blue-600">{t("qcCheckpoints.metric.total")}</div>
+          <div className="text-2xl font-bold text-blue-800">{items.length}</div>
         </div>
-
-        {/* Filters */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search checkpoints..."
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring w-80"
-              />
-            </div>
-
-            <select
-              value={filterStation}
-              onChange={(e) => setFilterStation(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
-            >
-              <option value="all">All Stations</option>
-              {stations.map(station => (
-                <option key={station} value={station}>{station}</option>
-              ))}
-            </select>
-
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
-            >
-              <option value="all">All Types</option>
-              {qcTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
-
-            <div className="text-sm text-gray-600">
-              Total: <strong>{filteredCheckpoints.length}</strong> checkpoints
-            </div>
-          </div>
-
+        <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+          <div className="mb-1 text-xs text-green-600">{t("qcCheckpoints.metric.active")}</div>
+          <div className="text-2xl font-bold text-green-800">{activeCount}</div>
+        </div>
+        <div className="rounded-lg border border-purple-200 bg-purple-50 p-3">
+          <div className="mb-1 text-xs text-purple-600">{t("qcCheckpoints.metric.types")}</div>
+          <div className="text-2xl font-bold text-purple-800">{gateTypes.length}</div>
+        </div>
+        <div className="flex items-end justify-end gap-2">
           <button
-            disabled
-            onClick={() => toast.info('Add QC Checkpoint feature coming soon')}
-            className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-2"
-            title="This action is not available for mock data"
+            type="button"
+            onClick={() => void loadGateDefinitions(true)}
+            disabled={loading || refreshing}
+            className="inline-flex items-center gap-2 rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Lock className="w-4 h-4" />
-            Add Checkpoint (Future)
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            {t("qcCheckpoints.action.refresh")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowCreateForm((prev) => !prev)}
+            className="inline-flex items-center gap-2 rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4" />
+            {showCreateForm ? t("qcCheckpoints.action.cancel") : t("qcCheckpoints.action.add")}
           </button>
         </div>
+      </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-blue-600 font-medium">Active Checkpoints</div>
-                <div className="text-2xl font-bold text-blue-800">
-                  {checkpoints.filter(cp => cp.status === 'Active').length}
-                </div>
-              </div>
-              <CheckCircle2 className="w-8 h-8 text-blue-500" />
-            </div>
+      {showCreateForm ? (
+        <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <input
+              type="text"
+              value={form.code}
+              onChange={(e) => setForm((prev) => ({ ...prev, code: e.target.value }))}
+              placeholder={t("qcCheckpoints.form.code")}
+              className="rounded border border-blue-200 bg-white px-3 py-2 text-sm"
+            />
+            <input
+              type="text"
+              value={form.name}
+              onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+              placeholder={t("qcCheckpoints.form.name")}
+              className="rounded border border-blue-200 bg-white px-3 py-2 text-sm"
+            />
+            <select
+              value={form.gate_type}
+              onChange={(e) => setForm((prev) => ({ ...prev, gate_type: e.target.value }))}
+              className="rounded border border-blue-200 bg-white px-3 py-2 text-sm"
+            >
+              <option value="PRE_ACCEPTANCE">{t("qcCheckpoints.gateType.preAcceptance")}</option>
+            </select>
+            <input
+              type="text"
+              value={form.rule_set_version}
+              onChange={(e) => setForm((prev) => ({ ...prev, rule_set_version: e.target.value }))}
+              placeholder={t("qcCheckpoints.form.ruleSetVersion")}
+              className="rounded border border-blue-200 bg-white px-3 py-2 text-sm"
+            />
+            <select
+              value={form.applicability_scope_type}
+              onChange={(e) => setForm((prev) => ({ ...prev, applicability_scope_type: e.target.value }))}
+              className="rounded border border-blue-200 bg-white px-3 py-2 text-sm"
+            >
+              <option value="OPERATION">{t("qcCheckpoints.scopeType.operation")}</option>
+              <option value="WORK_ORDER">{t("qcCheckpoints.scopeType.workOrder")}</option>
+            </select>
+            <input
+              type="text"
+              value={form.applicability_scope_value}
+              onChange={(e) => setForm((prev) => ({ ...prev, applicability_scope_value: e.target.value }))}
+              placeholder={t("qcCheckpoints.form.scopeValue")}
+              className="rounded border border-blue-200 bg-white px-3 py-2 text-sm"
+            />
           </div>
-
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-purple-600 font-medium">Mandatory</div>
-                <div className="text-2xl font-bold text-purple-800">
-                  {checkpoints.filter(cp => cp.mandatory).length}
-                </div>
-              </div>
-              <AlertCircle className="w-8 h-8 text-purple-500" />
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-green-600 font-medium">Every Unit</div>
-                <div className="text-2xl font-bold text-green-800">
-                  {checkpoints.filter(cp => cp.frequency === 'Every Unit').length}
-                </div>
-              </div>
-              <CheckCircle2 className="w-8 h-8 text-green-500" />
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-orange-600 font-medium">Stations Covered</div>
-                <div className="text-2xl font-bold text-orange-800">{stations.length}</div>
-              </div>
-              <CheckCircle2 className="w-8 h-8 text-orange-500" />
-            </div>
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={() => void submitCreate()}
+              disabled={submitting}
+              className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {t("qcCheckpoints.form.submit")}
+            </button>
           </div>
         </div>
+      ) : null}
 
-        {/* Table */}
-        <div className="flex-1 overflow-auto border rounded-lg">
-          <table className="w-full">
-            <thead className="bg-gray-50 sticky top-0 z-10">
+      {error ? (
+        <div className="flex items-start gap-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-3">
+        <input
+          type="text"
+          placeholder={t("qcCheckpoints.search.placeholder")}
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+          className="min-w-[260px] flex-1 rounded border border-gray-300 px-3 py-2 text-sm"
+        />
+        <select
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+          className="rounded border border-gray-300 px-3 py-2 text-sm"
+        >
+          <option value="all">{t("qcCheckpoints.filter.allTypes")}</option>
+          {gateTypes.map((gateType) => (
+            <option key={gateType} value={gateType}>{gateType}</option>
+          ))}
+        </select>
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="rounded border border-gray-300 px-3 py-2 text-sm"
+        >
+          <option value="all">{t("qcCheckpoints.filter.allStatus")}</option>
+          {statuses.map((status) => (
+            <option key={status} value={status}>{status}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+              <th className="px-4 py-2">{t("qcCheckpoints.col.code")}</th>
+              <th className="px-4 py-2">{t("qcCheckpoints.col.name")}</th>
+              <th className="px-4 py-2">{t("qcCheckpoints.col.type")}</th>
+              <th className="px-4 py-2">{t("qcCheckpoints.col.scope")}</th>
+              <th className="px-4 py-2">{t("qcCheckpoints.col.status")}</th>
+              <th className="px-4 py-2">{t("qcCheckpoints.col.ruleSet")}</th>
+              <th className="px-4 py-2">{t("qcCheckpoints.col.createdAt")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Checkpoint Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Station
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Parameter
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Specification
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Frequency
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Mandatory
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                <td colSpan={7} className="px-4 py-4 text-sm text-gray-500">
+                  {t("qcCheckpoints.state.loading")}
+                </td>
               </tr>
-            </thead>
-            <tbody className="bg-background divide-y divide-surface-divider">
-              {filteredCheckpoints.map((checkpoint) => (
-                <tr key={checkpoint.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="font-medium">{checkpoint.checkpoint_name}</div>
-                    <div className="text-sm text-gray-500">{checkpoint.id}</div>
+            ) : filteredItems.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-4 text-sm italic text-gray-500">
+                  {t("qcCheckpoints.state.empty")}
+                </td>
+              </tr>
+            ) : (
+              filteredItems.map((item) => (
+                <tr key={item.gate_definition_id} className="border-t border-gray-100">
+                  <td className="px-4 py-2 font-mono text-xs text-gray-700">{item.code}</td>
+                  <td className="px-4 py-2 font-medium text-gray-900">{item.name}</td>
+                  <td className="px-4 py-2 text-gray-700">
+                    {checkpointGateTypeKey(item.gate_type) !== null ? t(checkpointGateTypeKey(item.gate_type)!) : item.gate_type}
                   </td>
-                  <td className="px-6 py-4">
-                    <div>{checkpoint.station_id}</div>
-                    <div className="text-sm text-gray-500">{checkpoint.station_name}</div>
+                  <td className="px-4 py-2 text-gray-700">
+                    {checkpointScopeTypeKey(item.applicability_scope_type) !== null
+                      ? t(checkpointScopeTypeKey(item.applicability_scope_type)!)
+                      : item.applicability_scope_type}:{" "}
+                    <span className="font-mono text-xs">{item.applicability_scope_value}</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(checkpoint.qc_type)}`}>
-                      {checkpoint.qc_type}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="font-medium">{checkpoint.parameter}</div>
-                    <div className="text-sm text-gray-500">{checkpoint.unit}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="font-mono text-sm">{checkpoint.specification}</div>
-                    {checkpoint.lower_limit && checkpoint.upper_limit && (
-                      <div className="text-xs text-gray-500">
-                        [{checkpoint.lower_limit} - {checkpoint.upper_limit}]
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getFrequencyColor(checkpoint.frequency)}`}>
-                      {checkpoint.frequency}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {checkpoint.mandatory ? (
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
-                        Yes
-                      </span>
-                    ) : (
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
-                        No
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      checkpoint.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                  <td className="px-4 py-2">
+                    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
+                      item.status === "ACTIVE"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-gray-100 text-gray-700"
                     }`}>
-                      {checkpoint.status}
+                      <CheckCircle2 className="mr-1 h-3 w-3" />
+                      {checkpointStatusKey(item.status) !== null ? t(checkpointStatusKey(item.status)!) : item.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      <button
-                        disabled
-                        onClick={() => handleEdit(checkpoint)}
-                        className="p-2 text-gray-400 cursor-not-allowed"
-                        title="Edit is not available for mock data"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        disabled
-                        onClick={() => handleDelete(checkpoint)}
-                        className="p-2 text-gray-400 cursor-not-allowed"
-                        title="Delete is not available for mock data"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                  <td className="px-4 py-2 text-gray-700">{item.rule_set_version}</td>
+                  <td className="px-4 py-2 text-gray-500">
+                    {new Date(item.created_at).toLocaleString()}
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

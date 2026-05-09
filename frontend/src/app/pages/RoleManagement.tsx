@@ -54,16 +54,16 @@ export function RoleManagement() {
 
   return (
     <GovernancePageShell
-      title="Role Management"
-      subtitle="Manage roles, personas, and action permissions"
+      title={t("roleManagement.tooltip.role_management")}
+      subtitle={t("roleManagement.tooltip.manage_roles_personas_and_action_permiss")}
       phase="SHELL"
       bannerNote="Role and permission management is not yet connected to backend. Backend IAM system remains source of truth for role definitions and assignments."
       actions={
         <button
           disabled
-          onClick={() => toast.info("Role creation requires backend workflow")}
+          onClick={() => toast.info(t("common.notice.iamRequired"))}
           className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-2"
-          title="This action requires backend IAM workflow"
+          title={t("common.notice.iamRequired")}
         >
           <Lock className="w-4 h-4" />
           Create Role (Future)
@@ -91,7 +91,7 @@ export function RoleManagement() {
                     disabled
                     aria-label="Edit role (requires backend IAM workflow)"
                     className="p-1.5 text-gray-400 cursor-not-allowed"
-                    title="This action requires backend IAM workflow"
+                    title={t("common.notice.iamRequired")}
                   >
                     <Edit className="w-4 h-4" />
                   </button>
@@ -99,7 +99,7 @@ export function RoleManagement() {
                     disabled
                     aria-label="Delete role (requires backend IAM workflow)"
                     className="p-1.5 text-gray-400 cursor-not-allowed"
-                    title="This action requires backend IAM workflow"
+                    title={t("common.notice.iamRequired")}
                   >
                     <Trash className="w-4 h-4" />
                   </button>
