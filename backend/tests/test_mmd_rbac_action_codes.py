@@ -381,8 +381,6 @@ def test_bom_binding_read_does_not_require_manage_actions():
 
 def test_bom_binding_get_response_schema_includes_capabilities():
     """MMD-FULLSTACK-14B: ProductVersionBomBindingCapabilities and new response wrapper must be in schemas."""
-    from pathlib import Path
-
     schema_src = (BACKEND_ROOT / "app" / "schemas" / "product.py").read_text(encoding="utf-8")
 
     assert "ProductVersionBomBindingCapabilities" in schema_src, (
