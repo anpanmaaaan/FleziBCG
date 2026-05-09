@@ -40,6 +40,8 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "Quality Lite Dashboard", to: "/quality-dashboard" },
     { label: "Quality Measurements", to: "/quality-measurements" },
     { label: "Quality Holds", to: "/quality-holds" },
+    { label: "Quality Deviations", to: "/quality-deviations" },
+    { label: "Nonconformances", to: "/quality-nonconformances" },
     { label: "Quality", to: "/quality" },
     { label: "Defects", to: "/defects" },
     // Reporting shells — FE-COVERAGE-01E
@@ -71,6 +73,8 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "Quality Lite Dashboard", to: "/quality-dashboard" },
     { label: "Quality Measurements", to: "/quality-measurements" },
     { label: "Quality Holds", to: "/quality-holds" },
+    { label: "Quality Deviations", to: "/quality-deviations" },
+    { label: "Nonconformances", to: "/quality-nonconformances" },
     { label: "Quality", to: "/quality" },
     { label: "Defects", to: "/defects" },
     { label: "Traceability", to: "/traceability" },
@@ -101,6 +105,8 @@ const MENU_ITEMS_BY_PERSONA: Record<Persona, PersonaMenuItem[]> = {
     { label: "Quality Lite Dashboard", to: "/quality-dashboard" },
     { label: "Quality Measurements", to: "/quality-measurements" },
     { label: "Quality Holds", to: "/quality-holds" },
+    { label: "Quality Deviations", to: "/quality-deviations" },
+    { label: "Nonconformances", to: "/quality-nonconformances" },
     { label: "Quality", to: "/quality" },
     { label: "Defects", to: "/defects" },
     { label: "Traceability", to: "/traceability" },
@@ -507,6 +513,12 @@ export function isRouteAllowedForPersona(persona: ResolvedPersona, pathname: str
     return ["QC", "SUP", "PMG", "ADM"].includes(persona);
   }
   if (pathname === "/quality-holds") {
+    return ["QC", "SUP", "PMG", "ADM"].includes(persona);
+  }
+  if (pathname === "/quality-deviations") {
+    return ["QC", "SUP", "PMG", "ADM"].includes(persona);
+  }
+  if (pathname === "/quality-nonconformances") {
     return ["QC", "SUP", "PMG", "ADM"].includes(persona);
   }
   if (pathname === "/material-readiness") {

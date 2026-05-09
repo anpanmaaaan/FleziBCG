@@ -145,7 +145,7 @@ export function APSScheduling() {
       <div className="flex-1 flex flex-col p-6">
         {/* Page header with status badge */}
         <div className="flex items-center gap-3 mb-6">
-          <h1 className="text-2xl font-bold">APS Scheduling Optimizer</h1>
+          <h1 className="text-2xl font-bold">{t("aPSScheduling.label.aps_scheduling_optimizer")}</h1>
           <ScreenStatusBadge phase="MOCK" />
         </div>
 
@@ -155,18 +155,18 @@ export function APSScheduling() {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <Settings className="w-5 h-5 text-blue-600" />
-                <span className="font-medium text-gray-700">Scheduling Algorithm:</span>
+                <span className="font-medium text-gray-700">{t("aPSScheduling.label.scheduling_algorithm")}</span>
               </div>
               <select
                 value={algorithm}
                 onChange={(e) => setAlgorithm(e.target.value as any)}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-focus-ring"
               >
-                <option value="EDD">EDD - Earliest Due Date</option>
-                <option value="SPT">SPT - Shortest Processing Time</option>
-                <option value="LPT">LPT - Longest Processing Time</option>
-                <option value="Priority">Priority Based</option>
-                <option value="ATC">ATC - Apparent Tardiness Cost</option>
+                <option value="EDD">{t("aPSScheduling.label.edd_earliest_due_date")}</option>
+                <option value="SPT">{t("aPSScheduling.label.spt_shortest_processing_time")}</option>
+                <option value="LPT">{t("aPSScheduling.label.lpt_longest_processing_time")}</option>
+                <option value="Priority">{t("aPSScheduling.label.priority_based")}</option>
+                <option value="ATC">{t("aPSScheduling.label.atc_apparent_tardiness_cost")}</option>
               </select>
             </div>
 
@@ -175,16 +175,16 @@ export function APSScheduling() {
                 disabled
                 onClick={handleOptimize}
                 className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-2"
-                title="This action is not available for mock data"
+                title={t("common.notice.mockUnavailable")}
               >
                 <Lock className="w-4 h-4" />
                 Run Optimization (Future)
               </button>
               <button
                 disabled
-                onClick={() => toast.info('Apply to Dispatch Queue feature coming soon')}
+                onClick={() => toast.info(t("common.notice.comingSoon"))}
                 className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-2"
-                title="This action is not available for mock data"
+                title={t("common.notice.mockUnavailable")}
               >
                 <Lock className="w-4 h-4" />
                 Apply to Queue (Future)
@@ -198,7 +198,7 @@ export function APSScheduling() {
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-blue-600 font-medium">Total Orders</div>
+                <div className="text-sm text-blue-600 font-medium">{t("aPSScheduling.label.total_orders")}</div>
                 <div className="text-2xl font-bold text-blue-800">{metrics.totalOrders}</div>
               </div>
               <Calendar className="w-8 h-8 text-blue-500" />
@@ -208,7 +208,7 @@ export function APSScheduling() {
           <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-green-600 font-medium">On-Time Rate</div>
+                <div className="text-sm text-green-600 font-medium">{t("aPSScheduling.label.ontime_rate")}</div>
                 <div className="text-2xl font-bold text-green-800">{metrics.onTimeRate}%</div>
               </div>
               <TrendingUp className="w-8 h-8 text-green-500" />
@@ -218,7 +218,7 @@ export function APSScheduling() {
           <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-purple-600 font-medium">Utilization</div>
+                <div className="text-sm text-purple-600 font-medium">{t("aPSScheduling.label.utilization")}</div>
                 <div className="text-2xl font-bold text-purple-800">{metrics.utilizationRate}%</div>
               </div>
               <Settings className="w-8 h-8 text-purple-500" />
@@ -228,7 +228,7 @@ export function APSScheduling() {
           <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-orange-600 font-medium">Avg Lead Time</div>
+                <div className="text-sm text-orange-600 font-medium">{t("aPSScheduling.label.avg_lead_time")}</div>
                 <div className="text-2xl font-bold text-orange-800">{metrics.avgLeadTime} days</div>
               </div>
               <Clock className="w-8 h-8 text-orange-500" />
@@ -238,7 +238,7 @@ export function APSScheduling() {
           <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-red-600 font-medium">Bottleneck</div>
+                <div className="text-sm text-red-600 font-medium">{t("aPSScheduling.label.bottleneck")}</div>
                 <div className="text-xl font-bold text-red-800">{metrics.bottleneckStation}</div>
               </div>
               <Settings className="w-8 h-8 text-red-500" />

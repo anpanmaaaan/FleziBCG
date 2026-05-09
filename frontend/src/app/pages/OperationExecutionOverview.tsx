@@ -374,19 +374,19 @@ export function OperationExecutionOverview() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">{t("opOverview.woInfo.product")}</span>
-                <span className="font-medium">Engine Block Type A</span>
+                <span className="font-medium">{t("operationExecutionOverview.label.engine_block_type_a")}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">{t("opOverview.woInfo.productionLine")}</span>
-                <span className="font-medium">Line A</span>
+                <span className="font-medium">{t("operationExecutionOverview.label.line_a")}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">{t("opOverview.woInfo.quantity")}</span>
-                <span className="font-medium">50 pcs</span>
+                <span className="font-medium">{t("operationExecutionOverview.label.50_pcs")}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">{t("opOverview.woInfo.route")}</span>
-                <span className="font-medium">DMES-R8</span>
+                <span className="font-medium">{t("operationExecutionOverview.label.dmesr8")}</span>
               </div>
             </div>
           </div>

@@ -52,8 +52,8 @@ export function ScopeAssignments() {
 
   return (
     <GovernancePageShell
-      title="Scope Assignments"
-      subtitle="User role scope hierarchy assignments"
+      title={t("scopeAssignments.tooltip.scope_assignments")}
+      subtitle={t("scopeAssignments.tooltip.user_role_scope_hierarchy_assignments")}
       phase="SHELL"
       bannerNote="Scope assignment is not yet connected to backend. Backend tenant isolation and RBAC system remains source of truth for user scope."
     >
@@ -61,7 +61,7 @@ export function ScopeAssignments() {
       <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded flex items-start gap-3">
         <Layers className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
         <div className="text-sm text-blue-700">
-          <strong>Scope Hierarchy:</strong> Tenant → Plant → Area → Line → Station → Equipment
+          <strong>{t("scopeAssignments.label.scope_hierarchy")}</strong> Tenant → Plant → Area → Line → Station → Equipment
         </div>
       </div>
 
@@ -70,14 +70,14 @@ export function ScopeAssignments() {
         <table className="w-full min-w-[800px]">
           <thead className="bg-gray-50 border-b sticky top-0">
               <tr>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">User</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Role</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Tenant</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Plant</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Area</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Line</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Station</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Assigned</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("scopeAssignments.label.user")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("scopeAssignments.label.role")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("scopeAssignments.label.tenant")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("scopeAssignments.label.plant")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("scopeAssignments.label.area")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("scopeAssignments.label.line")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("scopeAssignments.label.station")}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t("scopeAssignments.label.assigned")}</th>
               </tr>
             </thead>
             <tbody>
@@ -100,7 +100,7 @@ export function ScopeAssignments() {
       {/* Backend notice */}
       <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded text-sm text-amber-700 flex items-start gap-2">
         <Lock className="w-4 h-4 mt-0.5 flex-shrink-0" />
-        <span>Scope assignments are managed by backend IAM system. Frontend assignment actions are future.</span>
+        <span>{t("scopeAssignments.label.scope_assignments_are_managed_by_backend")}</span>
       </div>
     </GovernancePageShell>
   );

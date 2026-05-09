@@ -45,6 +45,9 @@ class OperationDetail(OperationListItem):
     good_qty: int = 0
     scrap_qty: int = 0
     qc_required: bool = False
+    # Backend-derived: true iff an ACTIVE quality hold exists for this operation.
+    # When true, resume and complete are blocked (see allowed_actions).
+    quality_hold_open: bool = False
     # Derived from downtime_started/downtime_ended events on the append-only log:
     # true iff started_count > ended_count. Projected alongside status so
     # consumers can distinguish "blocked by downtime" without inspecting events.

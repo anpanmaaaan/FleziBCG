@@ -33,12 +33,12 @@ export function AIShiftSummary() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="bg-slate-50 rounded-lg border border-slate-200 p-3">
           <div className="text-xs text-slate-500 mb-1">{t("aiShiftSummary.meta.shift")}</div>
-          <div className="text-sm font-medium text-slate-700">Morning — 2026-05-01</div>
+          <div className="text-sm font-medium text-slate-700">{t("aIShiftSummary.label.morning_20260501")}</div>
           <div className="text-xs text-slate-400 italic">{t("aiShiftSummary.meta.demo")}</div>
         </div>
         <div className="bg-slate-50 rounded-lg border border-slate-200 p-3">
           <div className="text-xs text-slate-500 mb-1">{t("aiShiftSummary.meta.line")}</div>
-          <div className="text-sm font-medium text-slate-700">Line A — Demo</div>
+          <div className="text-sm font-medium text-slate-700">{t("aIShiftSummary.label.line_a_demo")}</div>
           <div className="text-xs text-slate-400 italic">{t("aiShiftSummary.meta.demo")}</div>
         </div>
         <div className="bg-slate-50 rounded-lg border border-slate-200 p-3">

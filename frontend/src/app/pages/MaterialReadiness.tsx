@@ -75,7 +75,7 @@ export function MaterialReadiness() {
                 <th className="px-4 py-2 text-left">{t("materialReadiness.col.component")}</th>
                 <th className="px-4 py-2 text-left">{t("materialReadiness.col.status")}</th>
                 <th className="px-4 py-2 text-left">{t("materialReadiness.col.qty")}</th>
-                <th className="px-4 py-2 text-right">Days Supply</th>
+                <th className="px-4 py-2 text-right">{t("materialReadiness.label.days_supply")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">

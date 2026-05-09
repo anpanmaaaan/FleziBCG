@@ -81,6 +81,8 @@ export const NAV_GROUPS: NavGroup[] = [
       "/quality-dashboard",
       "/quality-measurements",
       "/quality-holds",
+      "/quality-deviations",
+      "/quality-nonconformances",
       "/quality",
       "/defects",
     ],

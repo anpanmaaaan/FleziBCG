@@ -47,6 +47,9 @@ export interface OperationDetail {
   production_order_id: number;
   production_order_number: string;
   qc_required: boolean;
+  // Backend-derived: true iff an ACTIVE quality hold exists for this operation.
+  // When true, resume and complete are blocked server-side (reflected in allowed_actions).
+  quality_hold_open: boolean;
   downtime_open: boolean;
   // Backend-derived per-operation capability list. Canonical command names
   // (report_production, pause_execution, resume_execution, start_downtime,

@@ -29,6 +29,7 @@ from app.repositories.operation_repository import (
     mark_operation_resumed,
     mark_operation_started,
 )
+from app.repositories.quality_repository import has_active_hold_for_operation
 from app.schemas.operation import (
     OperationAbortRequest,
     OperationCloseRequest,
@@ -778,6 +779,7 @@ def _derive_allowed_actions(
     status: str,
     downtime_open: bool,
     closure_status: str = ClosureStatusEnum.open.value,
+    quality_hold_open: bool = False,
 ) -> list[str]:
     if closure_status == ClosureStatusEnum.closed.value:
         return ["reopen_operation"]
@@ -796,9 +798,10 @@ def _derive_allowed_actions(
         # status == IN_PROGRESS and nothing else at the snapshot level.
         actions.append("report_production")
         actions.append("pause_execution")
-        actions.append("complete_execution")
+        if not quality_hold_open:
+            actions.append("complete_execution")
 
-    if status == StatusEnum.paused.value and not downtime_open:
+    if status == StatusEnum.paused.value and not downtime_open and not quality_hold_open:
         actions.append("resume_execution")
 
     if (
@@ -854,6 +857,11 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
     # projection-only and does NOT drive status — callers still use the
     # existing state machine for transitions.
     downtime_open = downtime_started_count > downtime_ended_count
+    quality_hold_open = has_active_hold_for_operation(
+        db,
+        operation_id=operation.id,
+        tenant_id=operation.tenant_id,
+    )
     # Detail semantics must be internally consistent: action affordances are
     # derived from the same runtime-truth status exposed in `status`, not from
     # potentially stale snapshot projection on operation.status.
@@ -861,6 +869,7 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
         status,
         downtime_open,
         operation.closure_status,
+        quality_hold_open,
     )
     paused_total_ms = _accumulate_event_interval_ms(
         events,
@@ -900,6 +909,7 @@ def derive_operation_detail(db: Session, operation) -> OperationDetail:
         good_qty=good_qty,
         scrap_qty=scrap_qty,
         qc_required=operation.qc_required,
+        quality_hold_open=quality_hold_open,
         downtime_open=downtime_open,
         allowed_actions=allowed_actions,
         paused_total_ms=paused_total_ms,
@@ -1176,6 +1186,12 @@ def complete_operation(
         raise CompleteOperationConflictError(
             "Operation must be IN_PROGRESS to complete."
         )
+    if has_active_hold_for_operation(
+        db,
+        operation_id=operation.id,
+        tenant_id=operation.tenant_id,
+    ):
+        raise CompleteOperationConflictError("STATE_QC_HOLD_ACTIVE")
 
     completed_at = request.completed_at or _utcnow_naive()
     payload = {
@@ -1316,6 +1332,13 @@ def resume_operation(
 
     if operation.status != StatusEnum.paused.value:
         raise ResumeExecutionConflictError("STATE_NOT_PAUSED")
+
+    if has_active_hold_for_operation(
+        db,
+        operation_id=operation.id,
+        tenant_id=operation.tenant_id,
+    ):
+        raise ResumeExecutionConflictError("STATE_QC_HOLD_ACTIVE")
 
     # Competing running execution at same station (canonical: "no other execution
     # already running"). An operation with status IN_PROGRESS is actively running;

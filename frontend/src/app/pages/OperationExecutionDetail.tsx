@@ -326,7 +326,7 @@ type TabType = "overview" | "quality" | "materials" | "timeline" | "documents";
 
             <div>
               <div className="text-sm text-gray-500">{t("opDetail.sidebar.station")}</div>
-              <div className="font-medium">- / -</div>
+              <div className="font-medium">{t("operationExecutionDetail.label.")}</div>
             </div>
 
             <div>
@@ -428,23 +428,23 @@ type TabType = "overview" | "quality" | "materials" | "timeline" | "documents";
                     <div className="space-y-3">
                       <div className="flex justify-between">
                         <span className="text-gray-600">{t("opDetail.location.productionLine")}</span>
-                        <span className="font-medium">-</span>
+                        <span className="font-medium">{t("common.na")}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">{t("opDetail.location.workCenter")}</span>
-                        <span className="font-medium">-</span>
+                        <span className="font-medium">{t("common.na")}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">{t("opDetail.location.workstation")}</span>
-                        <span className="font-medium">-</span>
+                        <span className="font-medium">{t("common.na")}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">{t("opDetail.location.machine")}</span>
-                        <span className="font-medium">-</span>
+                        <span className="font-medium">{t("common.na")}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">{t("opDetail.location.machineId")}</span>
-                        <span className="font-medium text-blue-600">-</span>
+                        <span className="font-medium text-blue-600">{t("common.na")}</span>
                       </div>
                     </div>
                   </div>
@@ -454,11 +454,11 @@ type TabType = "overview" | "quality" | "materials" | "timeline" | "documents";
                     <div className="space-y-3">
                       <div className="flex justify-between">
                         <span className="text-gray-600">{t("opDetail.timeQty.setupTime")}</span>
-                        <span className="font-medium">-</span>
+                        <span className="font-medium">{t("common.na")}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">{t("opDetail.timeQty.runTimePerUnit")}</span>
-                        <span className="font-medium">-</span>
+                        <span className="font-medium">{t("common.na")}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">{t("opDetail.timeQty.plannedQty")}</span>
@@ -632,7 +632,7 @@ type TabType = "overview" | "quality" | "materials" | "timeline" | "documents";
                             </td>
                             <td className={"px-4 py-3 font-medium " + (isOverused ? "text-red-600" : "text-orange-600")}>
                               {remaining} {material.unit}
-                              {isOverused && <span className="ml-2 text-xs bg-red-100 px-2 py-0.5 rounded">Overused</span>}
+                              {isOverused && <span className="ml-2 text-xs bg-red-100 px-2 py-0.5 rounded">{t("operationExecutionDetail.label.overused")}</span>}
                             </td>
                             <td className="px-4 py-3 font-mono text-xs">{material.lotNumber || "-"}</td>
                             <td className="px-4 py-3">
@@ -660,19 +660,19 @@ type TabType = "overview" | "quality" | "materials" | "timeline" | "documents";
                   <h3 className="text-lg font-bold mb-4">{t("opDetail.materials.traceabilityTitle")}</h3>
                   <div className="space-y-4">
                     <div className="border rounded-lg p-4">
-                      <div className="font-medium mb-2">Material: Alloy Steel 4140</div>
+                      <div className="font-medium mb-2">{t("operationExecutionDetail.label.material_alloy_steel_4140")}</div>
                       <div className="text-sm space-y-1 text-gray-600">
                         <div>
-                          <span className="font-medium">Lot Number:</span> LOT-2024-0415-001
+                          <span className="font-medium">{t("operationExecutionDetail.label.lot_number")}</span> LOT-2024-0415-001
                         </div>
                         <div>
-                          <span className="font-medium">Supplier:</span> ABC Steel Corp.
+                          <span className="font-medium">{t("operationExecutionDetail.label.supplier")}</span> ABC Steel Corp.
                         </div>
                         <div>
-                          <span className="font-medium">Received Date:</span> 2024-04-10
+                          <span className="font-medium">{t("operationExecutionDetail.label.received_date")}</span> 2024-04-10
                         </div>
                         <div>
-                          <span className="font-medium">Heat Number:</span> H-45678-2024
+                          <span className="font-medium">{t("operationExecutionDetail.label.heat_number")}</span> H-45678-2024
                         </div>
                       </div>
                     </div>
@@ -749,8 +749,8 @@ type TabType = "overview" | "quality" | "materials" | "timeline" | "documents";
                       <div className="flex items-center gap-3">
                         <FileText className="w-10 h-10 text-blue-600" />
                         <div className="flex-1">
-                          <div className="font-medium">Work Instruction - Bore Drilling</div>
-                          <div className="text-sm text-gray-500">PDF - 2.4 MB - Updated 2024-04-10</div>
+                          <div className="font-medium">{t("operationExecutionDetail.label.work_instruction_bore_drilling")}</div>
+                          <div className="text-sm text-gray-500">{t("operationExecutionDetail.label.pdf_24_mb_updated_20240410")}</div>
                         </div>
                       </div>
                     </div>
@@ -758,8 +758,8 @@ type TabType = "overview" | "quality" | "materials" | "timeline" | "documents";
                       <div className="flex items-center gap-3">
                         <FileText className="w-10 h-10 text-green-600" />
                         <div className="flex-1">
-                          <div className="font-medium">Quality Control Procedure</div>
-                          <div className="text-sm text-gray-500">PDF - 1.8 MB - Updated 2024-04-05</div>
+                          <div className="font-medium">{t("operationExecutionDetail.label.quality_control_procedure")}</div>
+                          <div className="text-sm text-gray-500">{t("operationExecutionDetail.label.pdf_18_mb_updated_20240405")}</div>
                         </div>
                       </div>
                     </div>
@@ -767,8 +767,8 @@ type TabType = "overview" | "quality" | "materials" | "timeline" | "documents";
                       <div className="flex items-center gap-3">
                         <FileText className="w-10 h-10 text-purple-600" />
                         <div className="flex-1">
-                          <div className="font-medium">Safety Guidelines</div>
-                          <div className="text-sm text-gray-500">PDF - 0.9 MB - Updated 2024-03-20</div>
+                          <div className="font-medium">{t("operationExecutionDetail.label.safety_guidelines")}</div>
+                          <div className="text-sm text-gray-500">{t("operationExecutionDetail.label.pdf_09_mb_updated_20240320")}</div>
                         </div>
                       </div>
                     </div>

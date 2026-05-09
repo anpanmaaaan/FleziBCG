@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { PageHeader } from '@/app/components';
 import { GanttChart, type OperationExecutionGantt } from '@/app/components';
+import { useI18n } from "@/app/i18n";
 
 const BASE_START = new Date('2026-04-05T08:00:00Z').getTime();
 
@@ -46,6 +47,7 @@ const buildSyntheticOperations = (count: number): OperationExecutionGantt[] => {
 };
 
 export function GanttStressTestPage() {
+  const { t } = useI18n();
   const [selectedOperationId, setSelectedOperationId] = useState<string | undefined>();
 
   const operations = useMemo(() => buildSyntheticOperations(2000), []);
@@ -53,8 +55,8 @@ export function GanttStressTestPage() {
   return (
     <div className="h-full flex flex-col bg-gray-50">
       <PageHeader
-        title="Gantt Stress Test (DEV only)"
-        subtitle="Synthetic 2,000-row workload for virtualization verification"
+        title={t("ganttStressTestPage.tooltip.gantt_stress_test_dev_only")}
+        subtitle={t("ganttStressTestPage.tooltip.synthetic_2000row_workload_for_virtualiz")}
         showBackButton={false}
         actions={
           <Link
@@ -69,7 +71,7 @@ export function GanttStressTestPage() {
       <div className="flex-1 overflow-auto p-6 space-y-4">
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
           Rendering 2,000 operations with virtual rows. Set localStorage key
-          <span className="font-mono"> gantt.debug.row.renders=1</span> to inspect row render counts in console.
+          <span className="font-mono"> {t("ganttStressTestPage.label.ganttdebugrowrenders1")}</span> to inspect row render counts in console.
           Selected operation: <span className="font-mono">{selectedOperationId || '-'}</span>
         </div>
 
