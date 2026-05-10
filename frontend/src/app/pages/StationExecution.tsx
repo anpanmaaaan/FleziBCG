@@ -11,6 +11,7 @@ import { AllowedActionZone } from "@/app/components/station-execution/AllowedAct
 import { ClosureStatePanel } from "@/app/components/station-execution/ClosureStatePanel";
 import { ReopenOperationModal } from "@/app/components/station-execution/ReopenOperationModal";
 import { StartDowntimeDialog } from "@/app/components/station-execution/StartDowntimeDialog";
+import { normalizeStationCommandError, type StationCommandErrorMessage } from "@/app/components/station-execution/stationCommandErrorMessages";
 import type { QueueFilter } from "@/app/components/station-execution/QueueFilterBar";
 import {
   fetchDowntimeReasons,
@@ -244,9 +245,24 @@ export function StationExecution() {
   const [queueFilter, setQueueFilter] = useState<QueueFilter>("all");
   const [queueOverlayOpen, setQueueOverlayOpen] = useState(false);
   const [forceSelectionMode, setForceSelectionMode] = useState(false);
+  const [commandError, setCommandError] = useState<StationCommandErrorMessage | null>(null);
 
   const getStatusLabel = (status: OperationDetail["status"]): string => {
     return t(mapExecutionStatusText(status) as I18nSemanticKey);
+  };
+
+  const presentCommandError = (error: unknown, fallbackKey: string) => {
+    const normalized = normalizeStationCommandError(error);
+    setCommandError(normalized);
+    console.error("[StationExecution] command failed", { code: normalized.code, error });
+
+    if (normalized.code !== "UNKNOWN") {
+      toast.error(t(normalized.messageKey));
+      return normalized;
+    }
+
+    toast.error(t(fallbackKey));
+    return normalized;
   };
 
   // Backend-derived capability check. Missing allowed_actions (e.g. detail not
@@ -412,6 +428,7 @@ export function StationExecution() {
       const data = await stationApi.getQueue();
       setStationScope(data.station_scope_value || "-");
       setQueueItems(data.items);
+      setCommandError(null);
 
       if (data.items.length === 0) {
         setOperation(null);
@@ -443,7 +460,7 @@ export function StationExecution() {
       const data = await fetchDowntimeReasons();
       setDowntimeReasons(data);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("station.downtime.reason.loadFailed"));
+      presentCommandError(err, "station.downtime.reason.loadFailed");
       setDowntimeReasons([]);
     } finally {
       setDowntimeReasonsLoading(false);
@@ -462,13 +479,14 @@ export function StationExecution() {
     try {
       const data = await stationApi.getOperationDetail(Number(trimmedId));
       setOperation(data);
+      setCommandError(null);
       // Quantity fields are deltas for the *next* report, not cumulative totals  E
       // reset to 0 whenever the selected operation changes.
       setGoodQty(0);
       setScrapQty(0);
       setSearchParams({ operationId: trimmedId });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("station.toast.loadOperationFailed"));
+      presentCommandError(err, "station.toast.loadOperationFailed");
     } finally {
       setLoading(false);
     }
@@ -494,14 +512,12 @@ export function StationExecution() {
       const data = await operationApi.start(operation.id, {
         operator_id: currentUser?.user_id ?? null,
       });
+      setCommandError(null);
       toast.success(t("station.toast.clockedOn") + getStatusLabel(data.status));
     } catch (err) {
-      if (err instanceof HttpError && err.status === 403) {
-        toast.error(t("station.ownership.required"));
-      } else if (err instanceof HttpError && err.status === 409) {
+      const normalized = presentCommandError(err, "station.toast.actionFailed");
+      if (normalized.code === "UNKNOWN" && err instanceof HttpError && err.status === 409) {
         toast.error(t("station.toast.alreadyStarted"));
-      } else {
-        toast.error(err instanceof Error ? err.message : t("station.toast.actionFailed"));
       }
     } finally {
       setActionLoading(false);
@@ -523,11 +539,12 @@ export function StationExecution() {
         scrap_qty: scrapQty,
         operator_id: null,
       });
+      setCommandError(null);
       toast.success(t("station.toast.quantityReported") + getStatusLabel(data.status));
       setGoodQty(0);
       setScrapQty(0);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("station.toast.actionFailed"));
+      presentCommandError(err, "station.toast.actionFailed");
     } finally {
       setActionLoading(false);
       await fetchOperation(String(operation.id));
@@ -540,18 +557,13 @@ export function StationExecution() {
     setDowntimeLoading(true);
     try {
       await operationApi.startDowntime(operation.id, { reason_code: reasonCode, note });
+      setCommandError(null);
       toast.success(t("station.toast.downtimeStarted"));
       setDowntimeModalOpen(false);
       await fetchOperation(String(operation.id));
       await refreshQueue();
     } catch (err) {
-      let msg = t("station.toast.downtimeFailed");
-      if (err instanceof HttpError && err.status === 409 && typeof err.detail === "string") {
-        if (err.detail.startsWith("STATE_")) msg = t(`station.reject.${err.detail}` as never);
-        else if (err.detail.startsWith("DOWNTIME_")) msg = t(`station.reject.${err.detail}` as never);
-        else if (err.detail.startsWith("INVALID_")) msg = t(`station.reject.${err.detail}` as never);
-      }
-      toast.error(msg);
+      presentCommandError(err, "station.toast.downtimeFailed");
     } finally {
       setDowntimeLoading(false);
     }
@@ -562,28 +574,15 @@ export function StationExecution() {
     setDowntimeLoading(true);
     try {
       await operationApi.endDowntime(operation.id, {});
+      setCommandError(null);
       toast.success(t("station.toast.downtimeEnded"));
       await fetchOperation(String(operation.id));
       await refreshQueue();
     } catch (err) {
-      let msg = t("station.toast.downtimeEndFailed");
-      if (err instanceof HttpError && err.status === 409 && typeof err.detail === "string") {
-        const code = err.detail.trim();
-        if (code.startsWith("STATE_")) msg = t(`station.reject.${code}` as never);
-      } else if (err instanceof HttpError && err.status === 403) {
-        msg = t("station.ownership.required");
-      }
-      toast.error(msg);
+      presentCommandError(err, "station.toast.downtimeEndFailed");
     } finally {
       setDowntimeLoading(false);
     }
-  };
-
-  const rejectReasonKey = (detail: unknown): string | null => {
-    if (typeof detail !== "string") return null;
-    const code = detail.trim();
-    if (!code.startsWith("STATE_")) return null;
-    return `station.reject.${code}`;
   };
 
   const pauseOperation = async () => {
@@ -591,16 +590,10 @@ export function StationExecution() {
     setActionLoading(true);
     try {
       const data = await operationApi.pause(operation.id, {});
+      setCommandError(null);
       toast.success(t("station.toast.paused") + getStatusLabel(data.status));
     } catch (err) {
-      if (err instanceof HttpError && err.status === 403) {
-        toast.error(t("station.ownership.required"));
-      } else if (err instanceof HttpError && err.status === 409) {
-        const key = rejectReasonKey(err.detail);
-        toast.error(key ? t(key as never) : t("station.toast.pauseFailed"));
-      } else {
-        toast.error(err instanceof Error ? err.message : t("station.toast.pauseFailed"));
-      }
+      presentCommandError(err, "station.toast.pauseFailed");
     } finally {
       setActionLoading(false);
       await fetchOperation(String(operation.id));
@@ -613,16 +606,10 @@ export function StationExecution() {
     setActionLoading(true);
     try {
       const data = await operationApi.resume(operation.id, {});
+      setCommandError(null);
       toast.success(t("station.toast.resumed") + getStatusLabel(data.status));
     } catch (err) {
-      if (err instanceof HttpError && err.status === 403) {
-        toast.error(t("station.ownership.required"));
-      } else if (err instanceof HttpError && err.status === 409) {
-        const key = rejectReasonKey(err.detail);
-        toast.error(key ? t(key as never) : t("station.toast.resumeFailed"));
-      } else {
-        toast.error(err instanceof Error ? err.message : t("station.toast.resumeFailed"));
-      }
+      presentCommandError(err, "station.toast.resumeFailed");
     } finally {
       setActionLoading(false);
       await fetchOperation(String(operation.id));
@@ -640,14 +627,12 @@ export function StationExecution() {
         operator_id: currentUser?.user_id ?? null,
         completed_at: new Date().toISOString(),
       });
+      setCommandError(null);
       toast.success(t("station.toast.clockedOff") + getStatusLabel(data.status));
     } catch (err) {
-      if (err instanceof HttpError && err.status === 403) {
-        toast.error(t("station.ownership.required"));
-      } else if (err instanceof HttpError && err.status === 409) {
+      const normalized = presentCommandError(err, "station.toast.actionFailed");
+      if (normalized.code === "UNKNOWN" && err instanceof HttpError && err.status === 409) {
         toast.error(t("station.toast.alreadyCompleted"));
-      } else {
-        toast.error(err instanceof Error ? err.message : t("station.toast.actionFailed"));
       }
     } finally {
       setActionLoading(false);
@@ -663,14 +648,10 @@ export function StationExecution() {
     setActionLoading(true);
     try {
       const data = await operationApi.close(operation.id, {});
+      setCommandError(null);
       toast.success(t("station.toast.closed") + getStatusLabel(data.status));
     } catch (err) {
-      if (err instanceof HttpError && err.status === 409) {
-        const key = rejectReasonKey(err.detail);
-        toast.error(key ? t(key as never) : t("station.toast.closeFailed"));
-      } else {
-        toast.error(err instanceof Error ? err.message : t("station.toast.closeFailed"));
-      }
+      presentCommandError(err, "station.toast.closeFailed");
     } finally {
       setActionLoading(false);
       await fetchOperation(String(operation.id));
@@ -683,16 +664,13 @@ export function StationExecution() {
     setActionLoading(true);
     try {
       const data = await operationApi.reopen(operation.id, { reason });
+      setCommandError(null);
       toast.success(t("station.toast.reopened") + getStatusLabel(data.status));
       setReopenModalOpen(false);
     } catch (err) {
-      if (err instanceof HttpError && err.status === 409) {
-        const key = rejectReasonKey(err.detail);
-        toast.error(key ? t(key as never) : t("station.toast.reopenFailed"));
-      } else if (err instanceof HttpError && typeof err.detail === "string" && err.detail === "REOPEN_REASON_REQUIRED") {
+      const normalized = presentCommandError(err, "station.toast.reopenFailed");
+      if (normalized.code === "UNKNOWN" && err instanceof HttpError && typeof err.detail === "string" && err.detail === "REOPEN_REASON_REQUIRED") {
         toast.error(t("station.reopen.reason.required"));
-      } else {
-        toast.error(err instanceof Error ? err.message : t("station.toast.reopenFailed"));
       }
     } finally {
       setActionLoading(false);
@@ -707,9 +685,10 @@ export function StationExecution() {
       await stationApi.openSession({
         station_id: stationScope,
       });
+      setCommandError(null);
       await refreshQueue();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("station.toast.actionFailed"));
+      presentCommandError(err, "station.toast.actionFailed");
     } finally {
       setSessionLoading(false);
     }
@@ -721,12 +700,12 @@ export function StationExecution() {
     setSessionLoading(true);
     try {
       await stationApi.closeSession(sessionId);
+      setCommandError(null);
       await refreshQueue();
     } catch (err) {
-      if (err instanceof HttpError && err.status === 409) {
+      const normalized = presentCommandError(err, "station.toast.actionFailed");
+      if (normalized.code === "UNKNOWN" && err instanceof HttpError && err.status === 409) {
         toast.error(t("station.session.closeBlockedActiveExecution"));
-      } else {
-        toast.error(err instanceof Error ? err.message : t("station.toast.actionFailed"));
       }
     } finally {
       setSessionLoading(false);
@@ -774,6 +753,33 @@ export function StationExecution() {
     const query = params.toString();
     navigate(query ? `/station-session?${query}` : "/station-session");
   };
+
+  const commandErrorBanner = commandError && (
+    <div
+      className={`mx-3 mt-2 flex items-start gap-3 rounded-2xl border px-4 py-3 sm:mx-4 ${
+        commandError.severity === "danger"
+          ? "border-red-200 bg-red-50 text-red-950"
+          : "border-amber-200 bg-amber-50 text-amber-950"
+      }`}
+    >
+      <AlertTriangle
+        className={`mt-0.5 h-5 w-5 flex-shrink-0 ${commandError.severity === "danger" ? "text-red-600" : "text-amber-600"}`}
+        aria-hidden="true"
+      />
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-wide">
+          {t(commandError.titleKey as I18nSemanticKey)}
+        </p>
+        <p className="mt-1 text-sm sm:text-base leading-snug">
+          {t(commandError.messageKey as I18nSemanticKey)}
+        </p>
+        <p className="mt-1 text-xs sm:text-sm font-medium">
+          {t(commandError.recoveryKey as I18nSemanticKey)}
+        </p>
+      </div>
+    </div>
+  );
+
   // ── MODE A  EOperation Selection ──────────────────────────────────────────
   if (!isExecutionMode) {
     return (
@@ -798,6 +804,8 @@ export function StationExecution() {
           }
         />
         <MockWarningBanner phase="PARTIAL" note={t("screenStatus.banner.deprecation.body" as any)} />
+
+        {commandErrorBanner}
 
         <div className="flex-1 overflow-auto p-4 max-w-2xl mx-auto w-full">
           {operation && ownsAnotherSession && (
@@ -941,6 +949,8 @@ export function StationExecution() {
         onRefresh={() => void refreshQueue()}
         onToggleQueue={() => setQueueOverlayOpen((prev) => !prev)}
       />
+
+      {commandErrorBanner}
 
       {/* Queue overlay */}
       {queueOverlayOpen && (
