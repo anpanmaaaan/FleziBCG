@@ -1068,7 +1068,7 @@ export function StationExecution() {
         sessionId={ownershipState?.session_id ?? null}
         operatorUserId={ownershipState?.operator_user_id ?? null}
         equipmentId={ownershipState?.equipment_id ?? null}
-        recoveryBanner={commandErrorBanner ?? undefined}
+        recoveryBanner={isExecutionMode ? undefined : commandErrorBanner ?? undefined}
       >
         <StationEntryHandoff
           stationState={handoffStationState}
@@ -1113,95 +1113,121 @@ export function StationExecution() {
 
         {/* Execution body  Emust not scroll on iPad landscape */}
         <div className="flex-1 min-h-0 flex flex-col p-3 sm:p-4 gap-3 sm:gap-4 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-50">
-        <ExecutionStateHero
-          operation={operation}
-          remainingQty={remainingQty}
-          targetTimeLabel={targetTimeLabel}
-          elapsedLabel={elapsedExecutionMs !== null ? formatDuration(elapsedExecutionMs) : t("station.timer.unavailable")}
-          overByLabel={overTargetMs !== null ? formatDuration(overTargetMs) : null}
-          pausedTotalLabel={formatDuration(pausedTotalMs)}
-          downtimeTotalLabel={formatDuration(downtimeTotalMs)}
-        />
-
-        {/* Report / input block */}
-        <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
-          <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-2">
-            {t("station.block.inputReporting")}
-          </p>
-          <p className="mt-2 text-sm sm:text-base text-slate-600 md:text-xl mb-5">{reportingHint}</p>
-          <div className="grid gap-5 lg:grid-cols-2 mb-6">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-              <Stepper
-                label={t("station.input.goodQtyDelta")}
-                value={goodQty}
-                onChange={setGoodQty}
-                labelClassName="text-emerald-700"
-                disabled={!canReportProduction}
-                quickAddValues={[1, 5, 10, 20]}
-                quickAddTone="good"
-                onReset={() => setGoodQty(0)}
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,1fr)] xl:gap-4">
+            <div className="flex min-w-0 flex-col gap-3 sm:gap-4">
+              <ExecutionStateHero
+                operation={operation}
+                remainingQty={remainingQty}
+                targetTimeLabel={targetTimeLabel}
+                elapsedLabel={elapsedExecutionMs !== null ? formatDuration(elapsedExecutionMs) : t("station.timer.unavailable")}
+                overByLabel={overTargetMs !== null ? formatDuration(overTargetMs) : null}
+                pausedTotalLabel={formatDuration(pausedTotalMs)}
+                downtimeTotalLabel={formatDuration(downtimeTotalMs)}
               />
+
+              <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
+                <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-2">
+                  {t("station.block.guidance")}
+                </p>
+
+                {guidanceMessage && (
+                  <div className="mb-4 flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 sm:px-5">
+                    <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-500 sm:h-6 sm:w-6" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <p className="mt-1 text-sm text-blue-900 sm:text-base md:text-xl leading-snug">{guidanceMessage}</p>
+                    </div>
+                  </div>
+                )}
+
+                {commandErrorBanner}
+
+                <AllowedActionZone
+                  operation={operation}
+                  actionLoading={actionLoading}
+                  downtimeLoading={downtimeLoading}
+                  canExecute={canExecute}
+                  canPauseExecution={canPauseExecution}
+                  canStartDowntime={canStartDowntime}
+                  canCompleteExecution={canCompleteExecution}
+                  canResumeExecution={canResumeExecution}
+                  canEndDowntimeAction={canEndDowntimeAction}
+                  canDo={canDo}
+                  onStartOperation={() => void startOperation()}
+                  onPauseOperation={() => void pauseOperation()}
+                  onOpenDowntimeModal={() => setDowntimeModalOpen(true)}
+                  onCompleteOperation={() => void completeOperation()}
+                  onResumeOperation={() => void resumeOperation()}
+                  onEndDowntime={() => void endDowntime()}
+                />
+              </section>
+
+              {/* Report / input block */}
+              <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
+                <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-2">
+                  {t("station.block.inputReporting")}
+                </p>
+                <p className="mt-2 text-sm sm:text-base text-slate-600 md:text-xl mb-5">{reportingHint}</p>
+                <div className="grid gap-5 lg:grid-cols-2 mb-6">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+                    <Stepper
+                      label={t("station.input.goodQtyDelta")}
+                      value={goodQty}
+                      onChange={setGoodQty}
+                      labelClassName="text-emerald-700"
+                      disabled={!canReportProduction}
+                      quickAddValues={[1, 5, 10, 20]}
+                      quickAddTone="good"
+                      onReset={() => setGoodQty(0)}
+                    />
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+                    <Stepper
+                      label={t("station.input.scrapQtyDelta")}
+                      value={scrapQty}
+                      onChange={setScrapQty}
+                      labelClassName="text-amber-700"
+                      disabled={!canReportProduction}
+                      quickAddValues={[1, 2, 5]}
+                      quickAddTone="scrap"
+                      onReset={() => setScrapQty(0)}
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={() => void reportQuantity()}
+                  disabled={actionLoading || !canReportProduction}
+                  className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-md active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-blue-600 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                >
+                  {t("station.action.reportQty")}
+                </button>
+              </section>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-              <Stepper
-                label={t("station.input.scrapQtyDelta")}
-                value={scrapQty}
-                onChange={setScrapQty}
-                labelClassName="text-amber-700"
-                disabled={!canReportProduction}
-                quickAddValues={[1, 2, 5]}
-                quickAddTone="scrap"
-                onReset={() => setScrapQty(0)}
+
+            <aside className="flex min-w-0 flex-col gap-3 sm:gap-4">
+              <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
+                <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-3">
+                  {t("station.tab.queue")}
+                </p>
+                <StationQueuePanel
+                  items={queueItems}
+                  loading={queueLoading}
+                  activeOperationId={operation?.id}
+                  filter={queueFilter}
+                  onFilterChange={setQueueFilter}
+                  onSelect={(item) => void selectQueueOperation(item)}
+                />
+              </section>
+
+              <ClosureStatePanel
+                closureStatus={operation.closure_status}
+                canCloseOperation={canCloseOperation}
+                canReopenOperation={canReopenOperation}
+                actionLoading={actionLoading}
+                onCloseOperation={() => void closeOperation()}
+                onOpenReopenModal={() => setReopenModalOpen(true)}
               />
-            </div>
+            </aside>
           </div>
-          <button
-            onClick={() => void reportQuantity()}
-            disabled={actionLoading || !canReportProduction}
-            className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-md active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-blue-600 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
-          >
-            {t("station.action.reportQty")}
-          </button>
-        </section>
-
-        <ClosureStatePanel
-          closureStatus={operation.closure_status}
-          canCloseOperation={canCloseOperation}
-          canReopenOperation={canReopenOperation}
-          actionLoading={actionLoading}
-          onCloseOperation={() => void closeOperation()}
-          onOpenReopenModal={() => setReopenModalOpen(true)}
-        />
-
-        {/* Guidance callout */}
-        {guidanceMessage && (
-          <div className="shrink-0 flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 sm:px-5">
-            <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-500 sm:h-6 sm:w-6" aria-hidden="true" />
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">{t("station.block.guidance")}</p>
-              <p className="mt-1 text-sm text-blue-900 sm:text-base md:text-xl leading-snug">{guidanceMessage}</p>
-            </div>
-          </div>
-        )}
-
-        <AllowedActionZone
-          operation={operation}
-          actionLoading={actionLoading}
-          downtimeLoading={downtimeLoading}
-          canExecute={canExecute}
-          canPauseExecution={canPauseExecution}
-          canStartDowntime={canStartDowntime}
-          canCompleteExecution={canCompleteExecution}
-          canResumeExecution={canResumeExecution}
-          canEndDowntimeAction={canEndDowntimeAction}
-          canDo={canDo}
-          onStartOperation={() => void startOperation()}
-          onPauseOperation={() => void pauseOperation()}
-          onOpenDowntimeModal={() => setDowntimeModalOpen(true)}
-          onCompleteOperation={() => void completeOperation()}
-          onResumeOperation={() => void resumeOperation()}
-          onEndDowntime={() => void endDowntime()}
-        />
 
         <ReopenOperationModal
           open={reopenModalOpen}
