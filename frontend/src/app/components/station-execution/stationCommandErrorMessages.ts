@@ -74,9 +74,27 @@ const ERROR_MAP: Record<string, StationCommandErrorTemplate> = {
     recoveryKey: "station.commandError.qualityHold.recovery",
     severity: "danger",
   },
+  EQUIPMENT_REQUIRED: {
+    titleKey: "station.commandError.equipmentRequired.title",
+    messageKey: "station.commandError.equipmentRequired.message",
+    recoveryKey: "station.commandError.equipmentRequired.recovery",
+    severity: "warning",
+  },
+  EQUIPMENT_MISMATCH: {
+    titleKey: "station.commandError.equipmentMismatch.title",
+    messageKey: "station.commandError.equipmentMismatch.message",
+    recoveryKey: "station.commandError.equipmentMismatch.recovery",
+    severity: "warning",
+  },
+  STATION_SESSION_ACTIVE_EXECUTION: {
+    titleKey: "station.commandError.sessionActiveExecution.title",
+    messageKey: "station.commandError.sessionActiveExecution.message",
+    recoveryKey: "station.commandError.sessionActiveExecution.recovery",
+    severity: "warning",
+  },
 };
 
-const KNOWN_CODE_PATTERN = /^(STATION_SESSION_[A-Z_]+|AUTH_SCOPE_FAIL|OPERATION_CLOSED|STATE_CLOSED_RECORD|OPERATION_QUALITY_HOLD_OPEN|STATE_QC_HOLD_ACTIVE)$/;
+const KNOWN_CODE_PATTERN = /^(STATION_SESSION_[A-Z_]+|AUTH_SCOPE_FAIL|OPERATION_CLOSED|STATE_CLOSED_RECORD|OPERATION_QUALITY_HOLD_OPEN|STATE_QC_HOLD_ACTIVE|EQUIPMENT_REQUIRED|EQUIPMENT_MISMATCH)$/;
 
 function readString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
@@ -118,8 +136,28 @@ function normalizeKnownCode(rawCode: string, status?: number): string {
     return "AUTH_SCOPE_FAIL";
   }
 
+  if (code === "STATION IS OUTSIDE YOUR STATION SCOPE") {
+    return "AUTH_SCOPE_FAIL";
+  }
+
   if (code === "OPERATION_CLOSED" || code === "STATE_CLOSED_RECORD" || code === "STATE_CLOSED" || code.includes("CLOSED_RECORD")) {
     return "STATE_CLOSED_RECORD";
+  }
+
+  if (code === "STATION SESSION IS CLOSED" || code === "STATION SESSION IS ALREADY CLOSED") {
+    return "STATION_SESSION_CLOSED";
+  }
+
+  if (code === "STATION_SESSION_ACTIVE_EXECUTION") {
+    return "STATION_SESSION_ACTIVE_EXECUTION";
+  }
+
+  if (code === "EQUIPMENT_REQUIRED" || code.includes("EQUIPMENT") && code.includes("REQUIRED")) {
+    return "EQUIPMENT_REQUIRED";
+  }
+
+  if (code === "EQUIPMENT_MISMATCH" || code.includes("EQUIPMENT") && code.includes("MISMATCH")) {
+    return "EQUIPMENT_MISMATCH";
   }
 
   if (code === "OPERATION_QUALITY_HOLD_OPEN" || code === "STATE_QC_HOLD_ACTIVE" || code.includes("QC_HOLD")) {

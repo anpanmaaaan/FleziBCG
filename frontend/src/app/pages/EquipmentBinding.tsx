@@ -9,6 +9,10 @@ import { ScreenStatusBadge } from "@/app/components";
 import { useI18n } from "@/app/i18n";
 import { stationApi } from "@/app/api/stationApi";
 import type { StationSessionItem } from "@/app/api/stationApi";
+import {
+  normalizeStationCommandError,
+  type StationCommandErrorMessage,
+} from "@/app/components/station-execution/stationCommandErrorMessages";
 
 export function EquipmentBinding() {
   const { t } = useI18n();
@@ -18,14 +22,30 @@ export function EquipmentBinding() {
   const [loading, setLoading] = useState(true);
   const [equipmentId, setEquipmentId] = useState("");
   const [binding, setBinding] = useState(false);
+  const [commandError, setCommandError] = useState<StationCommandErrorMessage | null>(null);
+
+  const presentBindError = (error: unknown, fallbackKey: string) => {
+    const normalized = normalizeStationCommandError(error);
+    setCommandError(normalized);
+
+    if (normalized.code !== "UNKNOWN") {
+      toast.error(t(normalized.messageKey));
+      return;
+    }
+
+    toast.error(t(fallbackKey));
+  };
 
   const loadSession = () => {
     if (!stationId) { setLoading(false); return; }
     setLoading(true);
     stationApi
       .getCurrentSession(stationId)
-      .then((res) => setSession(res.session ?? null))
-      .catch(() => toast.error(t("equipmentBinding.notice.failed_to_load_session")))
+      .then((res) => {
+        setSession(res.session ?? null);
+        setCommandError(null);
+      })
+      .catch((error) => presentBindError(error, "equipmentBinding.notice.failed_to_load_session"))
       .finally(() => setLoading(false));
   };
 
@@ -39,10 +59,11 @@ export function EquipmentBinding() {
       .bindEquipment(session.session_id, equipmentId.trim())
       .then((updated) => {
         setSession(updated);
+        setCommandError(null);
         toast.success(t("equipmentBinding.toast.bound"));
         setEquipmentId("");
       })
-      .catch(() => toast.error(t("equipmentBinding.toast.bindFailed")))
+      .catch((error) => presentBindError(error, "equipmentBinding.toast.bindFailed"))
       .finally(() => setBinding(false));
   };
 
@@ -60,7 +81,18 @@ export function EquipmentBinding() {
 
       {!stationId && (
         <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700">
-          No station ID provided. Navigate from Station Execution with a station context.
+          {t("equipmentBinding.notice.missingStationId")}
+        </div>
+      )}
+
+      {commandError && (
+        <div
+          className={`rounded-lg border px-4 py-3 text-sm ${commandError.severity === "danger" ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}
+          role="alert"
+        >
+          <p className="font-semibold">{t(commandError.titleKey)}</p>
+          <p className="mt-1">{t(commandError.messageKey)}</p>
+          <p className="mt-1 text-xs">{t(commandError.recoveryKey)}</p>
         </div>
       )}
 
@@ -150,7 +182,7 @@ export function EquipmentBinding() {
 
           {!session && stationId && (
             <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500">
-              No active session for station {stationId}. Open a session first.
+              {t("equipmentBinding.notice.noSessionForStation", { stationId })}
             </div>
           )}
         </>

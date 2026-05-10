@@ -3,9 +3,13 @@ import { ArrowLeft, BadgeCheck, RefreshCw, ShieldAlert, User } from "lucide-reac
 import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { BackendRequiredNotice, MockWarningBanner, ScreenStatusBadge } from "@/app/components";
-import { HttpError, stationApi, type StationSessionItem } from "@/app/api";
+import { stationApi, type StationSessionItem } from "@/app/api";
 import { useAuth } from "@/app/auth";
 import { useI18n } from "@/app/i18n";
+import {
+  normalizeStationCommandError,
+  type StationCommandErrorMessage,
+} from "@/app/components/station-execution/stationCommandErrorMessages";
 
 type IdentifyStatus = "pending" | "verified" | "unauthorized";
 
@@ -24,6 +28,19 @@ export function OperatorIdentification() {
   const [loadingSession, setLoadingSession] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [identifyStatus, setIdentifyStatus] = useState<IdentifyStatus>("pending");
+  const [commandError, setCommandError] = useState<StationCommandErrorMessage | null>(null);
+
+  const presentIdentifyError = (error: unknown, fallbackKey: string) => {
+    const normalized = normalizeStationCommandError(error);
+    setCommandError(normalized);
+
+    if (normalized.code !== "UNKNOWN") {
+      toast.error(t(normalized.messageKey));
+      return;
+    }
+
+    toast.error(t(fallbackKey));
+  };
 
   const hasSessionContext = Boolean((session?.session_id || sessionIdFromQuery).trim());
 
@@ -45,6 +62,7 @@ export function OperatorIdentification() {
     try {
       const response = await stationApi.getCurrentSession(stationId);
       setSession(response.session);
+      setCommandError(null);
       const sessionOperator = (response.session?.operator_user_id || "").trim();
       if (sessionOperator) {
         setOperatorUserId(sessionOperator);
@@ -55,7 +73,7 @@ export function OperatorIdentification() {
     } catch (err) {
       setSession(null);
       setIdentifyStatus("unauthorized");
-      toast.error(err instanceof Error ? err.message : t("operatorId.toast.sessionLoadFailed"));
+      presentIdentifyError(err, "operatorId.toast.sessionLoadFailed");
     } finally {
       setLoadingSession(false);
     }
@@ -88,14 +106,11 @@ export function OperatorIdentification() {
       const updated = await stationApi.identifyOperator(resolvedSessionId, normalizedOperatorId);
       setSession(updated);
       setIdentifyStatus("verified");
+      setCommandError(null);
       toast.success(t("operatorId.toast.identified"));
     } catch (err) {
       setIdentifyStatus("unauthorized");
-      if (err instanceof HttpError && typeof err.detail === "string" && err.detail.trim()) {
-        toast.error(err.detail.trim());
-      } else {
-        toast.error(err instanceof Error ? err.message : t("operatorId.toast.identifyFailed"));
-      }
+      presentIdentifyError(err, "operatorId.toast.identifyFailed");
     } finally {
       setSubmitting(false);
     }
@@ -135,6 +150,17 @@ export function OperatorIdentification() {
       </div>
 
       <BackendRequiredNotice message={t("operatorId.notice.active")} />
+
+      {commandError && (
+        <div
+          className={`rounded-lg border px-4 py-3 text-sm ${commandError.severity === "danger" ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}
+          role="alert"
+        >
+          <p className="font-semibold">{t(commandError.titleKey)}</p>
+          <p className="mt-1">{t(commandError.messageKey)}</p>
+          <p className="mt-1 text-xs">{t(commandError.recoveryKey)}</p>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg border border-gray-200 p-5">
         <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 border-b border-gray-100 pb-2 mb-4">

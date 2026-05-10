@@ -10,6 +10,10 @@ import { ScreenStatusBadge } from "@/app/components";
 import { useI18n } from "@/app/i18n";
 import { stationApi } from "@/app/api/stationApi";
 import type { StationSessionItem } from "@/app/api/stationApi";
+import {
+  normalizeStationCommandError,
+  type StationCommandErrorMessage,
+} from "@/app/components/station-execution/stationCommandErrorMessages";
 
 export function StationSession() {
   const { t } = useI18n();
@@ -18,14 +22,30 @@ export function StationSession() {
   const [session, setSession] = useState<StationSessionItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [closing, setClosing] = useState(false);
+  const [commandError, setCommandError] = useState<StationCommandErrorMessage | null>(null);
+
+  const presentSessionError = (error: unknown, fallbackKey: string) => {
+    const normalized = normalizeStationCommandError(error);
+    setCommandError(normalized);
+
+    if (normalized.code !== "UNKNOWN") {
+      toast.error(t(normalized.messageKey));
+      return;
+    }
+
+    toast.error(t(fallbackKey));
+  };
 
   const loadSession = () => {
     if (!stationId) { setLoading(false); return; }
     setLoading(true);
     stationApi
       .getCurrentSession(stationId)
-      .then((res) => setSession(res.session ?? null))
-      .catch(() => toast.error(t("stationSession.notice.failed_to_load_session")))
+      .then((res) => {
+        setSession(res.session ?? null);
+        setCommandError(null);
+      })
+      .catch((error) => presentSessionError(error, "stationSession.notice.failed_to_load_session"))
       .finally(() => setLoading(false));
   };
 
@@ -38,9 +58,10 @@ export function StationSession() {
       .closeSession(session.session_id)
       .then((updated) => {
         setSession(updated);
+        setCommandError(null);
         toast.success(t("stationSession.toast.closed"));
       })
-      .catch(() => toast.error(t("stationSession.toast.closeFailed")))
+      .catch((error) => presentSessionError(error, "stationSession.toast.closeFailed"))
       .finally(() => setClosing(false));
   };
 
@@ -78,7 +99,18 @@ export function StationSession() {
 
       {!stationId && (
         <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700">
-          No station ID provided. Navigate from Station Execution with a stationId query parameter.
+          {t("stationSession.notice.missingStationId")}
+        </div>
+      )}
+
+      {commandError && (
+        <div
+          className={`rounded-lg border px-4 py-3 text-sm ${commandError.severity === "danger" ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}
+          role="alert"
+        >
+          <p className="font-semibold">{t(commandError.titleKey)}</p>
+          <p className="mt-1">{t(commandError.messageKey)}</p>
+          <p className="mt-1 text-xs">{t(commandError.recoveryKey)}</p>
         </div>
       )}
 
