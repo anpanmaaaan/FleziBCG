@@ -13,6 +13,7 @@ import {
   normalizeStationCommandError,
   type StationCommandErrorMessage,
 } from "@/app/components/station-execution/stationCommandErrorMessages";
+import { StationWorkflowShell } from "@/app/components/station-execution/StationWorkflowShell";
 
 export function EquipmentBinding() {
   const { t } = useI18n();
@@ -79,29 +80,35 @@ export function EquipmentBinding() {
         </div>
       </div>
 
-      {!stationId && (
-        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700">
-          {t("equipmentBinding.notice.missingStationId")}
-        </div>
-      )}
+      <StationWorkflowShell
+        currentStage="STX_003_EQUIPMENT_BINDING"
+        stationId={stationId || null}
+        sessionId={session?.session_id ?? null}
+        operatorUserId={session?.operator_user_id ?? null}
+        equipmentId={session?.equipment_id ?? null}
+        recoveryBanner={commandError ? (
+          <div
+            className={`rounded-lg border px-4 py-3 text-sm ${commandError.severity === "danger" ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}
+            role="alert"
+          >
+            <p className="font-semibold">{t(commandError.titleKey)}</p>
+            <p className="mt-1">{t(commandError.messageKey)}</p>
+            <p className="mt-1 text-xs">{t(commandError.recoveryKey)}</p>
+          </div>
+        ) : undefined}
+      >
+        {!stationId && (
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700">
+            {t("equipmentBinding.notice.missingStationId")}
+          </div>
+        )}
 
-      {commandError && (
-        <div
-          className={`rounded-lg border px-4 py-3 text-sm ${commandError.severity === "danger" ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}
-          role="alert"
-        >
-          <p className="font-semibold">{t(commandError.titleKey)}</p>
-          <p className="mt-1">{t(commandError.messageKey)}</p>
-          <p className="mt-1 text-xs">{t(commandError.recoveryKey)}</p>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="p-8 text-center text-gray-400 text-sm">{t("equipmentBinding.label.loading_session")}</div>
-      ) : (
-        <>
-          {/* Session info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {loading ? (
+          <div className="p-8 text-center text-gray-400 text-sm">{t("equipmentBinding.label.loading_session")}</div>
+        ) : (
+          <>
+            {/* Session info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Station / Session Panel */}
             <div className="bg-white rounded-lg border border-gray-200 p-4">
               <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 border-b border-gray-100 pb-2 mb-3">
@@ -153,40 +160,41 @@ export function EquipmentBinding() {
                 <p className="text-sm text-gray-400 italic">{t("equipmentBinding.unbound")}</p>
               )}
             </div>
-          </div>
+            </div>
 
-          {/* Bind action */}
-          {session && session.status === "open" && (
-            <div className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col gap-3">
-              <div className="text-sm font-semibold text-gray-700">{t("equipmentBinding.action.bind")}</div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={equipmentId}
-                  onChange={(e) => setEquipmentId(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleBind()}
-                  placeholder={t("equipmentBinding.input.placeholder")}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
-                />
-                <button
-                  onClick={handleBind}
-                  disabled={binding || !equipmentId.trim()}
-                  className="flex items-center gap-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Link2 className="w-3 h-3" />
-                  {binding ? t("equipmentBinding.action.binding") : t("equipmentBinding.action.bind")}
-                </button>
+            {/* Bind action */}
+            {session && session.status === "open" && (
+              <div className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col gap-3">
+                <div className="text-sm font-semibold text-gray-700">{t("equipmentBinding.action.bind")}</div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={equipmentId}
+                    onChange={(e) => setEquipmentId(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleBind()}
+                    placeholder={t("equipmentBinding.input.placeholder")}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-focus-ring"
+                  />
+                  <button
+                    onClick={handleBind}
+                    disabled={binding || !equipmentId.trim()}
+                    className="flex items-center gap-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Link2 className="w-3 h-3" />
+                    {binding ? t("equipmentBinding.action.binding") : t("equipmentBinding.action.bind")}
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {!session && stationId && (
-            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500">
-              {t("equipmentBinding.notice.noSessionForStation", { stationId })}
-            </div>
-          )}
-        </>
-      )}
+            {!session && stationId && (
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500">
+                {t("equipmentBinding.notice.noSessionForStation", { stationId })}
+              </div>
+            )}
+          </>
+        )}
+      </StationWorkflowShell>
     </div>
   );
 }

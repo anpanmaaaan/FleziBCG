@@ -11,6 +11,7 @@ import { AllowedActionZone } from "@/app/components/station-execution/AllowedAct
 import { ClosureStatePanel } from "@/app/components/station-execution/ClosureStatePanel";
 import { ReopenOperationModal } from "@/app/components/station-execution/ReopenOperationModal";
 import { StartDowntimeDialog } from "@/app/components/station-execution/StartDowntimeDialog";
+import { StationWorkflowShell } from "@/app/components/station-execution/StationWorkflowShell";
 import { normalizeStationCommandError, type StationCommandErrorMessage } from "@/app/components/station-execution/stationCommandErrorMessages";
 import type { QueueFilter } from "@/app/components/station-execution/QueueFilterBar";
 import {
@@ -805,125 +806,132 @@ export function StationExecution() {
         />
         <MockWarningBanner phase="PARTIAL" note={t("screenStatus.banner.deprecation.body" as any)} />
 
-        {commandErrorBanner}
-
         <div className="flex-1 overflow-auto p-4 max-w-2xl mx-auto w-full">
-          {operation && ownsAnotherSession && (
-            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
-              <p className="text-xs text-amber-700">{t("station.ownership.singleActiveHint")}</p>
-            </div>
-          )}
-
-          {/* Operation currently controlled by another operator session. */}
-          {operation && ownerState === "other" && (
-            <div className="mb-4 bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center gap-2 text-orange-800">
-              <Lock className="w-4 h-4 shrink-0" />
-              <p className="text-sm font-medium">
-                {t("station.ownership.takenWarning")}
-              </p>
-            </div>
-          )}
-
-          {/* Session control: open/close station session. */}
-          {ownerState !== "other" && (
-            <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4 flex items-center justify-between gap-3">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium text-slate-700">
-                  {t("station.session.heading")}
-                </span>
-                <span className="text-xs text-slate-500">
-                  {hasOpenSession
-                    ? ownerState === "mine"
-                      ? t("station.ownership.ownedBadge")
-                      : t("stationSession.operator.unassigned")
-                    : t("stationSession.session.noActive")}
-                </span>
+          <StationWorkflowShell
+            currentStage="STX_004_QUEUE_COCKPIT"
+            stationId={stationScope}
+            sessionId={ownershipState?.session_id ?? null}
+            operatorUserId={ownershipState?.operator_user_id ?? null}
+            equipmentId={ownershipState?.equipment_id ?? null}
+            recoveryBanner={commandErrorBanner ?? undefined}
+          >
+            {operation && ownsAnotherSession && (
+              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <p className="text-xs text-amber-700">{t("station.ownership.singleActiveHint")}</p>
               </div>
-              {!hasOpenSession ? (
-                <button
-                  type="button"
-                  onClick={() => void openStationSession()}
-                  disabled={sessionLoading || stationScope === "-"}
-                  className="min-h-10 px-4 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 active:scale-95 transition disabled:opacity-50"
-                >
-                  {t("stationSession.action.openSession")}
-                </button>
-              ) : ownerState === "mine" ? (
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={goToStationSession}
-                    disabled={sessionLoading}
-                    className="min-h-10 px-4 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 active:scale-95 transition disabled:opacity-50"
-                  >
-                    {t("station.session.viewSession")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={goToOperatorIdentification}
-                    disabled={sessionLoading}
-                    className="min-h-10 px-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100 active:scale-95 transition disabled:opacity-50"
-                  >
-                    {t("station.session.identifyOperator")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={goToEquipmentBinding}
-                    disabled={sessionLoading}
-                    className="min-h-10 px-4 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-100 active:scale-95 transition disabled:opacity-50"
-                  >
-                    {t("station.session.bindEquipment")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void closeStationSession()}
-                    disabled={sessionLoading}
-                    className="min-h-10 px-4 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 active:scale-95 transition disabled:opacity-50"
-                  >
-                    {t("stationSession.action.closeSession")}
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          )}
+            )}
 
-          {loading ? (
-            <p className="text-center py-12 text-gray-500">{t("station.loading")}</p>
-          ) : (
-            <>
-              <StationQueuePanel
-                items={queueItems}
-                loading={queueLoading}
-                activeOperationId={operation?.id}
-                filter={queueFilter}
-                onFilterChange={setQueueFilter}
-                onSelect={(item) => void selectQueueOperation(item)}
-              />
-              <details className="mt-4 border-t pt-3">
-                <summary className="text-sm text-gray-500 cursor-pointer select-none">
-                  {t("station.manualEntry.label")}
-                </summary>
-                <div className="mt-3 flex items-center gap-2">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={operationId}
-                    onChange={(e) => setOperationId(e.target.value)}
-                    placeholder={t("station.manualEntry.placeholder")}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-full"
-                  />
-                  <button
-                    onClick={() => void fetchOperation(operationId)}
-                    disabled={loading}
-                    className="h-10 px-4 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {t("station.action.load")}
-                  </button>
+            {/* Operation currently controlled by another operator session. */}
+            {operation && ownerState === "other" && (
+              <div className="mb-4 bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center gap-2 text-orange-800">
+                <Lock className="w-4 h-4 shrink-0" />
+                <p className="text-sm font-medium">
+                  {t("station.ownership.takenWarning")}
+                </p>
+              </div>
+            )}
+
+            {/* Session control: open/close station session. */}
+            {ownerState !== "other" && (
+              <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4 flex items-center justify-between gap-3">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-medium text-slate-700">
+                    {t("station.session.heading")}
+                  </span>
+                  <span className="text-xs text-slate-500">
+                    {hasOpenSession
+                      ? ownerState === "mine"
+                        ? t("station.ownership.ownedBadge")
+                        : t("stationSession.operator.unassigned")
+                      : t("stationSession.session.noActive")}
+                  </span>
                 </div>
-              </details>
-            </>
-          )}
+                {!hasOpenSession ? (
+                  <button
+                    type="button"
+                    onClick={() => void openStationSession()}
+                    disabled={sessionLoading || stationScope === "-"}
+                    className="min-h-10 px-4 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 active:scale-95 transition disabled:opacity-50"
+                  >
+                    {t("stationSession.action.openSession")}
+                  </button>
+                ) : ownerState === "mine" ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={goToStationSession}
+                      disabled={sessionLoading}
+                      className="min-h-10 px-4 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 active:scale-95 transition disabled:opacity-50"
+                    >
+                      {t("station.session.viewSession")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={goToOperatorIdentification}
+                      disabled={sessionLoading}
+                      className="min-h-10 px-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100 active:scale-95 transition disabled:opacity-50"
+                    >
+                      {t("station.session.identifyOperator")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={goToEquipmentBinding}
+                      disabled={sessionLoading}
+                      className="min-h-10 px-4 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-100 active:scale-95 transition disabled:opacity-50"
+                    >
+                      {t("station.session.bindEquipment")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void closeStationSession()}
+                      disabled={sessionLoading}
+                      className="min-h-10 px-4 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 active:scale-95 transition disabled:opacity-50"
+                    >
+                      {t("stationSession.action.closeSession")}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            {loading ? (
+              <p className="text-center py-12 text-gray-500">{t("station.loading")}</p>
+            ) : (
+              <>
+                <StationQueuePanel
+                  items={queueItems}
+                  loading={queueLoading}
+                  activeOperationId={operation?.id}
+                  filter={queueFilter}
+                  onFilterChange={setQueueFilter}
+                  onSelect={(item) => void selectQueueOperation(item)}
+                />
+                <details className="mt-4 border-t pt-3">
+                  <summary className="text-sm text-gray-500 cursor-pointer select-none">
+                    {t("station.manualEntry.label")}
+                  </summary>
+                  <div className="mt-3 flex items-center gap-2">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={operationId}
+                      onChange={(e) => setOperationId(e.target.value)}
+                      placeholder={t("station.manualEntry.placeholder")}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-full"
+                    />
+                    <button
+                      onClick={() => void fetchOperation(operationId)}
+                      disabled={loading}
+                      className="h-10 px-4 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {t("station.action.load")}
+                    </button>
+                  </div>
+                </details>
+              </>
+            )}
+          </StationWorkflowShell>
         </div>
       </div>
     );
@@ -949,8 +957,6 @@ export function StationExecution() {
         onRefresh={() => void refreshQueue()}
         onToggleQueue={() => setQueueOverlayOpen((prev) => !prev)}
       />
-
-      {commandErrorBanner}
 
       {/* Queue overlay */}
       {queueOverlayOpen && (
@@ -984,22 +990,30 @@ export function StationExecution() {
         </div>
       )}
 
-      {/* Quality Hold banner — shown when an active hold blocks progression */}
-      {operation?.quality_hold_open && (
-        <div className="mx-3 mt-2 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 sm:mx-4">
-          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
-          <div>
-            <span className="font-semibold">{t("station.qcHold.banner")}</span>
-            <span className="ml-1 text-xs text-amber-600">{t("station.qcHold.linkHint")}</span>
+      <StationWorkflowShell
+        currentStage={operation.status === "COMPLETED" ? "STX_007_COMPLETION" : "STX_005_ACTIVE_OPERATION"}
+        stationId={stationScope}
+        sessionId={ownershipState?.session_id ?? null}
+        operatorUserId={ownershipState?.operator_user_id ?? null}
+        equipmentId={ownershipState?.equipment_id ?? null}
+        recoveryBanner={commandErrorBanner ?? undefined}
+      >
+        {/* Quality Hold banner — shown when an active hold blocks progression */}
+        {operation?.quality_hold_open && (
+          <div className="mx-3 mt-2 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 sm:mx-4">
+            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
+            <div>
+              <span className="font-semibold">{t("station.qcHold.banner")}</span>
+              <span className="ml-1 text-xs text-amber-600">{t("station.qcHold.linkHint")}</span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Compatibility path notice  Ealways visible in execution mode */}
-      <MockWarningBanner phase="PARTIAL" note={t("screenStatus.banner.deprecation.body" as any)} />
+        {/* Compatibility path notice  Ealways visible in execution mode */}
+        <MockWarningBanner phase="PARTIAL" note={t("screenStatus.banner.deprecation.body" as any)} />
 
-      {/* Execution body  Emust not scroll on iPad landscape */}
-      <div className="flex-1 min-h-0 flex flex-col p-3 sm:p-4 gap-3 sm:gap-4 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-50">
+        {/* Execution body  Emust not scroll on iPad landscape */}
+        <div className="flex-1 min-h-0 flex flex-col p-3 sm:p-4 gap-3 sm:gap-4 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-50">
         <ExecutionStateHero
           operation={operation}
           remainingQty={remainingQty}
@@ -1105,7 +1119,8 @@ export function StationExecution() {
           reasons={downtimeReasons}
           reasonsLoading={downtimeReasonsLoading}
         />
-      </div>
+        </div>
+      </StationWorkflowShell>
     </div>
   );
 }

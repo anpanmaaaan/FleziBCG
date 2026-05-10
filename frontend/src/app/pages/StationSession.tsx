@@ -14,6 +14,7 @@ import {
   normalizeStationCommandError,
   type StationCommandErrorMessage,
 } from "@/app/components/station-execution/stationCommandErrorMessages";
+import { StationWorkflowShell } from "@/app/components/station-execution/StationWorkflowShell";
 
 export function StationSession() {
   const { t } = useI18n();
@@ -97,33 +98,39 @@ export function StationSession() {
         </div>
       </div>
 
-      {!stationId && (
-        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700">
-          {t("stationSession.notice.missingStationId")}
-        </div>
-      )}
+      <StationWorkflowShell
+        currentStage="STX_001_STATION_SESSION"
+        stationId={stationId || null}
+        sessionId={session?.session_id ?? null}
+        operatorUserId={session?.operator_user_id ?? null}
+        equipmentId={session?.equipment_id ?? null}
+        recoveryBanner={commandError ? (
+          <div
+            className={`rounded-lg border px-4 py-3 text-sm ${commandError.severity === "danger" ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}
+            role="alert"
+          >
+            <p className="font-semibold">{t(commandError.titleKey)}</p>
+            <p className="mt-1">{t(commandError.messageKey)}</p>
+            <p className="mt-1 text-xs">{t(commandError.recoveryKey)}</p>
+          </div>
+        ) : undefined}
+      >
+        {!stationId && (
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700">
+            {t("stationSession.notice.missingStationId")}
+          </div>
+        )}
 
-      {commandError && (
-        <div
-          className={`rounded-lg border px-4 py-3 text-sm ${commandError.severity === "danger" ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}
-          role="alert"
-        >
-          <p className="font-semibold">{t(commandError.titleKey)}</p>
-          <p className="mt-1">{t(commandError.messageKey)}</p>
-          <p className="mt-1 text-xs">{t(commandError.recoveryKey)}</p>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="p-8 text-center text-gray-400 text-sm">{t("stationSession.label.loading_session")}</div>
-      ) : !session ? (
-        <div className="p-6 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500 text-center">
-          {t("stationSession.session.noActive")}
-        </div>
-      ) : (
-        <>
-          {/* Three-panel layout */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {loading ? (
+          <div className="p-8 text-center text-gray-400 text-sm">{t("stationSession.label.loading_session")}</div>
+        ) : !session ? (
+          <div className="p-6 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500 text-center">
+            {t("stationSession.session.noActive")}
+          </div>
+        ) : (
+          <>
+            {/* Three-panel layout */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Station Identity */}
             <div className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col gap-3">
               <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 border-b border-gray-100 pb-2">
@@ -197,9 +204,10 @@ export function StationSession() {
                 </div>
               )}
             </div>
-          </div>
-        </>
-      )}
+            </div>
+          </>
+        )}
+      </StationWorkflowShell>
     </div>
   );
 }

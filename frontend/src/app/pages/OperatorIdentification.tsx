@@ -10,6 +10,7 @@ import {
   normalizeStationCommandError,
   type StationCommandErrorMessage,
 } from "@/app/components/station-execution/stationCommandErrorMessages";
+import { StationWorkflowShell } from "@/app/components/station-execution/StationWorkflowShell";
 
 type IdentifyStatus = "pending" | "verified" | "unauthorized";
 
@@ -151,18 +152,24 @@ export function OperatorIdentification() {
 
       <BackendRequiredNotice message={t("operatorId.notice.active")} />
 
-      {commandError && (
-        <div
-          className={`rounded-lg border px-4 py-3 text-sm ${commandError.severity === "danger" ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}
-          role="alert"
-        >
-          <p className="font-semibold">{t(commandError.titleKey)}</p>
-          <p className="mt-1">{t(commandError.messageKey)}</p>
-          <p className="mt-1 text-xs">{t(commandError.recoveryKey)}</p>
-        </div>
-      )}
-
-      <div className="bg-white rounded-lg border border-gray-200 p-5">
+      <StationWorkflowShell
+        currentStage="STX_002_OPERATOR_IDENTIFICATION"
+        stationId={stationId || null}
+        sessionId={resolvedSessionId || null}
+        operatorUserId={session?.operator_user_id ?? operatorUserId ?? null}
+        equipmentId={session?.equipment_id ?? null}
+        recoveryBanner={commandError ? (
+          <div
+            className={`rounded-lg border px-4 py-3 text-sm ${commandError.severity === "danger" ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}
+            role="alert"
+          >
+            <p className="font-semibold">{t(commandError.titleKey)}</p>
+            <p className="mt-1">{t(commandError.messageKey)}</p>
+            <p className="mt-1 text-xs">{t(commandError.recoveryKey)}</p>
+          </div>
+        ) : undefined}
+      >
+        <div className="bg-white rounded-lg border border-gray-200 p-5">
         <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 border-b border-gray-100 pb-2 mb-4">
           <User className="w-4 h-4 text-blue-500" />
           {t("operatorId.section.identity")}
@@ -188,9 +195,9 @@ export function OperatorIdentification() {
             <span className="text-sm text-gray-800">{currentUser?.user_id || "-"}</span>
           </div>
         </div>
-      </div>
+        </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 p-5">
+        <div className="bg-white rounded-lg border border-gray-200 p-5">
         <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 border-b border-gray-100 pb-2 mb-4">
           <BadgeCheck className="w-4 h-4 text-purple-500" />
           {t("operatorId.section.scan")}
@@ -239,9 +246,9 @@ export function OperatorIdentification() {
             </p>
           )}
         </div>
-      </div>
+        </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 p-5">
+        <div className="bg-white rounded-lg border border-gray-200 p-5">
         <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 border-b border-gray-100 pb-2 mb-4">
           <ShieldAlert className="w-4 h-4 text-amber-500" />
           {t("operatorId.section.authorization")}
@@ -277,26 +284,27 @@ export function OperatorIdentification() {
             </p>
           )}
         </div>
-      </div>
+        </div>
 
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={returnToStation}
-          className="flex-1 min-h-11 px-4 py-2 rounded-md border border-gray-200 bg-white text-gray-700 text-sm hover:bg-gray-50"
-        >
-          <ArrowLeft className="inline w-4 h-4 mr-1" />
-          {t("operatorId.action.backToStation")}
-        </button>
-        <button
-          type="button"
-          onClick={() => void submitIdentify()}
-          disabled={submitting || !hasSessionContext}
-          className="flex-1 min-h-11 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-        >
-          {submitting ? t("operatorId.action.submitting") : t("operatorId.action.identify")}
-        </button>
-      </div>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={returnToStation}
+            className="flex-1 min-h-11 px-4 py-2 rounded-md border border-gray-200 bg-white text-gray-700 text-sm hover:bg-gray-50"
+          >
+            <ArrowLeft className="inline w-4 h-4 mr-1" />
+            {t("operatorId.action.backToStation")}
+          </button>
+          <button
+            type="button"
+            onClick={() => void submitIdentify()}
+            disabled={submitting || !hasSessionContext}
+            className="flex-1 min-h-11 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+          >
+            {submitting ? t("operatorId.action.submitting") : t("operatorId.action.identify")}
+          </button>
+        </div>
+      </StationWorkflowShell>
     </div>
   );
 }
