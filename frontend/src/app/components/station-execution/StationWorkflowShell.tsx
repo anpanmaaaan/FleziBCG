@@ -12,6 +12,7 @@ interface StationWorkflowShellProps {
   sessionId?: string | null;
   operatorUserId?: string | null;
   equipmentId?: string | null;
+  compact?: boolean;
   recoveryBanner?: ReactNode;
   affordanceArea?: ReactNode;
   children: ReactNode;
@@ -23,6 +24,7 @@ export function StationWorkflowShell({
   sessionId,
   operatorUserId,
   equipmentId,
+  compact = false,
   recoveryBanner,
   affordanceArea,
   children,
@@ -40,33 +42,37 @@ export function StationWorkflowShell({
 
   return (
     <div className="flex flex-col gap-3">
-      <section className="rounded-xl border border-gray-200 bg-white p-4">
+      <section className={`rounded-xl border border-gray-200 bg-white ${compact ? "p-3" : "p-4"}`}>
         <div className="flex flex-wrap items-center gap-3">
           <p className="text-sm font-semibold text-gray-900">
             {t("station.workflow.shell.title")}
           </p>
-          <span className="text-xs text-gray-500">
-            {t("station.workflow.currentStage")}: {t(currentStageLabel as I18nSemanticKey)}
-          </span>
+          {!compact ? (
+            <span className="text-xs text-gray-500">
+              {t("station.workflow.currentStage")}: {t(currentStageLabel as I18nSemanticKey)}
+            </span>
+          ) : null}
         </div>
 
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-          {STATION_WORKFLOW_STAGES.map((stage) => {
-            const active = stage.id === currentStage;
-            return (
-              <span
-                key={stage.id}
-                className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium ${
-                  active
-                    ? "border-blue-600 bg-blue-50 text-blue-700"
-                    : "border-gray-300 bg-gray-50 text-gray-600"
-                }`}
-              >
-                {t(stage.labelKey as I18nSemanticKey)}
-              </span>
-            );
-          })}
-        </div>
+        {!compact ? (
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            {STATION_WORKFLOW_STAGES.map((stage) => {
+              const active = stage.id === currentStage;
+              return (
+                <span
+                  key={stage.id}
+                  className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium ${
+                    active
+                      ? "border-blue-600 bg-blue-50 text-blue-700"
+                      : "border-gray-300 bg-gray-50 text-gray-600"
+                  }`}
+                >
+                  {t(stage.labelKey as I18nSemanticKey)}
+                </span>
+              );
+            })}
+          </div>
+        ) : null}
 
         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-lg bg-gray-50 px-3 py-2 text-sm">
@@ -87,14 +93,16 @@ export function StationWorkflowShell({
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-          <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
-            {t("station.workflow.operatorFlow")}
-          </span>
-          <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-700">
-            {t("station.workflow.supervisorOnly")}
-          </span>
-        </div>
+        {!compact ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
+              {t("station.workflow.operatorFlow")}
+            </span>
+            <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-700">
+              {t("station.workflow.supervisorOnly")}
+            </span>
+          </div>
+        ) : null}
       </section>
 
       {recoveryBanner}
