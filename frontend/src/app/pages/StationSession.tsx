@@ -4,7 +4,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { MonitorCheck, User, Cpu, Power, RefreshCw } from "lucide-react";
+import { MonitorCheck, User, Cpu, Power, RefreshCw, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { ScreenStatusBadge } from "@/app/components";
 import { useI18n } from "@/app/i18n";
@@ -25,6 +25,7 @@ export function StationSession() {
   const [session, setSession] = useState<StationSessionItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [closing, setClosing] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [commandError, setCommandError] = useState<StationCommandErrorMessage | null>(null);
 
   const presentSessionError = (error: unknown, fallbackKey: string) => {
@@ -47,6 +48,7 @@ export function StationSession() {
       .then((res) => {
         setSession(res.session ?? null);
         setCommandError(null);
+        setShowCloseConfirm(false);
       })
       .catch((error) => presentSessionError(error, "stationSession.notice.failed_to_load_session"))
       .finally(() => setLoading(false));
@@ -62,6 +64,7 @@ export function StationSession() {
       .then((updated) => {
         setSession(updated);
         setCommandError(null);
+        setShowCloseConfirm(false);
         toast.success(t("stationSession.toast.closed"));
       })
       .catch((error) => presentSessionError(error, "stationSession.toast.closeFailed"))
@@ -95,6 +98,17 @@ export function StationSession() {
   const goToStationCockpit = () => {
     navigate("/station");
   };
+
+  const sessionRecoveryBanner = commandError ? (
+    <div
+      className={`rounded-lg border px-4 py-3 text-sm ${commandError.severity === "danger" ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}
+      role="alert"
+    >
+      <p className="font-semibold">{t(commandError.titleKey)}</p>
+      <p className="mt-1">{t(commandError.messageKey)}</p>
+      <p className="mt-1 text-xs">{t(commandError.recoveryKey)}</p>
+    </div>
+  ) : undefined;
 
   const handoffSessionState = !stationId
     ? "not_confirmed"
@@ -140,6 +154,8 @@ export function StationSession() {
     ? "station.handoff.cta.equipmentBinding"
     : "station.handoff.cta.operatorIdentification";
 
+  const isOpenSession = session?.status === "open";
+
   return (
     <div className="flex flex-col gap-4 p-4 max-w-3xl mx-auto">
       {/* Header */}
@@ -157,37 +173,18 @@ export function StationSession() {
             className="flex items-center gap-1 px-3 py-2 rounded-md border border-gray-200 bg-white text-gray-600 text-sm hover:bg-gray-50 disabled:opacity-50"
           >
             <RefreshCw className="w-3 h-3" />
-            Refresh
+            {t("common.action.refresh")}
           </button>
-          {session?.status === "open" && (
-            <button
-              onClick={handleClose}
-              disabled={closing}
-              className="flex items-center gap-1 px-3 py-2 rounded-md bg-red-50 border border-red-200 text-red-600 text-sm hover:bg-red-100 disabled:opacity-50"
-            >
-              <Power className="w-4 h-4" />
-              {t("stationSession.action.closeSession")}
-            </button>
-          )}
         </div>
       </div>
 
       <StationWorkflowShell
-        currentStage="STX_001_STATION_SESSION"
+        currentStage={isOpenSession ? "STX_009_END_SESSION" : "STX_001_STATION_SESSION"}
         stationId={stationId || null}
         sessionId={session?.session_id ?? null}
         operatorUserId={session?.operator_user_id ?? null}
         equipmentId={session?.equipment_id ?? null}
-        recoveryBanner={commandError ? (
-          <div
-            className={`rounded-lg border px-4 py-3 text-sm ${commandError.severity === "danger" ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}
-            role="alert"
-          >
-            <p className="font-semibold">{t(commandError.titleKey)}</p>
-            <p className="mt-1">{t(commandError.messageKey)}</p>
-            <p className="mt-1 text-xs">{t(commandError.recoveryKey)}</p>
-          </div>
-        ) : undefined}
+        recoveryBanner={isOpenSession ? undefined : sessionRecoveryBanner}
       >
         <StationEntryHandoff
           stationState={stationId ? "selected" : "missing"}
@@ -228,6 +225,79 @@ export function StationSession() {
           </div>
         ) : (
           <>
+            {isOpenSession && (
+              <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Power className="h-4 w-4 text-slate-500" />
+                      <h2 className="text-base font-semibold text-slate-900">
+                        {t("stationSession.endSession.title")}
+                      </h2>
+                    </div>
+                    <p className="mt-2 text-sm text-slate-700">
+                      {t("stationSession.endSession.description")}
+                    </p>
+                    <p className="mt-2 text-xs text-slate-500">
+                      {t("stationSession.endSession.guardHint")}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={goToStationCockpit}
+                    className="min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 active:scale-95"
+                  >
+                    {t("stationSession.endSession.returnToCockpit")}
+                  </button>
+                </div>
+
+                <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                    <div className="min-w-0">
+                      <p className="font-medium">{t("stationSession.endSession.closeConfirmHint")}</p>
+                      <p className="mt-1 text-xs text-amber-800">{t("stationSession.endSession.blockedRecovery")}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {sessionRecoveryBanner ? <div className="mt-4">{sessionRecoveryBanner}</div> : null}
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {showCloseConfirm ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleClose}
+                        disabled={closing}
+                        className="min-h-11 rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition hover:bg-red-700 active:scale-95 disabled:opacity-50"
+                      >
+                        {t("stationSession.action.closeSession")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowCloseConfirm(false)}
+                        disabled={closing}
+                        className="min-h-11 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 active:scale-95 disabled:opacity-50"
+                      >
+                        {t("common.action.cancel")}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowCloseConfirm(true)}
+                      disabled={closing}
+                      className="min-h-11 rounded-lg border border-red-200 bg-red-50 px-4 text-sm font-medium text-red-700 transition hover:bg-red-100 active:scale-95 disabled:opacity-50"
+                    >
+                      {t("stationSession.action.closeSession")}
+                    </button>
+                  )}
+                </div>
+              </section>
+            )}
+
             {/* Three-panel layout */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Station Identity */}

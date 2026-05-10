@@ -152,6 +152,14 @@ function normalizeKnownCode(rawCode: string, status?: number): string {
     return "STATION_SESSION_ACTIVE_EXECUTION";
   }
 
+  if (
+    code === "CANNOT CLOSE SESSION: COMPLETE OR PAUSE/END ALL ACTIVE OPERATIONS FIRST." ||
+    code === "ACTIVE EXECUTION IS STILL LINKED TO THIS STATION SESSION." ||
+    (code.includes("CLOSE SESSION") && code.includes("ACTIVE"))
+  ) {
+    return "STATION_SESSION_ACTIVE_EXECUTION";
+  }
+
   if (code === "EQUIPMENT_REQUIRED" || code.includes("EQUIPMENT") && code.includes("REQUIRED")) {
     return "EQUIPMENT_REQUIRED";
   }
