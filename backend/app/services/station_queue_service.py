@@ -310,11 +310,18 @@ def get_line_monitor_projection(
     }
 
     def _derive_station_status(rows: list[tuple[Operation, str, bool]]) -> str:
-        if any(runtime_status == StatusEnum.blocked.value and operation.status == StatusEnum.blocked.value for operation, runtime_status, _ in rows):
+        if any(
+            runtime_status == StatusEnum.blocked.value
+            and operation.status == StatusEnum.blocked.value
+            for operation, runtime_status, _ in rows
+        ):
             return "BLOCKED"
         if any(downtime_open for _, _, downtime_open in rows):
             return "DOWNTIME"
-        if any(runtime_status == StatusEnum.in_progress.value for _, runtime_status, _ in rows):
+        if any(
+            runtime_status == StatusEnum.in_progress.value
+            for _, runtime_status, _ in rows
+        ):
             return "RUNNING"
         return "IDLE"
 
@@ -333,7 +340,8 @@ def get_line_monitor_projection(
             key=lambda row: (
                 status_priority.get(
                     "BLOCKED"
-                    if row[1] == StatusEnum.blocked.value and row[0].status == StatusEnum.blocked.value
+                    if row[1] == StatusEnum.blocked.value
+                    and row[0].status == StatusEnum.blocked.value
                     else "DOWNTIME"
                     if row[2]
                     else "RUNNING"

@@ -1082,9 +1082,9 @@ def test_bom_binding_mutation_routes_still_require_both_action_codes():
     """MMD-FULLSTACK-14B: POST/DELETE still require both action codes — capability guard doesn't weaken mutation auth."""
     from pathlib import Path
 
-    src = (Path(__file__).parent.parent / "app" / "api" / "v1" / "products.py").read_text(
-        encoding="utf-8"
-    )
+    src = (
+        Path(__file__).parent.parent / "app" / "api" / "v1" / "products.py"
+    ).read_text(encoding="utf-8")
     # POST and DELETE must use require_action for bom.manage
     count = src.count('"admin.master_data.bom.manage"')
     assert count >= 9, (
@@ -1098,14 +1098,14 @@ def test_bom_binding_read_route_still_authenticated_read():
     """MMD-FULLSTACK-14B: GET bom-binding uses require_authenticated_identity, not require_action."""
     from pathlib import Path
 
-    src = (Path(__file__).parent.parent / "app" / "api" / "v1" / "products.py").read_text(
-        encoding="utf-8"
-    )
+    src = (
+        Path(__file__).parent.parent / "app" / "api" / "v1" / "products.py"
+    ).read_text(encoding="utf-8")
     # The GET route block must reference require_authenticated_identity
     # and must NOT put bom.manage inside a Depends(require_action(...)) on the GET route itself
     # We verify by checking the get_bom_binding function definition
     # uses require_authenticated_identity dependency
-    assert 'Depends(require_authenticated_identity)' in src
+    assert "Depends(require_authenticated_identity)" in src
 
 
 # ─── Source-level contract checks ────────────────────────────────────────────
@@ -1115,9 +1115,9 @@ def test_bom_binding_routes_exist_in_products_src():
     """MMD-BE-14: binding route paths must be present in products.py source."""
     from pathlib import Path
 
-    src = (Path(__file__).parent.parent / "app" / "api" / "v1" / "products.py").read_text(
-        encoding="utf-8"
-    )
+    src = (
+        Path(__file__).parent.parent / "app" / "api" / "v1" / "products.py"
+    ).read_text(encoding="utf-8")
     required_paths = [
         "/{product_id}/versions/{version_id}/bom-binding",
     ]
@@ -1133,9 +1133,9 @@ def test_bom_binding_post_and_delete_use_bom_manage_action_code():
     """MMD-BE-14: POST/DELETE bom-binding must gate on admin.master_data.bom.manage."""
     from pathlib import Path
 
-    src = (Path(__file__).parent.parent / "app" / "api" / "v1" / "products.py").read_text(
-        encoding="utf-8"
-    )
+    src = (
+        Path(__file__).parent.parent / "app" / "api" / "v1" / "products.py"
+    ).read_text(encoding="utf-8")
     # After adding binding routes, count of bom.manage uses should be >=9
     # (7 original BOM write routes + 2 new binding routes)
     count = src.count('"admin.master_data.bom.manage"')
@@ -1149,9 +1149,9 @@ def test_bom_binding_post_and_delete_check_pv_manage():
     """MMD-BE-14: POST/DELETE bom-binding must also check product_version.manage."""
     from pathlib import Path
 
-    src = (Path(__file__).parent.parent / "app" / "api" / "v1" / "products.py").read_text(
-        encoding="utf-8"
-    )
+    src = (
+        Path(__file__).parent.parent / "app" / "api" / "v1" / "products.py"
+    ).read_text(encoding="utf-8")
     # The binding routes must reference product_version.manage for the inner check
     assert '"admin.master_data.product_version.manage"' in src, (
         "products.py must reference admin.master_data.product_version.manage "

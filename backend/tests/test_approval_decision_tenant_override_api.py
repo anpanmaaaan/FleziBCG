@@ -180,9 +180,7 @@ def _create_and_get_id(client: TestClient, payload: dict[str, Any]) -> int:
     return resp.json()["id"]
 
 
-def _decide(
-    client: TestClient, req_id: int, decision: str = "APPROVED"
-) -> TestClient:
+def _decide(client: TestClient, req_id: int, decision: str = "APPROVED") -> TestClient:
     return client.post(
         f"/api/v1/approvals/{req_id}/decide", json={"decision": decision}
     )
@@ -369,7 +367,9 @@ def test_ttenantapi06_cross_tenant_decision_returns_404() -> None:
 # ── T-TENANT-API-07 ──────────────────────────────────────────────────────────
 
 
-def test_ttenantapi07_requester_cannot_approve_own_request_under_tenant_specific_rule() -> None:
+def test_ttenantapi07_requester_cannot_approve_own_request_under_tenant_specific_rule() -> (
+    None
+):
     """T-TENANT-API-07: SoD — requester cannot APPROVE own request even under tenant-specific rule."""
     db = _make_session()
     _seed(db, _rule(approver_role_code="QAL", tenant_id="tenant-a"))
@@ -390,7 +390,9 @@ def test_ttenantapi07_requester_cannot_approve_own_request_under_tenant_specific
 # ── T-TENANT-API-08 ──────────────────────────────────────────────────────────
 
 
-def test_ttenantapi08_requester_cannot_reject_own_request_under_tenant_specific_rule() -> None:
+def test_ttenantapi08_requester_cannot_reject_own_request_under_tenant_specific_rule() -> (
+    None
+):
     """T-TENANT-API-08: SoD — requester cannot REJECT own request even under tenant-specific rule."""
     db = _make_session()
     _seed(db, _rule(approver_role_code="QAL", tenant_id="tenant-a"))

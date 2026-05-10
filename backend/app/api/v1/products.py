@@ -253,7 +253,9 @@ def update_product_version(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
-@router.post("/{product_id}/versions/{version_id}/release", response_model=ProductVersionItem)
+@router.post(
+    "/{product_id}/versions/{version_id}/release", response_model=ProductVersionItem
+)
 def release_product_version(
     product_id: str,
     version_id: str,
@@ -276,7 +278,9 @@ def release_product_version(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
-@router.post("/{product_id}/versions/{version_id}/retire", response_model=ProductVersionItem)
+@router.post(
+    "/{product_id}/versions/{version_id}/retire", response_model=ProductVersionItem
+)
 def retire_product_version(
     product_id: str,
     version_id: str,
@@ -591,9 +595,7 @@ def bind_bom(
     version_id: str,
     payload: BomBindingCreateRequest,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(
-        require_action("admin.master_data.bom.manage")
-    ),
+    identity: RequestIdentity = Depends(require_action("admin.master_data.bom.manage")),
 ) -> ProductVersionBomBindingResponse:
     if not has_action(db, identity, "admin.master_data.product_version.manage"):
         raise HTTPException(status_code=403, detail="Forbidden")
@@ -622,9 +624,7 @@ def unbind_bom(
     product_id: str,
     version_id: str,
     db: Session = Depends(get_db),
-    identity: RequestIdentity = Depends(
-        require_action("admin.master_data.bom.manage")
-    ),
+    identity: RequestIdentity = Depends(require_action("admin.master_data.bom.manage")),
 ) -> None:
     if not has_action(db, identity, "admin.master_data.product_version.manage"):
         raise HTTPException(status_code=403, detail="Forbidden")

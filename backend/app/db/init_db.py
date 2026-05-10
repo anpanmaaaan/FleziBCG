@@ -110,25 +110,33 @@ def _repair_schema_drift() -> None:
         user_cols = {c["name"] for c in insp.get_columns("users")}
         if "lifecycle_status" not in user_cols:
             _log.warning("schema-repair: adding users.lifecycle_status (0004 drift)")
-            conn.execute(sa_text(
-                "ALTER TABLE users ADD COLUMN lifecycle_status VARCHAR(32)"
-            ))
-            conn.execute(sa_text(
-                "UPDATE users SET lifecycle_status = 'ACTIVE' WHERE is_active = true"
-            ))
-            conn.execute(sa_text(
-                "UPDATE users SET lifecycle_status = 'DISABLED' WHERE is_active = false"
-            ))
-            conn.execute(sa_text(
-                "UPDATE users SET lifecycle_status = 'ACTIVE' WHERE lifecycle_status IS NULL"
-            ))
-            conn.execute(sa_text(
-                "ALTER TABLE users ALTER COLUMN lifecycle_status SET NOT NULL"
-            ))
-            conn.execute(sa_text(
-                "CREATE INDEX IF NOT EXISTS ix_users_lifecycle_status"
-                " ON users (lifecycle_status)"
-            ))
+            conn.execute(
+                sa_text("ALTER TABLE users ADD COLUMN lifecycle_status VARCHAR(32)")
+            )
+            conn.execute(
+                sa_text(
+                    "UPDATE users SET lifecycle_status = 'ACTIVE' WHERE is_active = true"
+                )
+            )
+            conn.execute(
+                sa_text(
+                    "UPDATE users SET lifecycle_status = 'DISABLED' WHERE is_active = false"
+                )
+            )
+            conn.execute(
+                sa_text(
+                    "UPDATE users SET lifecycle_status = 'ACTIVE' WHERE lifecycle_status IS NULL"
+                )
+            )
+            conn.execute(
+                sa_text("ALTER TABLE users ALTER COLUMN lifecycle_status SET NOT NULL")
+            )
+            conn.execute(
+                sa_text(
+                    "CREATE INDEX IF NOT EXISTS ix_users_lifecycle_status"
+                    " ON users (lifecycle_status)"
+                )
+            )
 
         # ---- 0011: approval_requests governed_resource_* columns ----------
         ar_cols = {c["name"] for c in insp.get_columns("approval_requests")}
@@ -145,9 +153,9 @@ def _repair_schema_drift() -> None:
                 _log.warning(
                     "schema-repair: adding approval_requests.%s (0011 drift)", col
                 )
-                conn.execute(sa_text(
-                    f"ALTER TABLE approval_requests ADD COLUMN {col} {dtype}"
-                ))
+                conn.execute(
+                    sa_text(f"ALTER TABLE approval_requests ADD COLUMN {col} {dtype}")
+                )
 
         # ---- 0012: approval_rules scope applicability columns -------------
         aru_cols = {c["name"] for c in insp.get_columns("approval_rules")}
@@ -165,9 +173,9 @@ def _repair_schema_drift() -> None:
                 _log.warning(
                     "schema-repair: adding approval_rules.%s (0012 drift)", col
                 )
-                conn.execute(sa_text(
-                    f"ALTER TABLE approval_rules ADD COLUMN {col} {dtype}"
-                ))
+                conn.execute(
+                    sa_text(f"ALTER TABLE approval_rules ADD COLUMN {col} {dtype}")
+                )
 
 
 def _bootstrap_state() -> str:

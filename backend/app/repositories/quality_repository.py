@@ -86,7 +86,9 @@ def create_quality_hold(
     return hold
 
 
-def list_active_holds(db: Session, *, tenant_id: str) -> list[tuple[QualityHold, Operation]]:
+def list_active_holds(
+    db: Session, *, tenant_id: str
+) -> list[tuple[QualityHold, Operation]]:
     statement = (
         select(QualityHold, Operation)
         .join(Operation, Operation.id == QualityHold.operation_id)

@@ -101,7 +101,9 @@ def _reset_station_seed(db) -> None:
         )
         if operation_ids:
             operation_claims_table_exists = bool(
-                db.scalar(text("SELECT to_regclass('public.operation_claims') IS NOT NULL"))
+                db.scalar(
+                    text("SELECT to_regclass('public.operation_claims') IS NOT NULL")
+                )
             )
             if operation_claims_table_exists:
                 operation_claim_audit_logs_table_exists = bool(

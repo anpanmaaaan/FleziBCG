@@ -15,7 +15,9 @@ def _candidate_search_roots(anchors: Iterable[Path]) -> list[Path]:
     return roots
 
 
-def _resolve_repo_file(*relative_parts: str, anchors: Iterable[Path] | None = None) -> Path:
+def _resolve_repo_file(
+    *relative_parts: str, anchors: Iterable[Path] | None = None
+) -> Path:
     search_anchors = list(anchors or [Path.cwd(), Path(__file__).resolve()])
     for root in _candidate_search_roots(search_anchors):
         candidate = root.joinpath(*relative_parts)
@@ -43,9 +45,10 @@ def test_workflow_path_resolution_handles_repo_checkout_layout(tmp_path: Path) -
     anchor.parent.mkdir(parents=True)
     anchor.write_text("# anchor\n", encoding="utf-8")
 
-    assert _resolve_repo_file(
-        ".github", "workflows", "pr-gate.yml", anchors=[anchor]
-    ) == workflow_path
+    assert (
+        _resolve_repo_file(".github", "workflows", "pr-gate.yml", anchors=[anchor])
+        == workflow_path
+    )
 
 
 def test_workflow_path_resolution_handles_backend_root_container_layout(
@@ -60,12 +63,15 @@ def test_workflow_path_resolution_handles_backend_root_container_layout(
     container_anchor.parent.mkdir(parents=True)
     container_anchor.write_text("# anchor\n", encoding="utf-8")
 
-    assert _resolve_repo_file(
-        ".github",
-        "workflows",
-        "pr-gate.yml",
-        anchors=[container_anchor, repo_root],
-    ) == workflow_path
+    assert (
+        _resolve_repo_file(
+            ".github",
+            "workflows",
+            "pr-gate.yml",
+            anchors=[container_anchor, repo_root],
+        )
+        == workflow_path
+    )
 
 
 def test_backend_import_check_step_is_present() -> None:

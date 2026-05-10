@@ -135,15 +135,13 @@ def test_bom_binding_required_for_release_migration_default_false():
     assert migration_path.exists(), "Migration 0014 file not found"
     src = migration_path.read_text(encoding="utf-8")
     assert 'revision: str = "0014"' in src, "Migration must declare revision 0014"
-    assert 'down_revision' in src and '"0013"' in src, (
+    assert "down_revision" in src and '"0013"' in src, (
         "Migration 0014 must chain from 0013"
     )
     assert "bom_binding_required_for_release" in src, (
         "Migration must reference bom_binding_required_for_release column"
     )
-    assert "nullable=False" in src, (
-        "bom_binding_required_for_release must be NOT NULL"
-    )
+    assert "nullable=False" in src, "bom_binding_required_for_release must be NOT NULL"
     assert "server_default=sa.false()" in src, (
         "bom_binding_required_for_release must default to false to preserve existing PVs"
     )

@@ -318,7 +318,9 @@ class TestListReasonCodesAPI:
 
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 5  # RC-001, RC-002, RC-003, RC-004 (inactive), RC-005 (DRAFT)
+        assert (
+            len(data) == 5
+        )  # RC-001, RC-002, RC-003, RC-004 (inactive), RC-005 (DRAFT)
 
         ids = {item["reason_code_id"] for item in data}
         assert ids == {"RC-001", "RC-002", "RC-003", "RC-004", "RC-005"}

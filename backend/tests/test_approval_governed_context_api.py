@@ -206,7 +206,9 @@ def test_tapi07_arbitrary_governed_action_type_is_accepted() -> None:
     response = client.post("/api/v1/approvals", json=payload)
 
     assert response.status_code == 201
-    assert response.json()["governed_action_type"] == "future.action.not.in.registry.yet"
+    assert (
+        response.json()["governed_action_type"] == "future.action.not.in.registry.yet"
+    )
 
 
 def test_tapi08_subject_type_and_subject_ref_unchanged_in_response() -> None:

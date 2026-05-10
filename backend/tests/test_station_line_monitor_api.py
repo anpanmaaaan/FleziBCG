@@ -46,7 +46,9 @@ def test_station_line_monitor_endpoint_returns_projection(monkeypatch):
             }
         ]
 
-    monkeypatch.setattr(station_router_module, "get_line_monitor_projection", _fake_service)
+    monkeypatch.setattr(
+        station_router_module, "get_line_monitor_projection", _fake_service
+    )
 
     client = TestClient(app)
     response = client.get("/api/v1/station/line-monitor?line_code=LINE-A")

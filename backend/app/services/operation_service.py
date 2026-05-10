@@ -801,7 +801,11 @@ def _derive_allowed_actions(
         if not quality_hold_open:
             actions.append("complete_execution")
 
-    if status == StatusEnum.paused.value and not downtime_open and not quality_hold_open:
+    if (
+        status == StatusEnum.paused.value
+        and not downtime_open
+        and not quality_hold_open
+    ):
         actions.append("resume_execution")
 
     if (

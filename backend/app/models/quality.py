@@ -3,7 +3,16 @@ from __future__ import annotations
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -156,8 +165,12 @@ class QualityGateDefinition(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     gate_type: Mapped[str] = mapped_column(String(32), nullable=False)
     rule_set_version: Mapped[str] = mapped_column(String(64), nullable=False)
-    applicability_scope_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    applicability_scope_value: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    applicability_scope_type: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    applicability_scope_value: Mapped[str | None] = mapped_column(
+        String(128), nullable=True
+    )
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     created_by: Mapped[str] = mapped_column(String(128), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -221,7 +234,9 @@ class QualityApplicabilityPolicy(Base):
         ForeignKey("quality_gate_definitions.id"),
         nullable=True,
     )
-    lifecycle_status: Mapped[str] = mapped_column(String(16), nullable=False, default="DRAFT")
+    lifecycle_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="DRAFT"
+    )
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     created_by: Mapped[str] = mapped_column(String(128), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -247,7 +262,9 @@ class QualityRuleSet(Base):
     rule_set_code: Mapped[str] = mapped_column(String(64), nullable=False)
     rule_set_name: Mapped[str] = mapped_column(String(128), nullable=False)
     rule_set_version: Mapped[str] = mapped_column(String(64), nullable=False)
-    lifecycle_status: Mapped[str] = mapped_column(String(16), nullable=False, default="DRAFT")
+    lifecycle_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="DRAFT"
+    )
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     created_by: Mapped[str] = mapped_column(String(128), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -301,9 +318,15 @@ class QualityDispositionCatalog(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     disposition_code: Mapped[str] = mapped_column(String(64), nullable=False)
     disposition_name: Mapped[str] = mapped_column(String(128), nullable=False)
-    lifecycle_status: Mapped[str] = mapped_column(String(16), nullable=False, default="DRAFT")
-    requires_comment: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    requires_quality_approval: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    lifecycle_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="DRAFT"
+    )
+    requires_comment: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    requires_quality_approval: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True
+    )
     releases_hold: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     quality_status_target: Mapped[str] = mapped_column(String(32), nullable=False)
     review_status_target: Mapped[str] = mapped_column(String(32), nullable=False)
@@ -335,7 +358,9 @@ class QualityDeviationRequest(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     resolved_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     resolution_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 

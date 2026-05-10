@@ -44,11 +44,21 @@ def _purge(db) -> None:
         )
         if wo_ids:
             op_ids = list(
-                db.scalars(select(Operation.id).where(Operation.work_order_id.in_(wo_ids)))
+                db.scalars(
+                    select(Operation.id).where(Operation.work_order_id.in_(wo_ids))
+                )
             )
             if op_ids:
-                db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
-                db.execute(delete(StationSession).where(StationSession.current_operation_id.in_(op_ids)))
+                db.execute(
+                    delete(ExecutionEvent).where(
+                        ExecutionEvent.operation_id.in_(op_ids)
+                    )
+                )
+                db.execute(
+                    delete(StationSession).where(
+                        StationSession.current_operation_id.in_(op_ids)
+                    )
+                )
             db.execute(delete(Operation).where(Operation.work_order_id.in_(wo_ids)))
             db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
         db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
@@ -157,7 +167,9 @@ def line_monitor_fixture():
         db.add(work_order)
         db.flush()
 
-        def _mk_op(*, suffix: str, station_id: str, status: str, sequence: int) -> Operation:
+        def _mk_op(
+            *, suffix: str, station_id: str, status: str, sequence: int
+        ) -> Operation:
             op = Operation(
                 operation_number=f"{_PREFIX}-OP-{suffix}",
                 work_order_id=work_order.id,

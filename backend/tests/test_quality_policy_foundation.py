@@ -21,9 +21,13 @@ def test_quality_policy_model_tablenames_are_stable():
 
 def test_quality_policy_model_core_columns_exist():
     applicability_cols = set(QualityApplicabilityPolicy.__table__.columns.keys())
-    assert {"policy_code", "scope_type", "scope_value", "qc_required", "tenant_id"}.issubset(
-        applicability_cols
-    )
+    assert {
+        "policy_code",
+        "scope_type",
+        "scope_value",
+        "qc_required",
+        "tenant_id",
+    }.issubset(applicability_cols)
 
     rule_set_cols = set(QualityRuleSet.__table__.columns.keys())
     assert {"rule_set_code", "rule_set_version", "tenant_id"}.issubset(rule_set_cols)

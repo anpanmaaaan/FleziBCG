@@ -298,5 +298,7 @@ def test_capabilities_endpoint_does_not_require_manage_permission():
     client = TestClient(app)
 
     response = client.get("/api/v1/reason-codes/capabilities")
-    assert response.status_code == 200, "Capabilities read must not require manage permission"
+    assert response.status_code == 200, (
+        "Capabilities read must not require manage permission"
+    )
     assert "can_create" in response.json()

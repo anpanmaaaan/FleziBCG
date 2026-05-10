@@ -118,7 +118,13 @@ class QualityGateDefinitionCreateRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    @field_validator("code", "name", "rule_set_version", "applicability_scope_type", "applicability_scope_value")
+    @field_validator(
+        "code",
+        "name",
+        "rule_set_version",
+        "applicability_scope_type",
+        "applicability_scope_value",
+    )
     @classmethod
     def _non_blank(cls, value: str) -> str:
         stripped = value.strip()

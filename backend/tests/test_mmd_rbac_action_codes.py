@@ -302,9 +302,7 @@ def test_bom_binding_routes_implemented_by_mmd_be_14():
         "/{product_id}/versions/{version_id}/bom-binding",
     ]
     for path in required_paths:
-        assert path in PRODUCTS_SRC, (
-            f"Expected BOM binding route path missing: {path}"
-        )
+        assert path in PRODUCTS_SRC, f"Expected BOM binding route path missing: {path}"
     # GET, POST, DELETE all present
     assert PRODUCTS_SRC.count("/{product_id}/versions/{version_id}/bom-binding") >= 3, (
         "Expected GET, POST, DELETE bom-binding routes (3 occurrences of path)"
@@ -356,10 +354,22 @@ def test_bom_binding_routes_are_limited_to_get_post_delete():
     )
 
     # Verify no PATCH or PUT for this path
-    assert '@router.patch(\n    "/{product_id}/versions/{version_id}/bom-binding"' not in PRODUCTS_SRC
-    assert '@router.patch("/{product_id}/versions/{version_id}/bom-binding"' not in PRODUCTS_SRC
-    assert '@router.put(\n    "/{product_id}/versions/{version_id}/bom-binding"' not in PRODUCTS_SRC
-    assert '@router.put("/{product_id}/versions/{version_id}/bom-binding"' not in PRODUCTS_SRC
+    assert (
+        '@router.patch(\n    "/{product_id}/versions/{version_id}/bom-binding"'
+        not in PRODUCTS_SRC
+    )
+    assert (
+        '@router.patch("/{product_id}/versions/{version_id}/bom-binding"'
+        not in PRODUCTS_SRC
+    )
+    assert (
+        '@router.put(\n    "/{product_id}/versions/{version_id}/bom-binding"'
+        not in PRODUCTS_SRC
+    )
+    assert (
+        '@router.put("/{product_id}/versions/{version_id}/bom-binding"'
+        not in PRODUCTS_SRC
+    )
 
 
 def test_bom_binding_read_does_not_require_manage_actions():
@@ -368,20 +378,22 @@ def test_bom_binding_read_does_not_require_manage_actions():
     Read operations must not gate on manage permission.
     """
     # Find the GET route for bom-binding and verify it uses require_authenticated_identity
-    assert 'require_authenticated_identity' in PRODUCTS_SRC, (
+    assert "require_authenticated_identity" in PRODUCTS_SRC, (
         "products.py must contain require_authenticated_identity"
     )
-    
+
     # Look for the specific pattern: bom-binding route followed by require_authenticated_identity dependency
-    bom_binding_get = PRODUCTS_SRC.count('@router.get(\n    "/{product_id}/versions/{version_id}/bom-binding"')
-    assert bom_binding_get > 0, (
-        "GET bom-binding route must exist"
+    bom_binding_get = PRODUCTS_SRC.count(
+        '@router.get(\n    "/{product_id}/versions/{version_id}/bom-binding"'
     )
+    assert bom_binding_get > 0, "GET bom-binding route must exist"
 
 
 def test_bom_binding_get_response_schema_includes_capabilities():
     """MMD-FULLSTACK-14B: ProductVersionBomBindingCapabilities and new response wrapper must be in schemas."""
-    schema_src = (BACKEND_ROOT / "app" / "schemas" / "product.py").read_text(encoding="utf-8")
+    schema_src = (BACKEND_ROOT / "app" / "schemas" / "product.py").read_text(
+        encoding="utf-8"
+    )
 
     assert "ProductVersionBomBindingCapabilities" in schema_src, (
         "product.py schemas must define ProductVersionBomBindingCapabilities (MMD-FULLSTACK-14B)"

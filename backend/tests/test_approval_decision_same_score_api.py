@@ -228,9 +228,7 @@ def _create_and_get_id(client: TestClient, payload: dict[str, Any]) -> int:
     return resp.json()["id"]
 
 
-def _decide(
-    client: TestClient, req_id: int, decision: str = "APPROVED"
-) -> TestClient:
+def _decide(client: TestClient, req_id: int, decision: str = "APPROVED") -> TestClient:
     return client.post(
         f"/api/v1/approvals/{req_id}/decide", json={"decision": decision}
     )
@@ -446,7 +444,9 @@ def test_ttieapi04_role_not_in_any_rule_is_forbidden() -> None:
 # ── T-TIE-API-05 ─────────────────────────────────────────────────────────────
 
 
-def test_ttieapi05_lower_score_wildcard_rejected_when_higher_score_group_exists() -> None:
+def test_ttieapi05_lower_score_wildcard_rejected_when_higher_score_group_exists() -> (
+    None
+):
     """T-TIE-API-05: Lower-score wildcard role is rejected when a higher-score same-score group exists.
 
     "First non-empty level wins" (P0-A-14 §7 / P0-A-15B):
@@ -566,7 +566,9 @@ def test_ttieapi07_multi_rule_group_is_tenant_isolated() -> None:
 # ── T-TIE-API-08 ─────────────────────────────────────────────────────────────
 
 
-def test_ttieapi08_terminal_request_cannot_be_decided_twice_in_multi_rule_setup() -> None:
+def test_ttieapi08_terminal_request_cannot_be_decided_twice_in_multi_rule_setup() -> (
+    None
+):
     """T-TIE-API-08: Terminal request cannot be decided twice in a multi-rule setup.
 
     Rules:
@@ -659,7 +661,9 @@ def test_ttieapi10_requester_cannot_reject_own_request_in_multi_rule_setup() -> 
 # ── T-TIE-API-11 ─────────────────────────────────────────────────────────────
 
 
-def test_ttieapi11_security_event_log_taxonomy_unchanged_after_multi_rule_decision() -> None:
+def test_ttieapi11_security_event_log_taxonomy_unchanged_after_multi_rule_decision() -> (
+    None
+):
     """T-TIE-API-11: SecurityEventLog emits only APPROVAL.APPROVED or APPROVAL.REJECTED
     after a decision in a multi-rule setup. No new event type is introduced.
 

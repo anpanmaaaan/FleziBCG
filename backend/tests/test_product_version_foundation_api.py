@@ -1351,7 +1351,7 @@ def test_release_validation_does_not_require_bom_manage():
     src = PRODUCTS_SRC
     # Find the PV-specific release route block (versions/{version_id}/release)
     release_block_match = re.search(
-        r'@router\.post\("[^"]*versions/\{version_id\}/release".*?(?=@router\.|\Z)',
+        r'@router\.post\s*\(\s*"[^"]*versions/\{version_id\}/release".*?(?=@router\.|\Z)',
         src,
         flags=re.DOTALL,
     )
@@ -1366,7 +1366,7 @@ def test_release_endpoint_still_requires_product_version_manage_only():
     """PV release endpoint must be protected by product_version.manage action code."""
     src = PRODUCTS_SRC
     release_block_match = re.search(
-        r'@router\.post\("[^"]*versions/\{version_id\}/release".*?(?=@router\.|\Z)',
+        r'@router\.post\s*\(\s*"[^"]*versions/\{version_id\}/release".*?(?=@router\.|\Z)',
         src,
         flags=re.DOTALL,
     )
@@ -1380,10 +1380,7 @@ def test_release_endpoint_still_requires_product_version_manage_only():
 def test_release_validation_does_not_import_or_call_forbidden_domains():
     """product_version_service must not import material/ERP/traceability/quality/execution modules."""
     service_src_path = (
-        Path(__file__).parent.parent
-        / "app"
-        / "services"
-        / "product_version_service.py"
+        Path(__file__).parent.parent / "app" / "services" / "product_version_service.py"
     )
     service_src = service_src_path.read_text(encoding="utf-8")
     forbidden_patterns = [
@@ -1442,9 +1439,7 @@ def test_release_validation_does_not_mutate_bom_or_binding():
     check_db = session_local()
     from sqlalchemy import select
 
-    bom_row = check_db.scalars(
-        select(Bom).where(Bom.bom_id == bom_id)
-    ).first()
+    bom_row = check_db.scalars(select(Bom).where(Bom.bom_id == bom_id)).first()
     binding_row = check_db.scalars(
         select(ProductVersionBomBinding).where(
             ProductVersionBomBinding.binding_id == binding_id

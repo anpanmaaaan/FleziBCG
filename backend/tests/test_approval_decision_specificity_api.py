@@ -217,9 +217,7 @@ def _create_and_get_id(client: TestClient, payload: dict[str, Any]) -> int:
     return resp.json()["id"]
 
 
-def _decide(
-    client: TestClient, req_id: int, decision: str = "APPROVED"
-) -> TestClient:
+def _decide(client: TestClient, req_id: int, decision: str = "APPROVED") -> TestClient:
     return client.post(
         f"/api/v1/approvals/{req_id}/decide", json={"decision": decision}
     )
@@ -429,7 +427,9 @@ def test_tspecapi05_wrong_scope_falls_back_to_no_scope_rule() -> None:
     db = _make_session()
     _seed(
         db,
-        _rule(approver_role_code="QAL", scope_ref="plant:LINE-1"),  # specific, will be excluded
+        _rule(
+            approver_role_code="QAL", scope_ref="plant:LINE-1"
+        ),  # specific, will be excluded
         _rule(approver_role_code="PMG"),  # no scope constraint, fallback
     )
     create_identity = _make_create_identity()
@@ -580,7 +580,9 @@ def test_tspecapi08_tenant_isolation_with_specificity_rules_in_other_tenant() ->
     assert resp.json()["decision"] == "APPROVED"
 
 
-def test_tspecapi08b_mgr_is_forbidden_in_tenant_a_when_its_rule_is_tenant_b_only() -> None:
+def test_tspecapi08b_mgr_is_forbidden_in_tenant_a_when_its_rule_is_tenant_b_only() -> (
+    None
+):
     """T-SPEC-API-08 (negative): MGR is 403 for tenant-a because its rule is tenant-b only."""
     db = _make_session()
     _seed(

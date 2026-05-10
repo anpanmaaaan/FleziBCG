@@ -106,15 +106,20 @@ _BASELINE_REQUIREMENT_ITEMS: tuple[dict[str, object], ...] = (
 )
 
 
-def _get_requirement_items_for_operation(operation: Operation) -> tuple[dict[str, object], ...]:
+def _get_requirement_items_for_operation(
+    operation: Operation,
+) -> tuple[dict[str, object], ...]:
     if not operation.qc_required:
         return ()
     return _BASELINE_REQUIREMENT_ITEMS
 
 
-def _get_requirement_map_for_operation(operation: Operation) -> dict[str, dict[str, object]]:
+def _get_requirement_map_for_operation(
+    operation: Operation,
+) -> dict[str, dict[str, object]]:
     return {
-        str(item["item_code"]): item for item in _get_requirement_items_for_operation(operation)
+        str(item["item_code"]): item
+        for item in _get_requirement_items_for_operation(operation)
     }
 
 
@@ -737,7 +742,10 @@ def resolve_quality_deviation(
             gate_instance_id=row.gate_instance_id,
             tenant_id=tenant_id,
         )
-        if gate_instance is not None and resolution_status == QualityDeviationRequestStatusEnum.APPROVED.value:
+        if (
+            gate_instance is not None
+            and resolution_status == QualityDeviationRequestStatusEnum.APPROVED.value
+        ):
             gate_instance.status = QualityGateInstanceStatusEnum.DEVIATION_PENDING.value
             gate_instance.review_status = QualityReviewStatusEnum.DECISION_PENDING.value
 

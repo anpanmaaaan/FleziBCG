@@ -92,7 +92,9 @@ def test_list_quality_gate_definitions_returns_200(monkeypatch):
 def test_create_quality_gate_definition_returns_201(monkeypatch):
     identity = _make_identity()
     app = _build_app(identity)
-    _override_action_dependency(app, "/api/v1/quality/gates/definitions", "POST", identity)
+    _override_action_dependency(
+        app, "/api/v1/quality/gates/definitions", "POST", identity
+    )
 
     monkeypatch.setattr(
         quality_router_module,
@@ -133,12 +135,16 @@ def test_create_quality_gate_definition_returns_201(monkeypatch):
 def test_create_quality_gate_definition_duplicate_returns_409(monkeypatch):
     identity = _make_identity()
     app = _build_app(identity)
-    _override_action_dependency(app, "/api/v1/quality/gates/definitions", "POST", identity)
+    _override_action_dependency(
+        app, "/api/v1/quality/gates/definitions", "POST", identity
+    )
 
     def _raise(*args, **kwargs):
         raise ValueError("Duplicate quality gate code in tenant")
 
-    monkeypatch.setattr(quality_router_module, "create_quality_gate_definition_service", _raise)
+    monkeypatch.setattr(
+        quality_router_module, "create_quality_gate_definition_service", _raise
+    )
 
     client = TestClient(app)
     response = client.post(
@@ -159,13 +165,17 @@ def test_create_quality_gate_definition_duplicate_returns_409(monkeypatch):
 def test_open_quality_gate_instance_conflict_returns_409(monkeypatch):
     identity = _make_identity()
     app = _build_app(identity)
-    _override_action_dependency(app, "/api/v1/quality/gates/instances/open", "POST", identity)
+    _override_action_dependency(
+        app, "/api/v1/quality/gates/instances/open", "POST", identity
+    )
 
     monkeypatch.setattr(
         quality_router_module,
         "open_quality_gate_instance_service",
         lambda db, tenant_id, actor_user_id, payload: (_ for _ in ()).throw(
-            quality_router_module.QualityConflictError("QUALITY_GATE_INSTANCE_ALREADY_ACTIVE")
+            quality_router_module.QualityConflictError(
+                "QUALITY_GATE_INSTANCE_ALREADY_ACTIVE"
+            )
         ),
     )
 
@@ -181,7 +191,9 @@ def test_open_quality_gate_instance_conflict_returns_409(monkeypatch):
 def test_open_quality_gate_instance_returns_201(monkeypatch):
     identity = _make_identity()
     app = _build_app(identity)
-    _override_action_dependency(app, "/api/v1/quality/gates/instances/open", "POST", identity)
+    _override_action_dependency(
+        app, "/api/v1/quality/gates/instances/open", "POST", identity
+    )
 
     monkeypatch.setattr(
         quality_router_module,
@@ -358,8 +370,10 @@ def test_resolve_quality_deviation_conflict_returns_409(monkeypatch):
     monkeypatch.setattr(
         quality_router_module,
         "resolve_quality_deviation",
-        lambda db, deviation_request_id, tenant_id, actor_user_id, actor_role_code, payload: (_ for _ in ()).throw(
-            quality_router_module.QualityConflictError("DEVIATION_REQUEST_NOT_OPEN")
+        lambda db, deviation_request_id, tenant_id, actor_user_id, actor_role_code, payload: (
+            (_ for _ in ()).throw(
+                quality_router_module.QualityConflictError("DEVIATION_REQUEST_NOT_OPEN")
+            )
         ),
     )
 

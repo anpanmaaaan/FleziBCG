@@ -33,7 +33,11 @@ def _purge(db) -> None:
     db.execute(delete(QualityDeviationRequest))
     db.execute(delete(QualityNonconformance))
     db.execute(delete(QualityGateInstance))
-    db.execute(delete(QualityGateDefinition).where(QualityGateDefinition.code.like(f"{_PREFIX}-%")))
+    db.execute(
+        delete(QualityGateDefinition).where(
+            QualityGateDefinition.code.like(f"{_PREFIX}-%")
+        )
+    )
 
     op_ids = list(
         db.scalars(
@@ -41,9 +45,15 @@ def _purge(db) -> None:
         )
     )
     if op_ids:
-        db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
+        db.execute(
+            delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids))
+        )
         wo_ids = list(
-            db.scalars(select(WorkOrder.id).where(WorkOrder.operations.any(Operation.id.in_(op_ids))))
+            db.scalars(
+                select(WorkOrder.id).where(
+                    WorkOrder.operations.any(Operation.id.in_(op_ids))
+                )
+            )
         )
         db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
         if wo_ids:
@@ -56,7 +66,9 @@ def _purge(db) -> None:
             )
             db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
             if po_ids:
-                db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
+                db.execute(
+                    delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids))
+                )
 
     db.commit()
 
@@ -198,7 +210,9 @@ def test_open_quality_gate_instance_rejects_if_active_exists(db_session):
         ),
     )
 
-    with pytest.raises(QualityConflictError, match="QUALITY_GATE_INSTANCE_ALREADY_ACTIVE"):
+    with pytest.raises(
+        QualityConflictError, match="QUALITY_GATE_INSTANCE_ALREADY_ACTIVE"
+    ):
         open_quality_gate_instance_service(
             db_session,
             tenant_id="default",

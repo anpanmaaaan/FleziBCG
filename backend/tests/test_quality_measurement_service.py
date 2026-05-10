@@ -60,7 +60,9 @@ def _purge(db) -> None:
             )
         )
         hold_ids = list(
-            db.scalars(select(QualityHold.id).where(QualityHold.operation_id.in_(op_ids)))
+            db.scalars(
+                select(QualityHold.id).where(QualityHold.operation_id.in_(op_ids))
+            )
         )
         if hold_ids:
             db.execute(
@@ -73,7 +75,11 @@ def _purge(db) -> None:
                     QualityDeviationRequest.hold_id.in_(hold_ids)
                 )
             )
-        db.execute(delete(QualityNonconformance).where(QualityNonconformance.operation_id.in_(op_ids)))
+        db.execute(
+            delete(QualityNonconformance).where(
+                QualityNonconformance.operation_id.in_(op_ids)
+            )
+        )
         db.execute(delete(QualityHold).where(QualityHold.operation_id.in_(op_ids)))
         record_ids = list(
             db.scalars(
@@ -93,12 +99,20 @@ def _purge(db) -> None:
                     QualityMeasurementRecord.id.in_(record_ids)
                 )
             )
-        db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
+        db.execute(
+            delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids))
+        )
         if gate_ids:
-            db.execute(delete(QualityGateInstance).where(QualityGateInstance.id.in_(gate_ids)))
+            db.execute(
+                delete(QualityGateInstance).where(QualityGateInstance.id.in_(gate_ids))
+            )
 
         wo_ids = list(
-            db.scalars(select(WorkOrder.id).where(WorkOrder.operations.any(Operation.id.in_(op_ids))))
+            db.scalars(
+                select(WorkOrder.id).where(
+                    WorkOrder.operations.any(Operation.id.in_(op_ids))
+                )
+            )
         )
         db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
         if wo_ids:
@@ -111,10 +125,14 @@ def _purge(db) -> None:
             )
             db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
             if po_ids:
-                db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
+                db.execute(
+                    delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids))
+                )
 
     db.execute(
-        delete(QualityGateDefinition).where(QualityGateDefinition.code.like(f"{_PREFIX}-%"))
+        delete(QualityGateDefinition).where(
+            QualityGateDefinition.code.like(f"{_PREFIX}-%")
+        )
     )
 
     db.commit()
@@ -232,7 +250,9 @@ def _seed_gate_definition_and_instance(db, *, operation_id: int, tenant_id: str)
 
 
 def test_submit_measurement_pass_records_result_and_events(db_session):
-    op = _seed_operation(db_session, suffix="PASS", tenant_id="default", qc_required=True)
+    op = _seed_operation(
+        db_session, suffix="PASS", tenant_id="default", qc_required=True
+    )
 
     response = submit_qc_measurement(
         db_session,
@@ -250,7 +270,9 @@ def test_submit_measurement_pass_records_result_and_events(db_session):
 
     event_types = list(
         db_session.scalars(
-            select(ExecutionEvent.event_type).where(ExecutionEvent.operation_id == op.id)
+            select(ExecutionEvent.event_type).where(
+                ExecutionEvent.operation_id == op.id
+            )
         )
     )
     assert "qc_measurement_submitted" in event_types
@@ -259,7 +281,9 @@ def test_submit_measurement_pass_records_result_and_events(db_session):
 
 
 def test_submit_measurement_out_of_spec_creates_hold(db_session):
-    op = _seed_operation(db_session, suffix="HOLD", tenant_id="default", qc_required=True)
+    op = _seed_operation(
+        db_session, suffix="HOLD", tenant_id="default", qc_required=True
+    )
 
     response = submit_qc_measurement(
         db_session,
@@ -284,7 +308,9 @@ def test_submit_measurement_out_of_spec_creates_hold(db_session):
 
     event_types = list(
         db_session.scalars(
-            select(ExecutionEvent.event_type).where(ExecutionEvent.operation_id == op.id)
+            select(ExecutionEvent.event_type).where(
+                ExecutionEvent.operation_id == op.id
+            )
         )
     )
     assert "qc_hold_applied" in event_types
@@ -340,7 +366,9 @@ def test_submit_measurement_rejects_unknown_backend_requirement_item(db_session)
 
     event_types = list(
         db_session.scalars(
-            select(ExecutionEvent.event_type).where(ExecutionEvent.operation_id == op.id)
+            select(ExecutionEvent.event_type).where(
+                ExecutionEvent.operation_id == op.id
+            )
         )
     )
     assert event_types == []
@@ -378,7 +406,9 @@ def test_submit_measurement_with_gate_instance_sets_passed_state(db_session):
     assert response.gate_instance_id == gate_instance_id
 
 
-def test_submit_measurement_requires_gate_context_when_active_instance_exists(db_session):
+def test_submit_measurement_requires_gate_context_when_active_instance_exists(
+    db_session,
+):
     op = _seed_operation(
         db_session,
         suffix="GATE-CTX-REQ",
@@ -391,7 +421,9 @@ def test_submit_measurement_requires_gate_context_when_active_instance_exists(db
         tenant_id="default",
     )
 
-    with pytest.raises(QualityConflictError, match="QUALITY_GATE_INSTANCE_CONTEXT_REQUIRED"):
+    with pytest.raises(
+        QualityConflictError, match="QUALITY_GATE_INSTANCE_CONTEXT_REQUIRED"
+    ):
         submit_qc_measurement(
             db_session,
             tenant_id="default",
@@ -454,7 +486,9 @@ def test_submit_measurement_rejects_non_measurable_gate_instance_state(db_sessio
     gate_instance.status = "CLOSED"
     db_session.commit()
 
-    with pytest.raises(QualityConflictError, match="QUALITY_GATE_INSTANCE_NOT_MEASURABLE"):
+    with pytest.raises(
+        QualityConflictError, match="QUALITY_GATE_INSTANCE_NOT_MEASURABLE"
+    ):
         submit_qc_measurement(
             db_session,
             tenant_id="default",
@@ -493,7 +527,9 @@ def test_submit_measurement_rejects_when_required_items_missing(db_session):
 
     event_types = list(
         db_session.scalars(
-            select(ExecutionEvent.event_type).where(ExecutionEvent.operation_id == op.id)
+            select(ExecutionEvent.event_type).where(
+                ExecutionEvent.operation_id == op.id
+            )
         )
     )
     assert event_types == []
@@ -512,7 +548,9 @@ def test_measurement_request_rejects_client_threshold_fields():
 
 
 def test_submit_measurement_rejects_when_qc_not_required(db_session):
-    op = _seed_operation(db_session, suffix="NOQC", tenant_id="default", qc_required=False)
+    op = _seed_operation(
+        db_session, suffix="NOQC", tenant_id="default", qc_required=False
+    )
 
     with pytest.raises(QualityConflictError, match="QC_NOT_REQUIRED"):
         submit_qc_measurement(
@@ -578,8 +616,12 @@ def test_get_quality_measurement_requirements_returns_empty_when_qc_not_required
 
 
 def test_list_quality_holds_is_tenant_isolated(db_session):
-    op_a = _seed_operation(db_session, suffix="TA", tenant_id="tenant-a", qc_required=True)
-    op_b = _seed_operation(db_session, suffix="TB", tenant_id="tenant-b", qc_required=True)
+    op_a = _seed_operation(
+        db_session, suffix="TA", tenant_id="tenant-a", qc_required=True
+    )
+    op_b = _seed_operation(
+        db_session, suffix="TB", tenant_id="tenant-b", qc_required=True
+    )
 
     submit_qc_measurement(
         db_session,
@@ -610,7 +652,9 @@ def test_list_quality_holds_is_tenant_isolated(db_session):
 
 
 def _create_hold(db_session, *, tenant_id: str, suffix: str) -> int:
-    op = _seed_operation(db_session, suffix=suffix, tenant_id=tenant_id, qc_required=True)
+    op = _seed_operation(
+        db_session, suffix=suffix, tenant_id=tenant_id, qc_required=True
+    )
     response = submit_qc_measurement(
         db_session,
         tenant_id=tenant_id,
@@ -747,9 +791,9 @@ def test_qal_can_record_quality_disposition(db_session):
 
     event_types = list(
         db_session.scalars(
-            select(ExecutionEvent.event_type).join(
-                QualityHold, QualityHold.operation_id == ExecutionEvent.operation_id
-            ).where(QualityHold.id == hold_id)
+            select(ExecutionEvent.event_type)
+            .join(QualityHold, QualityHold.operation_id == ExecutionEvent.operation_id)
+            .where(QualityHold.id == hold_id)
         )
     )
     assert "disposition_decision_recorded" in event_types
@@ -1133,7 +1177,9 @@ def test_create_quality_nonconformance_rejects_hold_operation_mismatch(db_sessio
     )
     hold_b = _create_hold(db_session, tenant_id="default", suffix="NC-MIS-B")
 
-    with pytest.raises(QualityConflictError, match="NONCONFORMANCE_HOLD_OPERATION_MISMATCH"):
+    with pytest.raises(
+        QualityConflictError, match="NONCONFORMANCE_HOLD_OPERATION_MISMATCH"
+    ):
         create_quality_nonconformance(
             db_session,
             tenant_id="default",
@@ -1189,7 +1235,9 @@ def test_disposition_links_nonconformance_by_hold(db_session):
     )
 
     nc_row = db_session.scalar(
-        select(QualityNonconformance).where(QualityNonconformance.id == nc.nonconformance_id)
+        select(QualityNonconformance).where(
+            QualityNonconformance.id == nc.nonconformance_id
+        )
     )
     assert nc_row is not None
     assert nc_row.disposition_code == "RELEASE_QC_HOLD"

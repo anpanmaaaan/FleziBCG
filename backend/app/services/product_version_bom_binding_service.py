@@ -147,7 +147,9 @@ def get_product_version_bom_binding(
     has_both = has_pv_manage and has_bom_manage
 
     binding_data = (
-        _to_binding_data(row, pv.lifecycle_status, has_both) if row is not None else None
+        _to_binding_data(row, pv.lifecycle_status, has_both)
+        if row is not None
+        else None
     )
     capabilities = _compute_capabilities(
         pv.lifecycle_status,

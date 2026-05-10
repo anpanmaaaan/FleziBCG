@@ -39,19 +39,24 @@ def test_find_repo_file_uses_secondary_anchor_for_backend_root_layout(
     container_anchor.parent.mkdir(parents=True)
     container_anchor.write_text("# anchor\n", encoding="utf-8")
 
-    assert verify_backend._find_repo_file(
-        ".github",
-        "workflows",
-        "pr-gate.yml",
-        anchors=[container_anchor, repo_root],
-    ) == workflow_path
+    assert (
+        verify_backend._find_repo_file(
+            ".github",
+            "workflows",
+            "pr-gate.yml",
+            anchors=[container_anchor, repo_root],
+        )
+        == workflow_path
+    )
 
 
 def test_all_checks_passed_treats_ruff_format_as_report_only_for_testenv() -> None:
     results = [
         verify_backend.Check("Backend import (app.main)", True, ""),
         verify_backend.Check("Ruff lint (ruff check .)", True, ""),
-        verify_backend.Check("Ruff format (ruff format --check .)", False, "would reformat"),
+        verify_backend.Check(
+            "Ruff format (ruff format --check .)", False, "would reformat"
+        ),
         verify_backend.Check("DB connectivity", True, ""),
     ]
 

@@ -139,7 +139,9 @@ def _purge(db) -> None:
     )
     if op_ids:
         hold_ids = list(
-            db.scalars(select(QualityHold.id).where(QualityHold.operation_id.in_(op_ids)))
+            db.scalars(
+                select(QualityHold.id).where(QualityHold.operation_id.in_(op_ids))
+            )
         )
         if hold_ids:
             db.execute(
@@ -167,10 +169,16 @@ def _purge(db) -> None:
                 )
             )
 
-        db.execute(delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids)))
+        db.execute(
+            delete(ExecutionEvent).where(ExecutionEvent.operation_id.in_(op_ids))
+        )
 
         wo_ids = list(
-            db.scalars(select(WorkOrder.id).where(WorkOrder.operations.any(Operation.id.in_(op_ids))))
+            db.scalars(
+                select(WorkOrder.id).where(
+                    WorkOrder.operations.any(Operation.id.in_(op_ids))
+                )
+            )
         )
         db.execute(delete(Operation).where(Operation.id.in_(op_ids)))
         if wo_ids:
@@ -183,7 +191,9 @@ def _purge(db) -> None:
             )
             db.execute(delete(WorkOrder).where(WorkOrder.id.in_(wo_ids)))
             if po_ids:
-                db.execute(delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids)))
+                db.execute(
+                    delete(ProductionOrder).where(ProductionOrder.id.in_(po_ids))
+                )
 
     db.execute(
         delete(StationSession).where(
@@ -298,7 +308,9 @@ def test_resume_rejects_when_active_quality_hold_exists(db_session):
     op = _seed_operation(db, suffix="RESUME")
     _ensure_open_station_session(db, station_id=op.station_scope_value)
 
-    start_operation(db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID)
+    start_operation(
+        db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID
+    )
     db_op = db.scalar(select(Operation).where(Operation.id == op.id))
     assert db_op is not None
     pause_operation(
@@ -331,7 +343,9 @@ def test_complete_rejects_when_active_quality_hold_exists(db_session):
     op = _seed_operation(db, suffix="COMPLETE")
     _ensure_open_station_session(db, station_id=op.station_scope_value)
 
-    start_operation(db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID)
+    start_operation(
+        db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID
+    )
     _seed_active_hold(db, operation_id=op.id, suffix="COMPLETE")
 
     in_progress_op = db.scalar(select(Operation).where(Operation.id == op.id))
@@ -354,7 +368,9 @@ def test_require_recheck_keeps_resume_blocked(db_session):
     op = _seed_operation(db, suffix="RECHECK-RESUME")
     _ensure_open_station_session(db, station_id=op.station_scope_value)
 
-    start_operation(db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID)
+    start_operation(
+        db, op, OperationStartRequest(operator_id=_ACTOR), tenant_id=_TENANT_ID
+    )
     db_op = db.scalar(select(Operation).where(Operation.id == op.id))
     assert db_op is not None
     pause_operation(
