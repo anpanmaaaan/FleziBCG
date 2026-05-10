@@ -12,6 +12,7 @@ import { ClosureStatePanel } from "@/app/components/station-execution/ClosureSta
 import { ReopenOperationModal } from "@/app/components/station-execution/ReopenOperationModal";
 import { StartDowntimeDialog } from "@/app/components/station-execution/StartDowntimeDialog";
 import { StationWorkflowShell } from "@/app/components/station-execution/StationWorkflowShell";
+import { StationEntryHandoff } from "@/app/components/station-execution/StationEntryHandoff";
 import { normalizeStationCommandError, type StationCommandErrorMessage } from "@/app/components/station-execution/stationCommandErrorMessages";
 import type { QueueFilter } from "@/app/components/station-execution/QueueFilterBar";
 import {
@@ -781,6 +782,35 @@ export function StationExecution() {
     </div>
   );
 
+  const handoffStationState = stationScope && stationScope !== "-" ? "selected" : "missing";
+  const handoffSessionState = hasOpenSession ? "open" : "missing";
+  const handoffOperatorState = ownershipState?.operator_user_id ? "identified" : hasOpenSession ? "missing" : "not_confirmed";
+  const handoffEquipmentState = ownershipState?.equipment_id
+    ? "bound"
+    : commandError?.code === "EQUIPMENT_REQUIRED"
+    ? "required_missing"
+    : hasOpenSession
+    ? "optional_unknown"
+    : "not_confirmed";
+
+  const queueModeNextStepKey = handoffStationState === "missing"
+    ? "station.handoff.next.resolveStationContext"
+    : !hasOpenSession
+    ? "station.handoff.next.openSession"
+    : handoffOperatorState !== "identified"
+    ? "station.handoff.next.identifyOperator"
+    : handoffEquipmentState === "required_missing"
+    ? "station.handoff.next.bindEquipmentBeforeExecution"
+    : operation
+    ? "station.handoff.next.queueReadyInspectOrRun"
+    : "station.handoff.next.selectQueueOperation";
+
+  const cockpitModeNextStepKey = handoffEquipmentState === "required_missing"
+    ? "station.handoff.next.bindEquipmentBeforeExecution"
+    : canExecute
+    ? "station.handoff.next.executeUsingAllowedActions"
+    : "station.handoff.next.resolveSessionControl";
+
   // ── MODE A  EOperation Selection ──────────────────────────────────────────
   if (!isExecutionMode) {
     return (
@@ -815,6 +845,20 @@ export function StationExecution() {
             equipmentId={ownershipState?.equipment_id ?? null}
             recoveryBanner={commandErrorBanner ?? undefined}
           >
+            <StationEntryHandoff
+              stationState={handoffStationState}
+              sessionState={handoffSessionState}
+              operatorState={handoffOperatorState}
+              equipmentState={handoffEquipmentState}
+              operationState={operation ? "selected" : "not_selected"}
+              nextStepKey={queueModeNextStepKey}
+              ctas={[
+                { labelKey: "station.handoff.cta.stationSession", onClick: goToStationSession },
+                { labelKey: "station.handoff.cta.operatorIdentification", onClick: goToOperatorIdentification },
+                { labelKey: "station.handoff.cta.equipmentBinding", onClick: goToEquipmentBinding },
+              ]}
+            />
+
             {operation && ownsAnotherSession && (
               <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
                 <p className="text-xs text-amber-700">{t("station.ownership.singleActiveHint")}</p>
@@ -998,6 +1042,21 @@ export function StationExecution() {
         equipmentId={ownershipState?.equipment_id ?? null}
         recoveryBanner={commandErrorBanner ?? undefined}
       >
+        <StationEntryHandoff
+          stationState={handoffStationState}
+          sessionState={handoffSessionState}
+          operatorState={handoffOperatorState}
+          equipmentState={handoffEquipmentState}
+          operationState="selected"
+          nextStepKey={cockpitModeNextStepKey}
+          ctas={[
+            { labelKey: "station.handoff.cta.stationSession", onClick: goToStationSession },
+            { labelKey: "station.handoff.cta.operatorIdentification", onClick: goToOperatorIdentification },
+            { labelKey: "station.handoff.cta.equipmentBinding", onClick: goToEquipmentBinding },
+          ]}
+          footer={t("station.handoff.executionTruthHint")}
+        />
+
         {/* Quality Hold banner — shown when an active hold blocks progression */}
         {operation?.quality_hold_open && (
           <div className="mx-3 mt-2 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 sm:mx-4">

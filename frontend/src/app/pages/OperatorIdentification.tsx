@@ -11,6 +11,7 @@ import {
   type StationCommandErrorMessage,
 } from "@/app/components/station-execution/stationCommandErrorMessages";
 import { StationWorkflowShell } from "@/app/components/station-execution/StationWorkflowShell";
+import { StationEntryHandoff } from "@/app/components/station-execution/StationEntryHandoff";
 
 type IdentifyStatus = "pending" | "verified" | "unauthorized";
 
@@ -53,6 +54,30 @@ export function OperatorIdentification() {
   const returnToStation = () => {
     const target = operationId ? `/station?operationId=${encodeURIComponent(operationId)}` : "/station";
     navigate(target);
+  };
+
+  const goToEquipmentBinding = () => {
+    const params = new URLSearchParams();
+    if (stationId) {
+      params.set("stationId", stationId);
+    }
+    if (resolvedSessionId) {
+      params.set("sessionId", resolvedSessionId);
+    }
+    if (operationId) {
+      params.set("operationId", operationId);
+    }
+    const query = params.toString();
+    navigate(query ? `/equipment-binding?${query}` : "/equipment-binding");
+  };
+
+  const goToStationCockpit = () => {
+    const params = new URLSearchParams();
+    if (operationId) {
+      params.set("operationId", operationId);
+    }
+    const query = params.toString();
+    navigate(query ? `/station?${query}` : "/station");
   };
 
   const loadCurrentSession = async () => {
@@ -131,6 +156,38 @@ export function OperatorIdentification() {
       ? "bg-red-100 text-red-700"
       : "bg-gray-100 text-gray-600";
 
+  const handoffSessionState = !stationId
+    ? "not_confirmed"
+    : !resolvedSessionId
+    ? "missing"
+    : session?.status === "open"
+    ? "open"
+    : session?.status
+    ? "closed"
+    : "not_confirmed";
+
+  const handoffOperatorState = identifyStatus === "verified"
+    ? "identified"
+    : identifyStatus === "pending"
+    ? "missing"
+    : "not_confirmed";
+
+  const handoffEquipmentState = session?.equipment_id
+    ? "bound"
+    : commandError?.code === "EQUIPMENT_REQUIRED"
+    ? "required_missing"
+    : resolvedSessionId
+    ? "optional_unknown"
+    : "not_confirmed";
+
+  const nextStepKey = handoffOperatorState !== "identified"
+    ? "station.handoff.next.identifyOperatorBeforeExecution"
+    : handoffEquipmentState === "required_missing"
+    ? "station.handoff.next.bindEquipmentBeforeExecution"
+    : handoffEquipmentState === "optional_unknown"
+    ? "station.handoff.next.operatorDoneEquipmentUnknown"
+    : "station.handoff.next.goToCockpit";
+
   return (
     <div className="flex flex-col gap-4 p-4 max-w-2xl mx-auto">
       <MockWarningBanner phase="PARTIAL" />
@@ -169,6 +226,19 @@ export function OperatorIdentification() {
           </div>
         ) : undefined}
       >
+        <StationEntryHandoff
+          stationState={stationId ? "selected" : "missing"}
+          sessionState={handoffSessionState}
+          operatorState={handoffOperatorState}
+          equipmentState={handoffEquipmentState}
+          nextStepKey={nextStepKey}
+          ctas={[
+            { labelKey: "station.handoff.cta.equipmentBinding", onClick: goToEquipmentBinding, tone: "primary" },
+            { labelKey: "station.handoff.cta.stationCockpit", onClick: goToStationCockpit },
+          ]}
+          footer={t("station.handoff.unknownPolicyHint")}
+        />
+
         <div className="bg-white rounded-lg border border-gray-200 p-5">
         <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 border-b border-gray-100 pb-2 mb-4">
           <User className="w-4 h-4 text-blue-500" />

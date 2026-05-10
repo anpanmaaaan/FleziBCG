@@ -2,7 +2,7 @@
 // Connects to station session current + bind-equipment endpoints.
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { Cpu, MonitorCheck, Activity, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { ScreenStatusBadge } from "@/app/components";
@@ -14,11 +14,14 @@ import {
   type StationCommandErrorMessage,
 } from "@/app/components/station-execution/stationCommandErrorMessages";
 import { StationWorkflowShell } from "@/app/components/station-execution/StationWorkflowShell";
+import { StationEntryHandoff } from "@/app/components/station-execution/StationEntryHandoff";
 
 export function EquipmentBinding() {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const stationId = searchParams.get("stationId") ?? "";
+  const operationId = (searchParams.get("operationId") || "").trim();
   const [session, setSession] = useState<StationSessionItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [equipmentId, setEquipmentId] = useState("");
@@ -68,6 +71,62 @@ export function EquipmentBinding() {
       .finally(() => setBinding(false));
   };
 
+  const goToOperatorIdentification = () => {
+    const params = new URLSearchParams();
+    if (stationId) {
+      params.set("stationId", stationId);
+    }
+    if (session?.session_id) {
+      params.set("sessionId", session.session_id);
+    }
+    if (operationId) {
+      params.set("operationId", operationId);
+    }
+    const query = params.toString();
+    navigate(query ? `/operator-identification?${query}` : "/operator-identification");
+  };
+
+  const goToStationCockpit = () => {
+    const params = new URLSearchParams();
+    if (operationId) {
+      params.set("operationId", operationId);
+    }
+    const query = params.toString();
+    navigate(query ? `/station?${query}` : "/station");
+  };
+
+  const handoffSessionState = !stationId
+    ? "not_confirmed"
+    : !session
+    ? "missing"
+    : session.status === "open"
+    ? "open"
+    : "closed";
+
+  const handoffOperatorState = !session
+    ? "not_confirmed"
+    : session.operator_user_id
+    ? "identified"
+    : "missing";
+
+  const handoffEquipmentState = commandError?.code === "EQUIPMENT_REQUIRED"
+    ? session?.equipment_id
+      ? "bound"
+      : "required_missing"
+    : session?.equipment_id
+    ? "bound"
+    : session
+    ? "optional_unknown"
+    : "not_confirmed";
+
+  const nextStepKey = !session
+    ? "station.handoff.next.openSession"
+    : handoffEquipmentState === "required_missing"
+    ? "station.handoff.next.bindEquipmentBeforeExecution"
+    : handoffEquipmentState === "optional_unknown"
+    ? "station.handoff.next.equipmentOptionalUnknown"
+    : "station.handoff.next.goToCockpit";
+
   return (
     <div className="flex flex-col gap-4 p-4 max-w-3xl mx-auto">
       {/* Header */}
@@ -97,6 +156,19 @@ export function EquipmentBinding() {
           </div>
         ) : undefined}
       >
+        <StationEntryHandoff
+          stationState={stationId ? "selected" : "missing"}
+          sessionState={handoffSessionState}
+          operatorState={handoffOperatorState}
+          equipmentState={handoffEquipmentState}
+          nextStepKey={nextStepKey}
+          ctas={[
+            { labelKey: "station.handoff.cta.operatorIdentification", onClick: goToOperatorIdentification },
+            { labelKey: "station.handoff.cta.stationCockpit", onClick: goToStationCockpit, tone: "primary" },
+          ]}
+          footer={t("station.handoff.unknownPolicyHint")}
+        />
+
         {!stationId && (
           <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700">
             {t("equipmentBinding.notice.missingStationId")}
