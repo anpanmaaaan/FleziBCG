@@ -10,6 +10,7 @@ import { StationSupportQueue } from "@/app/components/station-execution/StationS
 import { ExecutionStateHero } from "@/app/components/station-execution/ExecutionStateHero";
 import { AllowedActionZone } from "@/app/components/station-execution/AllowedActionZone";
 import { ClosureStatePanel } from "@/app/components/station-execution/ClosureStatePanel";
+import { CompletionSummaryPanel } from "@/app/components/station-execution/CompletionSummaryPanel";
 import { ReopenOperationModal } from "@/app/components/station-execution/ReopenOperationModal";
 import { StartDowntimeDialog } from "@/app/components/station-execution/StartDowntimeDialog";
 import { StationWorkflowShell } from "@/app/components/station-execution/StationWorkflowShell";
@@ -806,8 +807,18 @@ export function StationExecution() {
     ? "station.handoff.next.queueReadyInspectOrRun"
     : "station.handoff.next.selectQueueOperation";
 
+  const queuedWorkCount = operation
+    ? queueItems.filter((item) => item.operation_id !== operation.id).length
+    : queueItems.length;
+
+  const completionNextStepKey = queuedWorkCount > 0
+    ? "station.completion.nextStepQueue"
+    : "station.completion.nextStepEndSession";
+
   const cockpitModeNextStepKey = handoffEquipmentState === "required_missing"
     ? "station.handoff.next.bindEquipmentBeforeExecution"
+    : operation?.status === "COMPLETED"
+    ? completionNextStepKey
     : canExecute
     ? "station.handoff.next.executeUsingAllowedActions"
     : "station.handoff.next.resolveSessionControl";
@@ -1125,83 +1136,97 @@ export function StationExecution() {
                 pausedTotalLabel={formatDuration(pausedTotalMs)}
                 downtimeTotalLabel={formatDuration(downtimeTotalMs)}
               />
+              {operation.status === "COMPLETED" ? (
+                <>
+                  {commandErrorBanner}
+                  <CompletionSummaryPanel
+                    operation={operation}
+                    queuedWorkCount={queuedWorkCount}
+                    downtimeTotalLabel={formatDuration(downtimeTotalMs)}
+                    onReturnToQueue={backToSelection}
+                    onGoToStationSession={goToStationSession}
+                  />
+                </>
+              ) : (
+                <>
+                  <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
+                    <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-2">
+                      {t("station.block.guidance")}
+                    </p>
 
-              <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
-                <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-2">
-                  {t("station.block.guidance")}
-                </p>
+                    {guidanceMessage && (
+                      <div className="mb-4 flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 sm:px-5">
+                        <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-500 sm:h-6 sm:w-6" aria-hidden="true" />
+                        <div className="min-w-0">
+                          <p className="mt-1 text-sm text-blue-900 sm:text-base md:text-xl leading-snug">{guidanceMessage}</p>
+                        </div>
+                      </div>
+                    )}
 
-                {guidanceMessage && (
-                  <div className="mb-4 flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 sm:px-5">
-                    <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-500 sm:h-6 sm:w-6" aria-hidden="true" />
-                    <div className="min-w-0">
-                      <p className="mt-1 text-sm text-blue-900 sm:text-base md:text-xl leading-snug">{guidanceMessage}</p>
+                    {commandErrorBanner}
+
+                    <AllowedActionZone
+                      operation={operation}
+                      actionLoading={actionLoading}
+                      downtimeLoading={downtimeLoading}
+                      canExecute={canExecute}
+                      canPauseExecution={canPauseExecution}
+                      canStartDowntime={canStartDowntime}
+                      canCompleteExecution={canCompleteExecution}
+                      canResumeExecution={canResumeExecution}
+                      canEndDowntimeAction={canEndDowntimeAction}
+                      canDo={canDo}
+                      onStartOperation={() => void startOperation()}
+                      onPauseOperation={() => void pauseOperation()}
+                      onOpenDowntimeModal={() => setDowntimeModalOpen(true)}
+                      onCompleteOperation={() => void completeOperation()}
+                      onResumeOperation={() => void resumeOperation()}
+                      onEndDowntime={() => void endDowntime()}
+                    />
+                  </section>
+
+                  {/* Report / input block */}
+                  <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
+                    <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-2">
+                      {t("station.block.inputReporting")}
+                    </p>
+                    <p className="mt-2 text-sm sm:text-base text-slate-600 md:text-xl mb-5">{reportingHint}</p>
+                    <div className="grid gap-5 lg:grid-cols-2 mb-6">
+                      <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+                        <Stepper
+                          label={t("station.input.goodQtyDelta")}
+                          value={goodQty}
+                          onChange={setGoodQty}
+                          labelClassName="text-emerald-700"
+                          disabled={!canReportProduction}
+                          quickAddValues={[1, 5, 10, 20]}
+                          quickAddTone="good"
+                          onReset={() => setGoodQty(0)}
+                        />
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+                        <Stepper
+                          label={t("station.input.scrapQtyDelta")}
+                          value={scrapQty}
+                          onChange={setScrapQty}
+                          labelClassName="text-amber-700"
+                          disabled={!canReportProduction}
+                          quickAddValues={[1, 2, 5]}
+                          quickAddTone="scrap"
+                          onReset={() => setScrapQty(0)}
+                        />
+                      </div>
                     </div>
-                  </div>
-                )}
-
-                {commandErrorBanner}
-
-                <AllowedActionZone
-                  operation={operation}
-                  actionLoading={actionLoading}
-                  downtimeLoading={downtimeLoading}
-                  canExecute={canExecute}
-                  canPauseExecution={canPauseExecution}
-                  canStartDowntime={canStartDowntime}
-                  canCompleteExecution={canCompleteExecution}
-                  canResumeExecution={canResumeExecution}
-                  canEndDowntimeAction={canEndDowntimeAction}
-                  canDo={canDo}
-                  onStartOperation={() => void startOperation()}
-                  onPauseOperation={() => void pauseOperation()}
-                  onOpenDowntimeModal={() => setDowntimeModalOpen(true)}
-                  onCompleteOperation={() => void completeOperation()}
-                  onResumeOperation={() => void resumeOperation()}
-                  onEndDowntime={() => void endDowntime()}
-                />
-              </section>
-
-              {/* Report / input block */}
-              <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
-                <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-2">
-                  {t("station.block.inputReporting")}
-                </p>
-                <p className="mt-2 text-sm sm:text-base text-slate-600 md:text-xl mb-5">{reportingHint}</p>
-                <div className="grid gap-5 lg:grid-cols-2 mb-6">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                    <Stepper
-                      label={t("station.input.goodQtyDelta")}
-                      value={goodQty}
-                      onChange={setGoodQty}
-                      labelClassName="text-emerald-700"
-                      disabled={!canReportProduction}
-                      quickAddValues={[1, 5, 10, 20]}
-                      quickAddTone="good"
-                      onReset={() => setGoodQty(0)}
-                    />
-                  </div>
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                    <Stepper
-                      label={t("station.input.scrapQtyDelta")}
-                      value={scrapQty}
-                      onChange={setScrapQty}
-                      labelClassName="text-amber-700"
-                      disabled={!canReportProduction}
-                      quickAddValues={[1, 2, 5]}
-                      quickAddTone="scrap"
-                      onReset={() => setScrapQty(0)}
-                    />
-                  </div>
-                </div>
-                <button
-                  onClick={() => void reportQuantity()}
-                  disabled={actionLoading || !canReportProduction}
-                  className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-md active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-blue-600 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
-                >
-                  {t("station.action.reportQty")}
-                </button>
-              </section>
+                    <button
+                      onClick={() => void reportQuantity()}
+                      disabled={actionLoading || !canReportProduction}
+                      className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-md active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-blue-600 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                    >
+                      {t("station.action.reportQty")}
+                    </button>
+                  </section>
+                </>
+              )}
             </div>
 
             <aside className="flex min-w-0 flex-col gap-3 sm:gap-4">
