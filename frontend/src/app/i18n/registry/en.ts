@@ -194,6 +194,7 @@ export const enRegistry: I18nRegistry = {
   "station.handoff.cta.operatorIdentification": "Operator Identification",
   "station.handoff.cta.equipmentBinding": "Equipment/Context",
   "station.handoff.cta.stationCockpit": "Station Cockpit",
+  "station.handoff.secondaryRoutes": "Other routes:",
   "station.handoff.next.resolveStationContext": "Resolve station context first.",
   "station.handoff.next.openSession": "Open a station session to continue.",
   "station.handoff.next.openNewSession": "Session is closed. Open a new station session.",

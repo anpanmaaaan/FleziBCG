@@ -127,6 +127,10 @@ export function EquipmentBinding() {
     ? "station.handoff.next.equipmentOptionalUnknown"
     : "station.handoff.next.goToCockpit";
 
+  const equipmentPrimaryCta = nextStepKey === "station.handoff.next.goToCockpit"
+    ? "station.handoff.cta.stationCockpit"
+    : "station.handoff.cta.operatorIdentification";
+
   return (
     <div className="flex flex-col gap-4 p-4 max-w-3xl mx-auto">
       {/* Header */}
@@ -163,8 +167,16 @@ export function EquipmentBinding() {
           equipmentState={handoffEquipmentState}
           nextStepKey={nextStepKey}
           ctas={[
-            { labelKey: "station.handoff.cta.operatorIdentification", onClick: goToOperatorIdentification },
-            { labelKey: "station.handoff.cta.stationCockpit", onClick: goToStationCockpit, tone: "primary" },
+            {
+              labelKey: "station.handoff.cta.operatorIdentification",
+              onClick: goToOperatorIdentification,
+              tone: equipmentPrimaryCta === "station.handoff.cta.operatorIdentification" ? "primary" : "neutral",
+            },
+            {
+              labelKey: "station.handoff.cta.stationCockpit",
+              onClick: goToStationCockpit,
+              tone: equipmentPrimaryCta === "station.handoff.cta.stationCockpit" ? "primary" : "neutral",
+            },
           ]}
           footer={t("station.handoff.unknownPolicyHint")}
         />

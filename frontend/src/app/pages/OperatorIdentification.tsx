@@ -188,6 +188,10 @@ export function OperatorIdentification() {
     ? "station.handoff.next.operatorDoneEquipmentUnknown"
     : "station.handoff.next.goToCockpit";
 
+  const operatorPrimaryCta = nextStepKey === "station.handoff.next.goToCockpit"
+    ? "station.handoff.cta.stationCockpit"
+    : "station.handoff.cta.equipmentBinding";
+
   return (
     <div className="flex flex-col gap-4 p-4 max-w-2xl mx-auto">
       <MockWarningBanner phase="PARTIAL" />
@@ -233,8 +237,16 @@ export function OperatorIdentification() {
           equipmentState={handoffEquipmentState}
           nextStepKey={nextStepKey}
           ctas={[
-            { labelKey: "station.handoff.cta.equipmentBinding", onClick: goToEquipmentBinding, tone: "primary" },
-            { labelKey: "station.handoff.cta.stationCockpit", onClick: goToStationCockpit },
+            {
+              labelKey: "station.handoff.cta.equipmentBinding",
+              onClick: goToEquipmentBinding,
+              tone: operatorPrimaryCta === "station.handoff.cta.equipmentBinding" ? "primary" : "neutral",
+            },
+            {
+              labelKey: "station.handoff.cta.stationCockpit",
+              onClick: goToStationCockpit,
+              tone: operatorPrimaryCta === "station.handoff.cta.stationCockpit" ? "primary" : "neutral",
+            },
           ]}
           footer={t("station.handoff.unknownPolicyHint")}
         />

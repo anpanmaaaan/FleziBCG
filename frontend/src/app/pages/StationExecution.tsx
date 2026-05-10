@@ -811,6 +811,22 @@ export function StationExecution() {
     ? "station.handoff.next.executeUsingAllowedActions"
     : "station.handoff.next.resolveSessionControl";
 
+  const queuePrimaryCta =
+    queueModeNextStepKey === "station.handoff.next.resolveStationContext" ||
+    queueModeNextStepKey === "station.handoff.next.openSession"
+      ? "station.handoff.cta.stationSession"
+      : queueModeNextStepKey === "station.handoff.next.identifyOperator"
+      ? "station.handoff.cta.operatorIdentification"
+      : queueModeNextStepKey === "station.handoff.next.bindEquipmentBeforeExecution"
+      ? "station.handoff.cta.equipmentBinding"
+      : "station.handoff.cta.stationSession";
+
+  const cockpitPrimaryCta = handoffEquipmentState === "required_missing"
+    ? "station.handoff.cta.equipmentBinding"
+    : handoffOperatorState !== "identified"
+    ? "station.handoff.cta.operatorIdentification"
+    : "station.handoff.cta.stationSession";
+
   // ── MODE A  EOperation Selection ──────────────────────────────────────────
   if (!isExecutionMode) {
     return (
@@ -853,9 +869,21 @@ export function StationExecution() {
               operationState={operation ? "selected" : "not_selected"}
               nextStepKey={queueModeNextStepKey}
               ctas={[
-                { labelKey: "station.handoff.cta.stationSession", onClick: goToStationSession },
-                { labelKey: "station.handoff.cta.operatorIdentification", onClick: goToOperatorIdentification },
-                { labelKey: "station.handoff.cta.equipmentBinding", onClick: goToEquipmentBinding },
+                {
+                  labelKey: "station.handoff.cta.stationSession",
+                  onClick: goToStationSession,
+                  tone: queuePrimaryCta === "station.handoff.cta.stationSession" ? "primary" : "neutral",
+                },
+                {
+                  labelKey: "station.handoff.cta.operatorIdentification",
+                  onClick: goToOperatorIdentification,
+                  tone: queuePrimaryCta === "station.handoff.cta.operatorIdentification" ? "primary" : "neutral",
+                },
+                {
+                  labelKey: "station.handoff.cta.equipmentBinding",
+                  onClick: goToEquipmentBinding,
+                  tone: queuePrimaryCta === "station.handoff.cta.equipmentBinding" ? "primary" : "neutral",
+                },
               ]}
             />
 
@@ -1050,9 +1078,21 @@ export function StationExecution() {
           operationState="selected"
           nextStepKey={cockpitModeNextStepKey}
           ctas={[
-            { labelKey: "station.handoff.cta.stationSession", onClick: goToStationSession },
-            { labelKey: "station.handoff.cta.operatorIdentification", onClick: goToOperatorIdentification },
-            { labelKey: "station.handoff.cta.equipmentBinding", onClick: goToEquipmentBinding },
+            {
+              labelKey: "station.handoff.cta.stationSession",
+              onClick: goToStationSession,
+              tone: cockpitPrimaryCta === "station.handoff.cta.stationSession" ? "primary" : "neutral",
+            },
+            {
+              labelKey: "station.handoff.cta.operatorIdentification",
+              onClick: goToOperatorIdentification,
+              tone: cockpitPrimaryCta === "station.handoff.cta.operatorIdentification" ? "primary" : "neutral",
+            },
+            {
+              labelKey: "station.handoff.cta.equipmentBinding",
+              onClick: goToEquipmentBinding,
+              tone: cockpitPrimaryCta === "station.handoff.cta.equipmentBinding" ? "primary" : "neutral",
+            },
           ]}
           footer={t("station.handoff.executionTruthHint")}
         />

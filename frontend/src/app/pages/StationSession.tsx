@@ -134,6 +134,12 @@ export function StationSession() {
     ? "station.handoff.next.equipmentOptionalUnknown"
     : "station.handoff.next.goToCockpit";
 
+  const sessionPrimaryCta = nextStepKey === "station.handoff.next.goToCockpit"
+    ? "station.handoff.cta.stationCockpit"
+    : nextStepKey === "station.handoff.next.bindEquipmentBeforeExecution"
+    ? "station.handoff.cta.equipmentBinding"
+    : "station.handoff.cta.operatorIdentification";
+
   return (
     <div className="flex flex-col gap-4 p-4 max-w-3xl mx-auto">
       {/* Header */}
@@ -190,9 +196,21 @@ export function StationSession() {
           equipmentState={handoffEquipmentState}
           nextStepKey={nextStepKey}
           ctas={[
-            { labelKey: "station.handoff.cta.operatorIdentification", onClick: goToOperatorIdentification, tone: "primary" },
-            { labelKey: "station.handoff.cta.equipmentBinding", onClick: goToEquipmentBinding },
-            { labelKey: "station.handoff.cta.stationCockpit", onClick: goToStationCockpit },
+            {
+              labelKey: "station.handoff.cta.operatorIdentification",
+              onClick: goToOperatorIdentification,
+              tone: sessionPrimaryCta === "station.handoff.cta.operatorIdentification" ? "primary" : "neutral",
+            },
+            {
+              labelKey: "station.handoff.cta.equipmentBinding",
+              onClick: goToEquipmentBinding,
+              tone: sessionPrimaryCta === "station.handoff.cta.equipmentBinding" ? "primary" : "neutral",
+            },
+            {
+              labelKey: "station.handoff.cta.stationCockpit",
+              onClick: goToStationCockpit,
+              tone: sessionPrimaryCta === "station.handoff.cta.stationCockpit" ? "primary" : "neutral",
+            },
           ]}
         />
 
