@@ -14,6 +14,7 @@ import { ReopenOperationModal } from "@/app/components/station-execution/ReopenO
 import { StartDowntimeDialog } from "@/app/components/station-execution/StartDowntimeDialog";
 import { StationWorkflowShell } from "@/app/components/station-execution/StationWorkflowShell";
 import { StationEntryHandoff } from "@/app/components/station-execution/StationEntryHandoff";
+import { StationAndonBanner } from "@/app/components/station-execution/StationAndonBanner";
 import { normalizeStationCommandError, type StationCommandErrorMessage } from "@/app/components/station-execution/stationCommandErrorMessages";
 import type { QueueFilter } from "@/app/components/station-execution/QueueFilterBar";
 import {
@@ -757,31 +758,17 @@ export function StationExecution() {
     navigate(query ? `/station-session?${query}` : "/station-session");
   };
 
-  const commandErrorBanner = commandError && (
-    <div
-      className={`mx-3 mt-2 flex items-start gap-3 rounded-2xl border px-4 py-3 sm:mx-4 ${
-        commandError.severity === "danger"
-          ? "border-red-200 bg-red-50 text-red-950"
-          : "border-amber-200 bg-amber-50 text-amber-950"
-      }`}
-    >
-      <AlertTriangle
-        className={`mt-0.5 h-5 w-5 flex-shrink-0 ${commandError.severity === "danger" ? "text-red-600" : "text-amber-600"}`}
-        aria-hidden="true"
+  const commandErrorBanner = commandError ? (
+    <div className="mx-3 mt-2 sm:mx-4">
+      <StationAndonBanner
+        severity={commandError.severity === "danger" ? "danger" : "warning"}
+        titleKey={commandError.titleKey}
+        messageKey={commandError.messageKey}
+        recoveryKey={commandError.recoveryKey}
+        live={commandError.severity !== "info"}
       />
-      <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase tracking-wide">
-          {t(commandError.titleKey as I18nSemanticKey)}
-        </p>
-        <p className="mt-1 text-sm sm:text-base leading-snug">
-          {t(commandError.messageKey as I18nSemanticKey)}
-        </p>
-        <p className="mt-1 text-xs sm:text-sm font-medium">
-          {t(commandError.recoveryKey as I18nSemanticKey)}
-        </p>
-      </div>
     </div>
-  );
+  ) : null;
 
   const handoffStationState = stationScope && stationScope !== "-" ? "selected" : "missing";
   const handoffSessionState = hasOpenSession ? "open" : "missing";
@@ -837,6 +824,10 @@ export function StationExecution() {
     : handoffOperatorState !== "identified"
     ? "station.handoff.cta.operatorIdentification"
     : "station.handoff.cta.stationSession";
+
+  const isInterruptedMode = Boolean(
+    operation && (operation.status === "PAUSED" || operation.status === "BLOCKED" || operation.downtime_open),
+  );
 
   const cockpitStage =
     operation?.status === "COMPLETED"
@@ -1115,6 +1106,18 @@ export function StationExecution() {
           footer={t("station.handoff.executionTruthHint")}
         />
 
+        {isInterruptedMode ? (
+          <div className="mx-3 mt-2 sm:mx-4">
+            <StationAndonBanner
+              severity={operation.status === "BLOCKED" || operation.downtime_open ? "danger" : "warning"}
+              titleKey="station.block.guidance"
+              messageKey={operation.status === "BLOCKED" || operation.downtime_open ? "station.hint.nextAction.endDowntime" : "station.hint.nextAction.resume"}
+              recoveryKey={operation.status === "BLOCKED" || operation.downtime_open ? "station.input.disabledHint.blocked" : "station.input.disabledHint.paused"}
+              live
+            />
+          </div>
+        ) : null}
+
         {/* Quality Hold banner — shown when an active hold blocks progression */}
         {operation?.quality_hold_open && (
           <div className="mx-3 mt-2 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 sm:mx-4">
@@ -1192,45 +1195,54 @@ export function StationExecution() {
                   </section>
 
                   {/* Report / input block */}
-                  <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
-                    <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-2">
-                      {t("station.block.inputReporting")}
-                    </p>
-                    <p className="mt-2 text-sm sm:text-base text-slate-600 md:text-xl mb-5">{reportingHint}</p>
-                    <div className="grid gap-5 lg:grid-cols-2 mb-6">
-                      <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                        <Stepper
-                          label={t("station.input.goodQtyDelta")}
-                          value={goodQty}
-                          onChange={setGoodQty}
-                          labelClassName="text-emerald-700"
-                          disabled={!canReportProduction}
-                          quickAddValues={[1, 5, 10, 20]}
-                          quickAddTone="good"
-                          onReset={() => setGoodQty(0)}
-                        />
+                  {isInterruptedMode && !canReportProduction ? (
+                    <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
+                      <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-2">
+                        {t("station.block.inputReporting")}
+                      </p>
+                      <p className="mt-2 text-sm sm:text-base text-slate-600 md:text-xl">{reportingHint}</p>
+                    </section>
+                  ) : (
+                    <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
+                      <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-2">
+                        {t("station.block.inputReporting")}
+                      </p>
+                      <p className="mt-2 text-sm sm:text-base text-slate-600 md:text-xl mb-5">{reportingHint}</p>
+                      <div className="grid gap-5 lg:grid-cols-2 mb-6">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+                          <Stepper
+                            label={t("station.input.goodQtyDelta")}
+                            value={goodQty}
+                            onChange={setGoodQty}
+                            labelClassName="text-emerald-700"
+                            disabled={!canReportProduction}
+                            quickAddValues={[1, 5, 10, 20]}
+                            quickAddTone="good"
+                            onReset={() => setGoodQty(0)}
+                          />
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+                          <Stepper
+                            label={t("station.input.scrapQtyDelta")}
+                            value={scrapQty}
+                            onChange={setScrapQty}
+                            labelClassName="text-amber-700"
+                            disabled={!canReportProduction}
+                            quickAddValues={[1, 2, 5]}
+                            quickAddTone="scrap"
+                            onReset={() => setScrapQty(0)}
+                          />
+                        </div>
                       </div>
-                      <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                        <Stepper
-                          label={t("station.input.scrapQtyDelta")}
-                          value={scrapQty}
-                          onChange={setScrapQty}
-                          labelClassName="text-amber-700"
-                          disabled={!canReportProduction}
-                          quickAddValues={[1, 2, 5]}
-                          quickAddTone="scrap"
-                          onReset={() => setScrapQty(0)}
-                        />
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => void reportQuantity()}
-                      disabled={actionLoading || !canReportProduction}
-                      className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-md active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-blue-600 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
-                    >
-                      {t("station.action.reportQty")}
-                    </button>
-                  </section>
+                      <button
+                        onClick={() => void reportQuantity()}
+                        disabled={actionLoading || !canReportProduction}
+                        className="min-h-14 w-full rounded-2xl px-6 text-xl font-bold shadow-md active:scale-[0.98] transition sm:min-h-16 sm:text-2xl md:min-h-18 md:px-8 md:text-3xl bg-blue-600 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                      >
+                        {t("station.action.reportQty")}
+                      </button>
+                    </section>
+                  )}
                 </>
               )}
             </div>
