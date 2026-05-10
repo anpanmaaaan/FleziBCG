@@ -140,7 +140,7 @@ export function StationEntryHandoff({
               key={cta.labelKey}
               type="button"
               onClick={cta.onClick}
-              className="min-h-9 rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 active:scale-95"
+              className="min-h-11 rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 active:scale-95 focus-visible:outline-2 focus-visible:outline-blue-600 focus-visible:outline-offset-2"
             >
               {t(cta.labelKey as I18nSemanticKey)}
             </button>
@@ -153,7 +153,7 @@ export function StationEntryHandoff({
               key={cta.labelKey}
               type="button"
               onClick={cta.onClick}
-              className="min-h-9 rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 active:scale-95"
+              className="min-h-11 rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 active:scale-95 focus-visible:outline-2 focus-visible:outline-blue-600 focus-visible:outline-offset-2"
             >
               {t(cta.labelKey as I18nSemanticKey)}
             </button>

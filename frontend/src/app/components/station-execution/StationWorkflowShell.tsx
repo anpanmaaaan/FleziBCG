@@ -55,23 +55,27 @@ export function StationWorkflowShell({
         </div>
 
         {!compact ? (
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+          <ol className="mt-3 flex gap-2 overflow-x-auto pb-1">
             {STATION_WORKFLOW_STAGES.map((stage) => {
               const active = stage.id === currentStage;
               return (
-                <span
+                <li
                   key={stage.id}
-                  className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium ${
-                    active
-                      ? "border-blue-600 bg-blue-50 text-blue-700"
-                      : "border-gray-300 bg-gray-50 text-gray-600"
-                  }`}
+                  aria-current={active ? "step" : undefined}
                 >
-                  {t(stage.labelKey as I18nSemanticKey)}
-                </span>
+                  <span
+                    className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium ${
+                      active
+                        ? "border-blue-600 bg-blue-50 text-blue-700"
+                        : "border-gray-300 bg-gray-50 text-gray-600"
+                    }`}
+                  >
+                    {t(stage.labelKey as I18nSemanticKey)}
+                  </span>
+                </li>
               );
             })}
-          </div>
+          </ol>
         ) : null}
 
         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">

@@ -13,7 +13,7 @@ export function DowntimeStatusPanel({ downtimeOpen }: DowntimeStatusPanelProps) 
 
   return (
     <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold">
-      ● {t("station.downtime.active.banner")}
+      <span aria-hidden="true">●</span> {t("station.downtime.active.banner")}
     </span>
   );
 }

@@ -82,7 +82,7 @@ export function StationExecutionHeader({
         {/* Nav / view controls */}
         <button
           onClick={onBackToSelection}
-          className="h-10 sm:h-11 px-3 sm:px-4 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 active:scale-95 transition flex items-center gap-1.5"
+          className="min-h-11 rounded-lg border border-gray-300 px-3 text-sm text-gray-700 transition hover:bg-gray-50 active:scale-95 focus-visible:outline-2 focus-visible:outline-blue-600 focus-visible:outline-offset-2 sm:px-4 flex items-center gap-1.5"
         >
           <ArrowLeft className="w-4 h-4 shrink-0" />
           {t("station.action.backToSelection")}
@@ -90,14 +90,14 @@ export function StationExecutionHeader({
         <button
           onClick={onRefresh}
           disabled={queueLoading}
-          className="h-10 sm:h-11 px-3 sm:px-4 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 active:scale-95 transition disabled:opacity-50 flex items-center gap-1.5"
+          className="min-h-11 rounded-lg border border-gray-300 px-3 text-sm text-gray-600 transition hover:bg-gray-50 active:scale-95 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-blue-600 focus-visible:outline-offset-2 sm:px-4 flex items-center gap-1.5"
         >
           <RefreshCw className="w-4 h-4 shrink-0" />
           {t("station.action.refresh")}
         </button>
         <button
           onClick={onToggleQueue}
-          className="h-10 sm:h-11 px-3 sm:px-4 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 active:scale-95 transition flex items-center gap-1.5"
+          className="min-h-11 rounded-lg border border-gray-300 px-3 text-sm text-gray-600 transition hover:bg-gray-50 active:scale-95 focus-visible:outline-2 focus-visible:outline-blue-600 focus-visible:outline-offset-2 sm:px-4 flex items-center gap-1.5"
         >
           {t("station.tab.queue")}
           <ChevronDown className="w-4 h-4 shrink-0" />
