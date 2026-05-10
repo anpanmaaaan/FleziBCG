@@ -55,7 +55,7 @@ export function AllowedActionZone({
 
       {operation.status === "IN_PROGRESS" && (
         <>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <button
               onClick={onPauseOperation}
               disabled={actionLoading || operation.closure_status === "CLOSED" || !canPauseExecution}
@@ -86,7 +86,7 @@ export function AllowedActionZone({
       {operation.status === "PAUSED" && (
         <>
           {!operation.downtime_open ? (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <button
                 onClick={onResumeOperation}
                 disabled={actionLoading || operation.closure_status === "CLOSED" || !canResumeExecution}

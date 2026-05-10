@@ -838,6 +838,13 @@ export function StationExecution() {
     ? "station.handoff.cta.operatorIdentification"
     : "station.handoff.cta.stationSession";
 
+  const cockpitStage =
+    operation?.status === "COMPLETED"
+      ? "STX_007_COMPLETION"
+      : operation?.status === "PAUSED" || operation?.status === "BLOCKED" || operation?.downtime_open
+      ? "STX_006_RUNTIME_VISIBILITY"
+      : "STX_005_ACTIVE_OPERATION";
+
   // ── MODE A  EOperation Selection ──────────────────────────────────────────
   if (!isExecutionMode) {
     return (
@@ -916,7 +923,7 @@ export function StationExecution() {
 
             {/* Session control: open/close station session. */}
             {ownerState !== "other" && (
-              <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4 flex items-center justify-between gap-3">
+              <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-col gap-0.5">
                   <span className="text-sm font-medium text-slate-700">
                     {t("station.session.heading")}
@@ -934,17 +941,17 @@ export function StationExecution() {
                     type="button"
                     onClick={() => void openStationSession()}
                     disabled={sessionLoading || stationScope === "-"}
-                    className="min-h-10 px-4 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 active:scale-95 transition disabled:opacity-50"
+                    className="min-h-11 w-full rounded-lg bg-green-600 px-4 text-sm font-medium text-white transition hover:bg-green-700 active:scale-95 disabled:opacity-50 sm:w-auto"
                   >
                     {t("stationSession.action.openSession")}
                   </button>
                 ) : ownerState === "mine" ? (
-                  <div className="flex items-center gap-2">
+                  <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
                     <button
                       type="button"
                       onClick={goToStationSession}
                       disabled={sessionLoading}
-                      className="min-h-10 px-4 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 active:scale-95 transition disabled:opacity-50"
+                      className="min-h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 active:scale-95 disabled:opacity-50"
                     >
                       {t("station.session.viewSession")}
                     </button>
@@ -952,7 +959,7 @@ export function StationExecution() {
                       type="button"
                       onClick={goToOperatorIdentification}
                       disabled={sessionLoading}
-                      className="min-h-10 px-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100 active:scale-95 transition disabled:opacity-50"
+                      className="min-h-11 rounded-lg border border-blue-200 bg-blue-50 px-4 text-sm font-medium text-blue-700 transition hover:bg-blue-100 active:scale-95 disabled:opacity-50"
                     >
                       {t("station.session.identifyOperator")}
                     </button>
@@ -960,7 +967,7 @@ export function StationExecution() {
                       type="button"
                       onClick={goToEquipmentBinding}
                       disabled={sessionLoading}
-                      className="min-h-10 px-4 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-100 active:scale-95 transition disabled:opacity-50"
+                      className="min-h-11 rounded-lg border border-indigo-200 bg-indigo-50 px-4 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 active:scale-95 disabled:opacity-50"
                     >
                       {t("station.session.bindEquipment")}
                     </button>
@@ -968,7 +975,7 @@ export function StationExecution() {
                       type="button"
                       onClick={() => void closeStationSession()}
                       disabled={sessionLoading}
-                      className="min-h-10 px-4 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 active:scale-95 transition disabled:opacity-50"
+                      className="min-h-11 rounded-lg border border-red-200 bg-red-50 px-4 text-sm font-medium text-red-600 transition hover:bg-red-100 active:scale-95 disabled:opacity-50"
                     >
                       {t("stationSession.action.closeSession")}
                     </button>
@@ -1074,7 +1081,7 @@ export function StationExecution() {
       )}
 
       <StationWorkflowShell
-        currentStage={operation.status === "COMPLETED" ? "STX_007_COMPLETION" : "STX_005_ACTIVE_OPERATION"}
+        currentStage={cockpitStage}
         stationId={stationScope}
         sessionId={ownershipState?.session_id ?? null}
         operatorUserId={ownershipState?.operator_user_id ?? null}
