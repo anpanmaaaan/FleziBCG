@@ -70,7 +70,12 @@ export function StationWorkflowShell({
                         : "border-gray-300 bg-gray-50 text-gray-600"
                     }`}
                   >
-                    {t(stage.labelKey as I18nSemanticKey)}
+                    <span>{t(stage.labelKey as I18nSemanticKey)}</span>
+                    {stage.supervisorOnly ? (
+                      <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                        {t("station.workflow.supervisorOnly")}
+                      </span>
+                    ) : null}
                   </span>
                 </li>
               );
