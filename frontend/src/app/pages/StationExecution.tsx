@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { RefreshCw, Lock, X, RotateCcw, Info, AlertTriangle } from "lucide-react";
 import { StationExecutionHeader } from "@/app/components/station-execution/StationExecutionHeader";
 import { StationQueuePanel } from "@/app/components/station-execution/StationQueuePanel";
-import { StationSupportQueue } from "@/app/components/station-execution/StationSupportQueue";
 import { ExecutionStateHero } from "@/app/components/station-execution/ExecutionStateHero";
 import { AllowedActionZone } from "@/app/components/station-execution/AllowedActionZone";
 import { ClosureStatePanel } from "@/app/components/station-execution/ClosureStatePanel";
@@ -1230,17 +1229,6 @@ export function StationExecution() {
             </div>
 
             <aside className="flex min-w-0 flex-col gap-3 sm:gap-4">
-              <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
-                <StationSupportQueue
-                  items={queueItems}
-                  loading={queueLoading}
-                  activeOperationId={operation?.id}
-                  maxItems={3}
-                  onSelect={(item) => void selectQueueOperation(item)}
-                  onViewFullQueue={backToSelection}
-                />
-              </section>
-
               <ClosureStatePanel
                 closureStatus={operation.closure_status}
                 canCloseOperation={canCloseOperation}
