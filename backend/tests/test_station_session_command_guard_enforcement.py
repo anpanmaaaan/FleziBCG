@@ -17,6 +17,7 @@ from app.models.master import (
 )
 from app.models.station_session import StationSession
 from app.schemas.operation import (
+    OperationAbortRequest,
     OperationCloseRequest,
     OperationCompleteRequest,
     OperationEndDowntimeRequest,
@@ -28,6 +29,7 @@ from app.schemas.operation import (
     OperationStartRequest,
 )
 from app.services.operation_service import (
+    abort_operation,
     close_operation,
     complete_operation,
     end_downtime,
@@ -95,7 +97,6 @@ def db_session():
         _purge(db)
         yield db
     finally:
-        db.rollback()
         _purge(db)
         db.close()
 
@@ -407,6 +408,17 @@ def test_guard_allows_matching_open_station_session(db_session):
             ),
         ),
         (
+            "abort_operation",
+            StatusEnum.in_progress.value,
+            lambda db, op: abort_operation(
+                db,
+                op,
+                OperationAbortRequest(operator_id=_ACTOR, reason_code="ABORT"),
+                actor_user_id=_ACTOR,
+                tenant_id=_TENANT_ID,
+            ),
+        ),
+        (
             "complete_operation",
             StatusEnum.in_progress.value,
             lambda db, op: complete_operation(
@@ -511,6 +523,18 @@ def test_subset_commands_reject_missing_session_and_emit_no_event(
             ExecutionEventType.DOWNTIME_ENDED.value,
         ),
         (
+            "abort_operation",
+            StatusEnum.in_progress.value,
+            lambda db, op: abort_operation(
+                db,
+                op,
+                OperationAbortRequest(operator_id=_ACTOR, reason_code="ABORT"),
+                actor_user_id=_ACTOR,
+                tenant_id=_TENANT_ID,
+            ),
+            ExecutionEventType.OP_ABORTED.value,
+        ),
+        (
             "complete_operation",
             StatusEnum.in_progress.value,
             lambda db, op: complete_operation(
@@ -559,6 +583,45 @@ def test_close_operation_behavior_remains_unchanged_without_station_session(db_s
     )
 
     assert detail.closure_status == ClosureStatusEnum.closed.value
+
+
+def test_abort_operation_rejects_when_station_session_is_closed(db_session):
+    _insert_session(db_session, operator_user_id=_ACTOR, status="CLOSED", closed=True)
+    op = _seed_operation(
+        db_session,
+        suffix="ABORT-CLOSED-SESSION",
+        status=StatusEnum.in_progress.value,
+    )
+
+    with pytest.raises(StationSessionGuardError, match="STATION_SESSION_CLOSED"):
+        abort_operation(
+            db_session,
+            op,
+            OperationAbortRequest(operator_id=_ACTOR, reason_code="ABORT"),
+            actor_user_id=_ACTOR,
+            tenant_id=_TENANT_ID,
+        )
+
+
+def test_abort_operation_rejects_when_operator_mismatch(db_session):
+    _insert_session(db_session, operator_user_id=_OTHER_ACTOR)
+    op = _seed_operation(
+        db_session,
+        suffix="ABORT-OPERATOR-MISMATCH",
+        status=StatusEnum.in_progress.value,
+    )
+
+    with pytest.raises(
+        StationSessionGuardError,
+        match="STATION_SESSION_OPERATOR_MISMATCH",
+    ):
+        abort_operation(
+            db_session,
+            op,
+            OperationAbortRequest(operator_id=_ACTOR, reason_code="ABORT"),
+            actor_user_id=_ACTOR,
+            tenant_id=_TENANT_ID,
+        )
 
 
 def test_reopen_operation_behavior_remains_unchanged_without_station_session(

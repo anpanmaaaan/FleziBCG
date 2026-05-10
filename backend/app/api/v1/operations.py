@@ -288,7 +288,26 @@ def abort_operation_endpoint(
         raise HTTPException(status_code=404, detail="Operation not found")
 
     try:
-        return abort_operation(db, operation, request, tenant_id=identity.tenant_id)
+        ensure_open_station_session_for_command(
+            db,
+            tenant_id=identity.tenant_id,
+            station_id=operation.station_scope_value,
+            operator_user_id=(request.operator_id or "").strip() or identity.user_id,
+            command_name="abort_operation",
+        )
+    except StationSessionGuardError as exc:
+        _raise_station_session_guard_http_error(exc)
+
+    try:
+        return abort_operation(
+            db,
+            operation,
+            request,
+            actor_user_id=identity.user_id,
+            tenant_id=identity.tenant_id,
+        )
+    except StationSessionGuardError as exc:
+        _raise_station_session_guard_http_error(exc)
     except ClosedRecordConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:

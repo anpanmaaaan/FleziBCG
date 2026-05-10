@@ -1386,10 +1386,21 @@ def abort_operation(
     db: Session,
     operation,
     request: OperationAbortRequest,
+    *,
+    actor_user_id: str | None = None,
     tenant_id: str = "default",
 ) -> OperationDetail:
     if operation.tenant_id != tenant_id:
         raise ValueError("Operation does not belong to the requesting tenant.")
+    ensure_open_station_session_for_command(
+        db,
+        tenant_id=tenant_id,
+        station_id=operation.station_scope_value,
+        operator_user_id=_normalize_command_operator(request.operator_id)
+        or actor_user_id,
+        command_name="abort_operation",
+    )
+    _session_ctx = _compute_session_diagnostic(db, operation, tenant_id)  # P0-C-04D
     _ensure_operation_open_for_write(operation)
     if operation.status in (StatusEnum.completed.value, StatusEnum.aborted.value):
         raise ValueError("Operation already completed or aborted; cannot abort.")
