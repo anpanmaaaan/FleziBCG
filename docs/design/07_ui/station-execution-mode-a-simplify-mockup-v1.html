@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FE-SE-MODEA-SIMPLIFY-09 — Visual Reference Mockup v1.1</title>
+<meta name="generator" content="FleziBCG external PO-SA agent, paired with station-execution-mode-a-simplify-spec-v1.md v1.1">
+<style>
+  /* Reset */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: #f8fafc; color: #0f172a; line-height: 1.4; }
+  body { padding: 24px; }
+
+  /* Top doc header */
+  .doc-header { max-width: 1200px; margin: 0 auto 24px; padding: 16px 20px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; }
+  .doc-header h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .doc-header p { font-size: 13px; color: #475569; margin-bottom: 4px; }
+  .doc-header code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; color: #0c4a6e; background: #e0f2fe; padding: 1px 6px; border-radius: 4px; }
+
+  /* Layout */
+  .container { max-width: 1200px; margin: 0 auto; }
+  .panel { display: grid; grid-template-columns: 540px 1fr; gap: 24px; align-items: start; margin-bottom: 32px; padding: 16px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; }
+  .panel-label { grid-column: 1 / -1; font-size: 13px; font-weight: 600; color: #334155; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0; }
+  .panel-label .state-tag { display: inline-block; margin-left: 8px; padding: 2px 8px; background: #e0e7ff; color: #3730a3; font-size: 11px; font-weight: 500; border-radius: 4px; }
+
+  /* Mockup viewport — represents tablet 1024px scaled */
+  .viewport { background: #f1f5f9; padding: 16px; border-radius: 8px; }
+  .viewport-label { font-size: 11px; color: #64748b; margin-bottom: 8px; font-family: ui-monospace, monospace; }
+
+  /* Mode A page — replicates Tailwind classes */
+  .mode-a-page { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; max-width: 480px; margin: 0 auto; }
+
+  .page-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+  .page-title { font-size: 18px; font-weight: 600; color: #0f172a; }
+  .page-subtitle { font-size: 13px; color: #475569; margin-top: 2px; }
+  .refresh-btn { padding: 6px 10px; font-size: 12px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; color: #475569; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+  .refresh-btn:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+
+  /* Top error banner — single source of truth (D-04 + IR-05) */
+  .top-banner { margin-top: 14px; padding: 12px 16px; border-radius: 8px; }
+  .top-banner.warning { background: #fef3c7; border: 1px solid #fde68a; color: #78350f; }
+  .top-banner.danger { background: #fee2e2; border: 1px solid #fecaca; color: #7f1d1d; }
+  .top-banner-title { font-size: 14px; font-weight: 600; }
+  .top-banner-msg { font-size: 13px; margin-top: 4px; }
+  .top-banner-recovery { font-size: 12px; margin-top: 4px; opacity: 0.85; }
+
+  /* Empty state card (D-08 + IR-07) */
+  .empty-card { margin-top: 14px; padding: 16px; background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; }
+  .empty-card-title { font-size: 14px; font-weight: 600; color: #78350f; }
+  .empty-card-msg { font-size: 13px; color: #92400e; margin-top: 4px; }
+  .empty-card-cta { margin-top: 12px; min-height: 44px; padding: 10px 16px; font-size: 13px; font-weight: 500; background: white; border: 1px solid #cbd5e1; border-radius: 8px; color: #0f172a; cursor: pointer; }
+  .empty-card-cta:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+
+  /* 3-row card (D-03) */
+  .row-card { margin-top: 14px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+  .row { display: flex; align-items: center; gap: 14px; padding: 16px; }
+  .row + .row { border-top: 1px solid #e2e8f0; }
+
+  /* Step badge (IR-11) */
+  .step-badge { width: 28px; height: 28px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+  .step-badge.done { background: #d1fae5; color: #064e3b; }
+  .step-badge.current { background: #f1f5f9; color: #0f172a; }
+  .step-badge.pending { background: #f8fafc; color: #94a3b8; }
+
+  /* Row content */
+  .row-content { flex: 1; min-width: 0; }
+  .row-title-line { display: flex; align-items: center; gap: 8px; }
+  .row-title { font-size: 14px; font-weight: 500; color: #0f172a; }
+  .row-subtext { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+  /* Status pill (D-09) — symbol is aria-hidden */
+  .status-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 6px; }
+  .status-pill.open       { background: #d1fae5; color: #064e3b; }
+  .status-pill.identified { background: #d1fae5; color: #064e3b; }
+  .status-pill.bound      { background: #d1fae5; color: #064e3b; }
+  .status-pill.notyet     { background: #fef3c7; color: #78350f; }
+  .status-pill.optional   { background: #f1f5f9; color: #475569; }
+  .status-pill.notconfirmed { background: #f1f5f9; color: #94a3b8; }
+  .status-pill .sym { font-weight: 600; }
+
+  /* Action buttons */
+  .row-action { min-height: 44px; padding: 8px 12px; font-size: 13px; font-weight: 500; border-radius: 8px; cursor: pointer; flex-shrink: 0; }
+  .row-action.primary { background: #2563eb; color: white; border: none; }
+  .row-action.primary:hover { background: #1d4ed8; }
+  .row-action.primary:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+  .row-action.secondary { background: white; color: #0f172a; border: 1px solid #cbd5e1; }
+  .row-action.secondary:hover { background: #f8fafc; }
+  .row-action.secondary:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+
+  /* Primary CTA (D-05 + IR-06) */
+  .primary-cta { width: 100%; margin-top: 16px; min-height: 56px; padding: 14px 16px; font-size: 16px; font-weight: 600; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .primary-cta:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+  .primary-cta:disabled { opacity: 0.5; cursor: not-allowed; }
+  .cta-hint { font-size: 11px; color: #64748b; margin-top: 6px; text-align: center; }
+
+  /* Annotations */
+  .annotations { padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 12px; }
+  .annotations-title { font-size: 11px; font-weight: 600; color: #334155; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .anno { margin-bottom: 8px; padding-left: 14px; position: relative; }
+  .anno::before { content: ""; position: absolute; left: 0; top: 6px; width: 8px; height: 8px; background: #94a3b8; border-radius: 50%; }
+  .anno code { font-family: ui-monospace, monospace; background: #e2e8f0; color: #0c4a6e; padding: 1px 4px; border-radius: 3px; font-size: 11px; }
+  .anno.rule code { background: #dbeafe; color: #1e40af; }
+
+  /* Bottom class map */
+  .class-map { max-width: 1200px; margin: 24px auto; padding: 16px 20px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; }
+  .class-map h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+  .class-map p { font-size: 13px; color: #475569; margin-bottom: 12px; }
+  table.cmap { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.cmap th, table.cmap td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+  table.cmap th { background: #f8fafc; font-weight: 600; color: #0f172a; }
+  table.cmap td { vertical-align: top; }
+  table.cmap code { font-family: ui-monospace, monospace; font-size: 11px; background: #f1f5f9; padding: 1px 4px; border-radius: 3px; color: #0c4a6e; }
+
+  /* Footer notes */
+  .footer-note { max-width: 1200px; margin: 24px auto; padding: 12px 16px; font-size: 12px; color: #64748b; text-align: center; border-top: 1px solid #e2e8f0; }
+</style>
+</head>
+<body>
+
+<div class="doc-header">
+  <h1>FE-SE-MODEA-SIMPLIFY-09 — Visual Reference Mockup</h1>
+  <p>Companion to <code>docs/design/07_ui/station-execution-mode-a-simplify-spec-v1.md</code> v1.1 (SIGNED OFF 2026-05-10).</p>
+  <p>This file is the visual source-of-truth for the Mode A simplified surface. Open in any browser. No build needed. FE agent must implement to match this layout, hierarchy, and annotation rules — NOT to match pixel-perfect colors (project Tailwind palette resolves those).</p>
+</div>
+
+<div class="container">
+
+<!-- =================================================================== -->
+<!-- STATE 1 — EMPTY (no stationId) — D-08 / IR-07                       -->
+<!-- =================================================================== -->
+<div class="panel">
+  <div class="panel-label">State 1 / 5 — Empty (missing <code>stationId</code> param) <span class="state-tag">D-08 · IR-07</span></div>
+
+  <div class="viewport">
+    <p class="viewport-label">/station-session</p>
+    <div class="mode-a-page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Station setup</div>
+          <div class="page-subtitle">Prepare context before starting work</div>
+        </div>
+        <button class="refresh-btn">↻ Refresh</button>
+      </div>
+
+      <div class="empty-card" role="alert">
+        <div class="empty-card-title">No station selected</div>
+        <div class="empty-card-msg">Open this page from the dashboard or scan a station code to continue.</div>
+        <button class="empty-card-cta">Back to dashboard</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="annotations">
+    <div class="annotations-title">Rules applied</div>
+    <div class="anno rule"><code>D-08</code> Empty state — exactly ONE notice card. No Shell, no checklist, no row card.</div>
+    <div class="anno rule"><code>IR-07</code> Render <code>role="alert"</code> on empty notice; short-circuit before row rendering.</div>
+    <div class="anno"><strong>Anti-pattern check:</strong> if you render <code>StationWorkflowShell</code> or <code>StationEntryPanel</code> here, you violate D-01 + D-02. Page must show only header + this notice card.</div>
+    <div class="anno"><strong>Hit area:</strong> "Back to dashboard" button ≥44px (<code>min-h-11</code>).</div>
+    <div class="anno"><strong>Focus-visible:</strong> Refresh + empty-state CTA both have visible focus ring.</div>
+  </div>
+</div>
+
+<!-- =================================================================== -->
+<!-- STATE 2 — NO SESSION (stationId set, no open session)               -->
+<!-- =================================================================== -->
+<div class="panel">
+  <div class="panel-label">State 2 / 5 — Station selected, no session yet <span class="state-tag">D-03 · D-05 · IR-02 · IR-06</span></div>
+
+  <div class="viewport">
+    <p class="viewport-label">/station-session?stationId=ST-WELD-04</p>
+    <div class="mode-a-page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Station setup</div>
+          <div class="page-subtitle">ST-WELD-04 · prepare context before starting work</div>
+        </div>
+        <button class="refresh-btn">↻ Refresh</button>
+      </div>
+
+      <div class="row-card">
+        <div class="row">
+          <div class="step-badge current">1</div>
+          <div class="row-content">
+            <div class="row-title-line">
+              <span class="row-title">Session</span>
+              <span class="status-pill notyet"><span class="sym" aria-hidden="true">○</span> Not yet</span>
+            </div>
+            <div class="row-subtext">No active session</div>
+          </div>
+          <button class="row-action primary">Open session</button>
+        </div>
+        <div class="row">
+          <div class="step-badge pending">2</div>
+          <div class="row-content">
+            <div class="row-title-line">
+              <span class="row-title">Operator</span>
+              <span class="status-pill notconfirmed"><span class="sym" aria-hidden="true">○</span> Not confirmed</span>
+            </div>
+            <div class="row-subtext">Open session first</div>
+          </div>
+          <!-- No action button: session not open -->
+        </div>
+        <div class="row">
+          <div class="step-badge pending">3</div>
+          <div class="row-content">
+            <div class="row-title-line">
+              <span class="row-title">Equipment</span>
+              <span class="status-pill notconfirmed"><span class="sym" aria-hidden="true">○</span> Not confirmed</span>
+            </div>
+            <div class="row-subtext">Open session first</div>
+          </div>
+          <!-- No action button: session not open -->
+        </div>
+      </div>
+
+      <button class="primary-cta" disabled>Enter queue →</button>
+      <div class="cta-hint">Open a session to continue</div>
+    </div>
+  </div>
+
+  <div class="annotations">
+    <div class="annotations-title">Rules applied</div>
+    <div class="anno rule"><code>D-03</code> One <code>&lt;section&gt;</code> with 3 numbered rows, separated by <code>border-t border-slate-200</code>. NOT 3 separate cards.</div>
+    <div class="anno rule"><code>D-05</code> "Enter queue" disabled because session not open. Helper text below CTA names the missing prerequisite — not generic "not ready".</div>
+    <div class="anno rule"><code>IR-02</code> "Open session" button = primary blue. No <code>commandError</code> prop on Session row component. Banner is page-owned only.</div>
+    <div class="anno rule"><code>IR-03 · IR-04</code> Operator + Equipment rows show <code>○ Not confirmed</code> + subtext "Open session first". Action button HIDDEN when session not open (do not render disabled).</div>
+    <div class="anno rule"><code>IR-06</code> Variable <code>canNavigateToQueueByVisibleSetupState</code> = false. Helper key: <code>stationSession.cta.helper.openSession</code>.</div>
+    <div class="anno"><strong>Step badge state:</strong> step 1 = current (slate-100), steps 2-3 = pending (slate-50).</div>
+    <div class="anno"><strong>aria-hidden:</strong> ○ symbol wrapped in <code>&lt;span aria-hidden="true"&gt;</code>; SR reads only "Not yet" / "Not confirmed".</div>
+  </div>
+</div>
+
+<!-- =================================================================== -->
+<!-- STATE 3 — MID-FLOW (session open, no operator)                      -->
+<!-- =================================================================== -->
+<div class="panel">
+  <div class="panel-label">State 3 / 5 — Session open, operator missing <span class="state-tag">D-03 · D-05 · IR-03</span></div>
+
+  <div class="viewport">
+    <p class="viewport-label">/station-session?stationId=ST-WELD-04 · session #0042 open</p>
+    <div class="mode-a-page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Station setup</div>
+          <div class="page-subtitle">ST-WELD-04 · prepare context before starting work</div>
+        </div>
+        <button class="refresh-btn">↻ Refresh</button>
+      </div>
+
+      <div class="row-card">
+        <div class="row">
+          <div class="step-badge done">1</div>
+          <div class="row-content">
+            <div class="row-title-line">
+              <span class="row-title">Session</span>
+              <span class="status-pill open"><span class="sym" aria-hidden="true">●</span> Open</span>
+            </div>
+            <div class="row-subtext">#0042 · opened 12:30 · 3h 12m elapsed</div>
+          </div>
+          <button class="row-action secondary">End session</button>
+        </div>
+        <div class="row">
+          <div class="step-badge current">2</div>
+          <div class="row-content">
+            <div class="row-title-line">
+              <span class="row-title">Operator</span>
+              <span class="status-pill notyet"><span class="sym" aria-hidden="true">○</span> Not yet</span>
+            </div>
+            <div class="row-subtext">No operator identified</div>
+          </div>
+          <button class="row-action primary">Identify ▶</button>
+        </div>
+        <div class="row">
+          <div class="step-badge pending">3</div>
+          <div class="row-content">
+            <div class="row-title-line">
+              <span class="row-title">Equipment</span>
+              <span class="status-pill optional"><span class="sym" aria-hidden="true">−</span> Optional</span>
+            </div>
+            <div class="row-subtext">Required only for multi-resource stations</div>
+          </div>
+          <button class="row-action secondary">Bind</button>
+        </div>
+      </div>
+
+      <button class="primary-cta" disabled>Enter queue →</button>
+      <div class="cta-hint">Identify an operator to continue</div>
+    </div>
+  </div>
+
+  <div class="annotations">
+    <div class="annotations-title">Rules applied</div>
+    <div class="anno rule"><code>D-03</code> Session row shows ●Open emerald pill + "End session" secondary button. End-session triggers <code>showCloseConfirm = true</code> only — does NOT own dialog (IR-01).</div>
+    <div class="anno rule"><code>IR-01</code> Page-level <code>&lt;CloseSessionPanel/&gt;</code> sibling owns the close-confirm dialog. Session row delegates.</div>
+    <div class="anno rule"><code>IR-03</code> Operator row "Identify" button visible because <code>session.status === "open" && !operator_user_id</code>. Step 2 = current.</div>
+    <div class="anno rule"><code>IR-04</code> Equipment row optional state. "Bind" button shown but tone = secondary (slate). Subtext explains "Required only for multi-resource stations".</div>
+    <div class="anno rule"><code>D-05 · IR-06</code> CTA disabled. Helper: <code>stationSession.cta.helper.identifyOperator</code>.</div>
+    <div class="anno"><strong>Step badge transitions:</strong> step 1 = done (emerald-50), step 2 = current, step 3 = pending. Visual progression mirrors backend session state, NOT a frontend stage machine.</div>
+  </div>
+</div>
+
+<!-- =================================================================== -->
+<!-- STATE 4 — READY (everything set)                                    -->
+<!-- =================================================================== -->
+<div class="panel">
+  <div class="panel-label">State 4 / 5 — Ready to enter queue <span class="state-tag">D-03 · D-05 · IR-06</span></div>
+
+  <div class="viewport">
+    <p class="viewport-label">/station-session?stationId=ST-WELD-04 · session #0042 · operator An N. (0247) · eq WLD-12</p>
+    <div class="mode-a-page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Station setup</div>
+          <div class="page-subtitle">ST-WELD-04 · prepare context before starting work</div>
+        </div>
+        <button class="refresh-btn">↻ Refresh</button>
+      </div>
+
+      <div class="row-card">
+        <div class="row">
+          <div class="step-badge done">1</div>
+          <div class="row-content">
+            <div class="row-title-line">
+              <span class="row-title">Session</span>
+              <span class="status-pill open"><span class="sym" aria-hidden="true">●</span> Open</span>
+            </div>
+            <div class="row-subtext">#0042 · opened 12:30 · 3h 12m elapsed</div>
+          </div>
+          <button class="row-action secondary">End session</button>
+        </div>
+        <div class="row">
+          <div class="step-badge done">2</div>
+          <div class="row-content">
+            <div class="row-title-line">
+              <span class="row-title">Operator</span>
+              <span class="status-pill identified"><span class="sym" aria-hidden="true">●</span> Identified</span>
+            </div>
+            <div class="row-subtext">An Nguyễn (0247)</div>
+          </div>
+          <button class="row-action secondary">Change</button>
+        </div>
+        <div class="row">
+          <div class="step-badge done">3</div>
+          <div class="row-content">
+            <div class="row-title-line">
+              <span class="row-title">Equipment</span>
+              <span class="status-pill bound"><span class="sym" aria-hidden="true">●</span> Bound</span>
+            </div>
+            <div class="row-subtext">WLD-12 — robotic welder</div>
+          </div>
+          <button class="row-action secondary">Change</button>
+        </div>
+      </div>
+
+      <button class="primary-cta">Enter queue →</button>
+      <!-- No hint when enabled -->
+    </div>
+  </div>
+
+  <div class="annotations">
+    <div class="annotations-title">Rules applied</div>
+    <div class="anno rule"><code>D-05</code> CTA enabled because <code>canNavigateToQueueByVisibleSetupState === true</code>. No helper text shown when enabled.</div>
+    <div class="anno rule"><code>IR-06</code> <strong>Truth boundary (BT-CORE-004):</strong> Enable rule is UI navigation only. Backend STILL revalidates session/operator/equipment on every execution mutation command. CTA being enabled does NOT mean backend authorized execution.</div>
+    <div class="anno"><strong>Identified/Bound state:</strong> all 3 step badges = done (emerald-50/text-emerald-900). All 3 status pills = emerald.</div>
+    <div class="anno"><strong>Action buttons in identified rows:</strong> "Change" buttons = secondary tone, allow re-identification or rebinding. Routes to existing <code>/operator-identification</code> + <code>/equipment-binding</code> per D-06.</div>
+    <div class="anno"><strong>Primary CTA color:</strong> blue-600 background, white text, ≥56px height (token-system primary tier).</div>
+  </div>
+</div>
+
+<!-- =================================================================== -->
+<!-- STATE 5 — ERROR (with banner)                                       -->
+<!-- =================================================================== -->
+<div class="panel">
+  <div class="panel-label">State 5 / 5 — Command error after Open session attempt <span class="state-tag">D-04 · IR-05</span></div>
+
+  <div class="viewport">
+    <p class="viewport-label">/station-session?stationId=ST-WELD-04 · STATION_SESSION_OPERATOR_MISMATCH (409)</p>
+    <div class="mode-a-page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Station setup</div>
+          <div class="page-subtitle">ST-WELD-04 · prepare context before starting work</div>
+        </div>
+        <button class="refresh-btn">↻ Refresh</button>
+      </div>
+
+      <aside class="top-banner warning" role="alert">
+        <div class="top-banner-title">Operator does not match this session</div>
+        <div class="top-banner-msg">The operator on this session does not match the expected actor for this command.</div>
+        <div class="top-banner-recovery">Re-identify the operator at this station or contact your supervisor.</div>
+      </aside>
+
+      <div class="row-card">
+        <div class="row">
+          <div class="step-badge done">1</div>
+          <div class="row-content">
+            <div class="row-title-line">
+              <span class="row-title">Session</span>
+              <span class="status-pill open"><span class="sym" aria-hidden="true">●</span> Open</span>
+            </div>
+            <div class="row-subtext">#0042 · opened 12:30 · 3h 12m elapsed</div>
+          </div>
+          <button class="row-action secondary">End session</button>
+        </div>
+        <div class="row">
+          <div class="step-badge current">2</div>
+          <div class="row-content">
+            <div class="row-title-line">
+              <span class="row-title">Operator</span>
+              <span class="status-pill notyet"><span class="sym" aria-hidden="true">○</span> Not yet</span>
+            </div>
+            <div class="row-subtext">No operator identified</div>
+          </div>
+          <button class="row-action primary">Identify ▶</button>
+        </div>
+        <div class="row">
+          <div class="step-badge pending">3</div>
+          <div class="row-content">
+            <div class="row-title-line">
+              <span class="row-title">Equipment</span>
+              <span class="status-pill optional"><span class="sym" aria-hidden="true">−</span> Optional</span>
+            </div>
+            <div class="row-subtext">Required only for multi-resource stations</div>
+          </div>
+          <button class="row-action secondary">Bind</button>
+        </div>
+      </div>
+
+      <button class="primary-cta" disabled>Enter queue →</button>
+      <div class="cta-hint">Identify an operator to continue</div>
+    </div>
+  </div>
+
+  <div class="annotations">
+    <div class="annotations-title">Rules applied</div>
+    <div class="anno rule"><code>D-04 · IR-05</code> Single error banner at top of page. NO inline error block in <code>OpenSessionPanel</code>, NO toast.error. Failure → exactly 1 banner.</div>
+    <div class="anno rule"><code>IR-05</code> Banner uses <code>role="alert"</code>; severity="warning" (amber/yellow). For severity="danger", use red palette.</div>
+    <div class="anno"><strong>Banner content:</strong> 3-line stack — title (font-semibold), message (regular), recovery (smaller, opacity reduced).</div>
+    <div class="anno"><strong>Anti-pattern check:</strong> if a toast appears here ALONGSIDE the banner, IR-05 violated. Same applies to UNKNOWN errors.</div>
+    <div class="anno"><strong>Mapping for 7 known codes:</strong> see <code>stationCommandErrorMessages.ts</code> ERROR_MAP. UNKNOWN fallback uses FALLBACK_ERROR template, also via banner only.</div>
+    <div class="anno"><strong>Banner position:</strong> immediately below page header, above row-card. Persistent until <code>commandError</code> cleared by next successful action.</div>
+  </div>
+</div>
+
+</div>
+
+<!-- =================================================================== -->
+<!-- TAILWIND CLASS MAP                                                  -->
+<!-- =================================================================== -->
+<div class="class-map">
+  <h2>Tailwind class map</h2>
+  <p>Reference for FE agent: visual element → recommended Tailwind class string. Project may already have utility-class wrappers; use idiomatic Tailwind unless project convention dictates otherwise. <strong>All interactive elements must include focus-visible ring per IR-11.</strong></p>
+
+  <table class="cmap">
+    <thead>
+      <tr><th>Element</th><th>Tailwind classes</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Page outer container</td><td><code>mx-auto flex w-full max-w-2xl flex-col gap-4 p-4</code></td><td>Narrower than current (was max-w-4xl)</td></tr>
+      <tr><td>Page title (h1)</td><td><code>text-lg font-semibold text-slate-900</code></td><td>18px</td></tr>
+      <tr><td>Page subtitle (p)</td><td><code>text-sm text-slate-600</code></td><td>13px, station + activity</td></tr>
+      <tr><td>Refresh button</td><td><code>inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2</code></td><td>Hit area ≥36px acceptable for header (per token-system tier)</td></tr>
+      <tr><td>Top error banner (warning)</td><td><code>rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800</code></td><td>Wrap in <code>&lt;aside role="alert"&gt;</code></td></tr>
+      <tr><td>Top error banner (danger)</td><td><code>rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800</code></td><td>Per <code>commandError.severity</code></td></tr>
+      <tr><td>Banner title</td><td><code>font-semibold</code></td><td></td></tr>
+      <tr><td>Banner message</td><td><code>mt-1 text-sm</code></td><td></td></tr>
+      <tr><td>Banner recovery</td><td><code>mt-1 text-xs</code></td><td></td></tr>
+      <tr><td>Empty-state card</td><td><code>rounded-lg border border-amber-200 bg-amber-50 p-4 sm:p-5</code></td><td>Wrap in <code>&lt;aside role="alert"&gt;</code></td></tr>
+      <tr><td>Empty-state CTA</td><td><code>mt-3 min-h-11 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2</code></td><td>≥44px hit area</td></tr>
+      <tr><td>Row card outer (one section)</td><td><code>rounded-xl border border-slate-200 bg-white overflow-hidden</code></td><td>Single shared card — 3 rows inside</td></tr>
+      <tr><td>Row container</td><td><code>flex items-center gap-3.5 p-4</code></td><td>Each row</td></tr>
+      <tr><td>Row separator</td><td><code>border-t border-slate-200</code></td><td>Apply to row 2 + row 3 only</td></tr>
+      <tr><td>Step badge (done)</td><td><code>flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-sm font-semibold text-emerald-900</code></td><td>28px circle</td></tr>
+      <tr><td>Step badge (current)</td><td><code>flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-900</code></td><td></td></tr>
+      <tr><td>Step badge (pending)</td><td><code>flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-50 text-sm font-semibold text-slate-400</code></td><td></td></tr>
+      <tr><td>Row content wrapper</td><td><code>min-w-0 flex-1</code></td><td><code>min-w-0</code> prevents flex overflow</td></tr>
+      <tr><td>Row title line</td><td><code>flex items-center gap-2</code></td><td>Title + status pill</td></tr>
+      <tr><td>Row title</td><td><code>text-sm font-medium text-slate-900</code></td><td></td></tr>
+      <tr><td>Row subtext</td><td><code>mt-0.5 text-xs text-slate-500</code></td><td></td></tr>
+      <tr><td>Status pill base</td><td><code>inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium</code></td><td>Color tokens below</td></tr>
+      <tr><td>Pill: open / identified / bound</td><td>add <code>bg-emerald-50 text-emerald-900</code></td><td>● symbol with <code>aria-hidden="true"</code></td></tr>
+      <tr><td>Pill: notyet</td><td>add <code>bg-amber-50 text-amber-900</code></td><td>○ symbol</td></tr>
+      <tr><td>Pill: optional</td><td>add <code>bg-slate-50 text-slate-700</code></td><td>− symbol</td></tr>
+      <tr><td>Pill: notconfirmed</td><td>add <code>bg-slate-50 text-slate-500</code></td><td>○ symbol, dimmer</td></tr>
+      <tr><td>Row action — primary (Identify, Open session)</td><td><code>min-h-11 shrink-0 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2</code></td><td>≥44px</td></tr>
+      <tr><td>Row action — secondary (End session, Change, Bind)</td><td><code>min-h-11 shrink-0 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2</code></td><td>≥44px</td></tr>
+      <tr><td>Primary CTA "Enter queue"</td><td><code>w-full mt-4 min-h-14 rounded-lg bg-blue-600 px-4 text-base font-semibold text-white hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 flex items-center justify-center gap-2</code></td><td>≥56px (primary tier)</td></tr>
+      <tr><td>CTA helper (when disabled)</td><td><code>mt-1.5 text-xs text-slate-500 text-center</code></td><td>Render only when <code>navigationBlockedHint !== null</code></td></tr>
+      <tr><td>Decorative pill symbol</td><td>wrap in <code>&lt;span aria-hidden="true"&gt;...&lt;/span&gt;</code></td><td>Mandatory per D-09 + IR-11</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer-note">
+  Visual reference v1 · paired with spec v1.1 · for FE-SE-MODEA-SIMPLIFY-09 · 2026-05-10
+</div>
+
+</body>
+</html>
