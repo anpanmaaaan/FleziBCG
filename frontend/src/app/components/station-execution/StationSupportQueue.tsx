@@ -38,6 +38,7 @@ export function StationSupportQueue({
     : items.slice(0, maxItems);
 
   const visibleCount = compactItems.length;
+  const hiddenCount = Math.max(0, items.length - visibleCount);
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -107,13 +108,23 @@ export function StationSupportQueue({
         </>
       )}
 
-      <button
-        type="button"
-        onClick={onViewFullQueue}
-        className="min-h-10 self-start rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 transition hover:bg-slate-50 active:scale-95"
-      >
-        {t("station.supportQueue.viewFullQueue")}
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        {hiddenCount > 0 ? (
+          <p className="text-xs text-slate-500">
+            {t("station.supportQueue.moreItems", { count: hiddenCount })}
+          </p>
+        ) : null}
+        <button
+          type="button"
+          onClick={onViewFullQueue}
+          className="min-h-10 self-start rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 transition hover:bg-slate-50 active:scale-95"
+        >
+          {t("station.supportQueue.viewFullQueue")}
+        </button>
+        {hiddenCount > 0 ? (
+          <p className="text-xs text-slate-500">{t("station.supportQueue.viewAllHint")}</p>
+        ) : null}
+      </div>
     </div>
   );
 }
