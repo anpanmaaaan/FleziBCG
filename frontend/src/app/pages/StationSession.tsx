@@ -14,8 +14,6 @@ import {
   normalizeStationCommandError,
   type StationCommandErrorMessage,
 } from "@/app/components/station-execution/stationCommandErrorMessages";
-import { StationWorkflowShell } from "@/app/components/station-execution/StationWorkflowShell";
-import { StationEntryPanel } from "@/app/components/station-execution/StationEntryPanel";
 import { OpenSessionPanel } from "@/app/components/station-execution/OpenSessionPanel";
 import { IdentifyOperatorPanel } from "@/app/components/station-execution/IdentifyOperatorPanel";
 import { BindEquipmentPanel } from "@/app/components/station-execution/BindEquipmentPanel";
@@ -34,20 +32,20 @@ export function StationSession() {
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [commandError, setCommandError] = useState<StationCommandErrorMessage | null>(null);
 
-  const presentSessionError = (error: unknown, fallbackKey: string) => {
+  const presentSessionError = (error: unknown) => {
     const normalized = normalizeStationCommandError(error);
     setCommandError(normalized);
-
-    if (normalized.code !== "UNKNOWN") {
-      toast.error(t(normalized.messageKey as I18nSemanticKey));
-      return;
-    }
-
-  toast.error(t(fallbackKey as I18nSemanticKey));
   };
 
   const loadSession = () => {
-    if (!stationId) { setLoading(false); return; }
+    if (!stationId) {
+      setSession(null);
+      setCommandError(null);
+      setShowCloseConfirm(false);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     stationApi
       .getCurrentSession(stationId)
@@ -56,7 +54,7 @@ export function StationSession() {
         setCommandError(null);
         setShowCloseConfirm(false);
       })
-      .catch((error) => presentSessionError(error, "stationSession.notice.failed_to_load_session" as I18nSemanticKey))
+      .catch((error) => presentSessionError(error))
       .finally(() => setLoading(false));
   };
 
@@ -73,15 +71,13 @@ export function StationSession() {
         setShowCloseConfirm(false);
         toast.success(t("stationSession.toast.closed" as I18nSemanticKey));
       })
-      .catch((error) => presentSessionError(error, "stationSession.toast.closeFailed" as I18nSemanticKey))
+      .catch((error) => presentSessionError(error))
       .finally(() => setClosing(false));
   };
 
   const handleOpenSession = () => {
-    if (!stationId) {
-      toast.error(t("stationSession.notice.missingStationId" as I18nSemanticKey));
-      return;
-    }
+    if (!stationId) return;
+
     setOpening(true);
     stationApi
       .openSession({ station_id: stationId })
@@ -91,7 +87,7 @@ export function StationSession() {
         setShowCloseConfirm(false);
         toast.success(t("stationSession.toast.opened" as I18nSemanticKey));
       })
-      .catch((error) => presentSessionError(error, "stationSession.toast.openFailed" as I18nSemanticKey))
+      .catch((error) => presentSessionError(error))
       .finally(() => setOpening(false));
   };
 
@@ -123,14 +119,6 @@ export function StationSession() {
     navigate("/station");
   };
 
-  const stationChecklistState = stationId ? "ready" : "missing";
-  const sessionChecklistState = !stationId
-    ? "not_confirmed"
-    : !session
-    ? "missing"
-    : session.status === "open"
-    ? "open"
-    : "closed";
   const equipmentChecklistState = commandError?.code === "EQUIPMENT_REQUIRED"
     ? session?.equipment_id
       ? "bound"
@@ -141,143 +129,126 @@ export function StationSession() {
     ? "optional_unknown"
     : "not_confirmed";
 
-  const nextStepKey = !stationId
-    ? ("stationSession.setup.next.selectStation" as I18nSemanticKey)
+  /**
+   * BT-CORE-004: UI navigation readiness only - not backend authorization.
+   * Backend revalidates session/operator/equipment on execution mutation commands.
+   */
+  const canNavigateToQueueByVisibleSetupState =
+    Boolean(stationId) &&
+    session?.status === "open" &&
+    Boolean(session?.operator_user_id) &&
+    equipmentChecklistState !== "required_missing";
+
+  const navigationBlockedHint = !stationId
+    ? ("stationSession.cta.helper.selectStation" as I18nSemanticKey)
     : !session
-    ? ("stationSession.setup.next.openSession" as I18nSemanticKey)
+    ? ("stationSession.cta.helper.openSession" as I18nSemanticKey)
     : session.status !== "open"
-    ? ("stationSession.setup.next.openSession" as I18nSemanticKey)
+    ? ("stationSession.cta.helper.openSession" as I18nSemanticKey)
     : !session.operator_user_id
-    ? ("stationSession.setup.next.identifyOperator" as I18nSemanticKey)
+    ? ("stationSession.cta.helper.identifyOperator" as I18nSemanticKey)
     : equipmentChecklistState === "required_missing"
-    ? ("stationSession.setup.next.bindEquipment" as I18nSemanticKey)
-    : equipmentChecklistState === "optional_unknown"
-    ? ("stationSession.setup.next.optionalEquipmentUnknown" as I18nSemanticKey)
-    : ("stationSession.setup.next.ready" as I18nSemanticKey);
+    ? ("stationSession.cta.helper.bindEquipment" as I18nSemanticKey)
+    : null;
 
   const isOpenSession = session?.status === "open";
-  const showBackendRevalidateHint =
-    equipmentChecklistState === "optional_unknown" || equipmentChecklistState === "not_confirmed";
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold text-gray-900">
+      <header className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <h1 className="text-2xl font-semibold text-slate-900">
             {t("stationSession.setup.title" as I18nSemanticKey)}
           </h1>
-          <ScreenStatusBadge phase="PARTIAL" />
+          <ScreenStatusBadge phase="CONNECTED" />
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={loadSession}
-            disabled={loading}
-            className="flex items-center gap-1 px-3 py-2 rounded-md border border-gray-200 bg-white text-gray-600 text-sm hover:bg-gray-50 disabled:opacity-50"
-          >
-            <RefreshCw className="w-3 h-3" />
-            {t("common.action.refresh" as I18nSemanticKey)}
-          </button>
-        </div>
-      </div>
+        <button
+          onClick={loadSession}
+          disabled={loading}
+          className="inline-flex min-h-11 items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:opacity-50"
+        >
+          <RefreshCw className="h-3 w-3" aria-hidden="true" />
+          {t("common.action.refresh" as I18nSemanticKey)}
+        </button>
+      </header>
 
-  <p className="text-sm text-slate-700">{t("stationSession.setup.subtitle" as I18nSemanticKey)}</p>
-
-      <StationWorkflowShell
-        currentStage={isOpenSession ? "STX_009_END_SESSION" : "STX_001_STATION_SESSION"}
-        stationId={stationId || null}
-        sessionId={session?.session_id ?? null}
-        operatorUserId={session?.operator_user_id ?? null}
-        equipmentId={session?.equipment_id ?? null}
-        compact
-        recoveryBanner={isOpenSession ? undefined : commandError ? <div
-          className={`rounded-lg border px-4 py-3 text-sm ${commandError.severity === "danger" ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}
+      {commandError ? (
+        <aside
           role="alert"
+          className={`rounded-lg border px-4 py-3 ${commandError.severity === "danger"
+            ? "border-red-200 bg-red-50 text-red-800"
+            : "border-amber-200 bg-amber-50 text-amber-800"}`}
         >
           <p className="font-semibold">{t(commandError.titleKey as I18nSemanticKey)}</p>
-          <p className="mt-1">{t(commandError.messageKey as I18nSemanticKey)}</p>
+          <p className="mt-1 text-sm">{t(commandError.messageKey as I18nSemanticKey)}</p>
           <p className="mt-1 text-xs">{t(commandError.recoveryKey as I18nSemanticKey)}</p>
-        </div> : undefined}
-      >
-        {/* Mode A Setup Panels */}
-        <StationEntryPanel
-          stationId={stationId}
-          sessionStatus={session?.status ?? null}
-          operatorUserId={session?.operator_user_id ?? null}
-          equipmentId={session?.equipment_id ?? null}
-          equipmentChecklistState={equipmentChecklistState}
-        />
+        </aside>
+      ) : null}
 
-        {!stationId && (
-          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700">
-            {t("stationSession.notice.missingStationId" as I18nSemanticKey)}
-          </div>
-        )}
-
-        {loading ? (
-          <div className="p-8 text-center text-gray-400 text-sm">{t("stationSession.label.loading_session" as I18nSemanticKey)}</div>
-        ) : !session ? (
-          <div className="p-6 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500 text-center">
-            {t("stationSession.session.noActive" as I18nSemanticKey)}
-          </div>
-        ) : (
-          <>
-            {/* Mode A Setup: Session Management */}
+      {!stationId ? (
+        <aside role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-4 sm:p-5">
+          <p className="font-semibold text-amber-900">{t("stationSession.empty.missingStation.title" as I18nSemanticKey)}</p>
+          <p className="mt-1 text-sm text-amber-800">{t("stationSession.empty.missingStation.message" as I18nSemanticKey)}</p>
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="mt-3 min-h-11 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+          >
+            {t("stationSession.empty.missingStation.cta" as I18nSemanticKey)}
+          </button>
+        </aside>
+      ) : (
+        <>
+          <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             <OpenSessionPanel
-              sessionId={session.session_id}
-              openedAt={session.opened_at}
-              isOpen={isOpenSession}
+              sessionId={session?.session_id ?? null}
+              openedAt={session?.opened_at ?? null}
+              sessionStatus={session?.status ?? null}
               loading={loading}
               opening={opening}
-              stationId={stationId}
-              commandError={commandError}
               onOpenSession={handleOpenSession}
+              onEndSessionClick={() => setShowCloseConfirm(true)}
               onRefresh={loadSession}
             />
 
-            {/* Mode A Setup: Operator Identification */}
             <IdentifyOperatorPanel
-              operatorUserId={session.operator_user_id}
+              operatorUserId={session?.operator_user_id ?? null}
               sessionOpen={isOpenSession}
               onIdentifyOperator={goToOperatorIdentification}
             />
 
-            {/* Mode A Setup: Equipment Binding */}
             <BindEquipmentPanel
-              equipmentId={session.equipment_id}
+              equipmentId={session?.equipment_id ?? null}
               equipmentChecklistState={equipmentChecklistState}
               sessionOpen={isOpenSession}
               onBindEquipment={goToEquipmentBinding}
             />
+          </section>
 
-            <section className="rounded-xl border border-blue-200 bg-blue-50 p-4 sm:p-5">
-              <h2 className="text-sm font-semibold text-blue-900">{t("stationSession.setup.continue.title" as I18nSemanticKey)}</h2>
-              <p className="mt-1 text-sm text-blue-800">{t(nextStepKey)}</p>
-              {showBackendRevalidateHint ? (
-                <p className="mt-2 text-xs text-blue-700">{t("stationSession.setup.continue.backendRevalidate" as I18nSemanticKey)}</p>
-              ) : null}
-              <button
-                type="button"
-                onClick={goToStationQueue}
-                disabled={!stationId}
-                className="mt-3 min-h-11 rounded-lg border border-blue-600 bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700 active:scale-95 disabled:opacity-50"
-              >
-                {t("stationSession.setup.continue.cta" as I18nSemanticKey)}
-              </button>
-            </section>
+          <button
+            type="button"
+            onClick={goToStationQueue}
+            disabled={!canNavigateToQueueByVisibleSetupState}
+            className="min-h-14 w-full rounded-lg border border-blue-600 bg-blue-600 px-4 text-base font-semibold text-white transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {t("stationSession.cta.enterQueue" as I18nSemanticKey)}
+          </button>
 
-            {/* Mode A Cleanup: Close Session (only when open) */}
-            <CloseSessionPanel
-              isSessionOpen={isOpenSession}
-              showCloseConfirm={showCloseConfirm}
-              closing={closing}
-              commandError={commandError}
-              onClose={() => setShowCloseConfirm(true)}
-              onConfirmClose={handleClose}
-              onCancelClose={() => setShowCloseConfirm(false)}
-            />
-          </>
-        )}
-      </StationWorkflowShell>
+          {navigationBlockedHint ? (
+            <p className="text-center text-xs text-slate-600">{t(navigationBlockedHint)}</p>
+          ) : null}
+
+          <CloseSessionPanel
+            isSessionOpen={isOpenSession}
+            showCloseConfirm={showCloseConfirm}
+            closing={closing}
+            commandError={null}
+            onClose={() => setShowCloseConfirm(true)}
+            onConfirmClose={handleClose}
+            onCancelClose={() => setShowCloseConfirm(false)}
+          />
+        </>
+      )}
     </div>
   );
 }

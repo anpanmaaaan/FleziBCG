@@ -1,37 +1,25 @@
 ---
 name: design-system-enforcer
-description: Enforces FleziBCG DESIGN.md for UI generation and frontend implementation.
+description: |
+  DEPRECATED (2026-05-17). Consolidated into design-md-ui-governor. Do not load
+  this skill independently. If the user mentions DESIGN.md enforcement, design
+  system, or FE/UI governance, load design-md-ui-governor instead.
 ---
 
-# Design System Enforcer
+# DEPRECATED — Consolidated
 
-## Required Reading
+This skill has been folded into `design-md-ui-governor` as of 2026-05-17.
 
-1. `DESIGN.md`
-2. `docs/design/DESIGN.md` if root file is unavailable
-3. `docs/audit/frontend-source-alignment-snapshot.md` if present
-4. relevant UI/screen inventory docs
+**Replacement skill:** `docs/ai-skills/design-md-ui-governor/SKILL.md`
 
-## Reject UI if
+**Reason for consolidation:**
 
-- frontend becomes source of business truth
-- permission truth is hardcoded in UI
-- execution state is derived in UI
-- quality pass/fail is faked
-- ERP posting is faked
-- backflush is faked
-- AI is shown as deterministic authority
-- status colors are inconsistent
-- operator usability is ignored
+- Three UI/UX skills (`design-system-enforcer`, `design-md-ui-governor`,
+  `stitch-design-md-ui-ux`) covered overlapping responsibility.
+- This skill was the most lightweight (essentially a rejection checklist) — its
+  content now lives in SKILL.md § 8 (Component Quality Checklist) and § 10
+  (Hard Reject Conditions) of `design-md-ui-governor`.
 
-## Required UI Output
-
-1. screen purpose
-2. primary user
-3. layout structure
-4. component list
-5. status behavior
-6. empty/loading/error states
-7. backend dependency
-8. mock vs real data declaration
-9. accessibility/touch considerations
+**Do not** load this skill in parallel with `design-md-ui-governor`. If an
+external doc or prompt still references this skill, treat the reference as an
+alias for `design-md-ui-governor`.

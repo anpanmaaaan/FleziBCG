@@ -1,0 +1,19 @@
+{
+  "skill_name": "design-md-ui-governor",
+  "evals": [
+    {
+      "id": 0,
+      "eval_name": "eval-mode-a-wizard",
+      "prompt": "Mình đang cần build lại Station Session screen cho FleziBCG. Hiện tại screen này render 4 panel cùng lúc (Open / Identify Operator / Bind Equipment / Close) và bị feedback là quá rối. Hãy đề xuất layout mới, viết SKILL.md compliance report theo format yêu cầu, và đưa skeleton React/Tailwind cho main screen file (StationSession.tsx). Persona: shopfloor operator, tablet landscape, có thể đeo găng tay. Backend đã expose GET /v1/station/sessions/current trả về session với fields { id, state, operatorId, equipmentBound, blocker }.",
+      "expected_output": "Single-screen wizard pattern, exactly one panel rendered based on backend session state, BlockerBanner single error surface, anti-clutter diagnostic PASS, industrial UX numerics, full implementation report.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "eval_name": "eval-supervisor-multistation",
+      "prompt": "Build a new Supervisor Multi-Station view for FleziBCG. Requirements: supervisor watches Line 2 with 24 stations. Each station shows current state (RUNNING/PAUSED/BLOCKED/COMPLETED/CLOSED), last event time, and a blocker icon if any. Top of screen shows KPI strip (OEE today, throughput, blockers count, downtime today). Blocker queue surface above the grid. Persona: supervisor, desktop 1440px or tablet landscape, walking the floor or at desk. Produce the SKILL implementation report and React/Tailwind skeleton. Backend offers GET /v1/lines/:lineId/stations returning Station[].",
+      "expected_output": "Dashboard template, KPI strip cap 5, blocker queue capped at 5 with View All, station grid virtualized via react-window, single-source highlight rule, alert hierarchy applied, industrial UX numerics, full implementation report.",
+      "files": []
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+// TODO(FE-SE-DEAD-CODE-01): Remove this file. No consumers as of FE-SE-MODEA-SIMPLIFY-09 (2026-05-10).
 import { CheckSquare } from "lucide-react";
 import { useI18n } from "@/app/i18n";
 import type { I18nSemanticKey } from "@/app/i18n/keys";
