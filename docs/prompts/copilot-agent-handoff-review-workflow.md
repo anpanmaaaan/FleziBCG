@@ -137,7 +137,8 @@ Codex should review in this order:
 9. Compare implementation against the original prompt acceptance criteria.
 10. Classify any failure as product/code, prompt ambiguity, harness weakness, or skill/process gap.
 11. Report findings first, ordered by severity.
-12. Decide: accept, accept with minor follow-up, reject and write correction prompt, or patch skills/instructions.
+12. Complete the Review Closeout Gate.
+13. Decide: accept, accept with minor follow-up, reject and write correction prompt, or patch skills/instructions.
 
 Review output should include:
 
@@ -148,6 +149,37 @@ Review output should include:
 - agent behavior/process issues;
 - whether skill/instruction updates are needed;
 - correction prompt if needed.
+- review closeout with skill-improvement decision and next plan.
+
+## Review Closeout Gate
+
+Every Codex review response must end with a compact closeout decision. Do not
+stop after findings only.
+
+Required closeout fields:
+
+```markdown
+## Skill Improvement Decision
+- Needed: yes/no
+- Reason:
+- Action: none / patch skill now / create correction prompt / defer with rationale
+- Files to patch or re-read next:
+
+## Next Plan
+- Decision: accept / cleanup first / correction agent prompt / next product slice
+- Next action owner: user / Copilot Agent / Codex
+- Exact next step:
+- Expected files in scope:
+- Verification required:
+```
+
+Use `Needed: yes` when the agent failure is reusable, systemic, or likely to
+recur. Use `Needed: no` only when the issue is clearly a one-off local mistake,
+already covered by active instructions, or caused by user-controlled commit
+selection.
+
+The `Next Plan` must be operational enough that the user can either run the next
+agent prompt or make the next commit without asking what to do next.
 
 ## Acceptance Rules
 

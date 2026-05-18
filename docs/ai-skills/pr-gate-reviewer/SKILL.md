@@ -63,6 +63,10 @@ Turn ON if PR touches:
 - DB tests persist tenant/test data or rely on unique prefixes instead of cleanup
 - fixture teardown lacks rollback before purge after DB exceptions
 - validation ran against stale container/source or ambiguous command output
+- report/diff/worktree mismatch suggests the implementation agent needs a
+  reusable skill or instruction hardening rule
+- review output lacks a concrete next plan for cleanup, correction, or the next
+  product slice
 
 ## Output
 
@@ -91,6 +95,19 @@ APPROVE / REQUEST_CHANGES / COMMENT_ONLY
 ## Suggested follow-up
 1. ...
 
+## Skill Improvement Decision
+- Needed: yes/no
+- Reason:
+- Action: none / patch skill now / create correction prompt / defer with rationale
+- Files to patch or re-read next:
+
+## Next Plan
+- Decision: accept / cleanup first / correction agent prompt / next product slice
+- Next action owner:
+- Exact next step:
+- Expected files in scope:
+- Verification required:
+
 ## Report export
 - Canonical report file: docs/agent-reports/latest-agent-report.md
 - Written before completion: yes/no
@@ -98,3 +115,8 @@ APPROVE / REQUEST_CHANGES / COMMENT_ONLY
 
 For non-trivial reviews, overwrite `docs/agent-reports/latest-agent-report.md`
 with the final review report before marking done.
+
+Every review must include `Skill Improvement Decision` and `Next Plan`. Do not
+end with findings only. If skill changes are needed, name the active skill or
+instruction file to patch; if no skill change is needed, explain why the current
+instructions already cover the failure.
