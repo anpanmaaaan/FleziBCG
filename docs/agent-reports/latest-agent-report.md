@@ -1,217 +1,231 @@
-﻿# Agent Report -- FE-SE-COCKPIT-CORRECTION-V2
+# Agent Report - FE-SE-SESSION-CLEANUP-01-CORRECTION-3
 
 **Date:** 2026-05-18
-**Agent:** GitHub Copilot (FleziBCG Frontend agent)
-**Task:** Correct Station Execution cockpit slice -- delete temp script, assert support-details disclosure required, update report to accurately list all changed/untracked files and Hard Mode status
+**Branch:** codex/station-execution-pilot-stack
+**Task:** Third correction pass — 3 items: Hard Mode MOM v3 report amendment, selector tightening, gate re-run.
 
 ---
 
-## Auto-Route
+## Routing
 
-- Task type: Frontend correction (follow-up)
-- Domain: Frontend
-- Delegating to: FleziBCG Frontend
-- Hard Mode kept from parent slice: yes
+- Selected brain: FleziBCG Frontend
+- Selected mode: Design-MD UI Governor
+- Hard Mode MOM: kept from parent slice
 - Coverage class: frontend
-
----
-
-## Hard Mode MOM
-
-Hard Mode kept from parent slice: **yes**
-
-This is a follow-up correction to a Station Execution cockpit slice. The parent
-slice touched execution-cockpit integration (Mode B rendering, session ownership
-context). Follow-up fixes on the same slice carry Hard Mode forward per governance
-rules. No new execution state machine, authorization, quality, or DB changes are
-introduced. Hard Mode is carried as process discipline.
-
----
-
-## Prior Report Corrections (v1 Report Errors Fixed Here)
-
-The v1 report (FE-SE-COCKPIT-CORRECTION) had four omissions:
-
-1. **`StationExecutionCockpit.tsx` was listed as "intentionally not changed"** -- it is a new
-   untracked file (`??` in git status pre-commit) and must be included in the commit.
-
-2. **`en.ts` / `ja.ts` omitted from modified files list** -- they are modified, containing
-   a new key `station.cockpit.supportDetails` added by StationExecutionCockpit.
-
-3. **Hard Mode kept from parent slice was listed as N/A** -- this is a follow-up
-   Station Execution slice. Hard Mode carries forward.
-
-4. **Support-details assertion was insufficient** -- the prior form passed if the
-   disclosure button was absent entirely. The assertion was strengthened (see below).
+- Hard Mode kept from parent slice: yes
 
 ---
 
 ## Task / Slice
 
-**Goal:**
-1. Delete `frontend/scripts/_fix-mode-b.mjs` (temp CRLF workaround).
-2. Strengthen screenshot harness support-details assertion: disclosure button must
-   exist inside `[data-testid='station-execution-cockpit']` AND have `aria-expanded="false"`.
-3. Update agent report: correct Hard Mode, list all files, honest verification.
+Third correction pass — 3 items (user-specified):
+
+1. Report: Hard Mode MOM v3 section — change from N/A to "kept from parent slice: yes" with explanation.
+2. Harness selector: replace `assertNoNotYetInSessionRow` generic `.flex.items-center.gap-3.first()` selector with one that targets the actual Session step/panel row (h2-anchored filter).
+3. Re-run all gates: `git diff --check`, `lint:i18n`, `check:routes`, `tsc --noEmit`, screenshot harness, `git status --short`.
+
+Prior corrections (CORRECTION-1, CORRECTION-2) remain fully applied.
 
 ---
 
-## Files Changed in This Slice
+## Changed in This Slice
 
-| File | Change |
-|------|--------|
-| `frontend/scripts/station-execution-responsive-screenshots.mjs` | Assertion 3 (support-details): strengthened to require button present AND `aria-expanded="false"` -- `throw` if button missing; `throw` if `aria-expanded != "false"` |
-| `docs/agent-reports/latest-agent-report.md` | Overwritten (this report) |
+1. **frontend/src/app/pages/StationSession.tsx**
+   - `loadSession`: when `!stationId`, now clears session, commandError, showCloseConfirm, loading (was: only setLoading(false)).
+   - Added `canNavigateToQueueByVisibleSetupState` with BT-CORE-004 disclaimer comment.
+     Conditions: Boolean(stationId) AND session.status === "open" AND Boolean(session.operator_user_id) AND equipmentChecklistState !== "required_missing".
+   - Queue CTA button: changed from `disabled={!stationId}` to `disabled={!canNavigateToQueueByVisibleSetupState}`.
 
-## Files Deleted in This Slice
+2. **frontend/scripts/station-session-setup-qa-screenshots.mjs**
+   - [CORRECTION-2] Added `assertEndSessionButtonVisible`: checks `button:has-text("End session")` is present.
+   - [CORRECTION-2] Added `assertNoNotYetInSessionRow`: checks session row does not contain "Not yet".
+   - [CORRECTION-2] Added `openSessionAssertions` array with 4 assertions (badge + no-partial + end-session button + no-not-yet).
+   - [CORRECTION-3] **`assertNoNotYetInSessionRow` selector tightened**: replaced `.flex.items-center.gap-3.first()` (first generic row on page, too broad) with `div.flex.items-center.gap-3` filtered by `has: locator('h2:has-text("Session")')`. This anchors the check to the OpenSessionPanel row specifically — the `h2` with text "Session" is unique to the session step row.
+   - `open-session` state uses `openSessionAssertions` (4 assertions).
 
-| File | Reason |
-|------|--------|
-| `frontend/scripts/_fix-mode-b.mjs` | Temporary CRLF-bypass script; no longer needed |
+3. **docs/agent-reports/latest-agent-report.md** (this file, overwritten)
+   - [CORRECTION-2] Removed trailing whitespace on markdown header lines.
+   - [CORRECTION-2] Honest tsc report: FAIL (exit 2), 4 baseline errors in non-slice files.
+   - [CORRECTION-3] Hard Mode MOM v3 section updated: N/A → kept from parent slice: yes, with explanation.
 
 ---
 
-## Files Changed in Parent Slice (Committed in HEAD~1: 21b13927)
+## Existing/Parent Changes Observed
 
-These files were committed by the user in the parent slice commit. Listed here for
-complete traceability:
+From git status --short (pre-existing, not part of this slice):
 
-| File | Status in Parent Commit | Key Change |
-|------|------------------------|------------|
-| `frontend/src/app/pages/StationExecution.tsx` | committed | Mode B replaced StationWorkflowShell with StationExecutionCockpit; StationEntryHandoff moved to supportDetails prop; MockWarningBanner removed |
-| `frontend/src/app/components/station-execution/StationExecutionCockpit.tsx` | committed (was untracked) | New Mode B layout component with context strip, scrollable body, support details disclosure |
-| `frontend/src/app/components/station-execution/stationCommandErrorMessages.ts` | committed | `titleKey/messageKey/recoveryKey` typed as `I18nSemanticKey` |
-| `frontend/src/app/i18n/registry/en.ts` | committed | New key: `"station.cockpit.supportDetails": "Support details"` |
-| `frontend/src/app/i18n/registry/ja.ts` | committed | New key: `"station.cockpit.supportDetails"` (Japanese translation) |
-| `frontend/scripts/station-execution-responsive-screenshots.mjs` | committed | throw-based assertions; strengthened support-details check |
-| `docs/audit/station-execution-responsive-qa/mode-b-in-progress-*.png` x4 | committed | Mode B cockpit screenshots (all 4 viewports) |
-| `docs/audit/station-execution-responsive-qa/mode-a-*.png` x8 | committed | Mode A screenshots (empty + queue, 4 viewports each) |
+- `.github/copilot-instructions.md` (M): pre-existing — OUT OF SCOPE
+- `docs/ai-skills/autonomous-implementation-agent/SKILL.md` (M): pre-existing — OUT OF SCOPE
+- `docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md` (M): pre-existing — OUT OF SCOPE
+- `docs/ai-skills/qa-e2e-layer/SKILL.md` (M): pre-existing — OUT OF SCOPE
 
-## Files Intentionally Not Changed
+Prior correction slice changes still in tree:
 
-- `StationWorkflowShell.tsx` -- still used correctly in Mode A
-- `StationSession.tsx` -- not touched per instruction
-- Backend files -- no backend changes
-- Any product/MMD/quality/IAM code
+- `StationSession.tsx` (M): prior slice fixed OpenSessionPanel props (sessionStatus, onEndSessionClick).
+- `StationEntryPanel.tsx` (M): prior slice removed BOM.
+
+---
+
+## Files Intended for Commit
+
+- `frontend/src/app/pages/StationSession.tsx`
+- `frontend/src/app/components/station-execution/StationEntryPanel.tsx`
+- `frontend/scripts/station-session-setup-qa-screenshots.mjs`
+- `docs/agent-reports/latest-agent-report.md`
+
+NOT for commit:
+- `docs/audit/station-session-setup-qa/` (6 PNG screenshots — generated artifacts)
+
+---
+
+## Generated Artifact Paths
+
+```
+docs/audit/station-session-setup-qa/missing-station-desktop-1440x900.png
+docs/audit/station-session-setup-qa/missing-station-narrow-430x932.png
+docs/audit/station-session-setup-qa/no-session-desktop-1440x900.png
+docs/audit/station-session-setup-qa/no-session-narrow-430x932.png
+docs/audit/station-session-setup-qa/open-session-desktop-1440x900.png
+docs/audit/station-session-setup-qa/open-session-narrow-430x932.png
+```
+
+---
+
+## git status --short Summary
+
+```
+ M .github/copilot-instructions.md                              -> OUT OF SCOPE
+ M docs/agent-reports/latest-agent-report.md                   -> IN SCOPE
+ M docs/ai-skills/autonomous-implementation-agent/SKILL.md     -> OUT OF SCOPE
+ M docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md -> OUT OF SCOPE
+ M docs/ai-skills/qa-e2e-layer/SKILL.md                        -> OUT OF SCOPE
+ M frontend/src/app/components/station-execution/StationEntryPanel.tsx -> IN SCOPE
+ M frontend/src/app/pages/StationSession.tsx                   -> IN SCOPE
+?? docs/audit/station-session-setup-qa/                        -> OUT OF SCOPE (generated artifacts)
+?? frontend/scripts/station-session-setup-qa-screenshots.mjs   -> IN SCOPE (source/tooling)
+```
+
+No unrelated staged files.
 
 ---
 
 ## Commands Run and Results
 
-| Command | Result |
-|---------|--------|
-| `npm run lint:i18n` | PASS -- 2592 keys, en/ja synchronized |
-| `npm run check:routes` | PASS -- 79/80 routes covered (1 excluded), 0 FAIL |
-| `npm run build` (Vite) | PASS -- dist/assets updated at 19:15:35, exit 0 |
-| VS Code TS LSP `get_errors` | PASS -- 0 errors workspace-wide |
-| `git diff --check` | PASS -- exit 0 (pre-existing CRLF warnings only) |
-| `npm run qa:station-execution:screenshots` | PASS -- 12 screenshots generated; all Mode B assertions passed |
+CORRECTION-3 gate re-run results:
+
+| Command | Exit | Result |
+|---------|------|--------|
+| `git diff --check` | 0 | PASS: no trailing whitespace or conflict markers |
+| `npm run lint:i18n` | 0 | PASS: 2592 keys, en/ja synchronized |
+| `npm run check:routes` | 0 | PASS 24 / FAIL 0, 79/80 covered |
+| `tsc --noEmit` | 2 (FAIL - baseline) | 4 baseline errors in non-slice files; 0 errors in slice files |
+| Screenshot harness | 0 | PASS: 16/16 assertions with tightened selector |
+| `git status --short` | — | See git status section below |
+
+---
+
+## tsc Honest Report
+
+**Exit code: 2 (FAIL)**
+
+4 baseline errors exist in non-slice files:
+
+```
+src/app/components/RouteStatusBanner.tsx(39,72): error TS2339: Property 'notes' does not exist
+src/app/pages/EquipmentBinding.tsx(40,19): error TS2345: Argument of type 'string' not assignable to I18nSemanticKey
+src/app/pages/OperatorIdentification.tsx(44,19): error TS2345: Argument of type 'string' not assignable to I18nSemanticKey
+src/app/pages/ProductDetail.tsx(14,8): error TS2305: Module '@/app/api' has no exported member 'BomItemFromAPI'
+```
+
+None of these are in StationSession.tsx, StationEntryPanel.tsx, or OpenSessionPanel.tsx.
+**StationSession-specific TS errors: 0.**
 
 ---
 
 ## Screenshot Command Run
 
 ```
-npm run qa:station-execution:screenshots
+node scripts/station-session-setup-qa-screenshots.mjs
 ```
 
-Script: `frontend/scripts/station-execution-responsive-screenshots.mjs`
-Dev server: `http://localhost:5173` -- Vite **live dev server** was running
-Backend: Not running -- API responses mocked via Playwright route intercept
+Dev server auto-detected at http://localhost:5173.
 
 ---
 
-## Screenshot Assertion Summary (Mode B -- Strengthened)
+## Screenshot Assertion Summary
 
-All 6 Mode B assertions evaluated for each of 4 viewports (24 evaluations total):
+All 16 assertions PASS.
 
-| # | Assertion | Behavior on Failure | Result |
-|---|-----------|--------------------|----|
-| 1 | No STX-* stage labels in body text | `throw` | PASS x4 |
-| 2 | `cockpit-context-strip` present | `throw` | PASS x4 |
-| 3 | Disclosure button exists inside cockpit AND `aria-expanded="false"` | `throw` if missing; `throw` if not "false" | PASS x4 |
-| 4 | `station-execution-cockpit` root present | `throw` | PASS x4 |
-| 5 | Report Qty button visible | `throw` | PASS x4 |
-| 6 | Complete Operation not primary green (remaining qty 25 > 0) | `throw` | PASS x4 |
+| State | Viewport | CONNECTED | No PARTIAL | End session btn | No "Not yet" |
+|-------|----------|-----------|------------|----------------|--------------|
+| missing-station | desktop 1440x900 | PASS | PASS | n/a | n/a |
+| missing-station | narrow 430x932 | PASS | PASS | n/a | n/a |
+| no-session | desktop 1440x900 | PASS | PASS | n/a | n/a |
+| no-session | narrow 430x932 | PASS | PASS | n/a | n/a |
+| open-session | desktop 1440x900 | PASS | PASS | PASS | PASS |
+| open-session | narrow 430x932 | PASS | PASS | PASS | PASS |
 
-**Assertion 3 is strengthened vs v1:** Previously passed even if the disclosure button did not
-exist (only checked for `aria-expanded='true'` absence). Now: button must exist AND have
-`aria-expanded="false"`.
+Coverage: visual QA only. Mocked API. Does not prove backend truth, auth, E2E behavior,
+or pilot golden path coverage.
 
 ---
 
-## Screenshot Output Paths
+## Exact Screenshot Output Paths
 
-All saved to `docs/audit/station-execution-responsive-qa/`:
-
-**Regenerated in this slice run (timestamps 19:17:xx):**
-
-| File | Size | Timestamp |
-|------|------|-----------|
-| `mode-b-in-progress-desktop-1440x900.png` | 106,414 bytes | 19:17:10 |
-| `mode-b-in-progress-tablet-landscape-1180x820.png` | 85,542 bytes | 19:17:12 |
-| `mode-b-in-progress-tablet-portrait-820x1180.png` | 86,395 bytes | 19:17:13 |
-| `mode-b-in-progress-narrow-430x932.png` | 58,057 bytes | 19:17:15 |
-| `mode-a-empty-desktop-1440x900.png` | regenerated | 19:17:xx |
-| `mode-a-empty-tablet-landscape-1180x820.png` | regenerated | 19:17:xx |
-| `mode-a-empty-tablet-portrait-820x1180.png` | regenerated | 19:17:xx |
-| `mode-a-empty-narrow-430x932.png` | regenerated | 19:17:xx |
-| `mode-a-queue-desktop-1440x900.png` | regenerated | 19:17:xx |
-| `mode-a-queue-tablet-landscape-1180x820.png` | regenerated | 19:17:xx |
-| `mode-a-queue-tablet-portrait-820x1180.png` | regenerated | 19:17:xx |
-| `mode-a-queue-narrow-430x932.png` | regenerated | 19:17:xx |
+```
+docs/audit/station-session-setup-qa/missing-station-desktop-1440x900.png
+docs/audit/station-session-setup-qa/missing-station-narrow-430x932.png
+docs/audit/station-session-setup-qa/no-session-desktop-1440x900.png
+docs/audit/station-session-setup-qa/no-session-narrow-430x932.png
+docs/audit/station-session-setup-qa/open-session-desktop-1440x900.png
+docs/audit/station-session-setup-qa/open-session-narrow-430x932.png
+```
 
 ---
 
 ## Viewport / State Coverage
 
-| State | Viewports | Notes |
-|-------|-----------|-------|
-| `mode-b-in-progress` | desktop, tablet-landscape, tablet-portrait, narrow | Primary changed state -- cockpit with IN_PROGRESS op, remaining qty 25 |
-| `mode-a-empty` | All 4 | No operation selected |
-| `mode-a-queue` | All 4 | Mode A with queue populated |
-
----
-
-## Mock Data Used
-
-Screenshots use **mocked API data** via Playwright route intercept. No real backend required.
-- `MOCK_QUEUE_COCKPIT`: `SessionOwnershipSummary` with `session_id: "sess-0001"`, `operator_user_id: "opr-001"`, `status: "IN_PROGRESS"`
-- `MOCK_OPERATION_DETAIL`: `quantity: 120`, `completed_qty: 95` (remaining 25 > 0)
-
-Screenshots are **visual QA only**. They do not prove backend truth, authorization,
-E2E behavior, or pilot golden path coverage.
+3 states x 2 viewports = 6 screenshots.
+Mocked API data only.
 
 ---
 
 ## Verification Notes
 
-- Cockpit context strip (`Station STATION_01 | Session My active session | Operator opr-001`) visible in all Mode B screenshots.
-- No STX-* stage labels in any Mode B screenshot.
-- No MockWarningBanner / PARTIAL banner in any Mode B screenshot.
-- Support details disclosure button present and collapsed (`aria-expanded="false"`).
-- Mode A still uses StationWorkflowShell (no regression).
-- `_fix-mode-b.mjs` deleted; no longer appears in `git status`.
+- BT-CORE-004 disclaimer preserved in canNavigateToQueueByVisibleSetupState comment.
+- Backend remains authorization/execution truth. Frontend CTA guard is UI readiness only.
+- Slice source files pass git diff --check individually (exit 0).
+- tsc baseline errors are pre-existing in non-slice files; none introduced by this slice.
 
 ---
 
 ## Limitations / Not Covered
 
-- E2E: screenshots use mocked API -- real backend behavior not validated.
-- Narrow viewport (430px): pre-existing sidebar overlap (outside scope of this slice).
-- Screenshot QA asserts initial collapsed state only; does not exercise toggle interaction.
+- tsc baseline errors (4 files) are pre-existing and outside this slice scope.
+- No E2E for queue navigation readiness (requires backend + Playwright full flow).
+- Screenshots: mocked API only.
 
 ---
 
 ## Known Environment Caveats
 
-- `StationExecution.tsx` uses CRLF line endings; multi-line `replace_string_in_file` fails against CRLF files.
-- PowerShell terminal briefly enters Node.js REPL mode during Vite/Playwright runs.
-- `package.json` has pre-existing duplicate `react`/`react-dom` keys; produces Vite warnings, not errors.
+- Vite auto-increments port (5173->5174); harness handles this automatically.
+- Terminal tool sometimes hangs on sync Start-Process -Wait; use async mode for long operations.
+- `run_in_terminal` sync mode may not capture output when a background dev server is running in same terminal session.
 
 ---
 
-## Next Recommended Slice
+## Hard Mode MOM v3
 
-- Fix narrow viewport sidebar overlap (pre-existing, separate slice).
-- Add toggle interaction test for support details disclosure.
+**Kept from parent slice: yes.**
+
+This slice is follow-up correction work on the Station Session setup flow — a governed workflow touching station/session readiness, operator/equipment progression gates, and queue navigation guards. Per Hard Mode MOM v3 rules, follow-up fixes on a slice that originally required v3 (station/session/operator/equipment UI) carry forward v3 unless the change is purely text/comment-only and cannot affect tests, runtime behavior, or reports. The queue readiness guard (`canNavigateToQueueByVisibleSetupState`) affects UI progression behavior in the station/session workflow. Coverage class remains **frontend** (visual readiness gates, mocked API, no direct backend mutation).
+
+---
+
+## Next Plan
+
+1. FE-SE-SESSION-CLEANUP-02: Decide whether `onRefresh` in OpenSessionPanelProps should be removed (currently in interface but not used inside component).
+2. FE-SE-SESSION-CLOSE-01: Verify CloseSessionPanel commandError display still surfaces close failures correctly.
+3. FE-SE-SESSION-E2E-01: Playwright E2E for queue navigation readiness gate (requires live backend).
+4. Resolve 4 baseline tsc errors in non-slice files (separate slice).
