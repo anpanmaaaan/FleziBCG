@@ -130,6 +130,16 @@ test repair, fixture repair, review, or verification pass on the same slice keep
 Hard Mode MOM v3 unless the change is purely text/comment-only and cannot affect
 tests, DB state, runtime behavior, contracts, or reports.
 
+Station, station session, station execution, operator identification, equipment
+binding, execution cockpit, quality gate, report-honesty, screenshot harness, and
+UI readiness follow-ups keep MOM Brain + Hard Mode MOM v3 when they continue a
+Hard Mode slice. Do not mark Hard Mode `N/A` just because the current edit is
+frontend, cleanup, prop wiring, screenshot evidence, or report correction.
+
+Only mark Hard Mode `N/A` for a follow-up when the diff is truly docs/text-only
+and cannot affect runtime behavior, tests, reports, harnesses, command results,
+state, contracts, or UI progression.
+
 Test fixture changes touching DB cleanup, tenant data, execution, quality, auth,
 state, events, projections, or governed workflows remain MOM Brain + Hard Mode
 MOM v3. Do not silently downgrade these follow-ups to Fast or ordinary Strict
@@ -225,6 +235,11 @@ Rules:
   the actual diff or tracked workspace state.
 - Do not claim a command passed unless the command exited 0 and no assertion
   failure was printed.
+- A non-zero exit code is a failed verification. If failures are baseline, write
+  `FAIL - baseline failures` and classify baseline vs introduced/fixed errors;
+  never write PASS for that command.
+- If `git diff --check` reports any issue, the diff check failed and the slice is
+  not clean until fixed or explicitly reported as blocked.
 - Do not treat screenshots as valid evidence unless they show the target state
   named in the report.
 - Do not reuse stale screenshots as proof of a new change.

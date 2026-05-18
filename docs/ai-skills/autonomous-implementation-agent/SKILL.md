@@ -93,10 +93,33 @@ Current safe order:
 - If validation runs in Docker, verify whether the service mounts live source.
   If not, use the repo-approved live-source bind mount or rebuild the image.
 - Never report a command as passed unless the exit code or captured log proves it.
+- Non-zero Exit Honesty Rule: a command that exits non-zero is `FAIL`, even when
+  the failures are baseline or unrelated to the current slice. Report baseline
+  failures separately from failures introduced, fixed, or still affecting the
+  slice.
+- `git diff --check` is a verification command. If it reports trailing
+  whitespace, conflict markers, or any other issue, report it as failed until
+  fixed.
 - Assertion failures must fail the command. Do not rely only on
   `process.exitCode = 1` while continuing to print pass-like output.
 - If stdout/stderr contains assertion failures, the command must be reported as
   failed even when the process exits 0.
+
+## Guard Regression Check
+
+Before the final report, compare touched workflow guards against the previous
+implementation whenever the slice changes buttons, route transitions,
+enabled/disabled conditions, allowed actions, readiness checks, or workflow
+progression.
+
+Required behavior:
+
+- Preserve existing guards during cleanup, refactor, visual redesign, and
+  prop-contract fixes unless the task explicitly requests a behavior change.
+- Treat weaker station/session/execution, quality, material, tenant, auth, or
+  operator readiness gating as a regression unless explicitly authorized.
+- If a guard changes intentionally, report the old condition, the new condition,
+  the reason, and the verification.
 
 ## Pre-Final Self-Review Gate
 
@@ -115,6 +138,9 @@ Before the final report, run a self-review:
 - Acceptance criteria backed by diff/tests/screenshots:
 - Commands with reliable exit codes:
 - Commands skipped or not trusted:
+- Behavior preserved:
+- Behavior intentionally changed:
+- Behavior changed accidentally/fixed:
 - Report claims match actual diff:
 ```
 

@@ -226,6 +226,47 @@ During coding:
 - verify container commands run against live edited source before trusting them;
 - capture a reliable exit code or log before reporting a command as passed.
 
+## Verification Truth Gate
+
+Verification status must follow the real command result:
+
+- A command with a non-zero exit code is `FAIL`, even if every failure appears
+  to be pre-existing or outside the slice.
+
+### Baseline vs Slice Error Rule
+
+- If a command fails because of baseline issues, report `FAIL - baseline
+  failures` and separately list any failures introduced, fixed, or still
+  affecting the current slice.
+- Do not write `PASS`, `clean`, `zero errors`, or equivalent wording for a
+  command unless the command exited 0 and the captured output contains no
+  assertion failures.
+
+### Diff Check Gate
+
+- If `git diff --check` reports whitespace or conflict-marker problems, the
+  slice is not clean. Fix them or report a blocker; do not claim the diff check
+  passed.
+
+## UI Guard Preservation Gate
+
+Cleanup, refactor, visual redesign, and prop-contract fixes must preserve
+existing navigation, readiness, allowed-action, and authorization-adjacent UI
+guards unless the task explicitly asks to change them.
+
+Required behavior:
+
+- Before changing a button, route transition, enabled/disabled condition,
+  allowed action, readiness check, or workflow progression, compare the existing
+  condition with the new condition.
+- Keep backend truth server-owned, but do not weaken frontend readiness gates
+  that prevent premature user progression through station/session/execution,
+  quality, material, or auth-sensitive workflows.
+- If a guard changes intentionally, report it as `behavior intentionally
+  changed` with the reason and verification.
+- If the task is cleanup-only, any guard weakening is a regression and must be
+  fixed before completion.
+
 ## Report Export Rule
 
 For every non-trivial task, the final agent report must be written to:

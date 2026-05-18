@@ -80,10 +80,29 @@ For frontend screenshot QA:
 
 - assert the target state is reached before screenshot;
 - assert important negative conditions when removing/replacing UI;
+- assert the business state claimed in the report, not only generic badges,
+  route presence, or screen status labels;
 - make the screenshot show the changed area, scrolling or taking an additional
   focused screenshot if needed;
 - list only current-run screenshots in the report;
 - state whether screenshots use mocked API data or real backend data.
+
+For Station Execution, Station Session, operator, equipment, quality, material,
+or other MES workflow screenshots, include assertions for the actual business
+state under review. Examples:
+
+- open session shows the session as `Open` and exposes `End session`, not the
+  `Open session` action;
+- blocked or hold state shows the blocker/hold surface and does not expose the
+  blocked progression CTA as enabled;
+- ready-to-queue state only enables the queue/progression CTA when the required
+  station, session, operator, and equipment readiness conditions are satisfied;
+- quality pass/fail/hold screenshots assert the displayed status and the allowed
+  next action.
+
+If the harness only checks a `CONNECTED` badge, route load, or absence of a
+`PARTIAL` badge, report it as smoke coverage only. Do not claim it validates the
+business state.
 
 ## Coverage Class Rules
 
