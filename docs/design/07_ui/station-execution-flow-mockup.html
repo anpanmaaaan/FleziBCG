@@ -1,0 +1,1382 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Station Execution Flow Mockup Pack</title>
+  <style>
+    :root {
+      --bg: #eef2f7;
+      --surface: #ffffff;
+      --surface-soft: #f8fafc;
+      --surface-strong: #f1f5f9;
+      --line: #d9e2ef;
+      --line-strong: #b8c5d8;
+      --text: #0f172a;
+      --muted: #64748b;
+      --blue: #1d4ed8;
+      --blue-soft: #e7efff;
+      --green: #047857;
+      --green-soft: #e8f8ef;
+      --amber: #b45309;
+      --amber-soft: #fff4df;
+      --red: #be123c;
+      --red-soft: #fff1f2;
+      --dark: #111827;
+      --shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.35;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .layout {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+    }
+
+    .toc {
+      position: sticky;
+      top: 0;
+      align-self: start;
+      height: 100vh;
+      overflow: auto;
+      padding: 22px 16px;
+      background: var(--surface);
+      border-right: 1px solid var(--line);
+    }
+
+    .brand {
+      font-size: 24px;
+      font-weight: 900;
+      margin-bottom: 6px;
+    }
+
+    .brand span {
+      color: #f97316;
+    }
+
+    .doc-note {
+      color: var(--muted);
+      font-size: 13px;
+      margin: 0 0 18px;
+    }
+
+    .toc-label {
+      margin: 18px 0 8px;
+      font-size: 11px;
+      font-weight: 900;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .toc a {
+      display: block;
+      padding: 9px 10px;
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 800;
+      border: 1px solid transparent;
+    }
+
+    .toc a:hover {
+      background: var(--surface-strong);
+      border-color: var(--line);
+    }
+
+    .page {
+      min-width: 0;
+      padding: 24px;
+    }
+
+    .intro {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+      margin-bottom: 22px;
+    }
+
+    .eyebrow {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 900;
+      letter-spacing: 0.14em;
+    }
+
+    h1,
+    h2,
+    h3 {
+      letter-spacing: 0;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 26px;
+      margin-top: 4px;
+    }
+
+    h2 {
+      font-size: 21px;
+    }
+
+    h3 {
+      font-size: 15px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .summary-card {
+      min-height: 92px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-soft);
+      padding: 12px;
+    }
+
+    .summary-card strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .summary-card small {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .screen {
+      margin: 22px 0;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .screen-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfdff;
+    }
+
+    .screen-meta p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    .tag {
+      min-height: 24px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 9px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .tag.blue {
+      border-color: #bcd2ff;
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+
+    .tag.green {
+      border-color: #a7f3d0;
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .tag.amber {
+      border-color: #fed7aa;
+      background: var(--amber-soft);
+      color: var(--amber);
+    }
+
+    .tag.red {
+      border-color: #fecdd3;
+      background: var(--red-soft);
+      color: var(--red);
+    }
+
+    .mock {
+      background: var(--bg);
+      min-height: 620px;
+    }
+
+    .mock-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 64px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .mock-title {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .mock-title strong {
+      font-size: 19px;
+    }
+
+    .mock-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .context {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      align-items: center;
+      min-height: 42px;
+      padding: 8px 18px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfdff;
+      font-size: 13px;
+    }
+
+    .context span {
+      color: var(--muted);
+    }
+
+    .context strong {
+      color: var(--text);
+      margin-left: 4px;
+    }
+
+    .mock-body {
+      padding: 18px;
+    }
+
+    .mock-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(330px, 0.9fr);
+      gap: 14px;
+    }
+
+    .mock-grid.equal {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfdff;
+    }
+
+    .card-body {
+      padding: 16px;
+    }
+
+    .button {
+      min-height: 42px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 0 14px;
+      font-size: 14px;
+      font-weight: 900;
+      color: var(--text);
+    }
+
+    .button.primary {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #ffffff;
+      min-height: 54px;
+      font-size: 18px;
+      box-shadow: 0 10px 18px rgba(29, 78, 216, 0.18);
+    }
+
+    .button.success {
+      background: var(--green);
+      border-color: var(--green);
+      color: #ffffff;
+    }
+
+    .button.warning {
+      background: var(--amber-soft);
+      border-color: #fed7aa;
+      color: var(--amber);
+    }
+
+    .button.danger {
+      background: var(--red);
+      border-color: var(--red);
+      color: #ffffff;
+    }
+
+    .button.secondary {
+      background: var(--surface-soft);
+      color: var(--text);
+    }
+
+    .button.full {
+      width: 100%;
+    }
+
+    .wizard {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .wizard-step {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 10px;
+      min-height: 86px;
+    }
+
+    .wizard-step.active {
+      background: var(--blue-soft);
+      border-color: #bcd2ff;
+    }
+
+    .wizard-step.done {
+      background: var(--green-soft);
+      border-color: #a7f3d0;
+    }
+
+    .wizard-step.blocked {
+      background: var(--amber-soft);
+      border-color: #fed7aa;
+    }
+
+    .wizard-step .num {
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background: #e2e8f0;
+      color: var(--dark);
+      font-size: 12px;
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+
+    .wizard-step.active .num {
+      background: var(--blue);
+      color: #ffffff;
+    }
+
+    .wizard-step.done .num {
+      background: var(--green);
+      color: #ffffff;
+    }
+
+    .wizard-step strong {
+      display: block;
+      font-size: 13px;
+    }
+
+    .wizard-step small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .station-list,
+    .queue-list,
+    .timeline,
+    .stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .station-row,
+    .queue-row,
+    .flow-row,
+    .timeline-row {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 12px;
+    }
+
+    .station-row,
+    .queue-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .row-title {
+      font-weight: 900;
+      font-size: 15px;
+    }
+
+    .row-sub {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .kpi {
+      min-height: 124px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      text-align: center;
+      padding: 12px;
+    }
+
+    .kpi.blue {
+      background: var(--blue-soft);
+      border-color: #bcd2ff;
+    }
+
+    .kpi.green {
+      background: var(--green-soft);
+      border-color: #a7f3d0;
+    }
+
+    .kpi.red {
+      background: var(--red-soft);
+      border-color: #fecdd3;
+    }
+
+    .kpi.amber {
+      background: var(--amber-soft);
+      border-color: #fed7aa;
+    }
+
+    .kpi-label {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .kpi-value {
+      color: var(--text);
+      font-size: 44px;
+      line-height: 1;
+      font-weight: 950;
+    }
+
+    .kpi.blue .kpi-label,
+    .kpi.blue .kpi-value {
+      color: var(--blue);
+    }
+
+    .kpi.green .kpi-label,
+    .kpi.green .kpi-value {
+      color: var(--green);
+    }
+
+    .kpi.red .kpi-label,
+    .kpi.red .kpi-value {
+      color: var(--red);
+    }
+
+    .kpi.amber .kpi-label,
+    .kpi.amber .kpi-value {
+      color: var(--amber);
+    }
+
+    .time-row,
+    .form-grid,
+    .action-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .form-field {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-soft);
+      padding: 12px;
+      min-height: 82px;
+    }
+
+    .field-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .field-value {
+      margin-top: 8px;
+      font-size: 22px;
+      font-weight: 950;
+    }
+
+    .andon {
+      border-left: 6px solid var(--green);
+      border-radius: 8px;
+      background: var(--green-soft);
+      padding: 13px 14px;
+      color: var(--text);
+    }
+
+    .andon strong {
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .andon.amber {
+      border-left-color: var(--amber);
+      background: var(--amber-soft);
+    }
+
+    .andon.red {
+      border-left-color: var(--red);
+      background: var(--red-soft);
+    }
+
+    .andon.blue {
+      border-left-color: var(--blue);
+      background: var(--blue-soft);
+    }
+
+    .flow-row {
+      display: grid;
+      grid-template-columns: 32px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .flow-index {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: #e2e8f0;
+      font-weight: 950;
+    }
+
+    .flow-row.active {
+      background: var(--blue-soft);
+      border-color: #bcd2ff;
+    }
+
+    .flow-row.active .flow-index {
+      background: var(--blue);
+      color: #ffffff;
+    }
+
+    .flow-row.done {
+      background: var(--green-soft);
+      border-color: #a7f3d0;
+    }
+
+    .flow-row.done .flow-index {
+      background: var(--green);
+      color: #ffffff;
+    }
+
+    .flow-row.blocked {
+      background: var(--amber-soft);
+      border-color: #fed7aa;
+    }
+
+    .num-pad {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .num-pad .button {
+      min-height: 56px;
+      font-size: 20px;
+    }
+
+    .timeline-row {
+      display: grid;
+      grid-template-columns: 80px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .timeline-time {
+      font-weight: 950;
+      color: var(--text);
+    }
+
+    .timeline-text {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .matrix {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .mini {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-soft);
+      padding: 11px;
+      min-height: 84px;
+    }
+
+    .mini strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .mini small {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .modal-preview {
+      width: min(560px, 100%);
+      margin: 12px auto 0;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: var(--surface);
+      box-shadow: 0 22px 48px rgba(15, 23, 42, 0.18);
+      overflow: hidden;
+    }
+
+    .modal-head {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      background: #fbfdff;
+    }
+
+    .modal-body {
+      padding: 16px;
+    }
+
+    .support-note {
+      margin-top: 12px;
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .implementation-note {
+      margin-top: 22px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 18px;
+      color: var(--muted);
+    }
+
+    .implementation-note strong {
+      color: var(--text);
+    }
+
+    @media (max-width: 1180px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .toc {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .mock-grid,
+      .mock-grid.equal {
+        grid-template-columns: 1fr;
+      }
+
+      .summary-grid,
+      .wizard {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      .page {
+        padding: 12px;
+      }
+
+      .screen-meta,
+      .mock-topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .tags,
+      .mock-actions {
+        justify-content: flex-start;
+      }
+
+      .mock-body {
+        padding: 12px;
+      }
+
+      .kpis,
+      .time-row,
+      .form-grid,
+      .action-row,
+      .matrix,
+      .summary-grid,
+      .wizard {
+        grid-template-columns: 1fr;
+      }
+
+      .timeline-row,
+      .station-row,
+      .queue-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <nav class="toc" aria-label="Mockup navigation">
+      <div class="brand"><span>Flezi</span>BCG</div>
+      <p class="doc-note">Station Execution completed-flow mockup pack. Static visual reference only.</p>
+      <div class="toc-label">Flow Screens</div>
+      <a href="#flow-map">00 Flow Map</a>
+      <a href="#station-entry">01 Station Entry</a>
+      <a href="#session-open">02 Open Session</a>
+      <a href="#operator-id">03 Operator Identification</a>
+      <a href="#equipment-bind">04 Equipment Binding</a>
+      <a href="#queue">05 Station Queue</a>
+      <a href="#active">06 Active Cockpit</a>
+      <a href="#reporting">07 Report Quantity</a>
+      <a href="#downtime">08 Pause / Downtime</a>
+      <a href="#quality-entry">09 Quality Measurement</a>
+      <a href="#quality-hold">10 Quality Hold / QA</a>
+      <a href="#complete">11 Complete Operation</a>
+      <a href="#supervisor">12 Supervisor Timeline</a>
+      <a href="#end-session">13 End Session</a>
+      <div class="toc-label">Agent Notes</div>
+      <a href="#implementation-notes">Implementation Notes</a>
+    </nav>
+
+    <main class="page">
+      <section class="intro" id="flow-map">
+        <div class="eyebrow">MES Operator Cockpit</div>
+        <h1>Station Execution Completed Flow</h1>
+        <p class="doc-note">This screen pack shows the full pilot path from station entry to session end. It is intentionally discrete-first while preserving generic execution language for future batch/process expansion.</p>
+        <div class="summary-grid">
+          <div class="summary-card"><strong>Backend truth</strong><small>Allowed actions, holds, session ownership, and status are displayed, not invented client-side.</small></div>
+          <div class="summary-card"><strong>One primary action</strong><small>Each state has one main operator action in the visible frame.</small></div>
+          <div class="summary-card"><strong>No debug shell</strong><small>STX labels and workflow diagnostics stay out of normal execution mode.</small></div>
+          <div class="summary-card"><strong>Quality gates</strong><small>Measurement and hold states block completion when backend requires it.</small></div>
+          <div class="summary-card"><strong>Supervisor visibility</strong><small>Timeline and current state are clear without taking over operator flow.</small></div>
+        </div>
+      </section>
+
+      <section class="screen" id="station-entry">
+        <div class="screen-meta">
+          <div>
+            <h2>01 Station Entry</h2>
+            <p>Operator chooses workstation before any session-owned execution begins.</p>
+          </div>
+          <div class="tags"><span class="tag blue">Mode A</span><span class="tag">No operation selected</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Core Operations</span><strong>Station Execution</strong></div>
+            <div class="mock-actions"><span class="tag green">Connected</span><span class="tag">Role OPR</span></div>
+          </div>
+          <div class="mock-body">
+            <div class="wizard">
+              <div class="wizard-step active"><div class="num">1</div><strong>Station</strong><small>Select station context</small></div>
+              <div class="wizard-step"><div class="num">2</div><strong>Session</strong><small>Open operator session</small></div>
+              <div class="wizard-step"><div class="num">3</div><strong>Operator</strong><small>Confirm identity</small></div>
+              <div class="wizard-step"><div class="num">4</div><strong>Equipment</strong><small>Bind if required</small></div>
+              <div class="wizard-step"><div class="num">5</div><strong>Queue</strong><small>Select operation</small></div>
+            </div>
+            <div class="mock-grid">
+              <section class="card">
+                <div class="card-head"><h3>Available Stations</h3><span class="tag blue">Select one</span></div>
+                <div class="card-body station-list">
+                  <div class="station-row"><div><div class="row-title">STATION_01</div><div class="row-sub">S3 Assembly Inspect - 4 ready operations</div></div><button class="button primary">Use Station</button></div>
+                  <div class="station-row"><div><div class="row-title">STATION_02</div><div class="row-sub">Torque Cell - 1 blocked operation</div></div><button class="button secondary">View</button></div>
+                  <div class="station-row"><div><div class="row-title">STATION_03</div><div class="row-sub">Packaging - no active queue</div></div><button class="button secondary">View</button></div>
+                </div>
+              </section>
+              <aside class="card">
+                <div class="card-head"><h3>Entry Readiness</h3><span class="tag amber">Session missing</span></div>
+                <div class="card-body stack">
+                  <div class="andon blue"><strong>Next step</strong>Choose a station, then open a station session.</div>
+                  <div class="matrix">
+                    <div class="mini"><strong>Station</strong><small>Not selected</small></div>
+                    <div class="mini"><strong>Session</strong><small>Not open</small></div>
+                    <div class="mini"><strong>Operator</strong><small>Pending</small></div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="session-open">
+        <div class="screen-meta">
+          <div>
+            <h2>02 Open Station Session</h2>
+            <p>Session becomes the runtime ownership context for all operator commands.</p>
+          </div>
+          <div class="tags"><span class="tag blue">Session-owned execution</span><span class="tag amber">Backend required</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Station Session</span><strong>STATION_01</strong></div>
+            <div class="mock-actions"><button class="button secondary">Change Station</button><button class="button">Refresh</button></div>
+          </div>
+          <div class="mock-body">
+            <div class="mock-grid equal">
+              <section class="card">
+                <div class="card-head"><h3>Session Control</h3><span class="tag amber">No active session</span></div>
+                <div class="card-body stack">
+                  <div class="andon blue"><strong>Open a session</strong>This session will own station commands until closed or revoked.</div>
+                  <div class="form-grid">
+                    <div class="form-field"><div class="field-label">Station</div><div class="field-value">STATION_01</div></div>
+                    <div class="form-field"><div class="field-label">Target owner</div><div class="field-value">Station</div></div>
+                  </div>
+                  <button class="button primary">Open Session</button>
+                </div>
+              </section>
+              <aside class="card">
+                <div class="card-head"><h3>Flow State</h3><span class="tag">Before execution</span></div>
+                <div class="card-body stack">
+                  <div class="flow-row done"><div class="flow-index">1</div><div><strong>Station selected</strong><div class="row-sub">STATION_01</div></div><span class="tag green">Done</span></div>
+                  <div class="flow-row active"><div class="flow-index">2</div><div><strong>Session open</strong><div class="row-sub">Required before queue ownership</div></div><span class="tag blue">Now</span></div>
+                  <div class="flow-row"><div class="flow-index">3</div><div><strong>Operator identify</strong><div class="row-sub">Next</div></div><span class="tag">Pending</span></div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="operator-id">
+        <div class="screen-meta">
+          <div>
+            <h2>03 Operator Identification</h2>
+            <p>Operator identity is confirmed before execution commands are shown.</p>
+          </div>
+          <div class="tags"><span class="tag green">Session open</span><span class="tag blue">Operator step</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Operator Identification</span><strong>Identify operator</strong></div>
+            <div class="mock-actions"><span class="tag green">Session open</span></div>
+          </div>
+          <div class="context"><span>Station <strong>STATION_01</strong></span><span>Session <strong>sess-0001</strong></span></div>
+          <div class="mock-body">
+            <div class="mock-grid">
+              <section class="card">
+                <div class="card-head"><h3>Scan Or Enter ID</h3><span class="tag blue">Focused input</span></div>
+                <div class="card-body stack">
+                  <div class="form-field"><div class="field-label">Operator ID</div><div class="field-value">opr-001</div></div>
+                  <div class="num-pad">
+                    <button class="button">1</button><button class="button">2</button><button class="button">3</button>
+                    <button class="button">4</button><button class="button">5</button><button class="button">6</button>
+                    <button class="button">7</button><button class="button">8</button><button class="button">9</button>
+                    <button class="button secondary">Clear</button><button class="button">0</button><button class="button success">Confirm</button>
+                  </div>
+                </div>
+              </section>
+              <aside class="card">
+                <div class="card-head"><h3>Identity Result</h3><span class="tag green">Verified</span></div>
+                <div class="card-body stack">
+                  <div class="andon"><strong>opr-001 identified</strong>Execution commands will include this operator context.</div>
+                  <button class="button primary">Continue To Equipment</button>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="equipment-bind">
+        <div class="screen-meta">
+          <div>
+            <h2>04 Equipment Binding</h2>
+            <p>Equipment is bound when required by station, route, or operation context.</p>
+          </div>
+          <div class="tags"><span class="tag green">Operator identified</span><span class="tag">Optional when backend says optional</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Equipment Context</span><strong>Bind equipment</strong></div>
+            <div class="mock-actions"><button class="button secondary">Skip optional</button></div>
+          </div>
+          <div class="context"><span>Station <strong>STATION_01</strong></span><span>Operator <strong>opr-001</strong></span></div>
+          <div class="mock-body">
+            <div class="mock-grid">
+              <section class="card">
+                <div class="card-head"><h3>Available Equipment</h3><span class="tag blue">Backend list</span></div>
+                <div class="card-body station-list">
+                  <div class="station-row"><div><div class="row-title">MX-ASM-03</div><div class="row-sub">Assembly fixture - calibrated - available</div></div><button class="button primary">Bind</button></div>
+                  <div class="station-row"><div><div class="row-title">MX-ASM-04</div><div class="row-sub">Assembly fixture - maintenance due soon</div></div><button class="button secondary">View</button></div>
+                </div>
+              </section>
+              <aside class="card">
+                <div class="card-head"><h3>Binding Result</h3><span class="tag green">Ready</span></div>
+                <div class="card-body stack">
+                  <div class="andon"><strong>MX-ASM-03 bound</strong>Equipment context is attached to the active session.</div>
+                  <button class="button primary">Go To Station Queue</button>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="queue">
+        <div class="screen-meta">
+          <div>
+            <h2>05 Station Queue</h2>
+            <p>Operator selects a backend-owned operation from the station queue.</p>
+          </div>
+          <div class="tags"><span class="tag green">Session owned</span><span class="tag blue">Queue-first</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Station Queue</span><strong>STATION_01</strong></div>
+            <div class="mock-actions"><button class="button">Ready</button><button class="button">Mine</button><button class="button">Blocked</button></div>
+          </div>
+          <div class="context"><span>Session <strong>sess-0001</strong></span><span>Operator <strong>opr-001</strong></span><span>Equipment <strong>MX-ASM-03</strong></span></div>
+          <div class="mock-body">
+            <div class="queue-list">
+              <div class="queue-row"><div><div class="row-title">S3 Assembly Inspect</div><div class="row-sub">WO PH6-DEMO-S3-WO - target 120 - planned 08:00</div></div><button class="button primary">Start Cockpit</button></div>
+              <div class="queue-row"><div><div class="row-title">Torque Verification</div><div class="row-sub">WO PH6-DEMO-S4-WO - waiting for previous operation</div></div><span class="tag amber">Not ready</span></div>
+              <div class="queue-row"><div><div class="row-title">Final Packaging</div><div class="row-sub">WO PH6-DEMO-PACK-WO - owned by opr-002</div></div><span class="tag">Other session</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="active">
+        <div class="screen-meta">
+          <div>
+            <h2>06 Active Operation Cockpit</h2>
+            <p>Normal execution mode. No debug shell, no STX labels, no generic partial banner.</p>
+          </div>
+          <div class="tags"><span class="tag blue">Mode B</span><span class="tag green">Connected path</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Station Execution</span><strong>S3 Assembly Inspect</strong></div>
+            <div class="mock-actions"><span class="tag green">My active session</span><button class="button">Back to Selection</button><button class="button">Queue</button></div>
+          </div>
+          <div class="context"><span>Station <strong>STATION_01</strong></span><span>Session <strong>Open</strong></span><span>Operator <strong>opr-001</strong></span><span>Equipment <strong>MX-ASM-03</strong></span></div>
+          <div class="mock-body">
+            <div class="mock-grid">
+              <section class="card">
+                <div class="card-head"><h3>Active Work</h3><span class="tag blue">In progress</span></div>
+                <div class="card-body stack">
+                  <div class="form-grid">
+                    <div class="form-field"><div class="field-label">WO</div><div class="field-value">PH6-DEMO-S3-WO</div></div>
+                    <div class="form-field"><div class="field-label">PO</div><div class="field-value">PH6-DEMO-S3-PO</div></div>
+                  </div>
+                  <div class="kpis">
+                    <div class="kpi"><div class="kpi-label">Target</div><div class="kpi-value">120</div></div>
+                    <div class="kpi blue"><div class="kpi-label">Remaining</div><div class="kpi-value">25</div></div>
+                    <div class="kpi green"><div class="kpi-label">Good</div><div class="kpi-value">92</div></div>
+                    <div class="kpi red"><div class="kpi-label">Scrap</div><div class="kpi-value">3</div></div>
+                  </div>
+                </div>
+              </section>
+              <aside class="card">
+                <div class="card-head"><h3>Next Action</h3><span class="tag green">Report first</span></div>
+                <div class="card-body stack">
+                  <div class="andon blue"><strong>Report quantity</strong>Completion remains hidden while remaining quantity is greater than zero.</div>
+                  <button class="button primary">Report Qty</button>
+                  <div class="action-row"><button class="button warning">Pause</button><button class="button secondary">Start Downtime</button></div>
+                  <div class="support-note">Support details are collapsed below the cockpit, not shown as the default flow.</div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="reporting">
+        <div class="screen-meta">
+          <div>
+            <h2>07 Report Quantity</h2>
+            <p>Operator reports good/scrap deltas; backend updates operation truth and allowed actions.</p>
+          </div>
+          <div class="tags"><span class="tag green">Primary action</span><span class="tag">Delta entry</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Production Reporting</span><strong>Report good and scrap</strong></div>
+            <div class="mock-actions"><span class="tag blue">Remaining 25</span></div>
+          </div>
+          <div class="mock-body">
+            <div class="mock-grid">
+              <section class="card">
+                <div class="card-head"><h3>Quantity Delta</h3><span class="tag blue">Backend command</span></div>
+                <div class="card-body stack">
+                  <div class="form-grid">
+                    <div class="form-field"><div class="field-label">Good delta</div><div class="field-value">+10</div></div>
+                    <div class="form-field"><div class="field-label">Scrap delta</div><div class="field-value">+1</div></div>
+                  </div>
+                  <div class="num-pad">
+                    <button class="button">1</button><button class="button">5</button><button class="button">10</button>
+                    <button class="button secondary">Reset</button><button class="button warning">Scrap Reason</button><button class="button success">Confirm</button>
+                  </div>
+                  <button class="button primary">Submit Quantity Report</button>
+                </div>
+              </section>
+              <aside class="card">
+                <div class="card-head"><h3>Projected Result</h3><span class="tag">After submit</span></div>
+                <div class="card-body">
+                  <div class="kpis">
+                    <div class="kpi green"><div class="kpi-label">Good</div><div class="kpi-value">102</div></div>
+                    <div class="kpi red"><div class="kpi-label">Scrap</div><div class="kpi-value">4</div></div>
+                    <div class="kpi blue"><div class="kpi-label">Remaining</div><div class="kpi-value">14</div></div>
+                    <div class="kpi"><div class="kpi-label">Completed</div><div class="kpi-value">106</div></div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="downtime">
+        <div class="screen-meta">
+          <div>
+            <h2>08 Pause And Downtime</h2>
+            <p>Interrupted states make recovery action primary and disable reporting until resolved.</p>
+          </div>
+          <div class="tags"><span class="tag amber">Interrupted</span><span class="tag">Recovery first</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Station Execution</span><strong>S3 Assembly Inspect paused</strong></div>
+            <div class="mock-actions"><span class="tag amber">Downtime open</span></div>
+          </div>
+          <div class="context"><span>Station <strong>STATION_01</strong></span><span>Reason <strong>Tool change</strong></span><span>Elapsed downtime <strong>00:08:42</strong></span></div>
+          <div class="mock-body">
+            <div class="mock-grid">
+              <section class="card">
+                <div class="card-head"><h3>Recovery</h3><span class="tag amber">Reporting disabled</span></div>
+                <div class="card-body stack">
+                  <div class="andon amber"><strong>End downtime to continue</strong>Production reporting is disabled until the open downtime event is ended.</div>
+                  <button class="button primary">End Downtime</button>
+                  <div class="action-row"><button class="button secondary">Add Comment</button><button class="button secondary">Call Supervisor</button></div>
+                </div>
+              </section>
+              <aside class="card">
+                <div class="card-head"><h3>Start Downtime Dialog</h3><span class="tag">Modal state</span></div>
+                <div class="modal-preview">
+                  <div class="modal-head"><strong>Start Downtime</strong><span class="tag amber">Reason required</span></div>
+                  <div class="modal-body stack">
+                    <div class="form-field"><div class="field-label">Reason code</div><div class="field-value">TOOL_CHANGE</div></div>
+                    <div class="form-field"><div class="field-label">Comment</div><div class="field-value">Fixture adjustment</div></div>
+                    <button class="button warning full">Start Downtime</button>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="quality-entry">
+        <div class="screen-meta">
+          <div>
+            <h2>09 Quality Measurement Entry</h2>
+            <p>Required measurement is collected before completion when backend marks QC as required.</p>
+          </div>
+          <div class="tags"><span class="tag blue">QC required</span><span class="tag">Backend evaluated</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Quality Measurement</span><strong>S3 Assembly Inspect</strong></div>
+            <div class="mock-actions"><span class="tag blue">Measurement due</span></div>
+          </div>
+          <div class="mock-body">
+            <div class="mock-grid">
+              <section class="card">
+                <div class="card-head"><h3>Checkpoint Measurements</h3><span class="tag">3 required</span></div>
+                <div class="card-body stack">
+                  <div class="form-grid">
+                    <div class="form-field"><div class="field-label">Length mm</div><div class="field-value">10.04</div></div>
+                    <div class="form-field"><div class="field-label">Torque nm</div><div class="field-value">4.8</div></div>
+                    <div class="form-field"><div class="field-label">Visual result</div><div class="field-value">Pass</div></div>
+                    <div class="form-field"><div class="field-label">Sample count</div><div class="field-value">5</div></div>
+                  </div>
+                  <button class="button primary">Submit Measurement</button>
+                </div>
+              </section>
+              <aside class="card">
+                <div class="card-head"><h3>Backend Evaluation</h3><span class="tag green">Pass preview</span></div>
+                <div class="card-body stack">
+                  <div class="andon"><strong>All values in spec</strong>No quality hold will be opened after submit.</div>
+                  <div class="matrix">
+                    <div class="mini"><strong>Length</strong><small>9.95 to 10.05</small></div>
+                    <div class="mini"><strong>Torque</strong><small>4.5 to 5.2</small></div>
+                    <div class="mini"><strong>Visual</strong><small>Pass required</small></div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="quality-hold">
+        <div class="screen-meta">
+          <div>
+            <h2>10 Quality Hold And QA Resolution</h2>
+            <p>Failed measurement opens a hold, blocks completion, and routes resolution to QA.</p>
+          </div>
+          <div class="tags"><span class="tag red">Completion blocked</span><span class="tag amber">QA action</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Quality Hold</span><strong>Hold QH-1042</strong></div>
+            <div class="mock-actions"><span class="tag red">Blocked</span><span class="tag">Role QAL</span></div>
+          </div>
+          <div class="mock-body">
+            <div class="mock-grid">
+              <section class="card">
+                <div class="card-head"><h3>Operator View</h3><span class="tag red">Complete disabled</span></div>
+                <div class="card-body stack">
+                  <div class="andon red"><strong>Quality hold is open</strong>Completion is blocked until QA resolves hold QH-1042.</div>
+                  <div class="form-grid">
+                    <div class="form-field"><div class="field-label">Failed checkpoint</div><div class="field-value">Torque</div></div>
+                    <div class="form-field"><div class="field-label">Measured value</div><div class="field-value">5.8 nm</div></div>
+                  </div>
+                  <button class="button secondary full">Wait For QA Resolution</button>
+                </div>
+              </section>
+              <aside class="card">
+                <div class="card-head"><h3>QA Resolution Panel</h3><span class="tag amber">QA owned</span></div>
+                <div class="card-body stack">
+                  <div class="form-field"><div class="field-label">Disposition</div><div class="field-value">Rework accepted</div></div>
+                  <div class="form-field"><div class="field-label">Nonconformance</div><div class="field-value">NC-2207 linked</div></div>
+                  <div class="action-row"><button class="button success">Release Hold</button><button class="button danger">Reject</button></div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="complete">
+        <div class="screen-meta">
+          <div>
+            <h2>11 Complete And Close Operation</h2>
+            <p>Completion becomes primary only after remaining quantity is zero and no hold blocks it.</p>
+          </div>
+          <div class="tags"><span class="tag green">Ready to complete</span><span class="tag">Supervisor close optional</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Station Execution</span><strong>S3 Assembly Inspect ready</strong></div>
+            <div class="mock-actions"><span class="tag green">No holds</span></div>
+          </div>
+          <div class="context"><span>Remaining <strong>0</strong></span><span>Good <strong>116</strong></span><span>Scrap <strong>4</strong></span></div>
+          <div class="mock-body">
+            <div class="mock-grid">
+              <section class="card">
+                <div class="card-head"><h3>Completion Summary</h3><span class="tag green">Ready</span></div>
+                <div class="card-body stack">
+                  <div class="kpis">
+                    <div class="kpi green"><div class="kpi-label">Good</div><div class="kpi-value">116</div></div>
+                    <div class="kpi red"><div class="kpi-label">Scrap</div><div class="kpi-value">4</div></div>
+                    <div class="kpi blue"><div class="kpi-label">Remaining</div><div class="kpi-value">0</div></div>
+                    <div class="kpi"><div class="kpi-label">Target</div><div class="kpi-value">120</div></div>
+                  </div>
+                  <button class="button primary">Complete Operation</button>
+                </div>
+              </section>
+              <aside class="card">
+                <div class="card-head"><h3>Closure State</h3><span class="tag">Record open</span></div>
+                <div class="card-body stack">
+                  <div class="andon blue"><strong>Completed, not closed</strong>Supervisor may close or reopen based on site policy.</div>
+                  <div class="action-row"><button class="button success">Close Operation</button><button class="button secondary">Return To Queue</button></div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="supervisor">
+        <div class="screen-meta">
+          <div>
+            <h2>12 Supervisor Timeline</h2>
+            <p>Supervisor sees station status, timeline, interruptions, quality gate, and closure state.</p>
+          </div>
+          <div class="tags"><span class="tag">Role SUP</span><span class="tag green">Live status</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Supervisor Operations</span><strong>STATION_01 live timeline</strong></div>
+            <div class="mock-actions"><button class="button">Filter</button><button class="button">Export</button></div>
+          </div>
+          <div class="mock-body">
+            <div class="mock-grid">
+              <section class="card">
+                <div class="card-head"><h3>Current State</h3><span class="tag green">Completed</span></div>
+                <div class="card-body">
+                  <div class="matrix">
+                    <div class="mini"><strong>Operation</strong><small>S3 Assembly Inspect</small></div>
+                    <div class="mini"><strong>Operator</strong><small>opr-001</small></div>
+                    <div class="mini"><strong>Session</strong><small>sess-0001</small></div>
+                    <div class="mini"><strong>Downtime</strong><small>8m 42s</small></div>
+                    <div class="mini"><strong>Quality</strong><small>Released</small></div>
+                    <div class="mini"><strong>Closure</strong><small>Open</small></div>
+                  </div>
+                </div>
+              </section>
+              <aside class="card">
+                <div class="card-head"><h3>Timeline</h3><span class="tag blue">Auditable</span></div>
+                <div class="card-body timeline">
+                  <div class="timeline-row"><div class="timeline-time">08:12</div><div class="timeline-text">Operation started by opr-001</div><span class="tag green">Start</span></div>
+                  <div class="timeline-row"><div class="timeline-time">08:24</div><div class="timeline-text">Reported +40 good / +1 scrap</div><span class="tag blue">Qty</span></div>
+                  <div class="timeline-row"><div class="timeline-time">08:41</div><div class="timeline-text">Downtime started TOOL_CHANGE</div><span class="tag amber">Down</span></div>
+                  <div class="timeline-row"><div class="timeline-time">08:50</div><div class="timeline-text">Downtime ended</div><span class="tag green">Up</span></div>
+                  <div class="timeline-row"><div class="timeline-time">09:06</div><div class="timeline-text">Quality hold released by qal-001</div><span class="tag green">QA</span></div>
+                  <div class="timeline-row"><div class="timeline-time">09:18</div><div class="timeline-text">Operation completed</div><span class="tag green">Done</span></div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="end-session">
+        <div class="screen-meta">
+          <div>
+            <h2>13 End Session</h2>
+            <p>Operator closes the station session after operation completion or handoff.</p>
+          </div>
+          <div class="tags"><span class="tag green">Operation complete</span><span class="tag">Session control</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Station Session</span><strong>End session</strong></div>
+            <div class="mock-actions"><span class="tag green">No active operation lock</span></div>
+          </div>
+          <div class="mock-body">
+            <div class="mock-grid equal">
+              <section class="card">
+                <div class="card-head"><h3>Session Summary</h3><span class="tag">sess-0001</span></div>
+                <div class="card-body stack">
+                  <div class="matrix">
+                    <div class="mini"><strong>Opened</strong><small>08:01</small></div>
+                    <div class="mini"><strong>Operator</strong><small>opr-001</small></div>
+                    <div class="mini"><strong>Equipment</strong><small>MX-ASM-03</small></div>
+                    <div class="mini"><strong>Operations</strong><small>1 completed</small></div>
+                    <div class="mini"><strong>Reports</strong><small>4 quantity events</small></div>
+                    <div class="mini"><strong>Downtime</strong><small>1 event</small></div>
+                  </div>
+                  <button class="button primary">Close Session</button>
+                </div>
+              </section>
+              <aside class="card">
+                <div class="card-head"><h3>After Close</h3><span class="tag blue">Return path</span></div>
+                <div class="card-body stack">
+                  <div class="andon"><strong>Session closed</strong>Operator returns to station selection or opens a new session for the next job.</div>
+                  <div class="action-row"><button class="button secondary">Back To Station Entry</button><button class="button success">Open New Session</button></div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="implementation-note" id="implementation-notes">
+        <h2>Implementation Notes For Coding Agent</h2>
+        <p><strong>Scope intent:</strong> use this as a visual direction pack, not production code. Translate into existing React/Tailwind components and backend-driven state.</p>
+        <p><strong>Hard requirements:</strong> backend-derived allowed actions, one primary action per state, no STX/debug shell in Mode B, no generic partial banner when screenStatus says connected, screenshots with negative assertions for removed clutter.</p>
+        <p><strong>Suggested slices:</strong> first implement Mode B cockpit integration, then station setup wizard, then quality/hold states, then supervisor timeline. Keep each slice independently screenshot-verified.</p>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
