@@ -13,6 +13,8 @@ export interface AllowedActionZoneProps {
   canResumeExecution: boolean;
   canEndDowntimeAction: boolean;
   canDo: (action: string) => boolean;
+  /** Remaining quantity: drives action hierarchy. When > 0, Report is primary; Complete is secondary. */
+  remainingQty?: number;
   onStartOperation: () => void;
   onPauseOperation: () => void;
   onOpenDowntimeModal: () => void;
@@ -32,6 +34,7 @@ export function AllowedActionZone({
   canResumeExecution,
   canEndDowntimeAction,
   canDo,
+  remainingQty,
   onStartOperation,
   onPauseOperation,
   onOpenDowntimeModal,
@@ -40,6 +43,10 @@ export function AllowedActionZone({
   onEndDowntime,
 }: AllowedActionZoneProps) {
   const { t } = useI18n();
+
+  // Action hierarchy: when IN_PROGRESS with remaining qty, Report is primary; Complete is secondary.
+  // Complete is only shown as a secondary outline when there's still work to do.
+  const hasRemainingWork = remainingQty != null && remainingQty > 0;
 
   return (
     <section className="shrink-0 flex flex-col gap-3 sm:gap-4 pb-1">
@@ -71,7 +78,8 @@ export function AllowedActionZone({
               {t("station.action.startDowntime")}
             </button>
           </div>
-          {canCompleteExecution && (
+          {/* Complete is secondary/outline when remaining work exists. Only show when it's truly the next step (no reporting needed). */}
+          {canCompleteExecution && !hasRemainingWork && (
             <button
               onClick={onCompleteOperation}
               disabled={actionLoading || operation.closure_status === "CLOSED" || !canCompleteExecution}

@@ -1185,6 +1185,7 @@ export function StationExecution() {
                       canResumeExecution={canResumeExecution}
                       canEndDowntimeAction={canEndDowntimeAction}
                       canDo={canDo}
+                      remainingQty={Math.max(0, (operation?.quantity ?? 0) - (operation?.completed_qty ?? 0))}
                       onStartOperation={() => void startOperation()}
                       onPauseOperation={() => void pauseOperation()}
                       onOpenDowntimeModal={() => setDowntimeModalOpen(true)}
