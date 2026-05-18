@@ -2,7 +2,7 @@ import { useLocation } from "react-router";
 import { MockWarningBanner } from "./MockWarningBanner";
 import { ScreenStatusBadge } from "./ScreenStatusBadge";
 import {
-  type ScreenPhase,
+  type ScreenStatusEntry,
   getScreenStatusMatchByRoute,
   isFutureLikeStatus,
   isMockLikeStatus,
@@ -13,10 +13,10 @@ const BANNER_SUPPRESSED_SCREEN_IDS = new Set<string>([
   "stationExecution",
 ]);
 
-const UNKNOWN_STATUS = {
+const UNKNOWN_STATUS: ScreenStatusEntry = {
   routePattern: "",
-  phase: "UNKNOWN" as ScreenPhase,
-  dataSource: "NONE" as const,
+  phase: "UNKNOWN",
+  dataSource: "NONE",
 };
 
 export function RouteStatusBanner() {

@@ -6,7 +6,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import { Cpu, MonitorCheck, Activity, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { ScreenStatusBadge } from "@/app/components";
-import { useI18n } from "@/app/i18n";
+import { useI18n, type I18nSemanticKey } from "@/app/i18n";
 import { stationApi } from "@/app/api/stationApi";
 import type { StationSessionItem } from "@/app/api/stationApi";
 import {
@@ -28,7 +28,7 @@ export function EquipmentBinding() {
   const [binding, setBinding] = useState(false);
   const [commandError, setCommandError] = useState<StationCommandErrorMessage | null>(null);
 
-  const presentBindError = (error: unknown, fallbackKey: string) => {
+  const presentBindError = (error: unknown, fallbackKey: I18nSemanticKey) => {
     const normalized = normalizeStationCommandError(error);
     setCommandError(normalized);
 

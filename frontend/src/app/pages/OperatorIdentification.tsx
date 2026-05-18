@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { BackendRequiredNotice, MockWarningBanner, ScreenStatusBadge } from "@/app/components";
 import { stationApi, type StationSessionItem } from "@/app/api";
 import { useAuth } from "@/app/auth";
-import { useI18n } from "@/app/i18n";
+import { useI18n, type I18nSemanticKey } from "@/app/i18n";
 import {
   normalizeStationCommandError,
   type StationCommandErrorMessage,
@@ -32,7 +32,7 @@ export function OperatorIdentification() {
   const [identifyStatus, setIdentifyStatus] = useState<IdentifyStatus>("pending");
   const [commandError, setCommandError] = useState<StationCommandErrorMessage | null>(null);
 
-  const presentIdentifyError = (error: unknown, fallbackKey: string) => {
+  const presentIdentifyError = (error: unknown, fallbackKey: I18nSemanticKey) => {
     const normalized = normalizeStationCommandError(error);
     setCommandError(normalized);
 

@@ -46,6 +46,7 @@ export type {
 export { productApi } from "./productApi";
 export type {
   BomCreateRequest,
+  BomItemFromAPI,
   BomItemCreateRequest,
   BomItemUpdateRequest,
   BomUpdateRequest,
