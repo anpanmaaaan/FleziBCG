@@ -1,68 +1,98 @@
-# Agent Report — FE-SE-COCKPIT-CORRECTION
+﻿# Agent Report -- FE-SE-COCKPIT-CORRECTION-V2
 
 **Date:** 2026-05-18
 **Agent:** GitHub Copilot (FleziBCG Frontend agent)
-**Task:** Correct failed Station Execution cockpit pass — Mode B was still rendering `StationWorkflowShell` instead of `StationExecutionCockpit`
+**Task:** Correct Station Execution cockpit slice -- delete temp script, assert support-details disclosure required, update report to accurately list all changed/untracked files and Hard Mode status
 
 ---
 
 ## Auto-Route
 
-- Task type: Frontend correction
+- Task type: Frontend correction (follow-up)
 - Domain: Frontend
 - Delegating to: FleziBCG Frontend
-- Reason: UI structure fix ? replace wrong layout component in Mode B, fix screenshot harness exit behavior
+- Hard Mode kept from parent slice: yes
+- Coverage class: frontend
 
 ---
 
-## Coverage Class
+## Hard Mode MOM
 
-`frontend` ? rendered UI structure, component wiring, and screenshot QA harness.
-Not E2E, not API/RBAC, not execution state machine changes.
+Hard Mode kept from parent slice: **yes**
 
-## Hard Mode kept from parent slice: N/A
-
-No execution state machine, authorization, quality, or governed DB changes.
+This is a follow-up correction to a Station Execution cockpit slice. The parent
+slice touched execution-cockpit integration (Mode B rendering, session ownership
+context). Follow-up fixes on the same slice carry Hard Mode forward per governance
+rules. No new execution state machine, authorization, quality, or DB changes are
+introduced. Hard Mode is carried as process discipline.
 
 ---
 
-## Prior Report Correction
+## Prior Report Corrections (v1 Report Errors Fixed Here)
 
-The previous agent report claimed Mode B cockpit was integrated and screenshot QA passed. **This was false.**
+The v1 report (FE-SE-COCKPIT-CORRECTION) had four omissions:
 
-At the time the prior report was written:
-- Mode B was still wrapped in `StationWorkflowShell`, which renders STX-* stage labels and is designed for Mode A (queue selection).
-- The screenshot harness assertions used `process.exitCode = 1` instead of `throw new Error(...)`, meaning assertion failures did NOT propagate as non-zero exit ? the script always returned exit 0 regardless of assertion outcome.
-- Screenshots from that run showed the WorkflowShell structure, not `StationExecutionCockpit`.
+1. **`StationExecutionCockpit.tsx` was listed as "intentionally not changed"** -- it is a new
+   untracked file (`??` in git status pre-commit) and must be included in the commit.
 
-**The prior PASS claim was invalid. This report corrects it.**
+2. **`en.ts` / `ja.ts` omitted from modified files list** -- they are modified, containing
+   a new key `station.cockpit.supportDetails` added by StationExecutionCockpit.
+
+3. **Hard Mode kept from parent slice was listed as N/A** -- this is a follow-up
+   Station Execution slice. Hard Mode carries forward.
+
+4. **Support-details assertion was insufficient** -- the prior form passed if the
+   disclosure button was absent entirely. The assertion was strengthened (see below).
 
 ---
 
 ## Task / Slice
 
-**Goal:** Ensure Mode B of `StationExecution.tsx` renders `StationExecutionCockpit` (not `StationWorkflowShell`), with `StationEntryHandoff` in the `supportDetails` prop, `MockWarningBanner` removed, no STX-* labels, and screenshot assertions that fail the process on structural regression.
-
-**Slice boundary:**
-- `frontend/src/app/pages/StationExecution.tsx` ? Mode B block only
-- `frontend/src/app/components/station-execution/stationCommandErrorMessages.ts` ? TypeScript type fix
-- `frontend/scripts/station-execution-responsive-screenshots.mjs` ? harness assertion exit behavior
+**Goal:**
+1. Delete `frontend/scripts/_fix-mode-b.mjs` (temp CRLF workaround).
+2. Strengthen screenshot harness support-details assertion: disclosure button must
+   exist inside `[data-testid='station-execution-cockpit']` AND have `aria-expanded="false"`.
+3. Update agent report: correct Hard Mode, list all files, honest verification.
 
 ---
 
-## Files Changed
+## Files Changed in This Slice
 
 | File | Change |
 |------|--------|
-| `frontend/src/app/pages/StationExecution.tsx` | Mode B: replaced `StationWorkflowShell` with `StationExecutionCockpit`; moved `StationEntryHandoff` to `supportDetails` prop; removed `MockWarningBanner`; removed `cockpitStage` constant; removed inner `flex-1 min-h-0` wrapper div (cockpit owns its scroll) |
-| `frontend/src/app/components/station-execution/stationCommandErrorMessages.ts` | Changed `titleKey`, `messageKey`, `recoveryKey` fields from `string` to `I18nSemanticKey`; added import |
-| `frontend/scripts/station-execution-responsive-screenshots.mjs` | Changed all 5 Mode B assertions from `process.exitCode = 1` to `throw new Error(...)` so failures cause non-zero exit |
-| `frontend/scripts/_fix-mode-b.mjs` | Temporary CRLF-bypass script (can be deleted) |
+| `frontend/scripts/station-execution-responsive-screenshots.mjs` | Assertion 3 (support-details): strengthened to require button present AND `aria-expanded="false"` -- `throw` if button missing; `throw` if `aria-expanded != "false"` |
+| `docs/agent-reports/latest-agent-report.md` | Overwritten (this report) |
 
-**Files intentionally not changed:**
-- `StationWorkflowShell.tsx` ? still used correctly in Mode A
-- `StationExecutionCockpit.tsx` ? no structural changes needed
-- Backend files ? no backend changes
+## Files Deleted in This Slice
+
+| File | Reason |
+|------|--------|
+| `frontend/scripts/_fix-mode-b.mjs` | Temporary CRLF-bypass script; no longer needed |
+
+---
+
+## Files Changed in Parent Slice (Committed in HEAD~1: 21b13927)
+
+These files were committed by the user in the parent slice commit. Listed here for
+complete traceability:
+
+| File | Status in Parent Commit | Key Change |
+|------|------------------------|------------|
+| `frontend/src/app/pages/StationExecution.tsx` | committed | Mode B replaced StationWorkflowShell with StationExecutionCockpit; StationEntryHandoff moved to supportDetails prop; MockWarningBanner removed |
+| `frontend/src/app/components/station-execution/StationExecutionCockpit.tsx` | committed (was untracked) | New Mode B layout component with context strip, scrollable body, support details disclosure |
+| `frontend/src/app/components/station-execution/stationCommandErrorMessages.ts` | committed | `titleKey/messageKey/recoveryKey` typed as `I18nSemanticKey` |
+| `frontend/src/app/i18n/registry/en.ts` | committed | New key: `"station.cockpit.supportDetails": "Support details"` |
+| `frontend/src/app/i18n/registry/ja.ts` | committed | New key: `"station.cockpit.supportDetails"` (Japanese translation) |
+| `frontend/scripts/station-execution-responsive-screenshots.mjs` | committed | throw-based assertions; strengthened support-details check |
+| `docs/audit/station-execution-responsive-qa/mode-b-in-progress-*.png` x4 | committed | Mode B cockpit screenshots (all 4 viewports) |
+| `docs/audit/station-execution-responsive-qa/mode-a-*.png` x8 | committed | Mode A screenshots (empty + queue, 4 viewports each) |
+
+## Files Intentionally Not Changed
+
+- `StationWorkflowShell.tsx` -- still used correctly in Mode A
+- `StationSession.tsx` -- not touched per instruction
+- Backend files -- no backend changes
+- Any product/MMD/quality/IAM code
 
 ---
 
@@ -70,12 +100,12 @@ At the time the prior report was written:
 
 | Command | Result |
 |---------|--------|
-| `npm run lint:i18n` | PASS ? 2592 keys, no missing/duplicate |
-| `npm run check:routes` | PASS ? 80 routes covered |
-| `npm run build` (Vite production) | PASS ? dist/assets updated at 07:47:50 |
-| VS Code TS LSP `get_errors` | PASS ? 0 errors workspace-wide |
-| `git diff --check` | PASS ? exit 0 (pre-existing CRLF warnings only) |
-| `npm run qa:station-execution:screenshots` | PASS ? 12 screenshots generated, all 5 Mode B assertions passed |
+| `npm run lint:i18n` | PASS -- 2592 keys, en/ja synchronized |
+| `npm run check:routes` | PASS -- 79/80 routes covered (1 excluded), 0 FAIL |
+| `npm run build` (Vite) | PASS -- dist/assets updated at 19:15:35, exit 0 |
+| VS Code TS LSP `get_errors` | PASS -- 0 errors workspace-wide |
+| `git diff --check` | PASS -- exit 0 (pre-existing CRLF warnings only) |
+| `npm run qa:station-execution:screenshots` | PASS -- 12 screenshots generated; all Mode B assertions passed |
 
 ---
 
@@ -86,22 +116,27 @@ npm run qa:station-execution:screenshots
 ```
 
 Script: `frontend/scripts/station-execution-responsive-screenshots.mjs`
-Dev server: `http://localhost:5173` (Vite, mocked API via Playwright route intercept)
+Dev server: `http://localhost:5173` -- Vite **live dev server** was running
+Backend: Not running -- API responses mocked via Playwright route intercept
 
 ---
 
-## Screenshot Assertion Summary
+## Screenshot Assertion Summary (Mode B -- Strengthened)
 
-All 5 Mode B assertions evaluated for each of the 4 viewports:
+All 6 Mode B assertions evaluated for each of 4 viewports (24 evaluations total):
 
-| Assertion | Result |
-|-----------|--------|
-| No STX-* stage labels visible in Mode B body | PASS |
-| `data-testid="cockpit-context-strip"` present | PASS |
-| `data-testid="station-execution-cockpit"` present | PASS |
-| Support details collapsed by default | PASS |
-| Report Qty button visible in action area | PASS |
-| Complete Operation not primary full-width green (remaining qty 25 > 0) | PASS |
+| # | Assertion | Behavior on Failure | Result |
+|---|-----------|--------------------|----|
+| 1 | No STX-* stage labels in body text | `throw` | PASS x4 |
+| 2 | `cockpit-context-strip` present | `throw` | PASS x4 |
+| 3 | Disclosure button exists inside cockpit AND `aria-expanded="false"` | `throw` if missing; `throw` if not "false" | PASS x4 |
+| 4 | `station-execution-cockpit` root present | `throw` | PASS x4 |
+| 5 | Report Qty button visible | `throw` | PASS x4 |
+| 6 | Complete Operation not primary green (remaining qty 25 > 0) | `throw` | PASS x4 |
+
+**Assertion 3 is strengthened vs v1:** Previously passed even if the disclosure button did not
+exist (only checked for `aria-expanded='true'` absence). Now: button must exist AND have
+`aria-expanded="false"`.
 
 ---
 
@@ -109,20 +144,22 @@ All 5 Mode B assertions evaluated for each of the 4 viewports:
 
 All saved to `docs/audit/station-execution-responsive-qa/`:
 
-| File | Size |
-|------|------|
-| `mode-b-in-progress-desktop-1440x900.png` | 105,834 bytes |
-| `mode-b-in-progress-tablet-landscape-1180x820.png` | 85,625 bytes |
-| `mode-b-in-progress-tablet-portrait-820x1180.png` | 86,844 bytes |
-| `mode-b-in-progress-narrow-430x932.png` | 58,249 bytes |
-| `mode-a-empty-desktop-1440x900.png` | 110,347 bytes |
-| `mode-a-empty-tablet-landscape-1180x820.png` | 89,382 bytes |
-| `mode-a-empty-tablet-portrait-820x1180.png` | 94,882 bytes |
-| `mode-a-empty-narrow-430x932.png` | 53,609 bytes |
-| `mode-a-queue-desktop-1440x900.png` | 106,036 bytes |
-| `mode-a-queue-tablet-landscape-1180x820.png` | 86,567 bytes |
-| `mode-a-queue-tablet-portrait-820x1180.png` | 87,239 bytes |
-| `mode-a-queue-narrow-430x932.png` | 57,876 bytes |
+**Regenerated in this slice run (timestamps 19:17:xx):**
+
+| File | Size | Timestamp |
+|------|------|-----------|
+| `mode-b-in-progress-desktop-1440x900.png` | 106,414 bytes | 19:17:10 |
+| `mode-b-in-progress-tablet-landscape-1180x820.png` | 85,542 bytes | 19:17:12 |
+| `mode-b-in-progress-tablet-portrait-820x1180.png` | 86,395 bytes | 19:17:13 |
+| `mode-b-in-progress-narrow-430x932.png` | 58,057 bytes | 19:17:15 |
+| `mode-a-empty-desktop-1440x900.png` | regenerated | 19:17:xx |
+| `mode-a-empty-tablet-landscape-1180x820.png` | regenerated | 19:17:xx |
+| `mode-a-empty-tablet-portrait-820x1180.png` | regenerated | 19:17:xx |
+| `mode-a-empty-narrow-430x932.png` | regenerated | 19:17:xx |
+| `mode-a-queue-desktop-1440x900.png` | regenerated | 19:17:xx |
+| `mode-a-queue-tablet-landscape-1180x820.png` | regenerated | 19:17:xx |
+| `mode-a-queue-tablet-portrait-820x1180.png` | regenerated | 19:17:xx |
+| `mode-a-queue-narrow-430x932.png` | regenerated | 19:17:xx |
 
 ---
 
@@ -130,7 +167,7 @@ All saved to `docs/audit/station-execution-responsive-qa/`:
 
 | State | Viewports | Notes |
 |-------|-----------|-------|
-| `mode-b-in-progress` | desktop, tablet-landscape, tablet-portrait, narrow | Primary changed state ? cockpit with IN_PROGRESS op, remaining qty 25 |
+| `mode-b-in-progress` | desktop, tablet-landscape, tablet-portrait, narrow | Primary changed state -- cockpit with IN_PROGRESS op, remaining qty 25 |
 | `mode-a-empty` | All 4 | No operation selected |
 | `mode-a-queue` | All 4 | Mode A with queue populated |
 
@@ -139,41 +176,42 @@ All saved to `docs/audit/station-execution-responsive-qa/`:
 ## Mock Data Used
 
 Screenshots use **mocked API data** via Playwright route intercept. No real backend required.
-- `MOCK_QUEUE_COCKPIT`: `SessionOwnershipSummary` with `session_id: "sess-001"`, `operator_user_id: "opr-001"`, `status: "IN_PROGRESS"`
+- `MOCK_QUEUE_COCKPIT`: `SessionOwnershipSummary` with `session_id: "sess-0001"`, `operator_user_id: "opr-001"`, `status: "IN_PROGRESS"`
 - `MOCK_OPERATION_DETAIL`: `quantity: 120`, `completed_qty: 95` (remaining 25 > 0)
 
-Screenshots are **visual QA only**. They do not prove backend truth, authorization, E2E behavior, or pilot golden path coverage.
+Screenshots are **visual QA only**. They do not prove backend truth, authorization,
+E2E behavior, or pilot golden path coverage.
 
 ---
 
 ## Verification Notes
 
-- `StationExecutionCockpit` context strip (`Station STATION_01 | Session My active session | Operator opr-001`) is visible in all 4 Mode B screenshots.
-- No STX-* labels present in any Mode B screenshot.
-- No `MockWarningBanner` / "PARTIAL" banner present in any Mode B screenshot.
-- `StationEntryHandoff` moved to `supportDetails` prop ? collapsed by default.
-- Mode A still uses `StationWorkflowShell` as designed (no regression).
+- Cockpit context strip (`Station STATION_01 | Session My active session | Operator opr-001`) visible in all Mode B screenshots.
+- No STX-* stage labels in any Mode B screenshot.
+- No MockWarningBanner / PARTIAL banner in any Mode B screenshot.
+- Support details disclosure button present and collapsed (`aria-expanded="false"`).
+- Mode A still uses StationWorkflowShell (no regression).
+- `_fix-mode-b.mjs` deleted; no longer appears in `git status`.
 
 ---
 
 ## Limitations / Not Covered
 
-- E2E: screenshots use mocked API ? real backend behavior not validated.
-- Narrow viewport (430px): pre-existing sidebar overlap issue (outside scope of this slice).
-- `frontend/scripts/_fix-mode-b.mjs` is a leftover temp script ? can be deleted.
+- E2E: screenshots use mocked API -- real backend behavior not validated.
+- Narrow viewport (430px): pre-existing sidebar overlap (outside scope of this slice).
+- Screenshot QA asserts initial collapsed state only; does not exercise toggle interaction.
 
 ---
 
 ## Known Environment Caveats
 
-- `StationExecution.tsx` uses CRLF line endings. `replace_string_in_file` fails for multi-line matches. Workaround: Node.js index-based replacement script.
-- PowerShell terminal entered non-standard states during the session (Node.js REPL mode). Commands retried as needed.
-- `package.json` has pre-existing duplicate `react`/`react-dom` keys ? not introduced by this slice.
+- `StationExecution.tsx` uses CRLF line endings; multi-line `replace_string_in_file` fails against CRLF files.
+- PowerShell terminal briefly enters Node.js REPL mode during Vite/Playwright runs.
+- `package.json` has pre-existing duplicate `react`/`react-dom` keys; produces Vite warnings, not errors.
 
 ---
 
 ## Next Recommended Slice
 
-- Delete `frontend/scripts/_fix-mode-b.mjs` (temp artifact).
 - Fix narrow viewport sidebar overlap (pre-existing, separate slice).
-- Consider adding `support-details` collapse/expand screenshot assertion to harness.
+- Add toggle interaction test for support details disclosure.
