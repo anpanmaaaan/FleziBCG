@@ -1,4 +1,4 @@
-# GitHub Copilot Instructions — FleziBCG AI Brain Enterprise v4 — Stitch UI
+# GitHub Copilot Instructions - FleziBCG AI Brain Enterprise v4 - UI Governor
 
 ## Entry Rule
 
@@ -31,6 +31,9 @@ For every non-trivial task:
 - Selected brain:
 - Selected mode:
 - Hard Mode MOM:
+- Selected skills read:
+- Coverage class: service | API | frontend | E2E | docs-only
+- Hard Mode kept from parent slice: yes/no
 - Reason:
 ```
 
@@ -62,6 +65,15 @@ Hard Mode MOM v3 triggers when work touches:
 - critical invariant
 - DB migration enforcing governance or operational truth
 
+Hard Mode MOM v3 carries forward to follow-up fixes on the same slice. If the
+parent/original slice required v3, bugfixes, fixture fixes, review changes, or
+verification repairs keep v3 unless the change is purely text/comment-only and
+cannot affect tests, DB state, runtime behavior, contracts, or reports.
+
+Test fixture changes touching DB cleanup, tenant data, execution, quality, auth,
+state, events, projections, or governed workflows remain MOM Brain + Hard Mode
+MOM v3.
+
 Before coding under v3, the agent must generate:
 
 1. Design Evidence Extract
@@ -81,12 +93,12 @@ Use v2 for smaller/manual reviews:
 docs/ai-skills/hard-mode-mom-v2/SKILL.md
 ```
 
-## FE / UI / UX Work — Stitch DESIGN.md Integration
+## FE / UI / UX Work - DESIGN.md UI Governor
 
 When the task touches frontend UI, UX design, React components, Tailwind styling, Figma Make, Google Stitch, `DESIGN.md`, screen packs, or design consistency, read:
 
 ```text
-docs/ai-skills/stitch-design-md-ui-ux/SKILL.md
+docs/ai-skills/design-md-ui-governor/SKILL.md
 DESIGN.md
 docs/design/DESIGN.md
 docs/audit/frontend-source-alignment-snapshot.md
@@ -96,11 +108,9 @@ If `docs/audit/frontend-source-alignment-snapshot.md` is missing, do not invent 
 
 For FE route/page work, build/lint is not sufficient by itself. Route Accessibility Gate must pass.
 
-For UI work, also keep the legacy enforcer available:
-
-```text
-docs/ai-skills/design-system-enforcer/SKILL.md
-```
+`docs/ai-skills/stitch-design-md-ui-ux/SKILL.md` and
+`docs/ai-skills/design-system-enforcer/SKILL.md` are deprecated aliases only.
+Do not load them as active UI skills or in parallel with `design-md-ui-governor`.
 
 This UI/UX skill does not override Hard Mode MOM.
 
@@ -111,6 +121,105 @@ docs/ai-skills/hard-mode-mom-v3/SKILL.md
 ```
 
 Hard reject UI output that fakes backend truth, authorization, execution transitions, quality pass/fail, ERP posting, backflush completion, or deterministic AI decisions.
+
+## UI Screenshot Evidence Gate
+
+For any non-trivial frontend/UI slice, the agent must generate screenshot
+evidence before marking the task complete. Reviewers must not need to run
+screenshot capture themselves just to see the implemented UI.
+
+Required behavior:
+
+- Use an existing route/page screenshot harness when available.
+- If no harness exists, add or update a narrowly scoped Playwright/screenshot
+  harness for the touched route or component state.
+- Screenshots must cover the primary changed state and at least one narrow
+  viewport when layout/responsiveness can be affected.
+- Mocks used for screenshot capture must match the current frontend API shape.
+- If the task changes a state-specific UI, assert that the screenshot harness
+  reaches that state before taking screenshots.
+- Save screenshots under `docs/audit/` in a task-specific folder.
+- List exact screenshot paths in `docs/agent-reports/latest-agent-report.md`.
+
+For execution/station/quality/material/operator workflows, screenshot mocks are
+visual QA only. They do not prove backend truth, authorization, E2E behavior, or
+pilot golden path coverage.
+
+If screenshots cannot be generated because of environment limits, the report
+must state the exact blocker, the command attempted, and the missing evidence.
+Do not report the UI slice as fully verified without screenshot evidence.
+
+## Coverage Claim Discipline
+
+Reports must classify coverage honestly:
+
+- `service`: direct service/repository/domain function tests only.
+- `API`: endpoint tests, HTTP status/error mapping, and auth dependency behavior.
+- `frontend`: rendered UI, route, component, API-client, or i18n behavior.
+- `E2E`: user-flow coverage through frontend + backend/API boundary.
+- `docs-only`: documentation, prompt, skill, or planning changes.
+
+Service-level tests must not be reported as API, RBAC, E2E, or full pilot golden
+path coverage. API/RBAC coverage requires endpoint/auth dependency tests. E2E or
+pilot golden path coverage requires frontend/API/user-flow validation.
+
+## Work Quality Gate
+
+Before code changes, publish a compact work packet:
+
+- user goal;
+- slice boundary;
+- selected skills read;
+- files expected to change;
+- files intentionally not changed;
+- source-of-truth evidence;
+- validation plan;
+- stop conditions.
+
+During coding:
+
+- reuse neighboring implementation and test patterns;
+- keep edits surgical and directly tied to the request;
+- separate behavior changes from broad refactors;
+- do not bypass service/domain layers to satisfy tests;
+- for DB-backed tests, purge before and after persistent writes and rollback
+  before teardown purge;
+- do not use unique prefixes as a cleanup substitute;
+- verify container commands run against live edited source before trusting them;
+- capture a reliable exit code or log before reporting a command as passed.
+
+## Report Export Rule
+
+For every non-trivial task, the final agent report must be written to:
+
+```text
+docs/agent-reports/latest-agent-report.md
+```
+
+Overwrite this file on each run before marking the task done. The chat response
+may summarize the outcome, but the repository file is the canonical report for
+review. If the agent cannot write this file, it must report that as a blocker.
+
+The exported report must include:
+
+- task / slice;
+- agent and selected skills;
+- coverage class;
+- Hard Mode kept from parent slice: yes/no/N/A;
+- files changed;
+- commands run and reliable results;
+- verification notes;
+- limitations / not covered;
+- known environment caveats;
+- next recommended slice.
+
+For frontend/UI slices, the exported report must also include:
+
+- screenshot command run;
+- screenshot assertion summary;
+- exact screenshot output paths;
+- viewport/state coverage;
+- whether screenshots use mocked API data or real backend data.
 
 ## Non-negotiables
 

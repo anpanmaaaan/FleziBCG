@@ -26,6 +26,7 @@ Rules:
 6. Write tests first from the generated matrix.
 7. Run build/test verification.
 8. Update reports after every slice.
+9. After every slice, overwrite `docs/agent-reports/latest-agent-report.md` with the final slice report before continuing or marking done.
 
 Current priority:
 

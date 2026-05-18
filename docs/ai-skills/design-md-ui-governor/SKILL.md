@@ -270,9 +270,87 @@ Before finalizing a UI component, verify:
 
 ---
 
-## 9. UI Implementation Report (required output)
+## 9. UI Screenshot Evidence Gate
+
+For every non-trivial UI/frontend slice, screenshots are required evidence.
+Build/lint alone is not enough.
+
+### Required screenshot behavior
+
+- Use an existing screenshot harness when available.
+- If no harness exists, add a narrow Playwright/screenshot harness for the
+  touched route, component state, or viewport.
+- Save screenshots under `docs/audit/<slice-or-screen>/` or the existing
+  screen-specific audit folder.
+- List exact screenshot paths in `docs/agent-reports/latest-agent-report.md`.
+- State whether screenshots use mocked API data or a real backend.
+- Cover the changed UI state, not only a nearby route or the page top.
+- Cover at least one narrow viewport whenever layout can be affected.
+
+### Required negative assertions
+
+When a UI slice removes clutter, replaces a shell, hides a warning, changes a
+mode, or changes action hierarchy, screenshot QA must assert both presence and
+absence:
+
+- expected new component/state is visible;
+- replaced or removed component is not visible;
+- deprecated labels, debug shells, old banners, and mock/partial warnings are
+  not visible in the target state;
+- primary CTA count matches the expected cognitive frame;
+- action hierarchy matches the business state being rendered.
+
+Example for Station Execution Mode B:
+
+- `station-execution-cockpit` visible;
+- `Station Workflow Shell` not visible;
+- `STX-` labels not visible;
+- `Partial Data` banner not visible unless a specific section is truly partial;
+- `Report Qty` visible when reporting is the next production action;
+- `Complete Operation` not primary while remaining quantity is greater than 0.
+
+### Required assertion failure behavior
+
+Screenshot harness assertions must fail the command.
+
+Allowed:
+
+- `throw new Error(...)`;
+- Playwright `expect(...)`;
+- returning a rejected promise;
+- explicit non-zero process exit after all failures are collected.
+
+Not allowed:
+
+- only setting `process.exitCode = 1` and continuing to print pass-like output;
+- saving screenshots after assertion failures and reporting the command as pass;
+- reporting screenshot capture as valid evidence when target-state assertions
+  failed.
+
+### Evidence quality rules
+
+- Do not use stale screenshots from an earlier run as evidence.
+- Prefer task-specific or timestamped output folders when old screenshots exist.
+- If old screenshots remain in the folder, the report must list only the current
+  run's screenshots.
+- If the screenshot does not visually show the acceptance area, scroll or add a
+  second focused screenshot for that area.
+- The report must include an assertion summary and exact screenshot paths.
+
+---
+
+## 10. UI Implementation Report (required output)
 
 Every UI/FE task MUST end with this report:
+
+Before marking done, also overwrite the canonical repo report file:
+
+```text
+docs/agent-reports/latest-agent-report.md
+```
+
+The chat response may summarize the report, but this file is the source used for
+follow-up review.
 
 ```markdown
 # UI/UX Implementation Report
@@ -375,14 +453,27 @@ ACTIVE / PARTIAL / MOCK / SHELL / FUTURE / DISABLED
 - `npm run check:routes`:
 - Playwright E2E (if route changed):
 
+## Screenshot Evidence
+- Screenshot command:
+- Assertion summary:
+- Screenshot paths:
+- Viewports covered:
+- UI states covered:
+- Mocked API or real backend:
+- Stale screenshots excluded from report: Yes/No
+
 ## Known Limitations
+
+## Report Export
+- Canonical report file: docs/agent-reports/latest-agent-report.md
+- Written before completion: yes/no
 
 ## Next Recommended FE Slice
 ```
 
 ---
 
-## 10. Hard Reject Conditions
+## 11. Hard Reject Conditions
 
 Reject or stop the slice if UI:
 
@@ -397,12 +488,19 @@ Reject or stop the slice if UI:
 - introduces new `@mui/material` components in new code;
 - introduces raw hex colors instead of tokens;
 - introduces user-facing strings without i18n registry entry;
-- adds a primary CTA that competes with an existing primary CTA in the same frame.
+- adds a primary CTA that competes with an existing primary CTA in the same frame;
+- reports UI PASS while screenshot assertions fail;
+- shows screenshots that do not reach the target state;
+- leaves intended new UI files untracked or unintegrated;
+- claims a component is used when it is not imported/rendered by the target route.
 
 ---
 
-## 11. Versioning
+## 12. Versioning
 
-- v3 (current): consolidated canonical skill — this file, dated 2026-05-17.
+- v3: consolidated canonical skill, dated 2026-05-17.
+- v4 (current): added screenshot evidence hard gate, assertion failure
+  discipline, and diff/report consistency rules after Station Execution cockpit
+  review failures, dated 2026-05-18.
 - Predecessor skills (`stitch-design-md-ui-ux`, `design-system-enforcer`) are
   now stub pointers and must not be loaded independently.

@@ -19,11 +19,15 @@ DESIGN.md  (if present at repo root or docs/design/DESIGN.md)
 docs/governance/CODING_RULES.md
 ```
 
-For Stitch/design-system alignment:
+For UI/design-system alignment:
 
 ```
-docs/ai-skills/stitch-design-md-ui-ux/SKILL.md
+docs/ai-skills/design-md-ui-governor/SKILL.md
 ```
+
+`docs/ai-skills/stitch-design-md-ui-ux/SKILL.md` and
+`docs/ai-skills/design-system-enforcer/SKILL.md` are deprecated aliases only.
+Do not load them as active UI skills or in parallel with `design-md-ui-governor`.
 
 For frontend route/page work — Route Accessibility Gate must pass:
 
@@ -42,9 +46,13 @@ frontend/scripts/check_i18n_registry_parity.mjs
 ```markdown
 ## Routing
 - Agent: FleziBCG Frontend
+- Selected Skill: design-md-ui-governor
+- Co-skills: <hard-mode-mom-v3 when execution/quality/auth/state truth is touched, else none>
 - Backend Contract Dependency:
 - i18n Keys Added/Changed:
 - Route Accessibility Gate: Required / Not Required
+- Coverage class: frontend | E2E | docs-only
+- Limitations / not covered:
 ```
 
 ## Hard Rule — Frontend Does NOT Decide
@@ -118,3 +126,14 @@ Implement frontend only after backend contract is stable.
 ## Continuous Improvement
 
 After each non-trivial task, capture one short reusable lesson in `/memories/repo/flezibcg-notes.md` if a new i18n pattern, API contract gap, or build issue was encountered.
+
+## Report Export Rule
+
+Before marking a non-trivial task complete, overwrite:
+
+```text
+docs/agent-reports/latest-agent-report.md
+```
+
+Include selected skills, coverage class, files changed, route/build/i18n checks,
+limitations, environment caveats, and next FE slice.

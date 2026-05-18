@@ -36,6 +36,9 @@ For every non-trivial task:
 - Selected brain:
 - Selected mode:
 - Hard Mode MOM:
+- Selected skills read:
+- Coverage class: service | API | frontend | E2E | docs-only
+- Hard Mode kept from parent slice: yes/no
 - Reason:
 ```
 
@@ -102,7 +105,7 @@ Use for final readiness, rollout, rollback, migration release, changelog, and go
 If the task touches frontend UI, UX, React, Tailwind, screen packs, Figma Make, Google Stitch, or `DESIGN.md`, also invoke:
 
 ```text
-docs/ai-skills/stitch-design-md-ui-ux/SKILL.md
+docs/ai-skills/design-md-ui-governor/SKILL.md
 ```
 
 This add-on is compatible with both Generic Brain and MOM Brain.
@@ -120,11 +123,186 @@ Use Hard Mode MOM v3 if:
 - task touches state/event/invariant/tenant/auth/execution
 - agent is expected to code and test
 
+### Routing Lock
+
+If the parent/original slice required Hard Mode MOM v3, every follow-up bugfix,
+test repair, fixture repair, review, or verification pass on the same slice keeps
+Hard Mode MOM v3 unless the change is purely text/comment-only and cannot affect
+tests, DB state, runtime behavior, contracts, or reports.
+
+Test fixture changes touching DB cleanup, tenant data, execution, quality, auth,
+state, events, projections, or governed workflows remain MOM Brain + Hard Mode
+MOM v3. Do not silently downgrade these follow-ups to Fast or ordinary Strict
+Mode.
+
 Use Hard Mode MOM v2 if:
 
 - reviewing a small PR
 - manually checking existing implementation
 - no new behavior coding is requested
+
+## Coverage Claim Discipline
+
+Report only the coverage actually proven:
+
+- `service`: direct service/repository/domain function tests only.
+- `API`: endpoint tests, HTTP status/error mapping, and auth dependency behavior.
+- `frontend`: rendered UI, route, component, API-client, or i18n behavior.
+- `E2E`: user-flow coverage through frontend + backend/API boundary.
+- `docs-only`: documentation, prompt, skill, or planning changes.
+
+Service-level tests must not be reported as API, RBAC, E2E, or full pilot golden
+path coverage. API/RBAC coverage can only be claimed when endpoint/auth
+dependency tests run. E2E or pilot golden path coverage can only be claimed when
+the validation crosses the frontend/API/user-flow boundary.
+
+Every implementation or review report must include:
+
+```markdown
+## Selected skills read
+...
+
+## Coverage class
+service | API | frontend | E2E | docs-only
+
+## Hard Mode kept from parent slice
+yes/no
+
+## Limitations / not covered
+...
+```
+
+## Public Reasoning Discipline
+
+Before implementation, produce a short public reasoning packet. Do not expose raw
+chain-of-thought; summarize the decision basis in concrete engineering terms:
+
+```markdown
+## Work Packet
+- User goal:
+- Slice boundary:
+- Files expected to change:
+- Files intentionally not changed:
+- Source-of-truth docs/code read:
+- Current evidence:
+- Main risks:
+- Validation plan:
+- Stop conditions:
+```
+
+If evidence contradicts the original assumption, stop and re-route before
+editing. Do not continue coding under a stale hypothesis.
+
+## Evidence Gate And Report Honesty
+
+The final report is not evidence by itself. Evidence is the combination of:
+
+- the actual diff;
+- tracked and untracked file state;
+- command exit codes;
+- assertion logs;
+- screenshots or artifacts when UI is involved;
+- tests that exercise the claimed boundary.
+
+Before declaring completion, run a self-review and include the result in
+`docs/agent-reports/latest-agent-report.md`:
+
+```markdown
+## Evidence Self-Review
+- `git status --short` checked:
+- Expected files changed:
+- Unexpected files changed:
+- Required new files tracked or explicitly reported as untracked:
+- Acceptance criteria mapped to diff/tests/screenshots:
+- Report claims match actual diff:
+- Commands failed, skipped, or not trusted:
+```
+
+Rules:
+
+- Do not claim a file/component/harness is implemented unless it is present in
+  the actual diff or tracked workspace state.
+- Do not claim a command passed unless the command exited 0 and no assertion
+  failure was printed.
+- Do not treat screenshots as valid evidence unless they show the target state
+  named in the report.
+- Do not reuse stale screenshots as proof of a new change.
+- If `git status --short` shows untracked implementation files, the report must
+  name them and say whether they are intentionally untracked or must be added.
+- If a required verification cannot run, mark the slice incomplete or blocked;
+  do not silently replace it with a weaker check.
+
+## Assertion Failure Discipline
+
+Verification scripts must fail hard when a required assertion fails.
+
+Required pattern:
+
+- throw an error, reject the test, or otherwise exit non-zero immediately;
+- print the failed assertion and the state/viewport/input that failed;
+- do not continue to a final "PASS" summary after a required assertion failed.
+
+Forbidden pattern:
+
+- only setting `process.exitCode = 1` while continuing to save screenshots and
+  print pass-like summaries;
+- reporting a script as PASS when assertion failures appear anywhere in stdout
+  or stderr;
+- counting visual screenshot capture as successful validation when state
+  assertions failed.
+
+## Git Operation Policy
+
+Do not run `git add`, `git commit`, `git push`, branch changes, or history edits
+unless the user or task prompt explicitly asks for that git operation.
+
+Default behavior for implementation agents:
+
+- edit files;
+- run verification;
+- write `docs/agent-reports/latest-agent-report.md`;
+- leave changes unstaged for review.
+
+If a git operation was accidentally performed before review, the report must
+say so, include the commit hash if any, and treat the slice as needing reviewer
+approval before further work.
+
+## Coding Quality Discipline
+
+For every code-changing task:
+
+- Inspect existing patterns before adding new helpers, abstractions, or fixtures.
+- Prefer the smallest behavior-preserving edit that satisfies the slice.
+- Keep refactors separate from behavior changes unless the refactor is required
+  for the requested behavior.
+- Treat test code as production-maintained code: deterministic data, explicit
+  cleanup, clear assertions, and no hidden dependency on previous runs.
+- For DB-backed tests, cleanup must not rely on unique prefixes alone. Use
+  rollback plus purge before and after the test when persistent rows are created.
+- If a validation command uses a container, confirm whether the container sees
+  live workspace source. If the compose image is baked, bind-mount the live
+  source or rebuild before trusting the result.
+- If command output is truncated/noisy, capture a reliable exit code or log
+  before reporting pass/fail.
+- Before final report, compare the report against the actual diff and remove
+  any claim not backed by code, tests, or artifacts.
+
+## Report Export Rule
+
+For every non-trivial task, write the final report to:
+
+```text
+docs/agent-reports/latest-agent-report.md
+```
+
+Overwrite the file on each run before declaring completion. The chat response
+can be a short summary, but this repo file is the canonical report for review.
+If the report cannot be written, report that as a blocker.
+
+The exported report must include task/slice, agent and selected skills, coverage
+class, Hard Mode carry-forward status, files changed, commands and reliable
+results, verification notes, limitations/not covered, environment caveats, and
+next recommended slice.
 
 ## Required Command Pattern for MOM/Governance Actions
 
@@ -150,3 +328,6 @@ Do not:
 - skip invariant tests
 - use Fast Mode for risky tasks
 - declare done without verification
+- declare pass when assertion failures are printed
+- claim implemented work that is not present in the diff or tracked files
+- commit, stage, push, or rewrite git history unless explicitly requested

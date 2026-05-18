@@ -16,3 +16,4 @@ Required output:
 6. Verdict before coding
 7. Implementation plan if allowed
 8. Verification result if implemented
+9. Report export status: `docs/agent-reports/latest-agent-report.md` written before completion yes/no

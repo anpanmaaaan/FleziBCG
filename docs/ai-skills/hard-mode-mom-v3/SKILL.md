@@ -277,6 +277,28 @@ Verdict before coding = ALLOW_IMPLEMENTATION
 6. Run relevant regression tests.
 7. Update verification report.
 
+## Implementation Quality Gate
+
+Before the first edit, state:
+
+- exact files expected to change;
+- files intentionally out of scope;
+- existing implementation/test pattern being reused;
+- validation command and why it proves the requested coverage class.
+
+During implementation:
+
+- If the first hypothesis is disproven, stop and update the gate instead of
+  coding around the surprise.
+- If only tests are added, still apply v3 when the tests touch execution,
+  quality, tenant, auth, state, events, projections, or DB fixtures.
+- If a test fixture writes persistent DB rows, require purge before and after
+  each test plus rollback before teardown purge.
+- Do not use unique IDs as the only cleanup strategy.
+- Do not claim API/RBAC/E2E coverage unless the test crosses that boundary.
+- Do not trust container validation until it is clear whether the container sees
+  live workspace source.
+
 ## Rejection Rules
 
 Reject if:
@@ -295,6 +317,9 @@ Reject if:
 - tenant/scope/auth is not server-side
 - service layer is bypassed
 - broad refactor is mixed with behavior change
+- fixture cleanup can leave persistent tenant/test data behind
+- validation output is ambiguous, stale, or not tied to the edited source
+- report claims broader coverage than the tests actually prove
 
 ## Output After Implementation
 
@@ -308,6 +333,9 @@ ACCEPT / ACCEPT_WITH_FIXES / REJECT
 - Selected brain:
 - Selected mode:
 - Hard Mode MOM v3:
+- Selected skills read:
+- Coverage class: service | API | frontend | E2E | docs-only
+- Hard Mode kept from parent slice:
 - Reason:
 
 ## Design evidence used
@@ -334,8 +362,15 @@ ACCEPT / ACCEPT_WITH_FIXES / REJECT
 ## Verification
 ...
 
+## Limitations / not covered
+...
+
 ## Report/docs updates
 ...
+
+## Report export
+- Canonical report file: docs/agent-reports/latest-agent-report.md
+- Written before completion: yes/no
 
 ## Remaining gaps
 ...

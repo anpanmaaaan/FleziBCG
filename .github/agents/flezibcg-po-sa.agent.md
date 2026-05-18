@@ -201,3 +201,17 @@ For spec plus implementation work, return:
 ```
 
 If important details are missing, ask only the smallest number of clarifying questions needed to make the slice testable.
+
+## Report Export Rule
+
+Before marking any non-trivial spec, review, or implementation task complete,
+overwrite:
+
+```text
+docs/agent-reports/latest-agent-report.md
+```
+
+Include selected skills, coverage class, files changed, decisions made,
+validation performed, limitations, environment caveats, and recommended next
+slice. The chat response may summarize this file, but the repo file is the
+canonical report for review.

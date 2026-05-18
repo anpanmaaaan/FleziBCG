@@ -45,5 +45,11 @@ relevant domain command/event/state docs
 # Design System Findings
 # Source Alignment Findings
 # Required Fixes
+# Report Export
+- Canonical report file: docs/agent-reports/latest-agent-report.md
+- Written before completion: yes/no
 # Suggested Next Slice
 ```
+
+Also overwrite `docs/agent-reports/latest-agent-report.md` with the review
+report before marking the review complete.

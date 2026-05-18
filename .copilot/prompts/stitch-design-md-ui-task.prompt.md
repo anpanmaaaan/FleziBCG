@@ -1,7 +1,7 @@
-# Prompt — FE/UI Task with Stitch DESIGN.md Skill
+# Prompt - FE/UI Task with DESIGN.md UI Governor
 
 Use:
-- `docs/ai-skills/stitch-design-md-ui-ux/SKILL.md`
+- `docs/ai-skills/design-md-ui-governor/SKILL.md`
 - `DESIGN.md`
 - `docs/design/DESIGN.md`
 - `docs/audit/frontend-source-alignment-snapshot.md` if present
@@ -28,7 +28,11 @@ If the UI touches execution, quality, material, station, operation, tenant/scope
 
 Output:
 # UI/UX Implementation Report
+Write the same final report to `docs/agent-reports/latest-agent-report.md` before marking done.
+
 ## Selected Skill
+## Coverage Class
+frontend | E2E | docs-only
 ## Source Inputs Read
 ## Design System Alignment
 ## Files Changed
@@ -38,4 +42,5 @@ Output:
 ## MOM Safety Check
 ## Tests / Build Run
 ## Known Limitations
+## Report Export
 ## Next Recommended FE Slice

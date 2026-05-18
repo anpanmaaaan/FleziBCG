@@ -26,6 +26,27 @@ PLAN → HARD MODE v3 GATE → TEST FIRST → CODE → BUILD → TEST → VERIFY
 7. `docs/implementation/slice-strategy-for-flezibcg.md`
 8. relevant design docs for the slice
 
+## Public Work Packet
+
+Before coding, output this compact packet:
+
+```markdown
+## Work Packet
+- User goal:
+- Slice boundary:
+- Selected skills read:
+- Hard Mode MOM v3: on/off + reason
+- Coverage target: service | API | frontend | E2E | docs-only
+- Files expected to change:
+- Files intentionally not changed:
+- Existing patterns to reuse:
+- Validation commands:
+- Stop conditions:
+```
+
+Use this as the implementation contract. If later evidence changes the contract,
+pause, explain the change, and update the packet before editing further.
+
 ## Scope Rule
 
 Do not implement future scope unless explicitly requested.
@@ -38,6 +59,61 @@ Current safe order:
 4. P0-D Quality Lite
 5. P0-E Supervisory
 
+## Coding Discipline
+
+- Read the neighboring implementation and tests before writing new code.
+- Make the smallest direct edit that satisfies the slice.
+- Do not mix broad cleanup, formatting, or refactor with behavior work.
+- Do not bypass service/domain layers to make tests pass.
+- Do not change public API/schema/DB behavior unless the slice explicitly asks
+  for it and Hard Mode v3 allows it.
+- Keep test names and report wording aligned with the real coverage class.
+- Do not run `git add`, `git commit`, `git push`, branch changes, or history
+  edits unless the user/task explicitly asks for that git operation.
+- Leave implementation changes unstaged for review by default.
+- Before reporting done, compare the actual diff with the report. Remove or
+  correct every claim that is not backed by changed code, tests, or artifacts.
+
+## Test And Fixture Discipline
+
+- Prefer behavior tests that assert source-of-truth state, emitted events, and
+  backend-derived projections/allowed actions.
+- Cover the happy path plus at least one invalid/blocked path for governed
+  execution, quality, auth, tenant, state, or DB behavior.
+- DB fixtures that persist rows must purge before and after the test, and call
+  rollback before teardown purge.
+- Unique prefixes reduce collisions but do not replace cleanup.
+- Cleanup order must delete child rows before parent rows; verify against
+  neighboring tests before inventing a purge sequence.
+- If validation runs in Docker, verify whether the service mounts live source.
+  If not, use the repo-approved live-source bind mount or rebuild the image.
+- Never report a command as passed unless the exit code or captured log proves it.
+- Assertion failures must fail the command. Do not rely only on
+  `process.exitCode = 1` while continuing to print pass-like output.
+- If stdout/stderr contains assertion failures, the command must be reported as
+  failed even when the process exits 0.
+
+## Pre-Final Self-Review Gate
+
+Before the final report, run a self-review:
+
+```markdown
+## Implementation Self-Review
+- `git status --short` checked:
+- Expected changed files present:
+- Unexpected changed files:
+- Untracked implementation files:
+- New files integrated/imported where claimed:
+- Acceptance criteria backed by diff/tests/screenshots:
+- Commands with reliable exit codes:
+- Commands skipped or not trusted:
+- Report claims match actual diff:
+```
+
+If any answer exposes a gap, fix it or report the slice as incomplete. Do not
+write a successful final report while code is unintegrated, screenshot evidence
+is stale, or required assertions are failing.
+
 ## Stop Conditions
 
 Stop only if:
@@ -48,8 +124,35 @@ Stop only if:
 - build/test environment is blocked
 - Hard Mode v3 returns BLOCKED_NEEDS_DESIGN or BLOCKED_SCOPE_EXCLUDED
 
+Stop and report a blocker if validation cannot be trusted because the command ran
+against stale source, ambiguous logs, or a failed test environment.
+
 ## Reports to update
 
 - `docs/implementation/autonomous-implementation-plan.md`
 - `docs/implementation/autonomous-implementation-verification-report.md`
 - slice-specific design/test report when relevant
+
+## Final Report Requirements
+
+Every final report must include:
+
+- selected skills read;
+- coverage class actually proven;
+- files changed;
+- `git status --short` summary;
+- untracked implementation/artifact files;
+- commands run with reliable results;
+- what is not covered;
+- known environment caveats;
+- next slice recommendation.
+
+Do not claim API/RBAC/E2E/pilot golden path coverage from service-only tests.
+
+Also overwrite the canonical repo report file before marking done:
+
+```text
+docs/agent-reports/latest-agent-report.md
+```
+
+If this file cannot be written, stop and report the export failure as a blocker.

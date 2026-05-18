@@ -21,6 +21,9 @@ First classify:
 - Selected brain: Generic / MOM
 - Selected mode: Fast / Strict / QA / Architecture / Product / Refactor / Debug / Release
 - Hard Mode MOM v3: ON / OFF
+- Selected skills read
+- Coverage class: service / API / frontend / E2E / docs-only
+- Hard Mode kept from parent slice: yes/no
 - Reason
 
 ## Hard Mode v3 auto-trigger
@@ -54,6 +57,12 @@ Turn ON if PR touches:
 - tenant/scope/auth is not server-side
 - risky change has no negative tests
 - PR mixes mechanical refactor with behavior change without clear reason
+- follow-up work downgrades Hard Mode MOM v3 from the parent slice without a
+  purely text/comment-only reason
+- service-level tests are reported as API/RBAC/E2E or full pilot coverage
+- DB tests persist tenant/test data or rely on unique prefixes instead of cleanup
+- fixture teardown lacks rollback before purge after DB exceptions
+- validation ran against stale container/source or ambiguous command output
 
 ## Output
 
@@ -67,6 +76,9 @@ APPROVE / REQUEST_CHANGES / COMMENT_ONLY
 - Selected brain:
 - Selected mode:
 - Hard Mode MOM v3:
+- Selected skills read:
+- Coverage class:
+- Hard Mode kept from parent slice:
 - Reason:
 
 ## Findings
@@ -78,4 +90,11 @@ APPROVE / REQUEST_CHANGES / COMMENT_ONLY
 
 ## Suggested follow-up
 1. ...
+
+## Report export
+- Canonical report file: docs/agent-reports/latest-agent-report.md
+- Written before completion: yes/no
 ```
+
+For non-trivial reviews, overwrite `docs/agent-reports/latest-agent-report.md`
+with the final review report before marking done.

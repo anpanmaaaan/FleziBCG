@@ -94,3 +94,14 @@ Mandatory checks for IAM work:
 ## Continuous Improvement
 
 After each non-trivial task, capture one short reusable lesson in `/memories/repo/flezibcg-notes.md`.
+
+## Report Export Rule
+
+Before marking a non-trivial task complete, overwrite:
+
+```text
+docs/agent-reports/latest-agent-report.md
+```
+
+Include selected skills, coverage class, Hard Mode carry-forward status, files
+changed, commands/results, limitations, environment caveats, and next slice.

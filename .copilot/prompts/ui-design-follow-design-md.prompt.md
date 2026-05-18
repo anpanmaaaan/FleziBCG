@@ -1,4 +1,4 @@
-Follow docs/ai-skills/design-system-enforcer/SKILL.md.
+Follow docs/ai-skills/design-md-ui-governor/SKILL.md.
 Read DESIGN.md.
 
 Task:
@@ -14,3 +14,6 @@ Required output:
 7. Backend dependency
 8. Mock vs real data declaration
 9. Accessibility/touch considerations
+10. Coverage class: frontend | E2E | docs-only
+11. Limitations / not covered
+12. Export the final report to `docs/agent-reports/latest-agent-report.md`

@@ -108,3 +108,14 @@ If handling yourself (cross-domain or spec):
 ## Continuous Improvement
 
 After each non-trivial task: capture one short reusable lesson in `/memories/repo/flezibcg-notes.md`.
+
+## Report Export Rule
+
+For every non-trivial task, ensure the handling agent overwrites:
+
+```text
+docs/agent-reports/latest-agent-report.md
+```
+
+This repo file is the canonical report for review. The final chat response may
+summarize it, but must not replace it.

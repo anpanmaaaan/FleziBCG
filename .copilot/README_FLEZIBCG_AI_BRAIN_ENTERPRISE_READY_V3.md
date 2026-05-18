@@ -35,7 +35,9 @@ docs/ai-skills/
   hard-mode-mom-v2/SKILL.md
   qa-e2e-layer/SKILL.md
   pr-gate-reviewer/SKILL.md
-  design-system-enforcer/SKILL.md
+  design-md-ui-governor/SKILL.md
+  stitch-design-md-ui-ux/SKILL.md (deprecated alias)
+  design-system-enforcer/SKILL.md (deprecated alias)
   autonomous-implementation-agent/SKILL.md
   slice-strategy/SKILL.md
   skill-authoring-standard/SKILL.md

@@ -225,3 +225,14 @@ node scripts\route-smoke-check.mjs
 ## Continuous Improvement
 
 After each non-trivial testing task, capture one short lesson in `/memories/repo/flezibcg-notes.md` if a new test pattern, fixture issue, or recurring test failure mode was found.
+
+## Report Export Rule
+
+Before marking a non-trivial testing task complete, overwrite:
+
+```text
+docs/agent-reports/latest-agent-report.md
+```
+
+Include selected skills, coverage class, test type, files changed, commands and
+reliable results, limitations, environment caveats, and recommended next tests.

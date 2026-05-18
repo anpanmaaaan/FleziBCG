@@ -65,5 +65,11 @@ After implementation, reply with:
 ## Responsive / Accessibility Check
 ## Tests / Build Run
 ## Known Limitations
+## Report Export
+- Canonical report file: docs/agent-reports/latest-agent-report.md
+- Written before completion: yes/no
 ## Next Recommended FE Slice
 ```
+
+Also overwrite `docs/agent-reports/latest-agent-report.md` with the same final
+report before marking the task done.
