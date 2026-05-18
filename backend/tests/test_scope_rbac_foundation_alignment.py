@@ -33,6 +33,7 @@ def test_scope_is_tenant_aware_and_hierarchical() -> None:
     assert "scope_type" in columns
     assert "scope_value" in columns
     assert "parent_scope_id" in columns
+    assert "manufacturing_mode_profile" in columns
 
 
 def test_scope_uniqueness_constraint_exists() -> None:

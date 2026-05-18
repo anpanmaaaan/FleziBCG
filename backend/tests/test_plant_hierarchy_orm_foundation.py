@@ -84,6 +84,7 @@ def test_plant_fields_exist():
         "plant_name",
         "timezone",
         "country_code",
+        "manufacturing_mode_profile",
         "is_active",
         "metadata_json",
         "created_at",

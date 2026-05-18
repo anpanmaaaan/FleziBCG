@@ -28,6 +28,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
@@ -51,7 +52,13 @@ class Plant(Base):
     __tablename__ = "plants"
     __table_args__ = (
         UniqueConstraint("tenant_id", "plant_code", name="uq_plants_tenant_code"),
+        CheckConstraint(
+            "manufacturing_mode_profile IS NULL OR "
+            "manufacturing_mode_profile IN ('DISCRETE', 'BATCH_PROCESS')",
+            name="ck_plants_manufacturing_mode_profile",
+        ),
         Index("ix_plants_tenant_id", "tenant_id"),
+        Index("ix_plants_manufacturing_mode_profile", "manufacturing_mode_profile"),
     )
 
     plant_id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -60,6 +67,10 @@ class Plant(Base):
     plant_name: Mapped[str] = mapped_column(String(256), nullable=False)
     timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     country_code: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    # Null means inherit the tenant default manufacturing mode profile.
+    manufacturing_mode_profile: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

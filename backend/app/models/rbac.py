@@ -1,6 +1,14 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -149,6 +157,11 @@ class Scope(Base):
         UniqueConstraint(
             "tenant_id", "scope_type", "scope_value", name="uq_scope_tenant_type_value"
         ),
+        CheckConstraint(
+            "manufacturing_mode_profile IS NULL OR "
+            "manufacturing_mode_profile IN ('DISCRETE', 'BATCH_PROCESS')",
+            name="ck_scopes_manufacturing_mode_profile",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -157,6 +170,10 @@ class Scope(Base):
     scope_value: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     parent_scope_id: Mapped[int | None] = mapped_column(
         ForeignKey("scopes.id"), nullable=True, default=None
+    )
+    # Null means inherit from the nearest plant override or tenant default.
+    manufacturing_mode_profile: Mapped[str | None] = mapped_column(
+        String(32), nullable=True, default=None
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

@@ -18,11 +18,20 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Index, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Index,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
 from app.db.base import Base
+from app.models.manufacturing_mode import MANUFACTURING_MODE_PROFILE_DISCRETE
 
 # Lifecycle status constants — plain strings (not a DB-native enum) so that
 # values survive DB introspection without enum type registration. Follows the
@@ -42,9 +51,14 @@ class Tenant(Base):
     __tablename__ = "tenants"
     __table_args__ = (
         UniqueConstraint("tenant_code", name="uq_tenants_tenant_code"),
+        CheckConstraint(
+            "manufacturing_mode_default IN ('DISCRETE', 'BATCH_PROCESS')",
+            name="ck_tenants_manufacturing_mode_default",
+        ),
         Index("ix_tenants_tenant_code", "tenant_code"),
         Index("ix_tenants_lifecycle_status", "lifecycle_status"),
         Index("ix_tenants_is_active", "is_active"),
+        Index("ix_tenants_manufacturing_mode_default", "manufacturing_mode_default"),
     )
 
     tenant_id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -59,6 +73,14 @@ class Tenant(Base):
     timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     locale: Mapped[str | None] = mapped_column(String(32), nullable=True)
     country_code: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    # INTENT: Tenant default keeps the pilot runtime discrete-first while
+    # allowing future plant/scope overrides for batch/process customers.
+    manufacturing_mode_default: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default=MANUFACTURING_MODE_PROFILE_DISCRETE,
+        server_default=MANUFACTURING_MODE_PROFILE_DISCRETE,
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -83,4 +105,7 @@ class Tenant(Base):
         # this override guarantees attributes are never None before flush.
         kwargs.setdefault("lifecycle_status", TENANT_STATUS_ACTIVE)
         kwargs.setdefault("is_active", True)
+        kwargs.setdefault(
+            "manufacturing_mode_default", MANUFACTURING_MODE_PROFILE_DISCRETE
+        )
         super().__init__(**kwargs)

@@ -50,6 +50,7 @@ def test_tenant_fields_exist() -> None:
         "timezone",
         "locale",
         "country_code",
+        "manufacturing_mode_default",
         "is_active",
         "metadata_json",
         "created_at",
@@ -82,6 +83,20 @@ def test_tenant_default_status_is_active() -> None:
         tenant_name="Test Tenant",
     )
     assert t.lifecycle_status == TENANT_STATUS_ACTIVE
+
+
+def test_tenant_manufacturing_mode_default_is_discrete() -> None:
+    """Tenant defaults to the active pilot runtime profile."""
+    from app.models.manufacturing_mode import MANUFACTURING_MODE_PROFILE_DISCRETE
+    from app.models.tenant import Tenant
+
+    t = Tenant(
+        tenant_id="t-mode",
+        tenant_code="MODE",
+        tenant_name="Mode Tenant",
+    )
+
+    assert t.manufacturing_mode_default == MANUFACTURING_MODE_PROFILE_DISCRETE
 
 
 def test_tenant_is_active_defaults_true() -> None:
