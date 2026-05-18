@@ -141,6 +141,16 @@ Required behavior:
 - Save screenshots under `docs/audit/` in a task-specific folder.
 - List exact screenshot paths in `docs/agent-reports/latest-agent-report.md`.
 
+Artifact policy:
+
+- Screenshots, videos, and generated binary evidence under `docs/audit/**` are
+  review artifacts, not commit payload, unless the task prompt explicitly says
+  to commit them.
+- The report must separate `Generated artifact paths` from `Files intended for
+  commit`.
+- If generated artifacts are already tracked, staged, or committed contrary to
+  the task policy, report a blocker. Do not claim a clean pass.
+
 For execution/station/quality/material/operator workflows, screenshot mocks are
 visual QA only. They do not prove backend truth, authorization, E2E behavior, or
 pilot golden path coverage.
@@ -162,6 +172,34 @@ Reports must classify coverage honestly:
 Service-level tests must not be reported as API, RBAC, E2E, or full pilot golden
 path coverage. API/RBAC coverage requires endpoint/auth dependency tests. E2E or
 pilot golden path coverage requires frontend/API/user-flow validation.
+
+## Dirty Worktree Gate
+
+Before declaring completion, run `git status --short`.
+
+Required behavior:
+
+- Classify every changed, staged, untracked, or deleted file as either
+  `IN SCOPE` or `OUT OF SCOPE`.
+- Do not write "not touched" or "intentionally not changed" for any file that
+  appears in `git status --short`.
+- If an out-of-scope file is dirty, name it in the report under `OUT OF SCOPE`
+  and do not include it in files intended for commit.
+- If unrelated staged files exist, report a blocker until they are unstaged or
+  explicitly authorized by the user.
+
+## Commit Boundary Gate
+
+Default behavior remains: do not run `git add`, `git commit`, `git push`, branch
+changes, or history edits unless the user or task prompt explicitly asks.
+
+When git staging or committing is explicitly requested:
+
+- Never use `git add .`.
+- Stage only explicit paths that belong to the requested commit.
+- Run and report `git diff --cached --stat`.
+- Run and report `git diff --cached --name-status`.
+- Include `No unrelated staged files: yes/no` in the report.
 
 ## Work Quality Gate
 
@@ -206,7 +244,13 @@ The exported report must include:
 - agent and selected skills;
 - coverage class;
 - Hard Mode kept from parent slice: yes/no/N/A;
-- files changed;
+- changed in this slice;
+- existing/parent changes observed;
+- files intended for commit;
+- generated artifact paths;
+- `git status --short` summary with `IN SCOPE` / `OUT OF SCOPE`
+  classification;
+- staged diff summary if any git operation was explicitly requested;
 - commands run and reliable results;
 - verification notes;
 - limitations / not covered;

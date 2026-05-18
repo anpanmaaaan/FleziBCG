@@ -71,8 +71,13 @@ Current safe order:
 - Do not run `git add`, `git commit`, `git push`, branch changes, or history
   edits unless the user/task explicitly asks for that git operation.
 - Leave implementation changes unstaged for review by default.
+- Never use `git add .`.
 - Before reporting done, compare the actual diff with the report. Remove or
   correct every claim that is not backed by changed code, tests, or artifacts.
+- Before reporting done, classify every dirty path from `git status --short` as
+  `IN SCOPE` or `OUT OF SCOPE`. Never write "not touched" for a dirty file.
+- Treat unrelated staged files as a blocker unless the task explicitly includes
+  them.
 
 ## Test And Fixture Discipline
 
@@ -102,7 +107,10 @@ Before the final report, run a self-review:
 - `git status --short` checked:
 - Expected changed files present:
 - Unexpected changed files:
+- OUT OF SCOPE dirty files:
 - Untracked implementation files:
+- Generated artifact paths:
+- Files intended for commit:
 - New files integrated/imported where claimed:
 - Acceptance criteria backed by diff/tests/screenshots:
 - Commands with reliable exit codes:
@@ -113,6 +121,20 @@ Before the final report, run a self-review:
 If any answer exposes a gap, fix it or report the slice as incomplete. Do not
 write a successful final report while code is unintegrated, screenshot evidence
 is stale, or required assertions are failing.
+
+## Artifact And Commit Gates
+
+- Generated screenshots, videos, and binary evidence under `docs/audit/**` are
+  review artifacts unless the prompt explicitly says to commit them.
+- Report artifacts under `Generated artifact paths`; report code/docs/test paths
+  under `Files intended for commit`.
+- Do not stage or commit PNG, JPG, JPEG, GIF, WebP, MP4, or WebM artifacts under
+  `docs/audit/**` unless explicitly requested.
+- If staging or committing is explicitly requested, run and report
+  `git diff --cached --stat`, `git diff --cached --name-status`, and
+  `No unrelated staged files: yes/no` before commit.
+- If artifacts are already tracked/staged/committed against policy, report a
+  blocker instead of a clean pass.
 
 ## Stop Conditions
 
@@ -141,6 +163,10 @@ Every final report must include:
 - coverage class actually proven;
 - files changed;
 - `git status --short` summary;
+- IN SCOPE / OUT OF SCOPE dirty file classification;
+- files intended for commit;
+- generated artifact paths;
+- staged diff summary if git operations were explicitly requested;
 - untracked implementation/artifact files;
 - commands run with reliable results;
 - what is not covered;

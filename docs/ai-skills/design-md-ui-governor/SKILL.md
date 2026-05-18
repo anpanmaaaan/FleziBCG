@@ -337,6 +337,17 @@ Not allowed:
   second focused screenshot for that area.
 - The report must include an assertion summary and exact screenshot paths.
 
+### Artifact policy
+
+- Screenshots and videos are review evidence, not default commit payload.
+- Save generated artifacts under `docs/audit/**`, but report them under
+  `Generated artifact paths`, not under `Files intended for commit`.
+- Do not stage or commit PNG, JPG, JPEG, GIF, WebP, MP4, or WebM artifacts under
+  `docs/audit/**` unless the prompt explicitly says to commit generated
+  artifacts.
+- If generated artifacts are already tracked, staged, or committed contrary to
+  policy, report a blocker and do not claim the slice is clean.
+
 ---
 
 ## 10. UI Implementation Report (required output)
@@ -365,6 +376,12 @@ design-md-ui-governor (+ co-skills: <list>)
 - In scope:
 - Out of scope:
 
+## Dirty Worktree Gate
+- `git status --short` checked:
+- IN SCOPE dirty files:
+- OUT OF SCOPE dirty files:
+- Unrelated staged files present: yes/no
+
 ## Design System Alignment
 - Tokens used: <list of CSS variables / Tailwind theme tokens>
 - New tokens introduced: <list, or "none">
@@ -376,7 +393,10 @@ design-md-ui-governor (+ co-skills: <list>)
 - New components introduced:
 
 ## Files Changed
-<list with line counts>
+- Changed in this slice:
+- Existing/parent changes observed:
+- Files intended for commit:
+- Generated artifact paths:
 
 ## Screens Affected
 <screen name → phase>
@@ -457,10 +477,18 @@ ACTIVE / PARTIAL / MOCK / SHELL / FUTURE / DISABLED
 - Screenshot command:
 - Assertion summary:
 - Screenshot paths:
+- Generated artifact paths:
+- Files intended for commit include screenshots/videos: yes/no
 - Viewports covered:
 - UI states covered:
 - Mocked API or real backend:
 - Stale screenshots excluded from report: Yes/No
+
+## Commit Boundary
+- Git operation requested by user/task: yes/no
+- `git diff --cached --stat`:
+- `git diff --cached --name-status`:
+- No unrelated staged files: yes/no
 
 ## Known Limitations
 

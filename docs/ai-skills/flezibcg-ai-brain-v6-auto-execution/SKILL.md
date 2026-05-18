@@ -212,6 +212,7 @@ Before declaring completion, run a self-review and include the result in
 - `git status --short` checked:
 - Expected files changed:
 - Unexpected files changed:
+- OUT OF SCOPE dirty files:
 - Required new files tracked or explicitly reported as untracked:
 - Acceptance criteria mapped to diff/tests/screenshots:
 - Report claims match actual diff:
@@ -229,8 +230,42 @@ Rules:
 - Do not reuse stale screenshots as proof of a new change.
 - If `git status --short` shows untracked implementation files, the report must
   name them and say whether they are intentionally untracked or must be added.
+- If `git status --short` shows any out-of-scope modified, staged, deleted, or
+  untracked file, the report must list it as `OUT OF SCOPE`. Do not write
+  "not touched" or "intentionally not changed" for a file that is dirty.
 - If a required verification cannot run, mark the slice incomplete or blocked;
   do not silently replace it with a weaker check.
+
+## Dirty Worktree Gate
+
+Before marking a task complete, run `git status --short` and classify every dirty
+path:
+
+- `IN SCOPE`: changed by this slice and intended to be reviewed with it.
+- `OUT OF SCOPE`: pre-existing or unrelated dirty path that must not be claimed
+  as this slice's work.
+
+If any dirty path is `OUT OF SCOPE`, keep it out of `Files intended for commit`
+and name it in the report. If any unrelated file is staged, report a blocker
+until it is unstaged or explicitly authorized.
+
+## Artifact Policy Gate
+
+Generated UI evidence is required for UI work, but generated binary artifacts
+are not automatically commit payload.
+
+Required behavior:
+
+- Save UI screenshots or videos under `docs/audit/**` for reviewer inspection.
+- Report them under `Generated artifact paths`.
+- Report code/docs/test files separately under `Files intended for commit`.
+- Do not stage or commit PNG, JPG, JPEG, GIF, WebP, MP4, or WebM artifacts under
+  `docs/audit/**` unless the prompt explicitly says to commit generated
+  artifacts.
+- If such artifacts are already tracked, staged, or committed contrary to the
+  task policy, report a blocker and do not claim a clean pass.
+- Do not present artifact generation as E2E/API/backend proof unless the command
+  actually exercised that boundary.
 
 ## Assertion Failure Discipline
 
@@ -267,6 +302,16 @@ If a git operation was accidentally performed before review, the report must
 say so, include the commit hash if any, and treat the slice as needing reviewer
 approval before further work.
 
+If staging or committing is explicitly requested:
+
+- Never use `git add .`.
+- Stage only explicit paths that belong to the requested commit.
+- Run `git diff --cached --stat` and include the output summary in the report.
+- Run `git diff --cached --name-status` and include the output summary in the
+  report.
+- Include `No unrelated staged files: yes/no`.
+- If unrelated staged files exist, stop and report a blocker before committing.
+
 ## Coding Quality Discipline
 
 For every code-changing task:
@@ -300,9 +345,11 @@ can be a short summary, but this repo file is the canonical report for review.
 If the report cannot be written, report that as a blocker.
 
 The exported report must include task/slice, agent and selected skills, coverage
-class, Hard Mode carry-forward status, files changed, commands and reliable
-results, verification notes, limitations/not covered, environment caveats, and
-next recommended slice.
+class, Hard Mode carry-forward status, `Changed in this slice`,
+`Existing/parent changes observed`, `Files intended for commit`, `Generated
+artifact paths`, `git status --short` with `IN SCOPE` / `OUT OF SCOPE`
+classification, commands and reliable results, verification notes,
+limitations/not covered, environment caveats, and next recommended slice.
 
 ## Required Command Pattern for MOM/Governance Actions
 

@@ -30,6 +30,8 @@ Use these paths consistently:
   - `docs/agent-reports/latest-agent-report.md`
 - UI screenshot evidence:
   - `docs/audit/<slice-name>/`
+  - Generated images/videos are review artifacts by default; do not commit them
+    unless the prompt explicitly says to commit artifacts.
 - Existing persistent instructions:
   - `.github/copilot-instructions.md`
 
@@ -50,6 +52,12 @@ Codex should create or update the task prompt file with:
 - exact implementation goals;
 - verification commands;
 - screenshot requirements for UI/frontend slices;
+- artifact policy: generated screenshots/videos are evidence, not default commit
+  payload;
+- report fields for `Changed in this slice`, `Existing/parent changes observed`,
+  `Files intended for commit`, and `Generated artifact paths`;
+- dirty worktree policy: every dirty path must be classified as `IN SCOPE` or
+  `OUT OF SCOPE`;
 - final report template;
 - stop conditions.
 
@@ -60,6 +68,10 @@ The prompt should also state whether the agent is allowed to perform git
 operations. Default: no `git add`, `git commit`, `git push`, branch switching,
 or history edits unless explicitly requested.
 
+If git operations are allowed, the prompt must forbid `git add .` and require
+`git diff --cached --stat`, `git diff --cached --name-status`, and
+`No unrelated staged files: yes/no` in the report before committing.
+
 ## Step 2 - User Runs Copilot Agent
 
 In VS Code Copilot Agent, paste this:
@@ -69,6 +81,9 @@ Read and execute docs/prompts/active-copilot-agent-task.md.
 Follow .github/copilot-instructions.md.
 Before coding, output routing, selected skills read, source evidence, files to patch, validation plan, and stop conditions.
 After implementation, overwrite docs/agent-reports/latest-agent-report.md with the final report.
+In the report, classify every dirty path from git status as IN SCOPE or OUT OF SCOPE.
+Do not say a file was not touched if it appears in git status.
+Separate Generated artifact paths from Files intended for commit.
 Do not mark the task complete until required verification and, for UI work, screenshots are generated and listed in the report.
 ```
 
@@ -115,10 +130,14 @@ Codex should review in this order:
 4. Re-run or spot-check critical verification commands when practical.
 5. For UI work, open the screenshot paths listed in the report.
 6. Check whether report claims match actual diff, tracked/untracked files, and artifacts.
-7. Compare implementation against the original prompt acceptance criteria.
-8. Classify any failure as product/code, prompt ambiguity, harness weakness, or skill/process gap.
-9. Report findings first, ordered by severity.
-10. Decide: accept, accept with minor follow-up, reject and write correction prompt, or patch skills/instructions.
+7. Inspect staged files with `git diff --cached --stat` and
+   `git diff --cached --name-status` if anything is staged.
+8. Confirm generated artifacts are not staged/committed unless explicitly
+   requested.
+9. Compare implementation against the original prompt acceptance criteria.
+10. Classify any failure as product/code, prompt ambiguity, harness weakness, or skill/process gap.
+11. Report findings first, ordered by severity.
+12. Decide: accept, accept with minor follow-up, reject and write correction prompt, or patch skills/instructions.
 
 Review output should include:
 
@@ -142,6 +161,11 @@ Do not accept an agent slice as complete when:
 - required Hard Mode carry-forward was downgraded without justification;
 - product code changed outside the declared slice without explanation.
 - the agent committed/staged/pushed changes without explicit permission;
+- the agent used `git add .` or left unrelated staged files;
+- generated binary artifacts under `docs/audit/**` are staged or committed
+  without explicit artifact-commit permission;
+- the report says a dirty file was not touched;
+- dirty files are not classified as `IN SCOPE` or `OUT OF SCOPE`;
 - the report claims a component/file was implemented but it is not imported,
   rendered, tracked, or present in the diff;
 - assertion failures are printed even if the command exits 0.
@@ -185,6 +209,8 @@ Skill/instruction patches should be small and behaviorally explicit:
 - state forbidden behavior;
 - add required report/evidence fields when useful;
 - keep product-specific examples only when they clarify a general rule.
+- add gates that compare the report against `git status`, staged diff, and
+  generated artifact policy when the failure is worktree hygiene.
 
 ## Correction Loop
 
