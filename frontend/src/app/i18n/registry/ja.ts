@@ -230,6 +230,7 @@ export const jaRegistry: I18nRegistry = {
   "station.handoff.cta.operatorIdentification": "オペレーター識別",
   "station.handoff.cta.equipmentBinding": "設備/コンテキスト",
   "station.handoff.cta.stationCockpit": "ステーションコックピット",
+  "station.cockpit.supportDetails": "サポート詳細",
   "station.handoff.secondaryRoutes": "その他の導線:",
   "station.handoff.next.resolveStationContext": "まずステーションコンテキストを解決してください。",
   "station.handoff.next.openSession": "続行するにはステーションセッションを開いてください。",

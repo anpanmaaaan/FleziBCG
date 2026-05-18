@@ -13,6 +13,7 @@ import { CompletionSummaryPanel } from "@/app/components/station-execution/Compl
 import { ReopenOperationModal } from "@/app/components/station-execution/ReopenOperationModal";
 import { StartDowntimeDialog } from "@/app/components/station-execution/StartDowntimeDialog";
 import { StationWorkflowShell } from "@/app/components/station-execution/StationWorkflowShell";
+import { StationExecutionCockpit } from "@/app/components/station-execution/StationExecutionCockpit";
 import { StationEntryHandoff } from "@/app/components/station-execution/StationEntryHandoff";
 import { StationAndonBanner } from "@/app/components/station-execution/StationAndonBanner";
 import { normalizeStationCommandError, type StationCommandErrorMessage } from "@/app/components/station-execution/stationCommandErrorMessages";
@@ -255,7 +256,7 @@ export function StationExecution() {
     return t(mapExecutionStatusText(status) as I18nSemanticKey);
   };
 
-  const presentCommandError = (error: unknown, fallbackKey: string) => {
+  const presentCommandError = (error: unknown, fallbackKey: I18nSemanticKey) => {
     const normalized = normalizeStationCommandError(error);
     setCommandError(normalized);
     console.error("[StationExecution] command failed", { code: normalized.code, error });
@@ -765,7 +766,7 @@ export function StationExecution() {
         titleKey={commandError.titleKey}
         messageKey={commandError.messageKey}
         recoveryKey={commandError.recoveryKey}
-        live={commandError.severity !== "info"}
+        live={true}
       />
     </div>
   ) : null;
@@ -773,9 +774,7 @@ export function StationExecution() {
   const handoffStationState = stationScope && stationScope !== "-" ? "selected" : "missing";
   const handoffSessionState = hasOpenSession ? "open" : "missing";
   const handoffOperatorState = ownershipState?.operator_user_id ? "identified" : hasOpenSession ? "missing" : "not_confirmed";
-  const handoffEquipmentState = ownershipState?.equipment_id
-    ? "bound"
-    : commandError?.code === "EQUIPMENT_REQUIRED"
+  const handoffEquipmentState = commandError?.code === "EQUIPMENT_REQUIRED"
     ? "required_missing"
     : hasOpenSession
     ? "optional_unknown"
@@ -829,13 +828,6 @@ export function StationExecution() {
     operation && (operation.status === "PAUSED" || operation.status === "BLOCKED" || operation.downtime_open),
   );
 
-  const cockpitStage =
-    operation?.status === "COMPLETED"
-      ? "STX_007_COMPLETION"
-      : operation?.status === "PAUSED" || operation?.status === "BLOCKED" || operation?.downtime_open
-      ? "STX_006_RUNTIME_VISIBILITY"
-      : "STX_005_ACTIVE_OPERATION";
-
   // ── MODE A  EOperation Selection ──────────────────────────────────────────
   if (!isExecutionMode) {
     return (
@@ -867,7 +859,7 @@ export function StationExecution() {
             stationId={stationScope}
             sessionId={ownershipState?.session_id ?? null}
             operatorUserId={ownershipState?.operator_user_id ?? null}
-            equipmentId={ownershipState?.equipment_id ?? null}
+            equipmentId={null}
             recoveryBanner={commandErrorBanner ?? undefined}
           >
             <StationEntryHandoff
@@ -1071,40 +1063,39 @@ export function StationExecution() {
         </div>
       )}
 
-      <StationWorkflowShell
-        currentStage={cockpitStage}
-        stationId={stationScope}
+      <StationExecutionCockpit
+        stationScope={stationScope}
         sessionId={ownershipState?.session_id ?? null}
         operatorUserId={ownershipState?.operator_user_id ?? null}
-        equipmentId={ownershipState?.equipment_id ?? null}
-        recoveryBanner={isExecutionMode ? undefined : commandErrorBanner ?? undefined}
+        supportDetails={
+          <StationEntryHandoff
+            stationState={handoffStationState}
+            sessionState={handoffSessionState}
+            operatorState={handoffOperatorState}
+            equipmentState={handoffEquipmentState}
+            operationState="selected"
+            nextStepKey={cockpitModeNextStepKey}
+            ctas={[
+              {
+                labelKey: "station.handoff.cta.stationSession",
+                onClick: goToStationSession,
+                tone: cockpitPrimaryCta === "station.handoff.cta.stationSession" ? "primary" : "neutral",
+              },
+              {
+                labelKey: "station.handoff.cta.operatorIdentification",
+                onClick: goToOperatorIdentification,
+                tone: cockpitPrimaryCta === "station.handoff.cta.operatorIdentification" ? "primary" : "neutral",
+              },
+              {
+                labelKey: "station.handoff.cta.equipmentBinding",
+                onClick: goToEquipmentBinding,
+                tone: cockpitPrimaryCta === "station.handoff.cta.equipmentBinding" ? "primary" : "neutral",
+              },
+            ]}
+            footer={t("station.handoff.executionTruthHint")}
+          />
+        }
       >
-        <StationEntryHandoff
-          stationState={handoffStationState}
-          sessionState={handoffSessionState}
-          operatorState={handoffOperatorState}
-          equipmentState={handoffEquipmentState}
-          operationState="selected"
-          nextStepKey={cockpitModeNextStepKey}
-          ctas={[
-            {
-              labelKey: "station.handoff.cta.stationSession",
-              onClick: goToStationSession,
-              tone: cockpitPrimaryCta === "station.handoff.cta.stationSession" ? "primary" : "neutral",
-            },
-            {
-              labelKey: "station.handoff.cta.operatorIdentification",
-              onClick: goToOperatorIdentification,
-              tone: cockpitPrimaryCta === "station.handoff.cta.operatorIdentification" ? "primary" : "neutral",
-            },
-            {
-              labelKey: "station.handoff.cta.equipmentBinding",
-              onClick: goToEquipmentBinding,
-              tone: cockpitPrimaryCta === "station.handoff.cta.equipmentBinding" ? "primary" : "neutral",
-            },
-          ]}
-          footer={t("station.handoff.executionTruthHint")}
-        />
 
         {isInterruptedMode ? (
           <div className="mx-3 mt-2 sm:mx-4">
@@ -1129,12 +1120,7 @@ export function StationExecution() {
           </div>
         )}
 
-        {/* Compatibility path notice  Ealways visible in execution mode */}
-        <MockWarningBanner phase="PARTIAL" note={t("screenStatus.banner.deprecation.body" as any)} />
-
-        {/* Execution body  Emust not scroll on iPad landscape */}
-        <div className="flex-1 min-h-0 flex flex-col p-3 sm:p-4 gap-3 sm:gap-4 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-50">
-          <div className="grid gap-3 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,1fr)] xl:gap-4">
+        <div className="grid gap-3 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,1fr)] xl:gap-4">
             <div className="flex min-w-0 flex-col gap-3 sm:gap-4">
               <ExecutionStateHero
                 operation={operation}
@@ -1275,8 +1261,7 @@ export function StationExecution() {
           reasons={downtimeReasons}
           reasonsLoading={downtimeReasonsLoading}
         />
-        </div>
-      </StationWorkflowShell>
+      </StationExecutionCockpit>
     </div>
   );
 }

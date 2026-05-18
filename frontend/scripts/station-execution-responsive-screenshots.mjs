@@ -272,96 +272,66 @@ async function main() {
   const modeBAssertions = [
     async (page, state, viewport) => {
       // Must NOT show STX- stage labels (WorkflowShell stage pills)
-      const stxText = await page.$$eval("[class*='stage'], [data-stage]", (els) =>
-        els.map((e) => e.textContent ?? "").join(" ")
-      );
       const stxInBody = await page.evaluate(() => document.body.innerText);
       const hasStxLabel = /STX-\d{3}/.test(stxInBody);
       if (hasStxLabel) {
-        console.error(`ASSERTION FAIL [${state}/${viewport}]: STX- stage labels visible in Mode B`);
-        process.exitCode = 1;
-      } else {
-        console.log(`PASS [${state}/${viewport}]: No STX- stage labels visible`);
+        throw new Error(`[${state}/${viewport}]: STX- stage labels visible in Mode B — StationWorkflowShell rendered instead of StationExecutionCockpit`);
       }
+      console.log(`PASS [${state}/${viewport}]: No STX- stage labels visible`);
     },
     async (page, state, viewport) => {
       // Must show cockpit context strip (data-testid=cockpit-context-strip)
       const contextStrip = await page.$("[data-testid='cockpit-context-strip']");
       if (!contextStrip) {
-        console.error(`ASSERTION FAIL [${state}/${viewport}]: cockpit-context-strip not found — Mode B cockpit did not render`);
-        process.exitCode = 1;
-      } else {
-        console.log(`PASS [${state}/${viewport}]: cockpit-context-strip present`);
+        throw new Error(`[${state}/${viewport}]: cockpit-context-strip not found — Mode B cockpit did not render`);
       }
+      console.log(`PASS [${state}/${viewport}]: cockpit-context-strip present`);
     },
     async (page, state, viewport) => {
-      // Support details disclosure must be collapsed by default (content hidden)
+      // station-execution-cockpit root must exist
       const cockpit = await page.$("[data-testid='station-execution-cockpit']");
       if (!cockpit) {
-        console.error(`ASSERTION FAIL [${state}/${viewport}]: station-execution-cockpit not found`);
-        process.exitCode = 1;
-        return;
+        throw new Error(`[${state}/${viewport}]: station-execution-cockpit not found`);
       }
-      // The support details disclosure button must exist but its content must not be visible
-      const supportBtn = await page.$("[data-testid='station-execution-cockpit'] button[aria-expanded='false']");
+      // Support details disclosure button MUST exist inside the cockpit
+      const supportBtn = await page.$("[data-testid='station-execution-cockpit'] button[aria-expanded]");
       if (!supportBtn) {
-        // aria-expanded=false means it's collapsed; if not found, check aria-expanded=true (open = wrong)
-        const supportBtnOpen = await page.$("[data-testid='station-execution-cockpit'] button[aria-expanded='true']");
-        if (supportBtnOpen) {
-          console.error(`ASSERTION FAIL [${state}/${viewport}]: Support details is expanded by default — should be collapsed`);
-          process.exitCode = 1;
-        } else {
-          // No aria-expanded button found at all — disclosure may not have rendered (no supportDetails prop)
-          console.log(`PASS [${state}/${viewport}]: Support details not rendered (no supportDetails prop)`);
-        }
-      } else {
-        console.log(`PASS [${state}/${viewport}]: Support details is collapsed by default`);
+        throw new Error(`[${state}/${viewport}]: Support details disclosure button not found inside cockpit — StationEntryHandoff not wired to supportDetails prop`);
       }
+      // Must be collapsed by default (aria-expanded="false")
+      const ariaExpanded = await supportBtn.getAttribute("aria-expanded");
+      if (ariaExpanded !== "false") {
+        throw new Error(`[${state}/${viewport}]: Support details disclosure has aria-expanded="${ariaExpanded}" — expected "false" (collapsed by default)`);
+      }
+      console.log(`PASS [${state}/${viewport}]: Support details disclosure present and collapsed by default`);
     },
     async (page, state, viewport) => {
       // IN_PROGRESS with remaining qty > 0: Report Qty must be visible as primary action
       const reportQtyBtn = await page.evaluate(() => {
         const buttons = Array.from(document.querySelectorAll("button"));
-        return buttons.find((btn) => btn.textContent?.includes("Report"));
+        return buttons.some((btn) => btn.textContent?.includes("Report"));
       });
       if (!reportQtyBtn) {
-        console.error(`ASSERTION FAIL [${state}/${viewport}]: Report Qty button not found in action area`);
-        process.exitCode = 1;
-      } else {
-        console.log(`PASS [${state}/${viewport}]: Report Qty button visible as primary production action`);
+        throw new Error(`[${state}/${viewport}]: Report Qty button not found in action area`);
       }
+      console.log(`PASS [${state}/${viewport}]: Report Qty button visible`);
     },
     async (page, state, viewport) => {
       // IN_PROGRESS with remaining qty > 0 (remaining = 120 - 95 = 25):
-      // Complete Operation should NOT be shown as a primary full-width button.
-      // Check that Complete is either not visible or is styled as secondary (outline).
-      const completeBtn = await page.evaluate(() => {
+      // Complete Operation should NOT be shown as a primary full-width green button.
+      const completeInfo = await page.evaluate(() => {
         const buttons = Array.from(document.querySelectorAll("button"));
         const btn = buttons.find((b) => b.textContent?.includes("Complete"));
         if (!btn) return null;
         const classes = btn.className;
-        const isFull = classes.includes("w-full") && !classes.includes("sm:");
-        const isGreen = classes.includes("bg-green") || classes.includes("bg-emerald-600");
-        const isOutline = classes.includes("border") && classes.includes("bg-white");
         return {
-          visible: true,
-          isFull,
-          isGreen,
-          isOutline,
-          text: btn.textContent,
+          isPrimaryGreen: (classes.includes("bg-green") || classes.includes("bg-emerald-600")) && classes.includes("w-full"),
         };
       });
-      if (!completeBtn) {
-        // Not visible is acceptable when remaining qty > 0
-        console.log(`PASS [${state}/${viewport}]: Complete Operation not shown (correct for remaining qty > 0)`);
-      } else if (completeBtn.isOutline) {
-        console.log(`PASS [${state}/${viewport}]: Complete Operation is secondary/outline (correct for remaining qty > 0)`);
-      } else if (completeBtn.isGreen || (!completeBtn.isOutline && completeBtn.isFull)) {
-        console.error(`ASSERTION FAIL [${state}/${viewport}]: Complete Operation is shown as primary (should be secondary when remaining qty > 0)`);
-        process.exitCode = 1;
-      } else {
-        console.log(`PASS [${state}/${viewport}]: Complete Operation styling correct for action hierarchy`);
+      if (completeInfo?.isPrimaryGreen) {
+        throw new Error(`[${state}/${viewport}]: Complete Operation is shown as primary full-width green button — should be hidden or secondary when remaining qty > 0`);
       }
+      console.log(`PASS [${state}/${viewport}]: Complete Operation not primary (correct for remaining qty > 0)`);
     },
   ];
 

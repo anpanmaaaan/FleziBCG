@@ -1,12 +1,13 @@
 import { HttpError } from "@/app/api";
+import type { I18nSemanticKey } from "@/app/i18n/keys";
 
 export type StationCommandErrorSeverity = "warning" | "danger";
 
 export interface StationCommandErrorMessage {
   code: string;
-  titleKey: string;
-  messageKey: string;
-  recoveryKey: string;
+  titleKey: I18nSemanticKey;
+  messageKey: I18nSemanticKey;
+  recoveryKey: I18nSemanticKey;
   severity: StationCommandErrorSeverity;
 }
 

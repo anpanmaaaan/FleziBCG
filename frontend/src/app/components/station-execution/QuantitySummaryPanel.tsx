@@ -1,10 +1,42 @@
 import { useI18n } from "@/app/i18n";
 
-function KpiCard({ label, value, highlight = false }: { label: string; value: string | number; highlight?: boolean }) {
+function KpiCard({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string | number;
+  tone?: "neutral" | "primary" | "good" | "scrap";
+}) {
+  const wrapClass =
+    tone === "primary"
+      ? "border-blue-200 bg-blue-50/50 ring-2 ring-blue-100"
+      : tone === "good"
+      ? "border-emerald-200 bg-emerald-50/60"
+      : tone === "scrap"
+      ? "border-rose-200 bg-rose-50/60"
+      : "border-slate-200 bg-white";
+  const labelClass =
+    tone === "primary"
+      ? "text-blue-700"
+      : tone === "good"
+      ? "text-emerald-700"
+      : tone === "scrap"
+      ? "text-rose-600"
+      : "text-slate-700";
+  const valueClass =
+    tone === "primary"
+      ? "font-bold text-blue-700"
+      : tone === "good"
+      ? "font-bold text-emerald-700"
+      : tone === "scrap"
+      ? "font-bold text-rose-600"
+      : "font-bold text-slate-900";
   return (
-    <div className={`rounded-2xl border p-4 text-center md:p-5 ${highlight ? "border-blue-200 bg-blue-50/50 ring-2 ring-blue-100" : "border-slate-200 bg-white"}`}>
-      <div className={`text-base font-medium sm:text-lg md:text-xl ${highlight ? "text-blue-700" : "text-slate-700"}`}>{label}</div>
-      <div className={`mt-3 text-3xl leading-none sm:text-4xl md:text-5xl lg:text-6xl ${highlight ? "font-bold text-blue-700" : "font-bold text-slate-900"}`}>
+    <div className={`rounded-2xl border p-4 text-center md:p-5 ${wrapClass}`}>
+      <div className={`text-base font-medium sm:text-lg md:text-xl ${labelClass}`}>{label}</div>
+      <div className={`mt-3 text-3xl leading-none sm:text-4xl md:text-5xl lg:text-6xl ${valueClass}`}>
         {value}
       </div>
     </div>
@@ -70,27 +102,33 @@ export function QuantitySummaryPanel({
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-[1fr_1fr_1fr_minmax(280px,360px)]">
+      {/* Primary KPI row: Target, Remaining, Good, Scrap */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <KpiCard label={t("station.qty.target")} value={quantity} />
+        <KpiCard label={t("station.qty.remaining")} value={remainingQty} tone="primary" />
+        <KpiCard label={t("station.qty.totalGood")} value={goodQty} tone="good" />
+        <KpiCard label={t("station.qty.totalScrap")} value={scrapQty} tone="scrap" />
+      </div>
+
+      {/* Time row + completed qty */}
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[1fr_minmax(280px,360px)]">
         <KpiCard label={t("station.qty.completed")} value={completedQty} />
-        <KpiCard label={t("station.qty.remaining")} value={remainingQty} highlight />
         <TimeCluster targetTime={targetTimeLabel} elapsed={elapsedLabel} overBy={overByLabel} />
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-x-4 sm:gap-x-8 gap-y-2 text-sm sm:text-base md:text-xl text-slate-700">
-        <span><span className="text-slate-500">{t("station.qty.totalGood")}</span>: <span className="font-semibold text-emerald-700">{goodQty}</span></span>
-        <span><span className="text-slate-500">{t("station.qty.totalScrap")}</span>: <span className="font-semibold text-rose-600">{scrapQty}</span></span>
-        {showPausedTotals && (
+      {/* Interruption totals -- only when relevant */}
+      {showPausedTotals && (
+        <div className="mt-3 flex flex-wrap gap-x-4 sm:gap-x-8 gap-y-2 text-sm sm:text-base text-slate-700">
           <span>
-            <span className="text-slate-500">{t("station.timer.pausedTotal")}</span>: {pausedTotalLabel}
+            <span className="text-slate-500">{t("station.timer.pausedTotal")}</span>:{" "}
+            {pausedTotalLabel}
           </span>
-        )}
-        {showPausedTotals && (
           <span>
-            <span className="text-slate-500">{t("station.timer.downtimeTotal")}</span>: {downtimeTotalLabel}
+            <span className="text-slate-500">{t("station.timer.downtimeTotal")}</span>:{" "}
+            {downtimeTotalLabel}
           </span>
-        )}
-      </div>
+        </div>
+      )}
     </>
   );
 }
