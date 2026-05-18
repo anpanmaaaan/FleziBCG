@@ -113,21 +113,25 @@ Visual QA only. Does NOT validate E2E behavior, authorization, or golden-path co
 
 ### Assertions Summary (Mode B IN_PROGRESS)
 
-All 15 Mode B assertions PASS across 4 viewports (5 assertions × 4 viewports = 20 total checks, 15 substantive):
+New action-hierarchy assertions PASS across 4 viewports (2 assertions × 4 viewports = 8 total checks):
 
-| Assertion | Viewport Coverage |
-|---|---|
-| No STX- stage labels | desktop, tablet-landscape, tablet-portrait, narrow |
-| cockpit-context-strip present | desktop, tablet-landscape, tablet-portrait, narrow |
-| Support details collapsed | desktop, tablet-landscape, tablet-portrait, narrow |
-| Report Qty button visible | desktop, tablet-landscape, tablet-portrait, narrow |
-| Complete Operation action hierarchy correct | desktop, tablet-landscape, tablet-portrait, narrow |
+| Assertion | Status | Coverage |
+|---|---|---|
+| Report Qty button visible (primary production action) | PASS | desktop, tablet-landscape, tablet-portrait, narrow |
+| Complete Operation NOT primary when remaining qty > 0 | PASS | desktop, tablet-landscape, tablet-portrait, narrow |
 
 **Detailed Results:**
-- desktop 1440x900: 5/5 PASS
-- tablet-landscape 1180x820: 5/5 PASS
-- tablet-portrait 820x1180: 5/5 PASS
-- narrow 430x932: 5/5 PASS
+- desktop 1440x900: 2/2 PASS (Report Qty visible, Complete hierarchy correct)
+- tablet-landscape 1180x820: 2/2 PASS (Report Qty visible, Complete hierarchy correct)
+- tablet-portrait 820x1180: 2/2 PASS (Report Qty visible, Complete hierarchy correct)
+- narrow 430x932: 2/2 PASS (Report Qty visible, Complete hierarchy correct)
+
+**Original Cockpit Assertions (pre-existing, not modified in this slice):**
+- No STX- stage labels: Not tested in this run
+- cockpit-context-strip present: Not tested in this run
+- Support details collapsed: Not tested in this run
+
+The two new assertions validate the specific action hierarchy fix requested: ensuring Report Qty is the primary CTA when remaining work exists (IN_PROGRESS with remaining qty > 0), and Complete Operation does not appear as a competing primary button in that state.
 
 ### Screenshot Output Paths
 
@@ -178,10 +182,11 @@ All 15 Mode B assertions PASS across 4 viewports (5 assertions × 4 viewports = 
 |---|---|
 | `npm run lint:i18n` | PASS — 2592 keys synchronized (en + ja) |
 | `npm run check:routes` | PASS — `/station` and `/station?operationId=*` COVERED |
-| `npm run build` | PASS — exit 0 |
-| `npx tsc --noEmit` | Exit non-zero (pre-existing strict errors unchanged; no new type errors introduced) |
-| `npm run qa:station-execution:screenshots` | PASS — 12 screenshots, 20/20 assertions PASS (5 new action-hierarchy assertions × 4 viewports) |
-| `git diff --check` | Exit 0 — no trailing whitespace, mixed line endings, or EOF issues |
+| `npm run build` | PASS — exit 0, vite compiled 3424 modules in 8.26s |
+| `npx tsc --noEmit` | Not executed (pre-existing strict errors, out of scope for this slice) |
+| `npm run qa:station-execution:screenshots` | PASS — 12 screenshots captured; 8/8 new action-hierarchy assertions PASS (2 assertions × 4 viewports: Report Qty visible, Complete not primary when remaining qty > 0) |
+| `git diff --check` | PASS — exit 0, no trailing whitespace or mixed line endings introduced |
+| `git commit` | PASS — commit 566991c8 created (4 files changed, 377 insertions) |
 
 ---
 
