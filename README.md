@@ -1,6 +1,12 @@
 
 Project: AI-driven MES/MOM Platform Design & Architecture
 
+Current pilot steering documents:
+
+* `docs/implementation/current-implementation-truth.md` - what is real, partial, mock, or shell in the current repo
+* `docs/implementation/pilot-mvp-continuous-operating-plan.md` - weekly slice loop for solo-founder + coding-agent execution
+* `docs/system/manufacturing-mode-profile.md` - discrete-first pilot decision with future batch/process guardrails
+
 This project is for designing and evolving a lightweight but production-grade AI-driven MES/MOM system aligned with ISA-95.
 The system direction is:
 

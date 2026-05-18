@@ -8,6 +8,14 @@ Latest Design Baseline 2026-04-26
 + CODING_RULES.md v2.0
 ```
 
+> Historical baseline note (2026-05-17): This roadmap is preserved as design
+> history. It still contains useful sequencing context, but it no longer
+> represents the current repo implementation state by itself. Use
+> `docs/implementation/current-implementation-truth.md`,
+> `docs/implementation/pilot-mvp-continuous-operating-plan.md`, and
+> `docs/system/manufacturing-mode-profile.md` as the active pilot steering
+> documents.
+
 # FleziBCG Overall Roadmap
 
 ## 0. Current Position — Chúng ta đang ở đâu?
