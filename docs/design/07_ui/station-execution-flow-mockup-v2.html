@@ -1,0 +1,1452 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Station Execution Flow Mockup v2 (PO-SA proposed)</title>
+  <style>
+    :root {
+      /* tokens — bám station-shopfloor-token-system-v1.md */
+      --bg: #eef2f7;
+      --surface: #ffffff;
+      --surface-soft: #f8fafc;
+      --surface-strong: #f1f5f9;
+      --line: #d9e2ef;
+      --line-strong: #b8c5d8;
+      --text: #0f172a;
+      --muted: #64748b;
+      --blue: #1d4ed8;
+      --blue-soft: #e7efff;
+      --green: #047857;
+      --green-soft: #e8f8ef;
+      --amber: #b45309;
+      --amber-soft: #fff4df;
+      --red: #be123c;
+      --red-soft: #fff1f2;
+      --slate-50: #f8fafc;
+      --slate-100: #f1f5f9;
+      --shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+      /* hit area tokens */
+      --hit-primary: 56px;
+      --hit-secondary: 48px;
+      --gap-min: 12px;
+      --kpi-value: 56px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      line-height: 1.4;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    .layout {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+    }
+
+    .toc {
+      position: sticky;
+      top: 0;
+      align-self: start;
+      height: 100vh;
+      overflow: auto;
+      padding: 22px 16px;
+      background: var(--surface);
+      border-right: 1px solid var(--line);
+    }
+    .brand { font-size: 22px; font-weight: 900; margin-bottom: 6px; }
+    .brand span { color: #f97316; }
+    .doc-note { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+    .toc-label {
+      margin: 18px 0 8px;
+      font-size: 11px;
+      font-weight: 900;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .toc a {
+      display: block;
+      padding: 9px 10px;
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 800;
+      border: 1px solid transparent;
+    }
+    .toc a:hover { background: var(--surface-strong); border-color: var(--line); }
+    .toc a:focus-visible {
+      outline: 2px solid var(--blue);
+      outline-offset: 2px;
+    }
+
+    .page { min-width: 0; padding: 24px; }
+
+    .intro, .implementation-note {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+      margin-bottom: 22px;
+    }
+    .eyebrow {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 900;
+      letter-spacing: 0.14em;
+    }
+    h1, h2, h3 { margin: 0; }
+    h1 { font-size: 26px; margin-top: 4px; }
+    h2 { font-size: 21px; }
+    h3 { font-size: 15px; }
+    p { margin: 6px 0; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--gap-min);
+      margin-top: 16px;
+    }
+    .summary-card {
+      min-height: 96px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface-soft);
+      padding: 14px;
+    }
+    .summary-card strong { display: block; margin-bottom: 6px; }
+    .summary-card small { color: var(--muted); font-weight: 700; }
+
+    .screen {
+      margin: 22px 0;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .screen-meta {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfdff;
+    }
+    .screen-meta p { margin: 4px 0 0; color: var(--muted); font-size: 13px; max-width: 760px; }
+    .tags { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+    .tag {
+      min-height: 26px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .tag.blue { border-color: #bcd2ff; background: var(--blue-soft); color: var(--blue); }
+    .tag.green { border-color: #a7f3d0; background: var(--green-soft); color: var(--green); }
+    .tag.amber { border-color: #fed7aa; background: var(--amber-soft); color: var(--amber); }
+    .tag.red { border-color: #fecdd3; background: var(--red-soft); color: var(--red); }
+    .tag.slate { background: var(--slate-100); color: var(--text); }
+
+    .mock {
+      background: var(--bg);
+      min-height: 480px;
+    }
+    .mock-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 64px;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .mock-title { display: flex; flex-direction: column; gap: 2px; }
+    .mock-title strong { font-size: 18px; }
+    .mock-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--gap-min); }
+    .mock-body { padding: 20px; display: grid; gap: var(--gap-min); }
+
+    /* Buttons — token-system compliant */
+    .btn {
+      min-height: var(--hit-secondary);
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: var(--surface);
+      padding: 0 16px;
+      font-size: 14px;
+      font-weight: 900;
+      color: var(--text);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn.primary {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #fff;
+      min-height: var(--hit-primary);
+      font-size: 17px;
+      box-shadow: 0 8px 16px rgba(29, 78, 216, 0.18);
+    }
+    .btn.success {
+      background: var(--green);
+      border-color: var(--green);
+      color: #fff;
+      min-height: var(--hit-primary);
+      font-size: 17px;
+    }
+    .btn.warning {
+      background: var(--amber);
+      border-color: var(--amber);
+      color: #fff;
+      min-height: var(--hit-primary);
+      font-size: 17px;
+    }
+    .btn.danger {
+      background: var(--red);
+      border-color: var(--red);
+      color: #fff;
+    }
+    .btn.ghost {
+      background: var(--surface-soft);
+      color: var(--text);
+    }
+    .btn.full { width: 100%; }
+
+    /* Card */
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface);
+      overflow: hidden;
+    }
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfdff;
+    }
+    .card-body { padding: 18px; display: grid; gap: var(--gap-min); }
+
+    /* === 3-row Setup card === */
+    .setup-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface);
+      overflow: hidden;
+    }
+    .setup-row {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 18px;
+    }
+    .setup-row + .setup-row { border-top: 1px solid var(--line); }
+    .step-badge {
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      font-size: 14px;
+      background: var(--slate-100);
+      color: var(--text);
+    }
+    .step-badge.done { background: var(--green-soft); color: var(--green); }
+    .step-badge.active { background: var(--blue-soft); color: var(--blue); }
+    .row-title { font-weight: 900; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+    .row-sub { color: var(--muted); font-size: 13px; font-weight: 700; margin-top: 4px; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+      border: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .pill.green { background: var(--green-soft); color: var(--green); border-color: #a7f3d0; }
+    .pill.amber { background: var(--amber-soft); color: var(--amber); border-color: #fed7aa; }
+    .pill.red { background: var(--red-soft); color: var(--red); border-color: #fecdd3; }
+    .pill.blue { background: var(--blue-soft); color: var(--blue); border-color: #bcd2ff; }
+    .pill.slate { background: var(--slate-100); color: var(--text); border-color: var(--line); }
+    .pill::before {
+      content: '';
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: currentColor;
+    }
+    .pill.slate::before { background: var(--muted); }
+
+    /* Banner */
+    .banner {
+      border-radius: 12px;
+      padding: 14px 16px;
+      border-left: 6px solid var(--blue);
+      background: var(--blue-soft);
+      display: grid;
+      gap: 2px;
+    }
+    .banner.amber { border-left-color: var(--amber); background: var(--amber-soft); }
+    .banner.red { border-left-color: var(--red); background: var(--red-soft); }
+    .banner.green { border-left-color: var(--green); background: var(--green-soft); }
+    .banner strong { font-size: 14px; }
+    .banner small { color: var(--muted); font-weight: 700; }
+
+    .helper-text {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+      margin: 0;
+    }
+
+    /* Context strip — chỉ cho Cockpit (Mode B) và screens sau Setup */
+    .context {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: center;
+      min-height: 44px;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfdff;
+      font-size: 13px;
+    }
+    .context span { color: var(--muted); }
+    .context strong { color: var(--text); margin-left: 4px; }
+
+    /* Queue list */
+    .queue-row {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface);
+      padding: 16px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: var(--gap-min);
+      align-items: center;
+    }
+    .queue-row.active { background: var(--blue-soft); border-color: #bcd2ff; }
+
+    /* Cockpit — Hero + Action */
+    .cockpit-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr);
+      gap: var(--gap-min);
+    }
+    .hero {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface);
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+    }
+    .hero-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .hero-name {
+      font-size: 22px;
+      font-weight: 900;
+    }
+    .state-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 900;
+      border: 1px solid var(--line);
+    }
+    .state-badge.green { background: var(--green-soft); color: var(--green); border-color: #a7f3d0; }
+    .state-badge.amber { background: var(--amber-soft); color: var(--amber); border-color: #fed7aa; }
+    .state-badge.red { background: var(--red-soft); color: var(--red); border-color: #fecdd3; }
+    .state-badge .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: currentColor;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--gap-min);
+    }
+    .kpi {
+      min-height: 120px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface-soft);
+      padding: 14px;
+      display: grid;
+      gap: 8px;
+      align-content: center;
+      justify-items: center;
+      text-align: center;
+    }
+    .kpi.blue { background: var(--blue-soft); border-color: #bcd2ff; }
+    .kpi.green { background: var(--green-soft); border-color: #a7f3d0; }
+    .kpi.red { background: var(--red-soft); border-color: #fecdd3; }
+    .kpi.amber { background: var(--amber-soft); border-color: #fed7aa; }
+    .kpi-label { color: var(--muted); font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; }
+    .kpi-value { font-size: var(--kpi-value); line-height: 1; font-weight: 950; }
+    .kpi.blue .kpi-label, .kpi.blue .kpi-value { color: var(--blue); }
+    .kpi.green .kpi-label, .kpi.green .kpi-value { color: var(--green); }
+    .kpi.red .kpi-label, .kpi.red .kpi-value { color: var(--red); }
+    .kpi.amber .kpi-label, .kpi.amber .kpi-value { color: var(--amber); }
+
+    .meta-pair {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--gap-min);
+    }
+    .meta-field {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface-soft);
+      padding: 12px 14px;
+    }
+    .field-label { color: var(--muted); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; }
+    .field-value { margin-top: 6px; font-size: 18px; font-weight: 900; }
+
+    /* Allowed action zone */
+    .allowed-zone {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface);
+      padding: 18px;
+      display: grid;
+      gap: var(--gap-min);
+      align-content: start;
+    }
+    .allowed-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .allowed-source {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .secondary-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--gap-min);
+    }
+    .support {
+      margin-top: 6px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    /* Report quantity */
+    .stepper {
+      display: grid;
+      grid-template-columns: var(--hit-primary) minmax(0, 1fr) var(--hit-primary);
+      gap: var(--gap-min);
+      align-items: center;
+    }
+    .stepper input {
+      min-height: var(--hit-primary);
+      text-align: center;
+      font-size: 28px;
+      font-weight: 900;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: var(--surface);
+    }
+    .quick-add {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--gap-min);
+    }
+    .quick-add .btn { min-height: var(--hit-primary); font-size: 18px; }
+
+    /* Timeline */
+    .timeline {
+      display: grid;
+      gap: 10px;
+    }
+    .timeline-row {
+      display: grid;
+      grid-template-columns: 80px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: var(--gap-min);
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+    }
+    .timeline-time { font-weight: 900; font-size: 14px; }
+    .timeline-text { color: var(--muted); font-weight: 700; font-size: 13px; }
+
+    /* Modal */
+    .modal-backdrop {
+      background: rgba(15, 23, 42, 0.5);
+      padding: 30px 20px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+    }
+    .modal {
+      width: min(520px, 100%);
+      border-radius: 12px;
+      background: var(--surface);
+      box-shadow: 0 22px 48px rgba(15, 23, 42, 0.25);
+      overflow: hidden;
+    }
+    .modal-head {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .modal-body { padding: 20px; display: grid; gap: var(--gap-min); }
+    .modal-foot {
+      padding: 16px 20px;
+      border-top: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--gap-min);
+      background: var(--surface-soft);
+    }
+
+    /* Spec ranges (replaces "pass preview") */
+    .spec-ranges {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--gap-min);
+    }
+    .spec-card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface-soft);
+      padding: 12px;
+    }
+    .spec-card strong { display: block; font-size: 13px; }
+    .spec-card small { color: var(--muted); font-weight: 700; font-size: 12px; }
+
+    /* Persona views — explicitly separated */
+    .persona-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: var(--slate-100);
+      color: var(--text);
+      border: 1px solid var(--line);
+    }
+    .persona-tag.qa { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }
+    .persona-tag.opr { background: var(--blue-soft); color: var(--blue); border-color: #bcd2ff; }
+    .persona-tag.sup { background: var(--amber-soft); color: var(--amber); border-color: #fed7aa; }
+
+    /* Note callouts */
+    .designer-note {
+      background: var(--slate-50);
+      border: 1px dashed var(--line-strong);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .designer-note strong { color: var(--text); }
+
+    @media (max-width: 1180px) {
+      .layout { grid-template-columns: 1fr; }
+      .toc { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+      .cockpit-grid { grid-template-columns: 1fr; }
+      .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 720px) {
+      .page { padding: 12px; }
+      .mock-body { padding: 14px; }
+      .kpis, .quick-add, .meta-pair, .spec-ranges, .secondary-row { grid-template-columns: 1fr; }
+      .setup-row { grid-template-columns: 36px minmax(0, 1fr); }
+      .setup-row > .btn { grid-column: 1 / -1; }
+      .timeline-row { grid-template-columns: 1fr; }
+      .modal-foot { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <nav class="toc" aria-label="Mockup navigation">
+      <div class="brand"><span>Flezi</span>BCG</div>
+      <p class="doc-note">Station Execution Flow Mockup v2 — PO-SA proposed. Bám <em>mode-a-simplify-spec-v1.md</em>, <em>ui-contract-v4.md</em>, <em>shopfloor-token-system-v1.md</em>.</p>
+
+      <div class="toc-label">Setup (Mode A)</div>
+      <a href="#setup-default">01 Setup — Default</a>
+      <a href="#setup-empty">02 Setup — Missing stationId</a>
+      <a href="#setup-error">03 Setup — Error Banner</a>
+      <a href="#setup-close">04 Setup — Close-confirm Dialog</a>
+
+      <div class="toc-label">Queue & Cockpit</div>
+      <a href="#queue">05 Station Queue</a>
+      <a href="#cockpit-active">06 Cockpit — Active (Mode B)</a>
+      <a href="#cockpit-paused">07 Cockpit — Paused (Interrupted)</a>
+      <a href="#cockpit-downtime">08 Cockpit — Downtime Open</a>
+      <a href="#start-downtime-dialog">09 Start-Downtime Dialog</a>
+
+      <div class="toc-label">Reporting & Quality</div>
+      <a href="#report-qty">10 Report Quantity</a>
+      <a href="#quality-entry">11 Quality Measurement</a>
+      <a href="#quality-hold-opr">12 Quality Hold — Operator</a>
+      <a href="#quality-hold-qa">13 Quality Hold — QA</a>
+
+      <div class="toc-label">Completion & Supervisor</div>
+      <a href="#complete">14 Complete Operation</a>
+      <a href="#supervisor">15 Supervisor Timeline</a>
+      <a href="#end-session">16 End Session</a>
+
+      <div class="toc-label">Notes</div>
+      <a href="#design-principles">Design Principles</a>
+      <a href="#implementation-notes">Implementation Notes</a>
+    </nav>
+
+    <main class="page">
+      <section class="intro" id="design-principles">
+        <div class="eyebrow">MES Operator Cockpit · v2 (PO-SA)</div>
+        <h1>Station Execution Flow Mockup v2</h1>
+        <p>Phiên bản này fix các blocker đã review trên mockup v1: Mode A đổi sang 3-row single card không Shell, bỏ wizard 5-step, thêm empty-state và error-banner, tách Operator/QA cho Quality Hold, bỏ "Pass preview" trong Quality Measurement, thêm close-confirm dialog cho End Session.</p>
+        <div class="summary-grid">
+          <div class="summary-card"><strong>Backend là source of truth</strong><small>Action visibility, hold state, closure, allowed_actions đều backend-derived. FE không tự tính.</small></div>
+          <div class="summary-card"><strong>One primary action per mode</strong><small>Mỗi screen state chỉ có 1 primary CTA. Secondary actions không cạnh tranh visual.</small></div>
+          <div class="summary-card"><strong>Token-compliant hit area</strong><small>Primary CTA 56px, secondary 48px, gap ≥ 12px, KPI value ≥ 48px.</small></div>
+          <div class="summary-card"><strong>Color + icon + text</strong><small>State không bao giờ chỉ dùng màu. Pill có dot + label. Operator color-blind vẫn đọc được.</small></div>
+        </div>
+      </section>
+
+      <!-- =================== SETUP — DEFAULT =================== -->
+      <section class="screen" id="setup-default">
+        <div class="screen-meta">
+          <div>
+            <h2>01 Setup — Default state (session đã open, operator chưa identify)</h2>
+            <p>Single 3-row card. KHÔNG StationWorkflowShell, KHÔNG wizard 5-step, KHÔNG EntryPanel checklist. Primary CTA "Enter queue" disabled với helper text chỉ rõ prerequisite còn thiếu.</p>
+          </div>
+          <div class="tags"><span class="tag blue">Mode A</span><span class="tag slate">FE-SE-MODEA-SIMPLIFY-09</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Station Setup</span><strong>STATION_01 · S3 Assembly Inspect</strong></div>
+            <div class="mock-actions">
+              <span class="tag green"><span aria-hidden="true">●</span> Connected</span>
+              <button class="btn ghost">Refresh</button>
+            </div>
+          </div>
+          <div class="mock-body">
+            <div class="setup-card" role="group" aria-labelledby="setup-card-title">
+              <h3 id="setup-card-title" style="padding:14px 18px;border-bottom:1px solid var(--line);background:#fbfdff;">Chuẩn bị station session</h3>
+
+              <div class="setup-row">
+                <div class="step-badge done" aria-hidden="true">1</div>
+                <div>
+                  <div class="row-title">Session <span class="pill green"><span aria-hidden="true"></span>Open</span></div>
+                  <div class="row-sub">#sess-0001 · opened 08:01 · elapsed 12m</div>
+                </div>
+                <button class="btn ghost">End session</button>
+              </div>
+
+              <div class="setup-row">
+                <div class="step-badge active" aria-hidden="true">2</div>
+                <div>
+                  <div class="row-title">Operator <span class="pill amber"><span aria-hidden="true"></span>Not yet</span></div>
+                  <div class="row-sub">Scan badge hoặc nhập operator ID để tiếp tục</div>
+                </div>
+                <button class="btn">Identify ▶</button>
+              </div>
+
+              <div class="setup-row">
+                <div class="step-badge" aria-hidden="true">3</div>
+                <div>
+                  <div class="row-title">Equipment <span class="pill slate"><span aria-hidden="true"></span>Optional</span></div>
+                  <div class="row-sub">Station không bắt buộc bind equipment ở stage này (policy-driven)</div>
+                </div>
+                <button class="btn" disabled aria-label="Bind equipment, requires session and operator">Bind ▶</button>
+              </div>
+            </div>
+
+            <button class="btn primary full" disabled aria-describedby="cta-helper">Enter queue</button>
+            <p id="cta-helper" class="helper-text">Cần identify operator trước khi vào queue.</p>
+
+            <div class="designer-note">
+              <strong>Logic enable:</strong> <code>canNavigateToQueueByVisibleSetupState = stationId && session.status==="open" && session.operator_user_id && equipmentChecklistState!=="required_missing"</code>. UI gating only — backend revalidate trên mọi mutation (BT-CORE-004).
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================== SETUP — EMPTY =================== -->
+      <section class="screen" id="setup-empty">
+        <div class="screen-meta">
+          <div>
+            <h2>02 Setup — Empty state (missing stationId)</h2>
+            <p>Per D-08: chỉ 1 notice card. KHÔNG Shell, KHÔNG checklist, KHÔNG session card.</p>
+          </div>
+          <div class="tags"><span class="tag amber">Empty state</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Station Setup</span><strong>—</strong></div>
+            <div class="mock-actions"><span class="tag amber">No station</span></div>
+          </div>
+          <div class="mock-body">
+            <aside class="banner amber" role="alert">
+              <strong>Chưa chọn station</strong>
+              <small>Truy cập trang này từ landing/dashboard sau khi chọn station code. URL hiện tại không có query <code>?stationId</code>.</small>
+            </aside>
+            <button class="btn primary full">Quay lại landing</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================== SETUP — ERROR =================== -->
+      <section class="screen" id="setup-error">
+        <div class="screen-meta">
+          <div>
+            <h2>03 Setup — Single error banner (command-guard reject)</h2>
+            <p>Per D-04/IR-05: lỗi từ backend hiện trên TOP banner duy nhất, không toast, không inline trong OpenSessionPanel. Title/message/recovery i18n keys từ <em>stationCommandErrorMessages.ts</em>.</p>
+          </div>
+          <div class="tags"><span class="tag red">Error state</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Station Setup</span><strong>STATION_01</strong></div>
+            <div class="mock-actions"><span class="tag red">Command rejected</span></div>
+          </div>
+          <div class="mock-body">
+            <aside class="banner red" role="alert">
+              <strong>Không thể mở session</strong>
+              <small>Station đang được session sess-0042 (operator opr-007) sở hữu. Đề nghị supervisor revoke session cũ trước khi mở session mới.</small>
+              <small style="margin-top:4px;">Mã lỗi: <code>STATION_SESSION_ALREADY_OPEN_OTHER_OWNER</code></small>
+            </aside>
+
+            <div class="setup-card">
+              <div class="setup-row">
+                <div class="step-badge" aria-hidden="true">1</div>
+                <div>
+                  <div class="row-title">Session <span class="pill slate"><span aria-hidden="true"></span>Not confirmed</span></div>
+                  <div class="row-sub">Mở session mới sau khi xử lý lỗi phía trên</div>
+                </div>
+                <button class="btn primary">Open session</button>
+              </div>
+              <div class="setup-row">
+                <div class="step-badge" aria-hidden="true">2</div>
+                <div>
+                  <div class="row-title">Operator <span class="pill slate"><span aria-hidden="true"></span>Not confirmed</span></div>
+                  <div class="row-sub">Cần session open trước</div>
+                </div>
+              </div>
+              <div class="setup-row">
+                <div class="step-badge" aria-hidden="true">3</div>
+                <div>
+                  <div class="row-title">Equipment <span class="pill slate"><span aria-hidden="true"></span>Not confirmed</span></div>
+                  <div class="row-sub">Cần session open trước</div>
+                </div>
+              </div>
+            </div>
+            <button class="btn primary full" disabled>Enter queue</button>
+            <p class="helper-text">Cần mở session trước.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================== SETUP — CLOSE CONFIRM =================== -->
+      <section class="screen" id="setup-close">
+        <div class="screen-meta">
+          <div>
+            <h2>04 Setup — Close-session confirm dialog</h2>
+            <p>Per IR-01: <em>CloseSessionPanel</em> OWNS confirm dialog, render như sibling của 3-row card. Session row chỉ trigger <code>onEndSessionClick</code>, không own state đóng.</p>
+          </div>
+          <div class="tags"><span class="tag amber">Confirm modal</span></div>
+        </div>
+        <div class="mock">
+          <div class="modal-backdrop">
+            <div class="modal" role="dialog" aria-labelledby="close-title" aria-modal="true">
+              <div class="modal-head">
+                <strong id="close-title">Đóng station session?</strong>
+                <span class="tag amber">Cần xác nhận</span>
+              </div>
+              <div class="modal-body">
+                <p>Session <strong>#sess-0001</strong> sẽ được đóng. Operator sẽ phải mở session mới để tiếp tục thao tác.</p>
+                <div class="meta-pair">
+                  <div class="meta-field"><div class="field-label">Operations đã làm</div><div class="field-value">1 completed</div></div>
+                  <div class="meta-field"><div class="field-label">Downtime events</div><div class="field-value">1</div></div>
+                </div>
+                <div class="banner amber">
+                  <strong>Lưu ý</strong>
+                  <small>Nếu vẫn còn operation đang active, hệ thống sẽ chặn đóng và yêu cầu complete/handoff trước.</small>
+                </div>
+              </div>
+              <div class="modal-foot">
+                <button class="btn ghost">Hủy</button>
+                <button class="btn warning">Đóng session</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================== QUEUE =================== -->
+      <section class="screen" id="queue">
+        <div class="screen-meta">
+          <div>
+            <h2>05 Station Queue</h2>
+            <p>Queue list backend-derived. Mỗi row có 1 trạng thái + 1 action duy nhất. Other-session rows không có button — chỉ pill <em>Owned by</em>.</p>
+          </div>
+          <div class="tags"><span class="tag green">Session-owned</span><span class="tag blue">Queue-first</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Station Queue</span><strong>STATION_01</strong></div>
+            <div class="mock-actions">
+              <button class="btn ghost">Ready</button>
+              <button class="btn ghost">Blocked</button>
+              <button class="btn ghost">All</button>
+            </div>
+          </div>
+          <div class="context">
+            <span>Session<strong>#sess-0001</strong></span>
+            <span>Operator<strong>opr-001</strong></span>
+            <span>Equipment<strong>—</strong></span>
+          </div>
+          <div class="mock-body">
+            <div class="queue-row active">
+              <div>
+                <div class="row-title">S3 Assembly Inspect <span class="pill blue"><span aria-hidden="true"></span>Ready</span></div>
+                <div class="row-sub">WO PH6-DEMO-S3-WO · target 120 · planned 08:00</div>
+              </div>
+              <button class="btn primary">Start cockpit</button>
+            </div>
+            <div class="queue-row">
+              <div>
+                <div class="row-title">Torque Verification <span class="pill amber"><span aria-hidden="true"></span>Not ready</span></div>
+                <div class="row-sub">WO PH6-DEMO-S4-WO · waiting for previous operation</div>
+              </div>
+              <span class="tag amber">Waiting</span>
+            </div>
+            <div class="queue-row">
+              <div>
+                <div class="row-title">Final Packaging <span class="pill slate"><span aria-hidden="true"></span>Owned</span></div>
+                <div class="row-sub">WO PH6-DEMO-PACK-WO · session sess-0042 (opr-002)</div>
+              </div>
+              <span class="tag slate">Other session</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================== COCKPIT ACTIVE =================== -->
+      <section class="screen" id="cockpit-active">
+        <div class="screen-meta">
+          <div>
+            <h2>06 Cockpit — Active (Mode B, IN_PROGRESS)</h2>
+            <p>Hero state, 4 KPIs, 1 primary action <em>Report quantity</em> (vì còn remaining > 0 và <code>allowed_actions</code> chứa report_quantity). Pause/Downtime là secondary. KHÔNG STX label, KHÔNG debug shell.</p>
+          </div>
+          <div class="tags"><span class="tag blue">Mode B</span><span class="tag green">Connected</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Station Execution</span><strong>S3 Assembly Inspect</strong></div>
+            <div class="mock-actions">
+              <button class="btn ghost">Back to queue</button>
+            </div>
+          </div>
+          <div class="context">
+            <span>Station<strong>STATION_01</strong></span>
+            <span>Operator<strong>opr-001</strong></span>
+            <span>WO<strong>PH6-DEMO-S3-WO</strong></span>
+            <span>Started<strong>08:12</strong></span>
+          </div>
+          <div class="mock-body">
+            <div class="cockpit-grid">
+              <section class="hero">
+                <div class="hero-head">
+                  <div class="hero-name">S3 Assembly Inspect</div>
+                  <span class="state-badge green"><span class="dot" aria-hidden="true"></span> Running</span>
+                </div>
+                <div class="kpis">
+                  <div class="kpi"><div class="kpi-label">Target</div><div class="kpi-value">120</div></div>
+                  <div class="kpi blue"><div class="kpi-label">Remaining</div><div class="kpi-value">25</div></div>
+                  <div class="kpi green"><div class="kpi-label">Good</div><div class="kpi-value">92</div></div>
+                  <div class="kpi red"><div class="kpi-label">Scrap</div><div class="kpi-value">3</div></div>
+                </div>
+                <div class="meta-pair">
+                  <div class="meta-field"><div class="field-label">PO</div><div class="field-value">PH6-DEMO-S3-PO</div></div>
+                  <div class="meta-field"><div class="field-label">Elapsed</div><div class="field-value">01:06</div></div>
+                </div>
+              </section>
+
+              <aside class="allowed-zone">
+                <div class="allowed-head">
+                  <h3>Next action</h3>
+                  <span class="allowed-source">From allowed_actions</span>
+                </div>
+                <div class="banner">
+                  <strong>Báo cáo số lượng</strong>
+                  <small>Còn lại 25 pcs. Hoàn thành chỉ hiện khi backend trả <code>complete_operation</code> trong allowed_actions.</small>
+                </div>
+                <button class="btn primary full">Report quantity</button>
+                <div class="secondary-row">
+                  <button class="btn">Pause</button>
+                  <button class="btn">Start downtime</button>
+                </div>
+                <div class="support">Hỗ trợ: liên hệ supervisor · xem operation history (collapsed).</div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================== COCKPIT PAUSED =================== -->
+      <section class="screen" id="cockpit-paused">
+        <div class="screen-meta">
+          <div>
+            <h2>07 Cockpit — Paused (Interrupted Mode)</h2>
+            <p>State hero đổi sang amber. Primary action đổi sang <em>Resume</em>. Report bị ẩn (không có trong allowed_actions). Hero KPI vẫn read-visible.</p>
+          </div>
+          <div class="tags"><span class="tag amber">Interrupted</span><span class="tag">Mode B paused</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Station Execution</span><strong>S3 Assembly Inspect</strong></div>
+            <div class="mock-actions"><span class="tag amber">Paused 03:12</span></div>
+          </div>
+          <div class="mock-body">
+            <div class="cockpit-grid">
+              <section class="hero">
+                <div class="hero-head">
+                  <div class="hero-name">S3 Assembly Inspect</div>
+                  <span class="state-badge amber"><span class="dot" aria-hidden="true"></span> Paused</span>
+                </div>
+                <div class="banner amber">
+                  <strong>Operation đang pause</strong>
+                  <small>Pause reason: <em>break</em> · paused at 09:08. Reporting tạm ẩn cho đến khi resume.</small>
+                </div>
+                <div class="kpis">
+                  <div class="kpi"><div class="kpi-label">Target</div><div class="kpi-value">120</div></div>
+                  <div class="kpi blue"><div class="kpi-label">Remaining</div><div class="kpi-value">25</div></div>
+                  <div class="kpi green"><div class="kpi-label">Good</div><div class="kpi-value">92</div></div>
+                  <div class="kpi red"><div class="kpi-label">Scrap</div><div class="kpi-value">3</div></div>
+                </div>
+              </section>
+              <aside class="allowed-zone">
+                <div class="allowed-head">
+                  <h3>Recovery</h3>
+                  <span class="allowed-source">From allowed_actions</span>
+                </div>
+                <button class="btn primary full">Resume operation</button>
+                <div class="secondary-row">
+                  <button class="btn">Add comment</button>
+                  <button class="btn">Call supervisor</button>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================== COCKPIT DOWNTIME =================== -->
+      <section class="screen" id="cockpit-downtime">
+        <div class="screen-meta">
+          <div>
+            <h2>08 Cockpit — Downtime open</h2>
+            <p>State red. Primary action <em>End downtime</em>. Reporting disabled. <strong>Không trộn</strong> với start-downtime dialog (xem screen 09).</p>
+          </div>
+          <div class="tags"><span class="tag red">Downtime open</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Station Execution</span><strong>S3 Assembly Inspect</strong></div>
+            <div class="mock-actions"><span class="tag red">Tool change · 08:42</span></div>
+          </div>
+          <div class="mock-body">
+            <div class="cockpit-grid">
+              <section class="hero">
+                <div class="hero-head">
+                  <div class="hero-name">S3 Assembly Inspect</div>
+                  <span class="state-badge red"><span class="dot" aria-hidden="true"></span> Downtime</span>
+                </div>
+                <div class="banner red">
+                  <strong>Downtime đang mở</strong>
+                  <small>Reason: <em>TOOL_CHANGE</em> · started 08:41 · elapsed 08m 42s. Reporting và Complete bị chặn cho đến khi End downtime.</small>
+                </div>
+                <div class="kpis">
+                  <div class="kpi"><div class="kpi-label">Target</div><div class="kpi-value">120</div></div>
+                  <div class="kpi blue"><div class="kpi-label">Remaining</div><div class="kpi-value">25</div></div>
+                  <div class="kpi green"><div class="kpi-label">Good</div><div class="kpi-value">92</div></div>
+                  <div class="kpi amber"><div class="kpi-label">Downtime</div><div class="kpi-value">08:42</div></div>
+                </div>
+              </section>
+              <aside class="allowed-zone">
+                <div class="allowed-head">
+                  <h3>Recovery</h3>
+                  <span class="allowed-source">From allowed_actions</span>
+                </div>
+                <button class="btn primary full">End downtime</button>
+                <div class="secondary-row">
+                  <button class="btn">Add comment</button>
+                  <button class="btn">Call supervisor</button>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================== START DOWNTIME DIALOG =================== -->
+      <section class="screen" id="start-downtime-dialog">
+        <div class="screen-meta">
+          <div>
+            <h2>09 Start-downtime dialog</h2>
+            <p>Modal riêng. Reason code lấy từ backend master data (<code>fetchDowntimeReasons</code>). Comment optional. Submit gửi <code>operationApi.startDowntime</code>.</p>
+          </div>
+          <div class="tags"><span class="tag amber">Modal</span></div>
+        </div>
+        <div class="mock">
+          <div class="modal-backdrop">
+            <div class="modal" role="dialog" aria-labelledby="dt-title" aria-modal="true">
+              <div class="modal-head">
+                <strong id="dt-title">Bắt đầu downtime</strong>
+                <span class="tag amber">Reason required</span>
+              </div>
+              <div class="modal-body">
+                <div class="meta-field">
+                  <div class="field-label">Reason code</div>
+                  <div class="field-value">TOOL_CHANGE ▾</div>
+                </div>
+                <div class="meta-field">
+                  <div class="field-label">Comment (optional)</div>
+                  <div class="field-value" style="font-size:14px;font-weight:700;color:var(--muted);">Nhập mô tả thêm…</div>
+                </div>
+                <div class="designer-note">
+                  <strong>Note:</strong> Reason list được render từ <code>fetchDowntimeReasons()</code>. Không hardcode danh sách trong FE.
+                </div>
+              </div>
+              <div class="modal-foot">
+                <button class="btn ghost">Hủy</button>
+                <button class="btn warning">Start downtime</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================== REPORT QUANTITY =================== -->
+      <section class="screen" id="report-qty">
+        <div class="screen-meta">
+          <div>
+            <h2>10 Report quantity</h2>
+            <p>Delta entry. Stepper + quick-add token-sized (56px). Submit gửi <code>operationApi.reportQuantity</code>. Projected result chỉ là client-side preview <em>của input</em>, không phải prediction về backend gate.</p>
+          </div>
+          <div class="tags"><span class="tag green">Primary action</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Reporting</span><strong>S3 Assembly Inspect</strong></div>
+            <div class="mock-actions"><span class="tag blue">Remaining 25</span></div>
+          </div>
+          <div class="mock-body">
+            <div class="cockpit-grid">
+              <section class="hero">
+                <h3>Good (Δ)</h3>
+                <div class="stepper">
+                  <button class="btn" aria-label="Decrease good">−</button>
+                  <input type="text" value="+10" aria-label="Good delta" />
+                  <button class="btn" aria-label="Increase good">+</button>
+                </div>
+                <div class="quick-add">
+                  <button class="btn">+1</button>
+                  <button class="btn">+5</button>
+                  <button class="btn">+10</button>
+                  <button class="btn ghost">Reset</button>
+                </div>
+
+                <h3 style="margin-top:8px;">Scrap (Δ)</h3>
+                <div class="stepper">
+                  <button class="btn" aria-label="Decrease scrap">−</button>
+                  <input type="text" value="+1" aria-label="Scrap delta" />
+                  <button class="btn" aria-label="Increase scrap">+</button>
+                </div>
+                <div class="quick-add">
+                  <button class="btn">+1</button>
+                  <button class="btn">+2</button>
+                  <button class="btn">+5</button>
+                  <button class="btn ghost">Scrap reason</button>
+                </div>
+                <button class="btn primary full" style="margin-top:8px;">Submit quantity report</button>
+              </section>
+              <aside class="allowed-zone">
+                <div class="allowed-head">
+                  <h3>After-submit preview (client-side)</h3>
+                  <span class="allowed-source">Computed on input only</span>
+                </div>
+                <div class="kpis" style="grid-template-columns:repeat(2,1fr);">
+                  <div class="kpi green"><div class="kpi-label">Good</div><div class="kpi-value">102</div></div>
+                  <div class="kpi red"><div class="kpi-label">Scrap</div><div class="kpi-value">4</div></div>
+                  <div class="kpi blue"><div class="kpi-label">Remaining</div><div class="kpi-value">14</div></div>
+                  <div class="kpi"><div class="kpi-label">Completed</div><div class="kpi-value">106</div></div>
+                </div>
+                <div class="designer-note">
+                  <strong>Note:</strong> Đây là arithmetic preview của input — không phải prediction backend sẽ accept. Backend có thể reject (e.g. <code>QUANTITY_EXCEEDS_REMAINING</code>) → top banner.
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================== QUALITY MEASUREMENT =================== -->
+      <section class="screen" id="quality-entry">
+        <div class="screen-meta">
+          <div>
+            <h2>11 Quality measurement entry</h2>
+            <p><strong>Bỏ "Pass preview".</strong> Chỉ show <em>spec ranges (reference)</em> để operator đối chiếu. Pass/fail và hold-open quyết định bởi backend SAU khi submit.</p>
+          </div>
+          <div class="tags"><span class="tag blue">QC required</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Quality Measurement</span><strong>S3 Assembly Inspect</strong></div>
+            <div class="mock-actions"><span class="tag blue">Measurement due</span></div>
+          </div>
+          <div class="mock-body">
+            <div class="cockpit-grid">
+              <section class="hero">
+                <h3>Checkpoint measurements</h3>
+                <div class="meta-pair">
+                  <div class="meta-field"><div class="field-label">Length (mm)</div><div class="field-value">10.04</div></div>
+                  <div class="meta-field"><div class="field-label">Torque (Nm)</div><div class="field-value">4.8</div></div>
+                  <div class="meta-field"><div class="field-label">Visual</div><div class="field-value">Pass</div></div>
+                  <div class="meta-field"><div class="field-label">Sample count</div><div class="field-value">5</div></div>
+                </div>
+                <button class="btn primary full">Submit measurement</button>
+              </section>
+              <aside class="allowed-zone">
+                <div class="allowed-head">
+                  <h3>Spec reference (read-only)</h3>
+                  <span class="allowed-source">From routing master data</span>
+                </div>
+                <div class="spec-ranges">
+                  <div class="spec-card"><strong>Length</strong><small>9.95 – 10.05 mm</small></div>
+                  <div class="spec-card"><strong>Torque</strong><small>4.5 – 5.2 Nm</small></div>
+                  <div class="spec-card"><strong>Visual</strong><small>Pass required</small></div>
+                </div>
+                <div class="designer-note">
+                  <strong>Backend-truth:</strong> FE KHÔNG render "Pass preview" / "No hold will be opened". Sau submit, backend trả về <code>quality_result</code> và (nếu fail) <code>hold_id</code>. UI chuyển sang screen Hold (12/13) nếu có.
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================== QUALITY HOLD — OPERATOR =================== -->
+      <section class="screen" id="quality-hold-opr">
+        <div class="screen-meta">
+          <div>
+            <h2>12 Quality hold — Operator view</h2>
+            <p>Operator KHÔNG có quyền release. Chỉ thấy banner blocker, failed checkpoint, và CTA <em>Call QA</em>. Complete bị chặn vì allowed_actions thiếu <code>complete_operation</code>.</p>
+          </div>
+          <div class="tags"><span class="persona-tag opr">Role · Operator</span><span class="tag red">Complete blocked</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Quality Hold</span><strong>QH-1042</strong></div>
+            <div class="mock-actions"><span class="tag red">Hold open</span></div>
+          </div>
+          <div class="mock-body">
+            <div class="cockpit-grid">
+              <section class="hero">
+                <div class="hero-head">
+                  <div class="hero-name">S3 Assembly Inspect</div>
+                  <span class="state-badge red"><span class="dot" aria-hidden="true"></span> Quality hold</span>
+                </div>
+                <div class="banner red">
+                  <strong>Quality hold đang mở</strong>
+                  <small>QH-1042 chặn complete. Vui lòng gọi QA để dispose.</small>
+                </div>
+                <div class="meta-pair">
+                  <div class="meta-field"><div class="field-label">Failed checkpoint</div><div class="field-value">Torque</div></div>
+                  <div class="meta-field"><div class="field-label">Measured value</div><div class="field-value">5.8 Nm</div></div>
+                  <div class="meta-field"><div class="field-label">Spec</div><div class="field-value">4.5 – 5.2 Nm</div></div>
+                  <div class="meta-field"><div class="field-label">Sample</div><div class="field-value">#3 of 5</div></div>
+                </div>
+              </section>
+              <aside class="allowed-zone">
+                <div class="allowed-head">
+                  <h3>Operator actions</h3>
+                  <span class="allowed-source">From allowed_actions</span>
+                </div>
+                <button class="btn primary full">Call QA</button>
+                <div class="secondary-row">
+                  <button class="btn">Add comment</button>
+                  <button class="btn" disabled>Complete</button>
+                </div>
+                <div class="support">Complete sẽ enable khi backend release hold (QH-1042) và allowed_actions chứa <code>complete_operation</code>.</div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================== QUALITY HOLD — QA =================== -->
+      <section class="screen" id="quality-hold-qa">
+        <div class="screen-meta">
+          <div>
+            <h2>13 Quality hold — QA resolution view (separate screen)</h2>
+            <p>QA role mở screen riêng (route khác hoặc tab). Có disposition picker, nonconformance link, release/reject buttons. Visibility được kiểm soát bởi authorization, không phải UI persona toggle.</p>
+          </div>
+          <div class="tags"><span class="persona-tag qa">Role · QA Lead</span><span class="tag amber">Awaiting disposition</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">QA Resolution</span><strong>QH-1042</strong></div>
+            <div class="mock-actions"><span class="tag amber">Awaiting disposition</span></div>
+          </div>
+          <div class="mock-body">
+            <div class="cockpit-grid">
+              <section class="hero">
+                <h3>Hold context</h3>
+                <div class="meta-pair">
+                  <div class="meta-field"><div class="field-label">Operation</div><div class="field-value">S3 Assembly Inspect</div></div>
+                  <div class="meta-field"><div class="field-label">Failed checkpoint</div><div class="field-value">Torque</div></div>
+                  <div class="meta-field"><div class="field-label">Measured</div><div class="field-value">5.8 Nm</div></div>
+                  <div class="meta-field"><div class="field-label">Spec</div><div class="field-value">4.5 – 5.2 Nm</div></div>
+                  <div class="meta-field"><div class="field-label">Operator</div><div class="field-value">opr-001</div></div>
+                  <div class="meta-field"><div class="field-label">Opened at</div><div class="field-value">08:54</div></div>
+                </div>
+              </section>
+              <aside class="allowed-zone">
+                <div class="allowed-head">
+                  <h3>Disposition</h3>
+                  <span class="allowed-source">QA-only authorization</span>
+                </div>
+                <div class="meta-field"><div class="field-label">Disposition</div><div class="field-value">Rework accepted ▾</div></div>
+                <div class="meta-field"><div class="field-label">Nonconformance</div><div class="field-value">NC-2207 (linked)</div></div>
+                <div class="meta-field"><div class="field-label">Comment</div><div class="field-value" style="font-size:14px;font-weight:700;color:var(--muted);">Note disposition rationale…</div></div>
+                <button class="btn success full">Release hold</button>
+                <button class="btn danger full">Reject (scrap)</button>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================== COMPLETE =================== -->
+      <section class="screen" id="complete">
+        <div class="screen-meta">
+          <div>
+            <h2>14 Complete operation</h2>
+            <p>Hiện khi remaining = 0 và <code>complete_operation</code> ∈ allowed_actions. Closure state (closed/open) hiển thị riêng — close là supervisor action tùy policy.</p>
+          </div>
+          <div class="tags"><span class="tag green">Ready to complete</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Station Execution</span><strong>S3 Assembly Inspect — ready</strong></div>
+            <div class="mock-actions"><span class="tag green">No holds</span></div>
+          </div>
+          <div class="context">
+            <span>Remaining<strong>0</strong></span>
+            <span>Good<strong>116</strong></span>
+            <span>Scrap<strong>4</strong></span>
+          </div>
+          <div class="mock-body">
+            <div class="cockpit-grid">
+              <section class="hero">
+                <div class="hero-head">
+                  <div class="hero-name">S3 Assembly Inspect</div>
+                  <span class="state-badge green"><span class="dot" aria-hidden="true"></span> Ready</span>
+                </div>
+                <div class="kpis">
+                  <div class="kpi green"><div class="kpi-label">Good</div><div class="kpi-value">116</div></div>
+                  <div class="kpi red"><div class="kpi-label">Scrap</div><div class="kpi-value">4</div></div>
+                  <div class="kpi blue"><div class="kpi-label">Remaining</div><div class="kpi-value">0</div></div>
+                  <div class="kpi"><div class="kpi-label">Target</div><div class="kpi-value">120</div></div>
+                </div>
+              </section>
+              <aside class="allowed-zone">
+                <div class="allowed-head">
+                  <h3>Closure</h3>
+                  <span class="allowed-source">From allowed_actions</span>
+                </div>
+                <button class="btn primary full">Complete operation</button>
+                <div class="banner">
+                  <strong>Completed ≠ Closed</strong>
+                  <small>Operation sẽ đánh dấu COMPLETED. Closure (close/reopen) là supervisor action — không hiển thị ở operator UI.</small>
+                </div>
+                <button class="btn ghost full">Back to queue</button>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================== SUPERVISOR =================== -->
+      <section class="screen" id="supervisor">
+        <div class="screen-meta">
+          <div>
+            <h2>15 Supervisor timeline</h2>
+            <p>Read-only view cho role SUP. Timeline events render từ backend event log, không invent. State summary backend-derived.</p>
+          </div>
+          <div class="tags"><span class="persona-tag sup">Role · Supervisor</span><span class="tag green">Live</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Supervisor Operations</span><strong>STATION_01 live timeline</strong></div>
+            <div class="mock-actions">
+              <button class="btn ghost">Filter</button>
+              <button class="btn ghost">Export</button>
+            </div>
+          </div>
+          <div class="mock-body">
+            <div class="cockpit-grid">
+              <section class="hero">
+                <h3>Current state</h3>
+                <div class="meta-pair">
+                  <div class="meta-field"><div class="field-label">Operation</div><div class="field-value">S3 Assembly Inspect</div></div>
+                  <div class="meta-field"><div class="field-label">Operator</div><div class="field-value">opr-001</div></div>
+                  <div class="meta-field"><div class="field-label">Session</div><div class="field-value">sess-0001</div></div>
+                  <div class="meta-field"><div class="field-label">Downtime</div><div class="field-value">8m 42s</div></div>
+                  <div class="meta-field"><div class="field-label">Quality</div><div class="field-value">Released</div></div>
+                  <div class="meta-field"><div class="field-label">Closure</div><div class="field-value">Open</div></div>
+                </div>
+                <div class="secondary-row">
+                  <button class="btn">Revoke session</button>
+                  <button class="btn">Close operation</button>
+                </div>
+              </section>
+              <aside class="card">
+                <div class="card-head"><h3>Timeline</h3><span class="tag blue">Auditable</span></div>
+                <div class="card-body">
+                  <div class="timeline">
+                    <div class="timeline-row"><div class="timeline-time">08:12</div><div class="timeline-text">Operation started by opr-001</div><span class="pill green"><span aria-hidden="true"></span>Start</span></div>
+                    <div class="timeline-row"><div class="timeline-time">08:24</div><div class="timeline-text">Reported +40 good / +1 scrap</div><span class="pill blue"><span aria-hidden="true"></span>Qty</span></div>
+                    <div class="timeline-row"><div class="timeline-time">08:41</div><div class="timeline-text">Downtime started · TOOL_CHANGE</div><span class="pill amber"><span aria-hidden="true"></span>Down</span></div>
+                    <div class="timeline-row"><div class="timeline-time">08:50</div><div class="timeline-text">Downtime ended</div><span class="pill green"><span aria-hidden="true"></span>Up</span></div>
+                    <div class="timeline-row"><div class="timeline-time">09:06</div><div class="timeline-text">Quality hold QH-1042 released by qal-001</div><span class="pill green"><span aria-hidden="true"></span>QA</span></div>
+                    <div class="timeline-row"><div class="timeline-time">09:18</div><div class="timeline-text">Operation completed</div><span class="pill green"><span aria-hidden="true"></span>Done</span></div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================== END SESSION =================== -->
+      <section class="screen" id="end-session">
+        <div class="screen-meta">
+          <div>
+            <h2>16 End session</h2>
+            <p>Summary card + primary CTA <em>Close session</em>. Khi click → modal confirm (xem screen 04). Sau close → quay về Setup empty hoặc landing.</p>
+          </div>
+          <div class="tags"><span class="tag green">Operation complete</span></div>
+        </div>
+        <div class="mock">
+          <div class="mock-topbar">
+            <div class="mock-title"><span class="eyebrow">Station Session</span><strong>End session</strong></div>
+            <div class="mock-actions"><span class="tag green">No active operation</span></div>
+          </div>
+          <div class="mock-body">
+            <section class="hero">
+              <h3>Session summary · #sess-0001</h3>
+              <div class="meta-pair">
+                <div class="meta-field"><div class="field-label">Opened</div><div class="field-value">08:01</div></div>
+                <div class="meta-field"><div class="field-label">Operator</div><div class="field-value">opr-001</div></div>
+                <div class="meta-field"><div class="field-label">Equipment</div><div class="field-value">—</div></div>
+                <div class="meta-field"><div class="field-label">Operations</div><div class="field-value">1 completed</div></div>
+                <div class="meta-field"><div class="field-label">Reports</div><div class="field-value">4 events</div></div>
+                <div class="meta-field"><div class="field-label">Downtime</div><div class="field-value">1 event · 8m 42s</div></div>
+              </div>
+              <button class="btn primary full">Close session</button>
+              <div class="designer-note">
+                <strong>Ownership:</strong> Click vào "Close session" trigger <code>showCloseConfirm = true</code>. <code>CloseSessionPanel</code> own confirm dialog (xem screen 04). Page state own loading/error.
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <section class="implementation-note" id="implementation-notes">
+        <h2>Implementation Notes For Coding Agent</h2>
+        <p><strong>Scope intent:</strong> Visual direction pack, không phải production code. Translate sang component hiện có (StationWorkflowShell, OpenSessionPanel, IdentifyOperatorPanel, BindEquipmentPanel, CloseSessionPanel cho Mode A; ExecutionStateHero, AllowedActionZone, QuantitySummaryPanel cho Mode B).</p>
+        <p><strong>Hard requirements:</strong></p>
+        <ul>
+          <li>Mode A KHÔNG dùng <code>StationWorkflowShell</code>; KHÔNG dùng <code>StationEntryPanel</code>; KHÔNG wizard 5-step (D-01..D-02).</li>
+          <li>Mode A có exact 1 primary CTA top-level "Enter queue"; helper text reflect missing prerequisite (D-05, IR-06). Variable name: <code>canNavigateToQueueByVisibleSetupState</code>.</li>
+          <li>Error display: TOP banner duy nhất, no toast on failure cho command-guard codes (D-04, IR-05).</li>
+          <li>Empty state khi <code>!stationId</code>: 1 amber notice, không Shell, không rows (D-08).</li>
+          <li>Close-session confirm dialog OWN bởi <code>CloseSessionPanel</code> (IR-01).</li>
+          <li>Cockpit (Mode B): action visibility từ <code>allowed_actions</code>; KHÔNG STX label, KHÔNG generic partial banner.</li>
+          <li>Quality Measurement: KHÔNG render "Pass preview" / "No hold will be opened". Sau submit, backend trả <code>quality_result</code>.</li>
+          <li>Quality Hold: tách Operator view và QA view (route/authorization khác nhau), KHÔNG render side-by-side.</li>
+          <li>Touch targets: primary 56px, secondary 48px, gap ≥ 12px, KPI value ≥ 48px.</li>
+          <li>Pill states: dot + label (color + text), không chỉ color.</li>
+          <li>Focus-visible ring trên mọi interactive element.</li>
+          <li><code>aria-hidden="true"</code> trên decorative symbols (●, ○, dot, step number).</li>
+        </ul>
+        <p><strong>Suggested slice ordering:</strong></p>
+        <ol>
+          <li><code>FE-SE-MODEA-SIMPLIFY-09</code> — Setup 3-row card + empty + error + close-confirm dialog ownership.</li>
+          <li><code>FE-SE-COCKPIT-REWORK-07</code> — Cockpit Mode B hero + allowed_actions + interrupted mode (paused, downtime).</li>
+          <li><code>FE-SE-QUALITY-MEASURE-XX</code> — Quality entry spec-reference panel; remove pass preview.</li>
+          <li><code>FE-SE-QUALITY-HOLD-XX</code> — Operator hold view + QA disposition route (separate).</li>
+          <li><code>FE-SE-SUPERVISOR-TIMELINE-XX</code> — Supervisor timeline read-only.</li>
+        </ol>
+        <p><strong>Caveats:</strong> Reason list, disposition list, spec ranges đều backend-derived master data — không hardcode trong FE.</p>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

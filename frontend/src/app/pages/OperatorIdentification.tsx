@@ -156,13 +156,16 @@ export function OperatorIdentification() {
       ? "bg-red-100 text-red-700"
       : "bg-gray-100 text-gray-600";
 
+  const normalizedSessionStatus = session?.status?.toUpperCase() ?? null;
+  const isOpenSession = normalizedSessionStatus === "OPEN";
+
   const handoffSessionState = !stationId
     ? "not_confirmed"
     : !resolvedSessionId
     ? "missing"
-    : session?.status === "open"
+    : isOpenSession
     ? "open"
-    : session?.status
+    : normalizedSessionStatus
     ? "closed"
     : "not_confirmed";
 

@@ -114,3 +114,5 @@ frontend/test-results/
 frontend/package-lock.json.bak
 package-lock.json
 docs/audit/station-execution-responsive-qa/*.png
+docs/audit/station-session-close-qa/
+docs/audit/station-session-setup-qa/

@@ -139,11 +139,20 @@ export function StationSession() {
     ? "optional_unknown"
     : "not_confirmed";
 
+  const normalizedSessionStatus = session?.status?.toUpperCase() ?? null;
+  const isOpenSession = normalizedSessionStatus === "OPEN";
+  const stationEntrySessionStatus =
+    normalizedSessionStatus === "OPEN"
+      ? "open"
+      : normalizedSessionStatus === "CLOSED"
+      ? "closed"
+      : null;
+
   const nextStepKey = !stationId
     ? ("stationSession.setup.next.selectStation" as I18nSemanticKey)
     : !session
     ? ("stationSession.setup.next.openSession" as I18nSemanticKey)
-    : session.status !== "open"
+    : !isOpenSession
     ? ("stationSession.setup.next.openSession" as I18nSemanticKey)
     : !session.operator_user_id
     ? ("stationSession.setup.next.identifyOperator" as I18nSemanticKey)
@@ -153,15 +162,13 @@ export function StationSession() {
     ? ("stationSession.setup.next.optionalEquipmentUnknown" as I18nSemanticKey)
     : ("stationSession.setup.next.ready" as I18nSemanticKey);
 
-  const isOpenSession = session?.status === "open";
-
   /**
    * BT-CORE-004: UI navigation readiness only — not backend authorization.
    * Backend revalidates session/operator/equipment on execution mutation commands.
    */
   const canNavigateToQueueByVisibleSetupState =
     Boolean(stationId) &&
-    session?.status === "open" &&
+    isOpenSession &&
     Boolean(session?.operator_user_id) &&
     equipmentChecklistState !== "required_missing";
 
@@ -210,7 +217,7 @@ export function StationSession() {
         {/* Mode A Setup Panels */}
         <StationEntryPanel
           stationId={stationId}
-          sessionStatus={(session?.status ?? null) as "open" | "closed" | null}
+          sessionStatus={stationEntrySessionStatus}
           operatorUserId={session?.operator_user_id ?? null}
           equipmentId={session?.equipment_id ?? null}
           equipmentChecklistState={equipmentChecklistState}
@@ -224,34 +231,35 @@ export function StationSession() {
 
         {loading ? (
           <div className="p-8 text-center text-gray-400 text-sm">{t("stationSession.label.loading_session" as I18nSemanticKey)}</div>
-        ) : !session ? (
-          <div className="p-6 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500 text-center">
-            {t("stationSession.session.noActive" as I18nSemanticKey)}
-          </div>
         ) : (
           <>
             {/* Mode A Setup: Session Management */}
+            {!session ? (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-600">
+                {t("stationSession.session.noActive" as I18nSemanticKey)}
+              </div>
+            ) : null}
+
             <OpenSessionPanel
-              sessionId={session.session_id}
-              openedAt={session.opened_at}
-              sessionStatus={session.status}
+              sessionId={session?.session_id ?? null}
+              openedAt={session?.opened_at ?? null}
+              isOpen={isOpenSession}
               loading={loading}
               opening={opening}
+              stationId={stationId}
               onOpenSession={handleOpenSession}
-              onEndSessionClick={() => setShowCloseConfirm(true)}
-              onRefresh={loadSession}
             />
 
             {/* Mode A Setup: Operator Identification */}
             <IdentifyOperatorPanel
-              operatorUserId={session.operator_user_id}
+              operatorUserId={session?.operator_user_id ?? null}
               sessionOpen={isOpenSession}
               onIdentifyOperator={goToOperatorIdentification}
             />
 
             {/* Mode A Setup: Equipment Binding */}
             <BindEquipmentPanel
-              equipmentId={session.equipment_id}
+              equipmentId={session?.equipment_id ?? null}
               equipmentChecklistState={equipmentChecklistState}
               sessionOpen={isOpenSession}
               onBindEquipment={goToEquipmentBinding}
@@ -279,6 +287,8 @@ export function StationSession() {
               showCloseConfirm={showCloseConfirm}
               closing={closing}
               commandError={commandError}
+              canContinueToQueue={canNavigateToQueueByVisibleSetupState}
+              onContinueToQueue={goToStationQueue}
               onClose={() => setShowCloseConfirm(true)}
               onConfirmClose={handleClose}
               onCancelClose={() => setShowCloseConfirm(false)}

@@ -238,8 +238,13 @@ Rules:
 - A non-zero exit code is a failed verification. If failures are baseline, write
   `FAIL - baseline failures` and classify baseline vs introduced/fixed errors;
   never write PASS for that command.
+- Verification must be run after the final relevant edit. If code, scripts,
+  config, or `docs/agent-reports/latest-agent-report.md` change after a command
+  passed, re-run every command that could be affected before reporting PASS.
 - If `git diff --check` reports any issue, the diff check failed and the slice is
   not clean until fixed or explicitly reported as blocked.
+- Run `git diff --check` after writing the canonical report, not before, because
+  the report can introduce whitespace failures.
 - Do not treat screenshots as valid evidence unless they show the target state
   named in the report.
 - Do not reuse stale screenshots as proof of a new change.
@@ -277,6 +282,9 @@ Required behavior:
 - Do not stage or commit PNG, JPG, JPEG, GIF, WebP, MP4, or WebM artifacts under
   `docs/audit/**` unless the prompt explicitly says to commit generated
   artifacts.
+- Do not delete tracked historical artifacts under `docs/audit/**` unless the
+  prompt explicitly names those paths for deletion. `D docs/audit/**` in
+  `git status --short` is a blocker, not cleanup.
 - If such artifacts are already tracked, staged, or committed contrary to the
   task policy, report a blocker and do not claim a clean pass.
 - Do not present artifact generation as E2E/API/backend proof unless the command
@@ -331,6 +339,10 @@ If staging or committing is explicitly requested:
 
 For every code-changing task:
 
+- For reviewer correction tasks, reproduce or inspect the exact blocker before
+  editing, identify the root-cause file, and re-run the same failed command
+  after the final edit. Do not claim a correction is complete by updating only
+  the report while the original code failure remains.
 - Inspect existing patterns before adding new helpers, abstractions, or fixtures.
 - Prefer the smallest behavior-preserving edit that satisfies the slice.
 - Keep refactors separate from behavior changes unless the refactor is required
@@ -342,6 +354,10 @@ For every code-changing task:
 - If a validation command uses a container, confirm whether the container sees
   live workspace source. If the compose image is baked, bind-mount the live
   source or rebuild before trusting the result.
+- For React/TypeScript prop-contract work, inspect both sides of the contract:
+  component interface/destructuring and every call site touched by the slice.
+  Search for old prop names and new prop names before final report. Typecheck
+  failure from a prop mismatch is a blocking implementation failure.
 - If command output is truncated/noisy, capture a reliable exit code or log
   before reporting pass/fail.
 - Before final report, compare the report against the actual diff and remove
@@ -358,6 +374,10 @@ docs/agent-reports/latest-agent-report.md
 Overwrite the file on each run before declaring completion. The chat response
 can be a short summary, but this repo file is the canonical report for review.
 If the report cannot be written, report that as a blocker.
+
+The exported report must be single-slice. Replace the previous report content;
+do not append to it, prepend above it, or leave old sections below the current
+slice. If stale previous-slice content remains, the report is invalid.
 
 The exported report must include task/slice, agent and selected skills, coverage
 class, Hard Mode carry-forward status, `Changed in this slice`,

@@ -138,6 +138,9 @@ Required behavior:
 - Mocks used for screenshot capture must match the current frontend API shape.
 - If the task changes a state-specific UI, assert that the screenshot harness
   reaches that state before taking screenshots.
+- Screenshot evidence must be fresh. Re-run screenshot capture after the final
+  UI/source edit, and do not cite artifacts generated before the current UI
+  diff. When in doubt, compare artifact timestamps to the touched source files.
 - Save screenshots under `docs/audit/` in a task-specific folder.
 - List exact screenshot paths in `docs/agent-reports/latest-agent-report.md`.
 
@@ -146,6 +149,9 @@ Artifact policy:
 - Screenshots, videos, and generated binary evidence under `docs/audit/**` are
   review artifacts, not commit payload, unless the task prompt explicitly says
   to commit them.
+- Artifact policy does not authorize deleting tracked historical evidence. If
+  `git status --short` shows `D docs/audit/**`, report it as a blocker unless
+  the task explicitly requested deletion of those exact tracked artifacts.
 - The report must separate `Generated artifact paths` from `Files intended for
   commit`.
 - If generated artifacts are already tracked, staged, or committed contrary to
@@ -232,6 +238,23 @@ Verification status must follow the real command result:
 
 - A command with a non-zero exit code is `FAIL`, even if every failure appears
   to be pre-existing or outside the slice.
+- Verification claims expire after later edits to code, scripts, config, or the
+  canonical report. Re-run the affected commands after the final edit before
+  writing `PASS`, `clean`, or `zero errors`.
+- For TypeScript/React work, `tsc --noEmit` must run after prop/interface/call
+  site edits. A screenshot harness cannot replace typecheck evidence.
+
+### Correction Task Gate
+
+When the task is a correction to a reviewer finding:
+
+- First reproduce or inspect the exact prior failure before editing.
+- Name the root-cause file and the specific contract, command, or report section
+  that was wrong.
+- The final diff must touch the file that can actually fix the root cause, or
+  the report must explicitly explain why no code change was needed.
+- Re-run the exact command that previously failed after the final edit.
+- Do not report a previous finding as fixed by changing only the report.
 
 ### Baseline vs Slice Error Rule
 
@@ -247,6 +270,16 @@ Verification status must follow the real command result:
 - If `git diff --check` reports whitespace or conflict-marker problems, the
   slice is not clean. Fix them or report a blocker; do not claim the diff check
   passed.
+- Run `git diff --check` after the final report write, because the report file
+  itself can introduce trailing whitespace.
+
+### Component Contract Gate
+
+- When changing React component props, update the component interface,
+  destructuring, call sites, and tests/harnesses together.
+- Before reporting done, text-search the old and new prop names in the touched
+  component and parent page. If the call site and component interface disagree,
+  the slice is incomplete.
 
 ## UI Guard Preservation Gate
 
@@ -278,6 +311,10 @@ docs/agent-reports/latest-agent-report.md
 Overwrite this file on each run before marking the task done. The chat response
 may summarize the outcome, but the repository file is the canonical report for
 review. If the agent cannot write this file, it must report that as a blocker.
+
+The canonical report must contain only the current slice. Do not append,
+prepend, or leave stale content from a previous report in the file. If previous
+slice content remains below the current report, the report export failed.
 
 The exported report must include:
 

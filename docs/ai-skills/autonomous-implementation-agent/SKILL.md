@@ -74,10 +74,26 @@ Current safe order:
 - Never use `git add .`.
 - Before reporting done, compare the actual diff with the report. Remove or
   correct every claim that is not backed by changed code, tests, or artifacts.
+- For React/TypeScript prop changes, keep the component prop interface,
+  destructuring, all call sites, and tests/harnesses in sync. Search both the old
+  and new prop names before reporting done.
 - Before reporting done, classify every dirty path from `git status --short` as
   `IN SCOPE` or `OUT OF SCOPE`. Never write "not touched" for a dirty file.
 - Treat unrelated staged files as a blocker unless the task explicitly includes
   them.
+
+## Correction Task Discipline
+
+When implementing a reviewer correction:
+
+- Reproduce or inspect the exact prior blocker before editing.
+- Identify the root-cause file and the exact contract, command, or report claim
+  that was wrong.
+- Ensure the diff touches the file that can fix the root cause. If no code
+  change is needed, explain why with evidence.
+- Re-run the same command that failed in review after the final edit.
+- Do not mark the correction complete by changing only the report while the
+  original code failure remains.
 
 ## Test And Fixture Discipline
 
@@ -97,9 +113,13 @@ Current safe order:
   the failures are baseline or unrelated to the current slice. Report baseline
   failures separately from failures introduced, fixed, or still affecting the
   slice.
+- Re-run affected verification commands after the final code/script/config/report
+  edit. A prior PASS is stale if any later edit can affect that command.
 - `git diff --check` is a verification command. If it reports trailing
   whitespace, conflict markers, or any other issue, report it as failed until
   fixed.
+- Run `git diff --check` after writing `docs/agent-reports/latest-agent-report.md`
+  because report formatting can fail the diff check.
 - Assertion failures must fail the command. Do not rely only on
   `process.exitCode = 1` while continuing to print pass-like output.
 - If stdout/stderr contains assertion failures, the command must be reported as
@@ -135,6 +155,7 @@ Before the final report, run a self-review:
 - Generated artifact paths:
 - Files intended for commit:
 - New files integrated/imported where claimed:
+- Screenshot/video artifacts regenerated after final UI source edit:
 - Acceptance criteria backed by diff/tests/screenshots:
 - Commands with reliable exit codes:
 - Commands skipped or not trusted:
@@ -142,6 +163,8 @@ Before the final report, run a self-review:
 - Behavior intentionally changed:
 - Behavior changed accidentally/fixed:
 - Report claims match actual diff:
+- Component prop contracts match interfaces/call sites:
+- Final report contains only this slice, with no stale appended report:
 ```
 
 If any answer exposes a gap, fix it or report the slice as incomplete. Do not
@@ -156,6 +179,10 @@ is stale, or required assertions are failing.
   under `Files intended for commit`.
 - Do not stage or commit PNG, JPG, JPEG, GIF, WebP, MP4, or WebM artifacts under
   `docs/audit/**` unless explicitly requested.
+- Do not delete tracked historical artifacts under `docs/audit/**` unless the
+  prompt explicitly names those paths for deletion. If `git status --short`
+  shows `D docs/audit/**`, report a blocker instead of treating it as generated
+  artifact cleanup.
 - If staging or committing is explicitly requested, run and report
   `git diff --cached --stat`, `git diff --cached --name-status`, and
   `No unrelated staged files: yes/no` before commit.
@@ -208,3 +235,7 @@ docs/agent-reports/latest-agent-report.md
 ```
 
 If this file cannot be written, stop and report the export failure as a blocker.
+The file must be replaced with the current report only. Do not append to the
+previous report, and do not leave previous slice sections below the current
+slice. Stale report content is a failed export and must be fixed before marking
+done.

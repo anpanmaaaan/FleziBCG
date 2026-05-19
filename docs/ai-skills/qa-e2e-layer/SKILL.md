@@ -82,6 +82,14 @@ For frontend screenshot QA:
 - assert important negative conditions when removing/replacing UI;
 - assert the business state claimed in the report, not only generic badges,
   route presence, or screen status labels;
+- scope selectors to the panel, dialog, row, or region under test when labels
+  are duplicated on the page;
+- after clicking an action, assert the intended side effect: target network
+  request, state text, alert, modal close/open, enabled/disabled transition, or
+  URL change. Do not rely on the click completing without proving the state
+  changed.
+- regenerate screenshots after the final UI/source edit. Artifact timestamps
+  must be newer than the touched UI files they are used to verify;
 - make the screenshot show the changed area, scrolling or taking an additional
   focused screenshot if needed;
 - list only current-run screenshots in the report;

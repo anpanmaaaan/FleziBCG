@@ -95,11 +95,14 @@ export function EquipmentBinding() {
     navigate(query ? `/station?${query}` : "/station");
   };
 
+  const normalizedSessionStatus = session?.status?.toUpperCase() ?? null;
+  const isOpenSession = normalizedSessionStatus === "OPEN";
+
   const handoffSessionState = !stationId
     ? "not_confirmed"
     : !session
     ? "missing"
-    : session.status === "open"
+    : isOpenSession
     ? "open"
     : "closed";
 
@@ -211,7 +214,7 @@ export function EquipmentBinding() {
                 <div className="flex justify-between">
                   <span className="text-gray-500">{t("equipmentBinding.label.session_status")}</span>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${session?.status === "open" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}
+                    className={`text-xs px-2 py-0.5 rounded-full ${isOpenSession ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}
                   >
                     {session?.status ?? "no session"}
                   </span>
@@ -247,7 +250,7 @@ export function EquipmentBinding() {
             </div>
 
             {/* Bind action */}
-            {session && session.status === "open" && (
+            {session && isOpenSession && (
               <div className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col gap-3">
                 <div className="text-sm font-semibold text-gray-700">{t("equipmentBinding.action.bind")}</div>
                 <div className="flex gap-2">

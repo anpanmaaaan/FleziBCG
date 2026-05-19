@@ -8,6 +8,8 @@ interface CloseSessionPanelProps {
   showCloseConfirm: boolean;
   closing: boolean;
   commandError: StationCommandErrorMessage | null;
+  canContinueToQueue: boolean;
+  onContinueToQueue: () => void;
   onClose: () => void;
   onConfirmClose: () => void;
   onCancelClose: () => void;
@@ -18,6 +20,8 @@ export function CloseSessionPanel({
   showCloseConfirm,
   closing,
   commandError,
+  canContinueToQueue,
+  onContinueToQueue,
   onClose,
   onConfirmClose,
   onCancelClose,
@@ -48,9 +52,9 @@ export function CloseSessionPanel({
 
         <button
           type="button"
-          onClick={onClose}
+          onClick={onContinueToQueue}
           className="min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={closing}
+          disabled={closing || !canContinueToQueue}
         >
           {t("stationSession.setup.continue.cta" as I18nSemanticKey)}
         </button>
