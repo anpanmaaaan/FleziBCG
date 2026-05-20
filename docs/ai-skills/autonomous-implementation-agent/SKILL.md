@@ -18,13 +18,14 @@ PLAN → HARD MODE v3 GATE → TEST FIRST → CODE → BUILD → TEST → VERIFY
 ## Mandatory Reading
 
 1. `.github/copilot-instructions.md`
-2. `docs/design/INDEX.md`
-3. `docs/design/AUTHORITATIVE_FILE_MAP.md`
-4. `docs/governance/CODING_RULES.md`
-5. `docs/governance/ENGINEERING_DECISIONS.md`
-6. `docs/governance/SOURCE_STRUCTURE.md`
-7. `docs/implementation/slice-strategy-for-flezibcg.md`
-8. relevant design docs for the slice
+2. `docs/agent-context/flezibcg-project-primer.md`
+3. `docs/design/INDEX.md`
+4. `docs/design/AUTHORITATIVE_FILE_MAP.md`
+5. `docs/governance/CODING_RULES.md`
+6. `docs/governance/ENGINEERING_DECISIONS.md`
+7. `docs/governance/SOURCE_STRUCTURE.md`
+8. `docs/implementation/slice-strategy-for-flezibcg.md`
+9. relevant design docs for the slice
 
 ## Public Work Packet
 
@@ -34,6 +35,7 @@ Before coding, output this compact packet:
 ## Work Packet
 - User goal:
 - Slice boundary:
+- Project primer read: yes/no
 - Selected skills read:
 - Hard Mode MOM v3: on/off + reason
 - Coverage target: service | API | frontend | E2E | docs-only
@@ -95,6 +97,22 @@ When implementing a reviewer correction:
 - Re-run the same command that failed in review after the final edit.
 - Do not mark the correction complete by changing only the report while the
   original code failure remains.
+
+## Task Identity Discipline
+
+The latest user prompt is the active task. Before editing, copy the requested
+task/slice id and one-line goal into the work packet. Compare that id to:
+
+- the report title you are about to write;
+- the screenshot/audit folder you are about to create or update;
+- the main files you are about to edit;
+- any older prompt/report you are using as context.
+
+If the ids diverge, stop before coding and report `RED - task identity
+mismatch`. Do not continue an older slice just because its prompt or report is
+still open in the repo. A final report for `FE-SE-INTERRUPTED-MODE-11` is a
+failure when the active prompt requested `FE-SE-REMOVE-WORKFLOW-SHELL-12`, even
+if the interrupted-mode work is technically correct.
 
 ## Test And Fixture Discipline
 
@@ -188,6 +206,9 @@ Before the final report, run a self-review:
 
 ```markdown
 ## Implementation Self-Review
+- Requested task/slice id:
+- Implemented/reported task/slice id:
+- Task identity matches latest user prompt:
 - `git status --short` checked:
 - Expected changed files present:
 - Unexpected changed files:

@@ -27,12 +27,25 @@ This skill automatically selects:
    - Hard Mode MOM v3 for autonomous/risky MOM implementation
    - Hard Mode MOM v2 for focused review
 
+Before selecting mode for any non-trivial FleziBCG task, read:
+
+```text
+docs/agent-context/flezibcg-project-primer.md
+```
+
+The primer is the compact product orientation layer. It does not replace
+specific design contracts, but it tells agents how to interpret this repo as a
+manufacturing operations product instead of a generic UI/codebase.
+
 ## Required Output
 
 For every non-trivial task:
 
 ```markdown
 ## Routing
+- Requested task/slice id:
+- Requested goal:
+- Project primer read: yes/no
 - Selected brain:
 - Selected mode:
 - Hard Mode MOM:
@@ -41,6 +54,19 @@ For every non-trivial task:
 - Hard Mode kept from parent slice: yes/no
 - Reason:
 ```
+
+### Task Identity Lock
+
+The requested task/slice id from the latest user prompt is binding. Older
+reports, prompt files, screenshots, or partially completed slices are context,
+not permission to continue that older work.
+
+Before implementation, compare the requested id to the id in the work packet,
+report title, screenshot output folder, and intended changed files. If they do
+not match, stop and report `RED - task identity mismatch`. Do not implement
+`FE-SE-INTERRUPTED-MODE-11` when the active prompt requested
+`FE-SE-REMOVE-WORKFLOW-SHELL-12`, and do not mark such a run green even if all
+commands pass.
 
 ## Brain Selection
 

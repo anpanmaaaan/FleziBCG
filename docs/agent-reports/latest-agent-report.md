@@ -1,177 +1,190 @@
-# FE-SE-COCKPIT-HERO-10 — Slice 2 Implementation Report (Correction Pass)
-
-## Routing
-
-- Selected brain: FleziBCG Frontend
-- Selected mode: implementation (correction pass)
-- Hard Mode MOM: v3 (kept from parent slice — execution allowed-action surface)
-- Selected skills read:
-  - `docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md`
-  - `docs/ai-skills/hard-mode-mom-v3/SKILL.md`
-  - `docs/ai-skills/design-md-ui-governor/SKILL.md`
-- Coverage class: frontend
-- Hard Mode kept from parent slice: yes
-- Reason: Reviewer corrections for slice 2 — restore ja.ts parity, surface action zone as right-side rail, screenshot harness must prove visibility, include harness as commit payload.
+# FE-SE-INTERRUPTED-MODE-11-CORRECTION — Harden interrupted-mode harness with visible text assertions
 
 ## Result
 
-GREEN. All five verification gates exit 0. Action zone visibly rendered above the fold as the right-side action rail.
+**GREEN.** All gates pass. Harness exit 0. 4 scenarios × 7 assertions = 28 PASS lines. One source bug surfaced and fixed (PAUSED + downtime_open showed the "paused/resume" reporting-disabled reason instead of the "downtime" reason expected by the prompt and consistent with the andon banner).
 
-## Corrections applied in this pass
+## Routing
+- Selected brain: MOM Brain + FleziBCG Frontend
+- Hard Mode MOM v3: kept from parent slice (yes)
+- Coverage class: frontend
+- Selected skills read:
+  - `.github/copilot-instructions.md`
+  - `docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md`
+  - `docs/ai-skills/hard-mode-mom-v3/SKILL.md`
+  - `docs/ai-skills/design-md-ui-governor/SKILL.md`
+  - `docs/ai-skills/autonomous-implementation-agent/SKILL.md`
+  - `docs/ai-skills/qa-e2e-layer/SKILL.md`
+  - `frontend/scripts/station-execution-interrupted-qa-screenshots.mjs` (parent harness)
+  - `frontend/src/app/components/station-execution/StationAndonBanner.tsx`
+  - `frontend/src/app/pages/StationExecution.tsx`
+  - `frontend/src/app/i18n/registry/en.ts` and `ja.ts` (verified exact strings)
+  - `docs/agent-reports/latest-agent-report.md` (parent slice export)
 
-1. **ja.ts parity restored** — 31 slice-1 keys + 1 new key added to `ja.ts`. `lint:i18n:registry` now PASS (2594 keys synchronized).
-2. **Mode B layout rework** — `AllowedActionZone` moved out of the Guidance panel and into the right-side `<aside>` rail as a dedicated `station.block.actions` panel. Guidance / Blockers section now contains only the guidance message + command error banner (or is hidden when neither exists).
-3. **Screenshot harness hardened** — now measures bounding box of `[data-testid="allowed-action-zone"]`, asserts primary CTA is within viewport rect, and captures three views: full-page, viewport-only (above-the-fold proof), and a tight crop of the action zone itself.
-4. **Harness re-classified as commit payload** — listed under `Files intended for commit`.
-5. **Full dirty worktree classification** — every line of `git status --short` is classified IN SCOPE / PARENT SLICE 1 / OUT OF SCOPE / ARTIFACT below.
+## Problem fixed
 
-## Navigation Intent And Explicit Selection Gate
+Parent harness verified severity, primary action, allowed/forbidden actions, and reporting testid only. It did not assert the *visible operator guidance text* in the andon banner or the *visible reason text* in the disabled-reporting section. This correction adds those two text assertions per scenario.
 
-- Navigation intent classification: `COCKPIT` (Mode B is entered only when `canExecuteBySessionControl === true`; selection mode otherwise).
-- Implicit first-item selection present: no (selected operation comes from explicit deep link `?operationId=42` in the harness; production flow comes from explicit queue selection or active-owned context).
-- Initial URL entity-id mutation present: no.
-- Entry to detail/cockpit/action source: deep link (harness) / explicit user selection (production).
-- Navigation intent verification: AllowedActionZone visibility additionally gated by `sessionGate && !closed && backendAllowed.has(id)`. No `items[0]` fallback was added.
+While adding the text assertion to scenario C (PAUSED + downtime_open), the harness surfaced a real bug: the disabled-reporting reason said "Reporting is disabled while execution is paused. Resume to continue reporting." even though the andon banner correctly said "Next: end the open downtime." The reason precedence in `reportingHint` checked `BLOCKED && downtime_open` before plain `PAUSED`, so PAUSED + downtime_open fell through to the paused string. The fix promotes `downtime_open` to the top of the precedence (mirroring the andon banner).
 
-## Changed in this slice (IN SCOPE)
+## What changed
 
-- [frontend/src/app/components/station-execution/AllowedActionZone.tsx](frontend/src/app/components/station-execution/AllowedActionZone.tsx) — backend-truth driven props contract (full rewrite from the original slice-2 pass; unchanged in this correction pass).
-- [frontend/src/app/pages/StationExecution.tsx](frontend/src/app/pages/StationExecution.tsx) — **layout rework**: AllowedActionZone now lives inside the right `<aside>` rail as the `station.block.actions` panel, above `ClosureStatePanel`. The Guidance / Blockers section on the left is now conditional and contains only guidance message + command error banner. `useRef`/`inputSectionRef` and removal of `<MockWarningBanner phase="PARTIAL" />` retained from the prior pass.
-- [frontend/src/app/i18n/registry/en.ts](frontend/src/app/i18n/registry/en.ts) — adds `station.action.noActionsAvailable` and `station.block.actions`.
-- [frontend/src/app/i18n/registry/ja.ts](frontend/src/app/i18n/registry/ja.ts) — adds `station.action.noActionsAvailable`, `station.block.actions`, **and restores 31 slice-1 keys** that were missing in ja.ts: `station.cockpit.supportDetails`, `stationSession.cta.enterQueue`, `stationSession.cta.helper.*` (4), `stationSession.empty.missingStation.*` (3), `stationSession.row.equipment.*` (5), `stationSession.row.operator.*` (4), `stationSession.row.session.*` (4), `stationSession.row.equipment.title`, `stationSession.row.operator.title`, `stationSession.row.session.title`, `stationSession.row.status.*` (6).
-- [frontend/scripts/station-execution-cockpit-qa-screenshots.mjs](frontend/scripts/station-execution-cockpit-qa-screenshots.mjs) — **promoted to commit payload** per user direction. Hardened to assert action-zone bounding box ≥ 200×80 and primary CTA inside viewport rect. Captures full-page, viewport-only, and action-zone-crop screenshots.
+### 1. `frontend/scripts/station-execution-interrupted-qa-screenshots.mjs`
 
-## Files intended for commit (slice 2)
+- Header docstring updated to mark FE-SE-INTERRUPTED-MODE-11-CORRECTION.
+- Per scenario, added two new `expect` fields:
+  - `bannerTextRegex`
+  - `reportingTextRegex`
+- Added two new assertion helpers:
+  - `assertBannerGuidanceText(page, scenarioId, regex)` — reads `textContent` of `[data-testid="station-andon-banner"]` and matches the regex; fails with the observed text if it does not match.
+  - `assertReportingDisabledReasonText(page, scenarioId, regex)` — reads `textContent` of `[data-testid="report-input-disabled"]` and matches the regex; fails with the observed text if it does not match.
+- Both new assertions log the observed text on PASS for review traceability.
+- `runScenario` now calls both new assertions after `assertReportingTestid`. The reason-text assertion only runs when `reportingTestid === "report-input-disabled"` (the only path under test in this slice).
+- All existing assertions (severity, primary action, allowed/forbidden actions, reporting testid, nav-intent regression) and the 4-scenario structure are unchanged.
 
-- `frontend/src/app/components/station-execution/AllowedActionZone.tsx`
+### 2. `frontend/src/app/pages/StationExecution.tsx`
+
+- `reportingHint` precedence now checks `operation?.downtime_open` first, then `status === "BLOCKED"`, then `status === "PAUSED"`. This makes the visible reason text consistent with the andon banner whenever a downtime is open, regardless of `status`.
+- No other behavior change. No new state, no new component, no change to `canReportProduction`, no change to action legality (`allowed_actions`), no change to nav-intent code paths, no change to closure or quality-hold paths, no change to JSX structure.
+
+## Exact text assertions added
+
+| Scenario | `bannerTextRegex` | `reportingTextRegex` |
+| --- | --- | --- |
+| A — PAUSED, no downtime, desktop | `/resume/i` | `/paused|resume/i` |
+| B — BLOCKED, downtime_open, desktop | `/end.*downtime|open downtime/i` | `/downtime|end downtime/i` |
+| C — PAUSED, downtime_open, desktop | `/end.*downtime|open downtime/i` | `/downtime|end downtime/i` |
+| D — PAUSED, no downtime, tablet | `/resume/i` | `/paused|resume/i` |
+
+Observed visible text recorded by harness (English locale, default):
+
+- A banner: `"Guidance / Blockers" + "Next: resume execution to continue." + "Reporting is disabled while execution is paused. Resume to continue reporting."`
+- A reporting-disabled: `"Input / Reporting" + "Reporting is disabled while execution is paused. Resume to continue reporting."`
+- B banner: `"Guidance / Blockers" + "Next: end the open downtime." + "Reporting is disabled while downtime is open. End downtime before reporting."`
+- B reporting-disabled: `"Input / Reporting" + "Reporting is disabled while downtime is open. End downtime before reporting."`
+- C banner: same as B.
+- C reporting-disabled: **after fix** matches B reporting-disabled. **Before fix** read "Reporting is disabled while execution is paused. Resume to continue reporting." (the bug the harness caught).
+- D banner / reporting-disabled: same as A.
+
+No new i18n keys added. Existing keys reused:
+- `station.block.guidance`
+- `station.hint.nextAction.resume`
+- `station.hint.nextAction.endDowntime`
+- `station.input.disabledHint.paused`
+- `station.input.disabledHint.blocked`
+
+## Files intended for commit (this correction slice)
+
+- `frontend/scripts/station-execution-interrupted-qa-screenshots.mjs`
 - `frontend/src/app/pages/StationExecution.tsx`
-- `frontend/src/app/i18n/registry/en.ts`
-- `frontend/src/app/i18n/registry/ja.ts`
-- `frontend/scripts/station-execution-cockpit-qa-screenshots.mjs`
 
-## Generated artifact paths
+## Existing/parent changes observed (already dirty when this slice started)
 
-- [docs/audit/fe-se-cockpit-hero-10/cockpit-in-progress-desktop-1440x900.png](docs/audit/fe-se-cockpit-hero-10/cockpit-in-progress-desktop-1440x900.png) — full-page
-- [docs/audit/fe-se-cockpit-hero-10/cockpit-in-progress-desktop-1440x900-viewport.png](docs/audit/fe-se-cockpit-hero-10/cockpit-in-progress-desktop-1440x900-viewport.png) — above-the-fold proof
-- [docs/audit/fe-se-cockpit-hero-10/cockpit-in-progress-desktop-1440x900-action-zone.png](docs/audit/fe-se-cockpit-hero-10/cockpit-in-progress-desktop-1440x900-action-zone.png) — tight crop of action zone
-- `_slice2_build.log`, `_slice2_lint.log`, `_slice2_routes.log`, `_slice2_i18n.log`, `_slice2_screenshot.log` (workspace root, scratch)
+- `frontend/src/app/components/station-execution/AllowedActionZone.tsx` — parent FE-SE-INTERRUPTED-MODE-11; not modified here.
+- `frontend/src/app/components/station-execution/StationAndonBanner.tsx` — parent FE-SE-INTERRUPTED-MODE-11; not modified here.
+- `frontend/src/app/pages/StationExecution.tsx` — parent slice already had testid additions; this correction adds the `reportingHint` precedence fix on top.
+- `frontend/scripts/station-execution-interrupted-qa-screenshots.mjs` — parent file extended here with text assertions.
+- `docs/audit/fe-se-interrupted-mode-11/` (4 PNGs) — parent slice artifact; re-generated this slice (timestamps reflect this run).
+- `docs/audit/fe-se-nav-intent-11/` — parent slice artifact; untouched here.
+- `.github/copilot-instructions.md`, `docs/ai-skills/autonomous-implementation-agent/SKILL.md`, `docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md`, `docs/prompts/copilot-agent-handoff-review-workflow.md`, `docs/agent-context/` — appeared modified/new in `git status` at the start of this run; **not authored or touched by this slice**, OUT OF SCOPE.
 
-## `git status --short` — full classification
+## Generated artifact paths (not commit payload)
+
+- `docs/audit/fe-se-interrupted-mode-11/A-paused-no-downtime-desktop.png`
+- `docs/audit/fe-se-interrupted-mode-11/B-blocked-downtime-open-desktop.png`
+- `docs/audit/fe-se-interrupted-mode-11/C-paused-downtime-open-desktop.png`
+- `docs/audit/fe-se-interrupted-mode-11/D-paused-no-downtime-tablet-tablet.png`
+- `_corr_build.log`, `_corr_lint.log`, `_corr_routes.log`, `_corr_i18n.log`, `_corr_harness.log`, `_corr_diff.log`, `_corr_status.log` (workspace-root scratch logs)
+
+## Full `git status --short` classification
 
 ```
- M .github/copilot-instructions.md                                                    OUT OF SCOPE — pre-existing dirty (governance), unrelated
- M docs/agent-reports/latest-agent-report.md                                          ARTIFACT — this report (canonical export)
- M docs/ai-skills/autonomous-implementation-agent/SKILL.md                            OUT OF SCOPE — pre-existing dirty (skills), unrelated
- M docs/ai-skills/design-md-ui-governor/SKILL.md                                      OUT OF SCOPE — pre-existing dirty (skills), unrelated
- M docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md                        OUT OF SCOPE — pre-existing dirty (skills), unrelated
- M docs/ai-skills/hard-mode-mom-v3/SKILL.md                                           OUT OF SCOPE — pre-existing dirty (skills), unrelated
- M docs/ai-skills/qa-e2e-layer/SKILL.md                                               OUT OF SCOPE — pre-existing dirty (skills), unrelated
- M docs/audit/fe-se-modea-simplify-09-implementation-report.md                        PARENT SLICE 1 — not in this slice's commit
- M docs/audit/mmd-current-state-report.md                                             OUT OF SCOPE — pre-existing dirty (MMD audit), unrelated
- M docs/design/07_ui/station-execution-flow-implementation-prompt-v2.md               OUT OF SCOPE — pre-existing dirty (design doc), unrelated
- M docs/design/07_ui/station-execution-flow-mockup-v2.html                            OUT OF SCOPE — pre-existing dirty (design doc), unrelated
- M docs/implementation/p0-b-mmd-closeout-review.md                                    OUT OF SCOPE — pre-existing dirty (MMD impl), unrelated
- M docs/prompts/copilot-agent-handoff-review-workflow.md                              OUT OF SCOPE — pre-existing dirty (prompts), unrelated
- M docs/roadmap/flezibcg-overall-roadmap-latest.md                                    OUT OF SCOPE — pre-existing dirty (roadmap), unrelated
- M frontend/src/app/components/station-execution/AllowedActionZone.tsx                IN SCOPE
- M frontend/src/app/components/station-execution/BindEquipmentPanel.tsx               PARENT SLICE 1 — not in this slice's commit
- M frontend/src/app/components/station-execution/IdentifyOperatorPanel.tsx            PARENT SLICE 1 — not in this slice's commit
- M frontend/src/app/components/station-execution/OpenSessionPanel.tsx                 PARENT SLICE 1 — not in this slice's commit
- M frontend/src/app/components/station-execution/StationEntryPanel.tsx                PARENT SLICE 1 — not in this slice's commit
- M frontend/src/app/i18n/registry/en.ts                                                IN SCOPE
- M frontend/src/app/i18n/registry/ja.ts                                                IN SCOPE
- M frontend/src/app/pages/StationExecution.tsx                                         IN SCOPE
- M frontend/src/app/pages/StationSession.tsx                                           PARENT SLICE 1 — not in this slice's commit
-?? docs/audit/fe-se-cockpit-hero-10-implementation-report.md                          ARTIFACT — this report (per-slice copy)
-?? docs/audit/fe-se-cockpit-hero-10/                                                  ARTIFACT — screenshots (3 png)
-?? docs/audit/mmd-fe-qa-03-preparation-pack.md                                        OUT OF SCOPE — pre-existing untracked (MMD audit), unrelated
-?? docs/audit/mmd-master-baseline-01-freeze-handoff.md                                OUT OF SCOPE — pre-existing untracked (MMD audit), unrelated
-?? docs/audit/mmd-routing-op-write-audit-01-report.md                                 OUT OF SCOPE — pre-existing untracked (MMD audit), unrelated
-?? docs/audit/mmd-rr-write-audit-01-report.md                                         OUT OF SCOPE — pre-existing untracked (MMD audit), unrelated
-?? docs/design/02_domain/product_definition/product-version-set-current-governance-contract.md   OUT OF SCOPE — pre-existing untracked (MMD design), unrelated
-?? docs/roadmap/mmd-completion-roadmap-2026-05-20.md                                  OUT OF SCOPE — pre-existing untracked (MMD roadmap), unrelated
-?? frontend/scripts/station-execution-cockpit-qa-screenshots.mjs                      IN SCOPE — new harness (commit payload per user direction)
+ M .github/copilot-instructions.md                                                   OUT OF SCOPE — not authored or modified by this slice
+ M docs/agent-reports/latest-agent-report.md                                         ARTIFACT — this canonical report
+ M docs/ai-skills/autonomous-implementation-agent/SKILL.md                           OUT OF SCOPE — not authored or modified by this slice
+ M docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md                       OUT OF SCOPE — not authored or modified by this slice
+ M docs/prompts/copilot-agent-handoff-review-workflow.md                             OUT OF SCOPE — not authored or modified by this slice
+ M frontend/src/app/components/station-execution/AllowedActionZone.tsx               OUT OF SCOPE THIS SLICE — parent FE-SE-INTERRUPTED-MODE-11
+ M frontend/src/app/components/station-execution/StationAndonBanner.tsx              OUT OF SCOPE THIS SLICE — parent FE-SE-INTERRUPTED-MODE-11
+ M frontend/src/app/pages/StationExecution.tsx                                       IN SCOPE — reportingHint downtime-first precedence fix
+?? docs/agent-context/                                                               OUT OF SCOPE — not authored by this slice
+?? docs/audit/fe-se-interrupted-mode-11/                                             ARTIFACT — 4 screenshots (refreshed this run)
+?? docs/audit/fe-se-nav-intent-11/                                                   ARTIFACT — parent slice
+?? frontend/scripts/station-execution-interrupted-qa-screenshots.mjs                 IN SCOPE — text assertions added (parent file was also untracked)
 ```
 
-No unrelated staged files: yes (no staging performed).
-No git staging / commit / push was performed.
+Note: parent slice files `AllowedActionZone.tsx`, `StationAndonBanner.tsx`, the parent edits inside `StationExecution.tsx`, and the parent harness `station-execution-interrupted-qa-screenshots.mjs` are still pending commit from FE-SE-INTERRUPTED-MODE-11 — when committing this correction they should be folded into a single fixup or paired commit per user direction.
+
+No `git add` / `git commit` / `git push` performed by this slice.
 
 ## Commands run and reliable results
 
-| Command | Exit | Verdict |
+| Command (cwd) | Exit | Verdict |
 | --- | --- | --- |
-| `npm.cmd run build` (frontend) | 0 | PASS — vite v6.4.1 build in 8.91s |
-| `npm.cmd run lint` (frontend) | 0 | PASS |
-| `npm.cmd run check:routes` (frontend) | 0 | PASS |
-| `npm.cmd run lint:i18n:registry` (frontend) | 0 | **PASS — en.ts and ja.ts key-synchronized (2594 keys).** Baseline gap closed. |
-| `git diff --check` | 0 | PASS |
-| `git status --short` | 0 | classified above |
-| `node scripts/station-execution-cockpit-qa-screenshots.mjs 5173` | 0 | PASS — 5 assertions PASS, 3 screenshots saved |
+| `npm.cmd run build` (frontend) | 0 | PASS — vite v6.4.1 built in 10.47s |
+| `npm.cmd run lint` (frontend) | 0 | PASS (cmd: LINT_OK) |
+| `npm.cmd run check:routes` (frontend) | 0 | PASS (cmd: ROUTES_OK) |
+| `npm.cmd run lint:i18n:registry` (frontend) | 0 | PASS (cmd: I18N_OK) |
+| `node scripts/station-execution-interrupted-qa-screenshots.mjs 5173` (frontend) | 0 | PASS — 4 scenarios, 7 assertions each, 28 PASS lines (post-fix run) |
+| `git diff --check` (root) | 0 | PASS (cmd: DIFF_OK) |
+| `git status --short` (root) | 0 | classified above |
+
+Pre-fix harness run captured the bug for scenario C:
+
+```
+FAIL: [C-paused-downtime-open]: report-input-disabled reason text did not match /downtime|end downtime/i.
+Observed: "Input / ReportingReporting is disabled while execution is paused. Resume to continue reporting."
+```
+
+Post-fix harness run for the same scenario:
+
+```
+PASS [C-paused-downtime-open]: reporting-disabled reason text matches /downtime|end downtime/i.
+Observed: "Input / ReportingReporting is disabled while downtime is open. End downtime before reporting."
+```
+
+This is the root cause evidence required by the Correction Task Gate: the fix was made in `frontend/src/app/pages/StationExecution.tsx#reportingHint`, not in the report or the harness regex.
 
 ## Screenshot evidence
 
-- Command: `node scripts/station-execution-cockpit-qa-screenshots.mjs 5173`
-  (from `frontend/`, against `npm run dev` on port 5173).
-- Assertions (all PASS):
-  1. CONNECTED badge visible.
-  2. No PARTIAL badge.
-  3. Primary CTA `data-action="report_production"` with `/report/i` label.
-  4. Secondary actions ≥ 3, including `complete_execution`, `pause_execution`, `start_downtime`.
-  5. **Action zone visibly rendered: zone box 367×224 px at viewport coordinate (1032, 302); primary CTA inside viewport rect.** Confirms the action zone is the right-side rail (x=1032 on a 1440-wide viewport) and is above the fold.
-- Output paths:
-  - `docs/audit/fe-se-cockpit-hero-10/cockpit-in-progress-desktop-1440x900.png` (full page)
-  - `docs/audit/fe-se-cockpit-hero-10/cockpit-in-progress-desktop-1440x900-viewport.png` (above-the-fold)
-  - `docs/audit/fe-se-cockpit-hero-10/cockpit-in-progress-desktop-1440x900-action-zone.png` (action zone crop)
-- Viewport: desktop 1440×900.
-- Data source: **mocked API**. Visual QA only — does NOT prove backend truth, authorization, ERP posting, deterministic decisions, or E2E.
+Output directory: `docs/audit/fe-se-interrupted-mode-11/`
 
-## Verification notes
+- [docs/audit/fe-se-interrupted-mode-11/A-paused-no-downtime-desktop.png](docs/audit/fe-se-interrupted-mode-11/A-paused-no-downtime-desktop.png) — PAUSED no downtime; banner /resume/i; reporting /paused|resume/i.
+- [docs/audit/fe-se-interrupted-mode-11/B-blocked-downtime-open-desktop.png](docs/audit/fe-se-interrupted-mode-11/B-blocked-downtime-open-desktop.png) — BLOCKED + downtime_open; banner /end.*downtime/i; reporting /downtime/i.
+- [docs/audit/fe-se-interrupted-mode-11/C-paused-downtime-open-desktop.png](docs/audit/fe-se-interrupted-mode-11/C-paused-downtime-open-desktop.png) — PAUSED + downtime_open; banner /end.*downtime/i; reporting /downtime/i (post-fix).
+- [docs/audit/fe-se-interrupted-mode-11/D-paused-no-downtime-tablet-tablet.png](docs/audit/fe-se-interrupted-mode-11/D-paused-no-downtime-tablet-tablet.png) — PAUSED no downtime, tablet 834×1112; banner above the fold (y=311).
 
-- AllowedActionZone source-grep evidence:
-  - 0 occurrences of `can*Execution` patterns inside the component.
-  - All 7 canonical backend action strings present.
-- StationExecution.tsx source-grep evidence:
-  - AllowedActionZone call site now lives inside `<aside>` (right-side rail).
-  - Guidance section on the left is conditional and no longer wraps AllowedActionZone.
-  - No live `<MockWarningBanner ... />` JSX remains.
-  - Page-level `can*` gates retained for Stepper / close-button / ClosureStatePanel.
-- ja.ts parity: lint script PASS, 2594 keys synchronized.
+All screenshots regenerated by the post-fix harness run. Mocked API data — visual QA only.
 
 ## UI guard preservation
 
-- Session gate (`canExecuteBySessionControl = ownerState === "mine" && hasOpenSession`) unchanged; still passed as `sessionGate`.
-- `closure_status === "CLOSED"` continues to hide all action buttons.
-- COMPLETED operations route through `CompletionSummaryPanel`; the new action panel is conditionally rendered only when `operation.status !== "COMPLETED"`.
-- No allowed-action / readiness / authorization-adjacent guard was weakened.
+- `AllowedActionZone` legality unchanged; `backendAllowed.has(id)` still the only legality filter. No changes to primary precedence either.
+- `canReportProduction`, `canDo`, `sessionGate`, closure lock, ownership, queue refresh stale-clear, nav-intent useEffect, deep-link selection — **all unchanged**.
+- Only the *visible text* selected by `reportingHint` was reordered to match the andon banner. No new action is enabled or disabled by this change.
+
+## Navigation intent classification (re-confirmed)
+
+- `/station` LANDING — no auto-select; per-scenario regression PASS (4/4).
+- `/station?operationId=42` DETAIL/COCKPIT via deep link.
+- Implicit first-item selection present: **no**.
+- Initial URL entity-id mutation present: **no**.
 
 ## Limitations / not covered
 
-- No E2E run; no new Vitest unit tests added (existing AllowedActionZone tests covered by build/lint).
-- No backend / API / RBAC coverage.
-- Screenshot uses mocked API; not pilot golden path.
-- Single viewport (desktop 1440×900). PAUSED / BLOCKED / DOWNTIME visual states still not captured (deferred to Slice 3 per PO).
-
-## Known environment caveats
-
-- PowerShell terminal occasionally drops built-in cmdlets mid-session; all
-  command output captured via `Out-File` and read from disk to avoid silent
-  truncation.
-- Worktree contains a large amount of unrelated dirty state from concurrent MMD
-  and governance work. All classified above. None staged.
+- No backend / API / RBAC coverage; visual QA with mocked `OperationDetail` only.
+- Text assertions are English-locale dependent (default). `ja.ts` parity verified at registry level (`lint:i18n:registry` exit 0) but Japanese text is not asserted by this harness.
+- Reporting-disabled reason text precedence change is FE-only and does not affect any allowed-action gating.
+- Outstanding OUT OF SCOPE dirty files in repo were not touched by this slice; reviewer should resolve them out-of-band.
 
 ## Deviations from prompt
 
-- `onReportProduction` callback is wired to `scrollIntoView` on the existing
-  input section. No new submit path was introduced.
-- A new key `station.block.actions` was added (paired in `en.ts` and `ja.ts`)
-  to label the right-rail action panel. Minimum-necessary i18n addition.
+- Source change in `StationExecution.tsx#reportingHint` was made because the harness revealed scenario C's visible reason text was semantically wrong (said "paused/resume" while downtime was open). The prompt explicitly authorizes a fix when "current visible text is different but semantically correct" is not met. The change is the minimum required and does not alter any guard.
 
 ## Next recommended slice
 
-Slice 3 — PAUSED / BLOCKED / DOWNTIME visual mode coverage and additional
-viewport sweeps (mobile / iPad portrait). Per PO, deferred from this slice.
+- Mirror the same downtime-first precedence in any other status-derived operator hints (e.g. status pill subtitle) if they exist, to avoid divergent operator messaging.
+- Add a Playwright E2E variant of these scenarios that drives a real backend so the assertions also gate backend `allowed_actions` and reason-text consistency.
 
 ## STOP
 
-Per user direction: no staging, no commit, no push. Awaiting `GO slice 3` or
-`REQUEST CHANGES`.
+No staging, no commit, no push. Awaiting `GO` or `REQUEST CHANGES`.

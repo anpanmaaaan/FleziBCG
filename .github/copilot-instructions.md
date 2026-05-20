@@ -5,12 +5,13 @@
 Before non-trivial work, read in order:
 
 1. `.github/agent/AGENT.md` if present
-2. `docs/design/INDEX.md`
-3. `docs/design/AUTHORITATIVE_FILE_MAP.md`
-4. `docs/governance/CODING_RULES.md`
-5. `docs/governance/ENGINEERING_DECISIONS.md`
-6. `docs/governance/SOURCE_STRUCTURE.md`
-7. `docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md`
+2. `docs/agent-context/flezibcg-project-primer.md`
+3. `docs/design/INDEX.md`
+4. `docs/design/AUTHORITATIVE_FILE_MAP.md`
+5. `docs/governance/CODING_RULES.md`
+6. `docs/governance/ENGINEERING_DECISIONS.md`
+7. `docs/governance/SOURCE_STRUCTURE.md`
+8. `docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md`
 
 This file is not the authoritative source for business logic. Design and governance docs are.
 
@@ -28,6 +29,9 @@ For every non-trivial task:
 
 ```markdown
 ## Routing
+- Requested task/slice id:
+- Requested goal:
+- Project primer read: yes/no
 - Selected brain:
 - Selected mode:
 - Hard Mode MOM:
@@ -215,6 +219,8 @@ When git staging or committing is explicitly requested:
 
 Before code changes, publish a compact work packet:
 
+- requested task/slice id and goal copied from the latest user prompt;
+- confirmation that the requested task/slice id matches the work being started;
 - user goal;
 - slice boundary;
 - selected skills read;
@@ -223,6 +229,26 @@ Before code changes, publish a compact work packet:
 - source-of-truth evidence;
 - validation plan;
 - stop conditions.
+
+## Task Identity Gate
+
+The latest user prompt is the active task. Before editing, the agent must copy
+the requested task/slice id and goal into the work packet. If the repo contains
+older prompts, reports, or partially completed slices with a different id, treat
+them as context only.
+
+Hard stop conditions:
+
+- The requested slice id differs from the slice id the agent is about to
+  implement.
+- The final report title/result refers to a different slice id than the latest
+  user prompt.
+- The changed files primarily match an older task instead of the requested task.
+
+When any of these happens, do not code. Report `RED - task identity mismatch`
+and list the requested id, the stale/other id, and the files that caused the
+mismatch. Never mark a run `GREEN` when the implemented slice id does not match
+the requested slice id.
 
 During coding:
 

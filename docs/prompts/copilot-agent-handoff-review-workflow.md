@@ -42,6 +42,13 @@ agent run. It is the canonical review input.
 
 Codex should create or update the task prompt file with:
 
+- a unique task/slice id and one-line goal;
+- an explicit instruction that the agent must stop with `RED - task identity
+  mismatch` if the report title, screenshot folder, or implemented files match a
+  different/older slice id;
+- mandatory read of `docs/agent-context/flezibcg-project-primer.md` before
+  design/domain docs so the agent starts from product context, not stale
+  reports;
 - user goal;
 - business slice boundary;
 - mandatory files and skills to read before coding;

@@ -5,7 +5,8 @@ import type { I18nSemanticKey } from "@/app/i18n/keys";
 /**
  * Backend-truth action zone for the Mode B operator cockpit.
  *
- * Slice: FE-SE-COCKPIT-HERO-10.
+ * Slice: FE-SE-COCKPIT-HERO-10 (IN_PROGRESS), extended by
+ * FE-SE-INTERRUPTED-MODE-11 for PAUSED / BLOCKED / downtime_open states.
  *
  * Source of action legality: `operation.allowed_actions` (backend-derived).
  * The FE never decides which commands are legal; it only renders what the
@@ -14,20 +15,41 @@ import type { I18nSemanticKey } from "@/app/i18n/keys";
  * revalidates every mutation.
  *
  * Action precedence (primary CTA selection):
- *   1. report_production   (only when remainingQty > 0)
- *   2. complete_execution
- *   3. resume_execution
- *   4. start_execution
- *   5. end_downtime
- *   6. pause_execution
- *   7. start_downtime
+ *
+ *   Default / IN_PROGRESS:
+ *     1. report_production   (only when remainingQty > 0)
+ *     2. complete_execution
+ *     3. resume_execution
+ *     4. start_execution
+ *     5. end_downtime
+ *     6. pause_execution
+ *     7. start_downtime
+ *
+ *   PAUSED without open downtime (FE-SE-INTERRUPTED-MODE-11):
+ *     1. resume_execution    (recovery is the operator's primary intent)
+ *     2. end_downtime
+ *     3. start_downtime
+ *     4. complete_execution
+ *     5. report_production
+ *     6. pause_execution
+ *     7. start_execution
+ *
+ *   BLOCKED or downtime_open (FE-SE-INTERRUPTED-MODE-11):
+ *     1. end_downtime        (must close the open downtime first)
+ *     2. resume_execution
+ *     3. start_downtime
+ *     4. complete_execution
+ *     5. report_production
+ *     6. pause_execution
+ *     7. start_execution
  *
  * All other backend-allowed actions render as secondary buttons.
  * If backend returns no actions (or the session gate is closed), render the
  * empty-action banner — no buttons.
  *
- * remainingQty MAY influence which action is primary; it MUST NOT add or
- * remove an action from the legal set. That is backend territory.
+ * Precedence reorders the *primary CTA selection only*. It never adds an
+ * action that backend did not allow, and never hides an action that backend
+ * allowed (those are rendered as secondary). Legality stays with the backend.
  */
 
 type ActionId =
@@ -214,12 +236,56 @@ export function AllowedActionZone({
     );
   }
 
-  // Precedence: report_production wins only when remaining work exists.
-  // remainingQty is a hierarchy hint, not a legality filter.
-  const reportFirst = visibleIds.includes("report_production") && remainingQty > 0;
-  const primaryId: ActionId = reportFirst
-    ? "report_production"
-    : (visibleIds.find((id) => id !== "report_production") ?? visibleIds[0]);
+  // FE-SE-INTERRUPTED-MODE-11: primary CTA precedence is state-aware. Legality
+  // is still owned by `backendAllowed`; only the *order* in which we pick the
+  // primary changes when the operation is interrupted. The first id in the
+  // selected precedence list that is also in `visibleIds` wins.
+  const isDowntimeContext =
+    operation.status === "BLOCKED" || operation.downtime_open === true;
+  const isPausedContext =
+    !isDowntimeContext && operation.status === "PAUSED";
+
+  let primaryPrecedence: ActionId[];
+  if (isDowntimeContext) {
+    primaryPrecedence = [
+      "end_downtime",
+      "resume_execution",
+      "start_downtime",
+      "complete_execution",
+      "report_production",
+      "pause_execution",
+      "start_execution",
+    ];
+  } else if (isPausedContext) {
+    primaryPrecedence = [
+      "resume_execution",
+      "end_downtime",
+      "start_downtime",
+      "complete_execution",
+      "report_production",
+      "pause_execution",
+      "start_execution",
+    ];
+  } else {
+    // Default / IN_PROGRESS precedence. report_production only wins when
+    // there is remaining work; otherwise it falls through to the next id.
+    const defaultPrecedence: ActionId[] = [
+      "report_production",
+      "complete_execution",
+      "resume_execution",
+      "start_execution",
+      "end_downtime",
+      "pause_execution",
+      "start_downtime",
+    ];
+    primaryPrecedence =
+      remainingQty > 0
+        ? defaultPrecedence
+        : defaultPrecedence.filter((id) => id !== "report_production");
+  }
+
+  const primaryId: ActionId =
+    primaryPrecedence.find((id) => visibleIds.includes(id)) ?? visibleIds[0];
 
   const secondaryIds = visibleIds.filter((id) => id !== primaryId);
 
@@ -229,6 +295,7 @@ export function AllowedActionZone({
     <section
       className="shrink-0 flex flex-col gap-3 sm:gap-4 pb-1"
       data-testid="allowed-action-zone"
+      data-action-context={isDowntimeContext ? "downtime" : isPausedContext ? "paused" : "running"}
     >
       <button
         type="button"

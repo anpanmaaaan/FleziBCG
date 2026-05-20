@@ -419,7 +419,14 @@ export function StationExecution() {
       return t("station.closed.reportingDisabled");
     }
     if (canReportProduction) return t("station.input.deltaHint");
-    if (operation?.status === "BLOCKED" && operation.downtime_open) {
+    // FE-SE-INTERRUPTED-MODE-11-CORRECTION: downtime is the active blocker
+    // whenever downtime is open (even if status is also PAUSED), so the
+    // operator-visible reason must mirror the banner's "end the open downtime"
+    // guidance instead of the generic "paused/resume" hint.
+    if (operation?.downtime_open) {
+      return t("station.input.disabledHint.blocked");
+    }
+    if (operation?.status === "BLOCKED") {
       return t("station.input.disabledHint.blocked");
     }
     if (operation?.status === "PAUSED") {
@@ -1173,14 +1180,18 @@ export function StationExecution() {
 
                   {/* Report / input block */}
                   {isInterruptedMode && !canReportProduction ? (
-                    <section ref={inputSectionRef} className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
+                    <section
+                      ref={inputSectionRef}
+                      className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0"
+                      data-testid="report-input-disabled"
+                    >
                       <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-2">
                         {t("station.block.inputReporting")}
                       </p>
                       <p className="mt-2 text-sm sm:text-base text-slate-600 md:text-xl">{reportingHint}</p>
                     </section>
                   ) : (
-                    <section ref={inputSectionRef} className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
+                    <section ref={inputSectionRef} className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0" data-testid="report-input-enabled">
                       <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-2">
                         {t("station.block.inputReporting")}
                       </p>

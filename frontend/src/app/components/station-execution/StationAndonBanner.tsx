@@ -46,6 +46,8 @@ export function StationAndonBanner({
       className={`rounded-2xl border px-4 py-3 ${palette}`}
       role={live ? "alert" : "status"}
       aria-live={live ? "assertive" : "polite"}
+      data-testid="station-andon-banner"
+      data-andon-severity={severity}
     >
       <div className="flex items-start gap-3">
         {icon}
