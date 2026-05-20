@@ -42,6 +42,13 @@ agent run. It is the canonical review input.
 
 Codex should create or update the task prompt file with:
 
+- a unique task/slice id and one-line goal;
+- an explicit instruction that the agent must stop with `RED - task identity
+  mismatch` if the report title, screenshot folder, or implemented files match a
+  different/older slice id;
+- mandatory read of `docs/agent-context/flezibcg-project-primer.md` before
+  design/domain docs so the agent starts from product context, not stale
+  reports;
 - user goal;
 - business slice boundary;
 - mandatory files and skills to read before coding;
@@ -52,6 +59,9 @@ Codex should create or update the task prompt file with:
 - exact implementation goals;
 - verification commands;
 - screenshot requirements for UI/frontend slices;
+- navigation intent classification and explicit-selection requirements when the
+  slice touches login landing, routing, menus, list/queue/table selection,
+  detail pages, cockpit pages, or action panels;
 - artifact policy: generated screenshots/videos are evidence, not default commit
   payload;
 - report fields for `Changed in this slice`, `Existing/parent changes observed`,
@@ -63,6 +73,23 @@ Codex should create or update the task prompt file with:
 
 For UI/frontend slices, the prompt must require screenshots and exact screenshot
 paths in `docs/agent-reports/latest-agent-report.md`.
+
+For routing/list/queue/detail/cockpit/action slices, the prompt must require the
+Navigation Intent Gate:
+
+- classify touched screens as `LANDING`, `LIST`, `QUEUE`, `SETUP`, `DETAIL`,
+  `COCKPIT`, or `ACTION`;
+- forbid initial auto-selection of the first item on `LANDING`/`LIST`/`QUEUE`;
+- forbid initial URL mutation with an entity id from the first item;
+- allow detail/cockpit/action entry only from explicit deep link, explicit user
+  selection/scan/typed id, or backend-confirmed active owned context;
+- require source-search evidence on every touched route/list/queue/detail/
+  cockpit/action file for `items[0]`, `data.items[0]`, `queueItems[0]`,
+  `preferred ??`, `setSearchParams`, `navigate(`, and route-param setters;
+- require remaining suspicious hits to be classified as `yes - existing` or
+  `yes - introduced`, never hidden behind a plain `no`;
+- require evidence that default landing/list/queue state stays unselected and
+  explicit selection/deep link still works.
 
 The prompt should also state whether the agent is allowed to perform git
 operations. Default: no `git add`, `git commit`, `git push`, branch switching,
@@ -135,10 +162,13 @@ Codex should review in this order:
 8. Confirm generated artifacts are not staged/committed unless explicitly
    requested.
 9. Compare implementation against the original prompt acceptance criteria.
-10. Classify any failure as product/code, prompt ambiguity, harness weakness, or skill/process gap.
-11. Report findings first, ordered by severity.
-12. Complete the Review Closeout Gate.
-13. Decide: accept, accept with minor follow-up, reject and write correction prompt, or patch skills/instructions.
+10. For routing/list/queue/detail/cockpit/action work, check navigation intent:
+    no implicit first-item selection, no first-item URL entity-id mutation, and
+    any `NAV_INTENT_EXCEPTION:` is backed by backend active-owned context.
+11. Classify any failure as product/code, prompt ambiguity, harness weakness, or skill/process gap.
+12. Report findings first, ordered by severity.
+13. Complete the Review Closeout Gate.
+14. Decide: accept, accept with minor follow-up, reject and write correction prompt, or patch skills/instructions.
 
 Review output should include:
 
@@ -201,6 +231,9 @@ Do not accept an agent slice as complete when:
 - the report claims a component/file was implemented but it is not imported,
   rendered, tracked, or present in the diff;
 - assertion failures are printed even if the command exits 0.
+- a landing/list/queue route auto-selects the first item, mutates the URL with a
+  first-item entity id, or enters detail/cockpit/action state without explicit
+  user intent or backend-confirmed active owned context.
 
 ## Step 6 - Continuous Skill Improvement
 
@@ -218,6 +251,8 @@ recur, for example:
 - coverage class is inflated;
 - Hard Mode carry-forward is silently downgraded;
 - frontend treats backend truth, authorization, execution, quality, or status as client-owned;
+- frontend treats list/queue membership as implicit user selection or enters a
+  detail/cockpit/action screen from the first item without explicit user intent;
 - prompt instructions are followed cosmetically but not evidenced by code/artifacts.
 
 Prefer updating the most specific active skill first:

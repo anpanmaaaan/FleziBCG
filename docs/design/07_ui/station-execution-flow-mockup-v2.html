@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="vi">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Station Execution Flow Mockup v2 (PO-SA proposed)</title>
   <style>
     :root {
-      /* tokens — bám station-shopfloor-token-system-v1.md */
+      /* tokens — aligned with station-shopfloor-token-system-v1.md */
       --bg: #eef2f7;
       --surface: #ffffff;
       --surface-soft: #f8fafc;
@@ -330,7 +330,7 @@
       margin: 0;
     }
 
-    /* Context strip — chỉ cho Cockpit (Mode B) và screens sau Setup */
+    /* Context strip — Cockpit (Mode B) and post-Setup screens only */
     .context {
       display: flex;
       flex-wrap: wrap;
@@ -570,7 +570,7 @@
     .spec-card strong { display: block; font-size: 13px; }
     .spec-card small { color: var(--muted); font-weight: 700; font-size: 12px; }
 
-    /* Persona views — explicitly separated */
+    /* Persona tags — explicit role separation */
     .persona-tag {
       display: inline-flex;
       align-items: center;
@@ -589,7 +589,7 @@
     .persona-tag.opr { background: var(--blue-soft); color: var(--blue); border-color: #bcd2ff; }
     .persona-tag.sup { background: var(--amber-soft); color: var(--amber); border-color: #fed7aa; }
 
-    /* Note callouts */
+    /* Designer notes (developer-oriented annotations) */
     .designer-note {
       background: var(--slate-50);
       border: 1px dashed var(--line-strong);
@@ -600,6 +600,18 @@
       font-weight: 700;
     }
     .designer-note strong { color: var(--text); }
+
+    /* i18n key reference chips */
+    .i18n-key {
+      display: inline-block;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--slate-50);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 0 4px;
+    }
 
     @media (max-width: 1180px) {
       .layout { grid-template-columns: 1fr; }
@@ -622,7 +634,7 @@
   <div class="layout">
     <nav class="toc" aria-label="Mockup navigation">
       <div class="brand"><span>Flezi</span>BCG</div>
-      <p class="doc-note">Station Execution Flow Mockup v2 — PO-SA proposed. Bám <em>mode-a-simplify-spec-v1.md</em>, <em>ui-contract-v4.md</em>, <em>shopfloor-token-system-v1.md</em>.</p>
+      <p class="doc-note">Station Execution Flow Mockup v2 — PO-SA proposed. Aligned with <em>mode-a-simplify-spec-v1.md</em>, <em>ui-contract-v4.md</em>, <em>shopfloor-token-system-v1.md</em>. All operator-visible copy in this file is in English for review; final strings live in i18n registries (en + ja).</p>
 
       <div class="toc-label">Setup (Mode A)</div>
       <a href="#setup-default">01 Setup — Default</a>
@@ -650,6 +662,7 @@
 
       <div class="toc-label">Notes</div>
       <a href="#design-principles">Design Principles</a>
+      <a href="#i18n-notes">i18n Notes (en + ja)</a>
       <a href="#implementation-notes">Implementation Notes</a>
     </nav>
 
@@ -657,12 +670,12 @@
       <section class="intro" id="design-principles">
         <div class="eyebrow">MES Operator Cockpit · v2 (PO-SA)</div>
         <h1>Station Execution Flow Mockup v2</h1>
-        <p>Phiên bản này fix các blocker đã review trên mockup v1: Mode A đổi sang 3-row single card không Shell, bỏ wizard 5-step, thêm empty-state và error-banner, tách Operator/QA cho Quality Hold, bỏ "Pass preview" trong Quality Measurement, thêm close-confirm dialog cho End Session.</p>
+        <p>This version fixes the blockers identified in the v1 mockup review: Mode A becomes a 3-row single card with no Shell, no 5-step wizard, plus empty-state and error-banner coverage; Quality Measurement drops the "pass preview"; Quality Hold splits into separate Operator and QA routes; End Session gains a close-confirm dialog owned by <code>CloseSessionPanel</code>.</p>
         <div class="summary-grid">
-          <div class="summary-card"><strong>Backend là source of truth</strong><small>Action visibility, hold state, closure, allowed_actions đều backend-derived. FE không tự tính.</small></div>
-          <div class="summary-card"><strong>One primary action per mode</strong><small>Mỗi screen state chỉ có 1 primary CTA. Secondary actions không cạnh tranh visual.</small></div>
-          <div class="summary-card"><strong>Token-compliant hit area</strong><small>Primary CTA 56px, secondary 48px, gap ≥ 12px, KPI value ≥ 48px.</small></div>
-          <div class="summary-card"><strong>Color + icon + text</strong><small>State không bao giờ chỉ dùng màu. Pill có dot + label. Operator color-blind vẫn đọc được.</small></div>
+          <div class="summary-card"><strong>Backend is the source of truth</strong><small>Action visibility, hold state, closure, allowed_actions are all backend-derived. FE never computes command legality.</small></div>
+          <div class="summary-card"><strong>One primary action per mode</strong><small>Each screen state surfaces exactly one primary CTA. Secondary actions do not compete for attention.</small></div>
+          <div class="summary-card"><strong>Token-compliant hit area</strong><small>Primary CTA ≥ 56px, secondary ≥ 48px, gap ≥ 12px, KPI value ≥ 48px.</small></div>
+          <div class="summary-card"><strong>Color + icon + text</strong><small>State never relies on color alone. Pills carry a dot plus a text label. Color-blind operators can still read every state.</small></div>
         </div>
       </section>
 
@@ -670,8 +683,8 @@
       <section class="screen" id="setup-default">
         <div class="screen-meta">
           <div>
-            <h2>01 Setup — Default state (session đã open, operator chưa identify)</h2>
-            <p>Single 3-row card. KHÔNG StationWorkflowShell, KHÔNG wizard 5-step, KHÔNG EntryPanel checklist. Primary CTA "Enter queue" disabled với helper text chỉ rõ prerequisite còn thiếu.</p>
+            <h2>01 Setup — Default state (session open, operator not yet identified)</h2>
+            <p>Single 3-row card. No <code>StationWorkflowShell</code>, no 5-step wizard, no <code>StationEntryPanel</code> checklist. Primary CTA "Enter queue" disabled with helper text that names the missing prerequisite.</p>
           </div>
           <div class="tags"><span class="tag blue">Mode A</span><span class="tag slate">FE-SE-MODEA-SIMPLIFY-09</span></div>
         </div>
@@ -685,7 +698,7 @@
           </div>
           <div class="mock-body">
             <div class="setup-card" role="group" aria-labelledby="setup-card-title">
-              <h3 id="setup-card-title" style="padding:14px 18px;border-bottom:1px solid var(--line);background:#fbfdff;">Chuẩn bị station session</h3>
+              <h3 id="setup-card-title" style="padding:14px 18px;border-bottom:1px solid var(--line);background:#fbfdff;">Prepare station session</h3>
 
               <div class="setup-row">
                 <div class="step-badge done" aria-hidden="true">1</div>
@@ -700,7 +713,7 @@
                 <div class="step-badge active" aria-hidden="true">2</div>
                 <div>
                   <div class="row-title">Operator <span class="pill amber"><span aria-hidden="true"></span>Not yet</span></div>
-                  <div class="row-sub">Scan badge hoặc nhập operator ID để tiếp tục</div>
+                  <div class="row-sub">Scan badge or enter operator ID to continue</div>
                 </div>
                 <button class="btn">Identify ▶</button>
               </div>
@@ -709,17 +722,17 @@
                 <div class="step-badge" aria-hidden="true">3</div>
                 <div>
                   <div class="row-title">Equipment <span class="pill slate"><span aria-hidden="true"></span>Optional</span></div>
-                  <div class="row-sub">Station không bắt buộc bind equipment ở stage này (policy-driven)</div>
+                  <div class="row-sub">This station does not require equipment binding at this stage (policy-driven)</div>
                 </div>
                 <button class="btn" disabled aria-label="Bind equipment, requires session and operator">Bind ▶</button>
               </div>
             </div>
 
             <button class="btn primary full" disabled aria-describedby="cta-helper">Enter queue</button>
-            <p id="cta-helper" class="helper-text">Cần identify operator trước khi vào queue.</p>
+            <p id="cta-helper" class="helper-text">Identify the operator before entering the queue.</p>
 
             <div class="designer-note">
-              <strong>Logic enable:</strong> <code>canNavigateToQueueByVisibleSetupState = stationId && session.status==="open" && session.operator_user_id && equipmentChecklistState!=="required_missing"</code>. UI gating only — backend revalidate trên mọi mutation (BT-CORE-004).
+              <strong>Enable rule:</strong> <code>canNavigateToQueueByVisibleSetupState = stationId && session.status==="open" && session.operator_user_id && equipmentChecklistState!=="required_missing"</code>. UI navigation gating only — backend revalidates on every mutation (BT-CORE-004).
             </div>
           </div>
         </div>
@@ -730,7 +743,7 @@
         <div class="screen-meta">
           <div>
             <h2>02 Setup — Empty state (missing stationId)</h2>
-            <p>Per D-08: chỉ 1 notice card. KHÔNG Shell, KHÔNG checklist, KHÔNG session card.</p>
+            <p>Per D-08: exactly one notice card. No Shell, no checklist, no session card.</p>
           </div>
           <div class="tags"><span class="tag amber">Empty state</span></div>
         </div>
@@ -741,10 +754,10 @@
           </div>
           <div class="mock-body">
             <aside class="banner amber" role="alert">
-              <strong>Chưa chọn station</strong>
-              <small>Truy cập trang này từ landing/dashboard sau khi chọn station code. URL hiện tại không có query <code>?stationId</code>.</small>
+              <strong>No station selected</strong>
+              <small>Open this page from the landing or dashboard after picking a station code. The current URL has no <code>?stationId</code> query parameter.</small>
             </aside>
-            <button class="btn primary full">Quay lại landing</button>
+            <button class="btn primary full">Back to landing</button>
           </div>
         </div>
       </section>
@@ -754,7 +767,7 @@
         <div class="screen-meta">
           <div>
             <h2>03 Setup — Single error banner (command-guard reject)</h2>
-            <p>Per D-04/IR-05: lỗi từ backend hiện trên TOP banner duy nhất, không toast, không inline trong OpenSessionPanel. Title/message/recovery i18n keys từ <em>stationCommandErrorMessages.ts</em>.</p>
+            <p>Per D-04 / IR-05: backend errors surface in exactly one top banner — no toast, no inline block inside <code>OpenSessionPanel</code>. Title / message / recovery are i18n keys resolved from <em>stationCommandErrorMessages.ts</em>.</p>
           </div>
           <div class="tags"><span class="tag red">Error state</span></div>
         </div>
@@ -765,9 +778,9 @@
           </div>
           <div class="mock-body">
             <aside class="banner red" role="alert">
-              <strong>Không thể mở session</strong>
-              <small>Station đang được session sess-0042 (operator opr-007) sở hữu. Đề nghị supervisor revoke session cũ trước khi mở session mới.</small>
-              <small style="margin-top:4px;">Mã lỗi: <code>STATION_SESSION_ALREADY_OPEN_OTHER_OWNER</code></small>
+              <strong>Cannot open session</strong>
+              <small>Station is currently owned by session sess-0042 (operator opr-007). Ask a supervisor to revoke the existing session before opening a new one.</small>
+              <small style="margin-top:4px;">Error code: <code>STATION_SESSION_ALREADY_OPEN_OTHER_OWNER</code></small>
             </aside>
 
             <div class="setup-card">
@@ -775,7 +788,7 @@
                 <div class="step-badge" aria-hidden="true">1</div>
                 <div>
                   <div class="row-title">Session <span class="pill slate"><span aria-hidden="true"></span>Not confirmed</span></div>
-                  <div class="row-sub">Mở session mới sau khi xử lý lỗi phía trên</div>
+                  <div class="row-sub">Open a new session after resolving the error above</div>
                 </div>
                 <button class="btn primary">Open session</button>
               </div>
@@ -783,19 +796,19 @@
                 <div class="step-badge" aria-hidden="true">2</div>
                 <div>
                   <div class="row-title">Operator <span class="pill slate"><span aria-hidden="true"></span>Not confirmed</span></div>
-                  <div class="row-sub">Cần session open trước</div>
+                  <div class="row-sub">Session must be open first</div>
                 </div>
               </div>
               <div class="setup-row">
                 <div class="step-badge" aria-hidden="true">3</div>
                 <div>
                   <div class="row-title">Equipment <span class="pill slate"><span aria-hidden="true"></span>Not confirmed</span></div>
-                  <div class="row-sub">Cần session open trước</div>
+                  <div class="row-sub">Session must be open first</div>
                 </div>
               </div>
             </div>
             <button class="btn primary full" disabled>Enter queue</button>
-            <p class="helper-text">Cần mở session trước.</p>
+            <p class="helper-text">Open a session first.</p>
           </div>
         </div>
       </section>
@@ -805,7 +818,7 @@
         <div class="screen-meta">
           <div>
             <h2>04 Setup — Close-session confirm dialog</h2>
-            <p>Per IR-01: <em>CloseSessionPanel</em> OWNS confirm dialog, render như sibling của 3-row card. Session row chỉ trigger <code>onEndSessionClick</code>, không own state đóng.</p>
+            <p>Per IR-01: <em>CloseSessionPanel</em> OWNS the confirm dialog and renders as a sibling of the 3-row card. The Session row only triggers <code>onEndSessionClick</code>; it does not own the close state.</p>
           </div>
           <div class="tags"><span class="tag amber">Confirm modal</span></div>
         </div>
@@ -813,23 +826,23 @@
           <div class="modal-backdrop">
             <div class="modal" role="dialog" aria-labelledby="close-title" aria-modal="true">
               <div class="modal-head">
-                <strong id="close-title">Đóng station session?</strong>
-                <span class="tag amber">Cần xác nhận</span>
+                <strong id="close-title">Close station session?</strong>
+                <span class="tag amber">Confirmation required</span>
               </div>
               <div class="modal-body">
-                <p>Session <strong>#sess-0001</strong> sẽ được đóng. Operator sẽ phải mở session mới để tiếp tục thao tác.</p>
+                <p>Session <strong>#sess-0001</strong> will be closed. The operator must open a new session to continue work.</p>
                 <div class="meta-pair">
-                  <div class="meta-field"><div class="field-label">Operations đã làm</div><div class="field-value">1 completed</div></div>
+                  <div class="meta-field"><div class="field-label">Operations done</div><div class="field-value">1 completed</div></div>
                   <div class="meta-field"><div class="field-label">Downtime events</div><div class="field-value">1</div></div>
                 </div>
                 <div class="banner amber">
-                  <strong>Lưu ý</strong>
-                  <small>Nếu vẫn còn operation đang active, hệ thống sẽ chặn đóng và yêu cầu complete/handoff trước.</small>
+                  <strong>Heads-up</strong>
+                  <small>If an operation is still active, the backend will block close and ask for completion or handoff first.</small>
                 </div>
               </div>
               <div class="modal-foot">
-                <button class="btn ghost">Hủy</button>
-                <button class="btn warning">Đóng session</button>
+                <button class="btn ghost">Cancel</button>
+                <button class="btn warning">Close session</button>
               </div>
             </div>
           </div>
@@ -841,7 +854,7 @@
         <div class="screen-meta">
           <div>
             <h2>05 Station Queue</h2>
-            <p>Queue list backend-derived. Mỗi row có 1 trạng thái + 1 action duy nhất. Other-session rows không có button — chỉ pill <em>Owned by</em>.</p>
+            <p>Queue list is backend-derived. Each row has exactly one state and one action. Other-session rows have no action button — only an <em>Owned by</em> pill.</p>
           </div>
           <div class="tags"><span class="tag green">Session-owned</span><span class="tag blue">Queue-first</span></div>
         </div>
@@ -890,7 +903,7 @@
         <div class="screen-meta">
           <div>
             <h2>06 Cockpit — Active (Mode B, IN_PROGRESS)</h2>
-            <p>Hero state, 4 KPIs, 1 primary action <em>Report quantity</em> (vì còn remaining > 0 và <code>allowed_actions</code> chứa report_quantity). Pause/Downtime là secondary. KHÔNG STX label, KHÔNG debug shell.</p>
+            <p>Hero state, 4 KPIs, one primary action — <em>Report quantity</em> — because remaining &gt; 0 and <code>allowed_actions</code> contains <code>report_quantity</code>. Pause / Downtime are secondary. No STX label, no debug shell.</p>
           </div>
           <div class="tags"><span class="tag blue">Mode B</span><span class="tag green">Connected</span></div>
         </div>
@@ -898,7 +911,7 @@
           <div class="mock-topbar">
             <div class="mock-title"><span class="eyebrow">Station Execution</span><strong>S3 Assembly Inspect</strong></div>
             <div class="mock-actions">
-              <button class="btn ghost">Back to queue</button>
+              <button class="btn ghost">Back to queue</browseing-button><button class="btn ghost">Back to queue</button>
             </div>
           </div>
           <div class="context">
@@ -932,15 +945,15 @@
                   <span class="allowed-source">From allowed_actions</span>
                 </div>
                 <div class="banner">
-                  <strong>Báo cáo số lượng</strong>
-                  <small>Còn lại 25 pcs. Hoàn thành chỉ hiện khi backend trả <code>complete_operation</code> trong allowed_actions.</small>
+                  <strong>Report quantity</strong>
+                  <small>25 pcs remaining. The Complete button appears only when the backend returns <code>complete_operation</code> in <code>allowed_actions</code>.</small>
                 </div>
                 <button class="btn primary full">Report quantity</button>
                 <div class="secondary-row">
                   <button class="btn">Pause</button>
                   <button class="btn">Start downtime</button>
                 </div>
-                <div class="support">Hỗ trợ: liên hệ supervisor · xem operation history (collapsed).</div>
+                <div class="support">Support: contact supervisor · view operation history (collapsed).</div>
               </aside>
             </div>
           </div>
@@ -952,7 +965,7 @@
         <div class="screen-meta">
           <div>
             <h2>07 Cockpit — Paused (Interrupted Mode)</h2>
-            <p>State hero đổi sang amber. Primary action đổi sang <em>Resume</em>. Report bị ẩn (không có trong allowed_actions). Hero KPI vẫn read-visible.</p>
+            <p>State hero shifts to amber. Primary action becomes <em>Resume</em>. Reporting is hidden (absent from <code>allowed_actions</code>). KPIs remain read-visible.</p>
           </div>
           <div class="tags"><span class="tag amber">Interrupted</span><span class="tag">Mode B paused</span></div>
         </div>
@@ -969,8 +982,8 @@
                   <span class="state-badge amber"><span class="dot" aria-hidden="true"></span> Paused</span>
                 </div>
                 <div class="banner amber">
-                  <strong>Operation đang pause</strong>
-                  <small>Pause reason: <em>break</em> · paused at 09:08. Reporting tạm ẩn cho đến khi resume.</small>
+                  <strong>Operation paused</strong>
+                  <small>Pause reason: <em>break</em> · paused at 09:08. Reporting is hidden until the operation resumes.</small>
                 </div>
                 <div class="kpis">
                   <div class="kpi"><div class="kpi-label">Target</div><div class="kpi-value">120</div></div>
@@ -1000,7 +1013,7 @@
         <div class="screen-meta">
           <div>
             <h2>08 Cockpit — Downtime open</h2>
-            <p>State red. Primary action <em>End downtime</em>. Reporting disabled. <strong>Không trộn</strong> với start-downtime dialog (xem screen 09).</p>
+            <p>State turns red. Primary action becomes <em>End downtime</em>. Reporting and Complete are disabled. <strong>Not combined</strong> with the start-downtime dialog (see screen 09).</p>
           </div>
           <div class="tags"><span class="tag red">Downtime open</span></div>
         </div>
@@ -1017,8 +1030,8 @@
                   <span class="state-badge red"><span class="dot" aria-hidden="true"></span> Downtime</span>
                 </div>
                 <div class="banner red">
-                  <strong>Downtime đang mở</strong>
-                  <small>Reason: <em>TOOL_CHANGE</em> · started 08:41 · elapsed 08m 42s. Reporting và Complete bị chặn cho đến khi End downtime.</small>
+                  <strong>Downtime is open</strong>
+                  <small>Reason: <em>TOOL_CHANGE</em> · started 08:41 · elapsed 08m 42s. Reporting and Complete are blocked until End downtime.</small>
                 </div>
                 <div class="kpis">
                   <div class="kpi"><div class="kpi-label">Target</div><div class="kpi-value">120</div></div>
@@ -1048,7 +1061,7 @@
         <div class="screen-meta">
           <div>
             <h2>09 Start-downtime dialog</h2>
-            <p>Modal riêng. Reason code lấy từ backend master data (<code>fetchDowntimeReasons</code>). Comment optional. Submit gửi <code>operationApi.startDowntime</code>.</p>
+            <p>Dedicated modal. Reason codes come from backend master data (<code>fetchDowntimeReasons</code>). Comment is optional. Submit calls <code>operationApi.startDowntime</code>.</p>
           </div>
           <div class="tags"><span class="tag amber">Modal</span></div>
         </div>
@@ -1056,7 +1069,7 @@
           <div class="modal-backdrop">
             <div class="modal" role="dialog" aria-labelledby="dt-title" aria-modal="true">
               <div class="modal-head">
-                <strong id="dt-title">Bắt đầu downtime</strong>
+                <strong id="dt-title">Start downtime</strong>
                 <span class="tag amber">Reason required</span>
               </div>
               <div class="modal-body">
@@ -1066,14 +1079,14 @@
                 </div>
                 <div class="meta-field">
                   <div class="field-label">Comment (optional)</div>
-                  <div class="field-value" style="font-size:14px;font-weight:700;color:var(--muted);">Nhập mô tả thêm…</div>
+                  <div class="field-value" style="font-size:14px;font-weight:700;color:var(--muted);">Add a note…</div>
                 </div>
                 <div class="designer-note">
-                  <strong>Note:</strong> Reason list được render từ <code>fetchDowntimeReasons()</code>. Không hardcode danh sách trong FE.
+                  <strong>Note:</strong> Reason list is rendered from <code>fetchDowntimeReasons()</code>. Do not hardcode the list in FE.
                 </div>
               </div>
               <div class="modal-foot">
-                <button class="btn ghost">Hủy</button>
+                <button class="btn ghost">Cancel</button>
                 <button class="btn warning">Start downtime</button>
               </div>
             </div>
@@ -1086,7 +1099,7 @@
         <div class="screen-meta">
           <div>
             <h2>10 Report quantity</h2>
-            <p>Delta entry. Stepper + quick-add token-sized (56px). Submit gửi <code>operationApi.reportQuantity</code>. Projected result chỉ là client-side preview <em>của input</em>, không phải prediction về backend gate.</p>
+            <p>Delta entry. Stepper and quick-add buttons sized per token system (56px). Submit calls <code>operationApi.reportQuantity</code>. The projected result is a client-side preview <em>of input arithmetic</em> only — not a prediction about backend acceptance.</p>
           </div>
           <div class="tags"><span class="tag green">Primary action</span></div>
         </div>
@@ -1137,7 +1150,7 @@
                   <div class="kpi"><div class="kpi-label">Completed</div><div class="kpi-value">106</div></div>
                 </div>
                 <div class="designer-note">
-                  <strong>Note:</strong> Đây là arithmetic preview của input — không phải prediction backend sẽ accept. Backend có thể reject (e.g. <code>QUANTITY_EXCEEDS_REMAINING</code>) → top banner.
+                  <strong>Note:</strong> This is arithmetic preview of input only — it is not a prediction that the backend will accept the submission. The backend may still reject (for example <code>QUANTITY_EXCEEDS_REMAINING</code>) and that surfaces in the top error banner.
                 </div>
               </aside>
             </div>
@@ -1150,7 +1163,7 @@
         <div class="screen-meta">
           <div>
             <h2>11 Quality measurement entry</h2>
-            <p><strong>Bỏ "Pass preview".</strong> Chỉ show <em>spec ranges (reference)</em> để operator đối chiếu. Pass/fail và hold-open quyết định bởi backend SAU khi submit.</p>
+            <p><strong>No "pass preview".</strong> The right panel shows only the spec reference (read-only ranges from routing master data). Pass / fail and any hold-open decision are made by the backend AFTER submit.</p>
           </div>
           <div class="tags"><span class="tag blue">QC required</span></div>
         </div>
@@ -1182,7 +1195,7 @@
                   <div class="spec-card"><strong>Visual</strong><small>Pass required</small></div>
                 </div>
                 <div class="designer-note">
-                  <strong>Backend-truth:</strong> FE KHÔNG render "Pass preview" / "No hold will be opened". Sau submit, backend trả về <code>quality_result</code> và (nếu fail) <code>hold_id</code>. UI chuyển sang screen Hold (12/13) nếu có.
+                  <strong>Backend-truth:</strong> FE MUST NOT render "Pass preview" or "No hold will be opened". After submit, the backend returns <code>quality_result</code> and (if it fails) a <code>hold_id</code>. The UI navigates to the Hold screen (12 / 13) only after the backend confirms.
                 </div>
               </aside>
             </div>
@@ -1195,7 +1208,7 @@
         <div class="screen-meta">
           <div>
             <h2>12 Quality hold — Operator view</h2>
-            <p>Operator KHÔNG có quyền release. Chỉ thấy banner blocker, failed checkpoint, và CTA <em>Call QA</em>. Complete bị chặn vì allowed_actions thiếu <code>complete_operation</code>.</p>
+            <p>The operator does NOT have the release permission. They see the blocker banner, the failed checkpoint, and a <em>Call QA</em> CTA. Complete is disabled because <code>allowed_actions</code> does not contain <code>complete_operation</code>.</p>
           </div>
           <div class="tags"><span class="persona-tag opr">Role · Operator</span><span class="tag red">Complete blocked</span></div>
         </div>
@@ -1212,8 +1225,8 @@
                   <span class="state-badge red"><span class="dot" aria-hidden="true"></span> Quality hold</span>
                 </div>
                 <div class="banner red">
-                  <strong>Quality hold đang mở</strong>
-                  <small>QH-1042 chặn complete. Vui lòng gọi QA để dispose.</small>
+                  <strong>Quality hold is open</strong>
+                  <small>QH-1042 blocks Complete. Please call QA to dispose.</small>
                 </div>
                 <div class="meta-pair">
                   <div class="meta-field"><div class="field-label">Failed checkpoint</div><div class="field-value">Torque</div></div>
@@ -1232,7 +1245,7 @@
                   <button class="btn">Add comment</button>
                   <button class="btn" disabled>Complete</button>
                 </div>
-                <div class="support">Complete sẽ enable khi backend release hold (QH-1042) và allowed_actions chứa <code>complete_operation</code>.</div>
+                <div class="support">Complete enables when the backend releases QH-1042 and <code>allowed_actions</code> contains <code>complete_operation</code>.</div>
               </aside>
             </div>
           </div>
@@ -1243,8 +1256,8 @@
       <section class="screen" id="quality-hold-qa">
         <div class="screen-meta">
           <div>
-            <h2>13 Quality hold — QA resolution view (separate screen)</h2>
-            <p>QA role mở screen riêng (route khác hoặc tab). Có disposition picker, nonconformance link, release/reject buttons. Visibility được kiểm soát bởi authorization, không phải UI persona toggle.</p>
+            <h2>13 Quality hold — QA resolution view (separate route)</h2>
+            <p>The QA role opens a separate screen (different route or tab) with a disposition picker, a nonconformance link, and release / reject buttons. Visibility is enforced by authorization — not by a UI-side persona toggle.</p>
           </div>
           <div class="tags"><span class="persona-tag qa">Role · QA Lead</span><span class="tag amber">Awaiting disposition</span></div>
         </div>
@@ -1287,7 +1300,7 @@
         <div class="screen-meta">
           <div>
             <h2>14 Complete operation</h2>
-            <p>Hiện khi remaining = 0 và <code>complete_operation</code> ∈ allowed_actions. Closure state (closed/open) hiển thị riêng — close là supervisor action tùy policy.</p>
+            <p>Complete appears only when remaining = 0 and <code>complete_operation</code> ∈ <code>allowed_actions</code>. Closure state (closed / open) is shown separately — Close is a supervisor action subject to site policy.</p>
           </div>
           <div class="tags"><span class="tag green">Ready to complete</span></div>
         </div>
@@ -1323,7 +1336,7 @@
                 <button class="btn primary full">Complete operation</button>
                 <div class="banner">
                   <strong>Completed ≠ Closed</strong>
-                  <small>Operation sẽ đánh dấu COMPLETED. Closure (close/reopen) là supervisor action — không hiển thị ở operator UI.</small>
+                  <small>The operation transitions to COMPLETED. Closure (close / reopen) is a supervisor action and is not exposed in the operator UI.</small>
                 </div>
                 <button class="btn ghost full">Back to queue</button>
               </aside>
@@ -1337,7 +1350,7 @@
         <div class="screen-meta">
           <div>
             <h2>15 Supervisor timeline</h2>
-            <p>Read-only view cho role SUP. Timeline events render từ backend event log, không invent. State summary backend-derived.</p>
+            <p>Read-only view for the SUP role. Timeline events render from the backend event log — never invented. The state summary is backend-derived.</p>
           </div>
           <div class="tags"><span class="persona-tag sup">Role · Supervisor</span><span class="tag green">Live</span></div>
         </div>
@@ -1389,7 +1402,7 @@
         <div class="screen-meta">
           <div>
             <h2>16 End session</h2>
-            <p>Summary card + primary CTA <em>Close session</em>. Khi click → modal confirm (xem screen 04). Sau close → quay về Setup empty hoặc landing.</p>
+            <p>Summary card plus primary CTA <em>Close session</em>. Clicking opens the confirm modal (screen 04). After close, the operator returns to the Setup empty state or to the landing page.</p>
           </div>
           <div class="tags"><span class="tag green">Operation complete</span></div>
         </div>
@@ -1411,40 +1424,69 @@
               </div>
               <button class="btn primary full">Close session</button>
               <div class="designer-note">
-                <strong>Ownership:</strong> Click vào "Close session" trigger <code>showCloseConfirm = true</code>. <code>CloseSessionPanel</code> own confirm dialog (xem screen 04). Page state own loading/error.
+                <strong>Ownership:</strong> Clicking "Close session" sets <code>showCloseConfirm = true</code>. <code>CloseSessionPanel</code> owns the confirm dialog (screen 04). Page-level state owns loading / error.
               </div>
             </section>
           </div>
         </div>
       </section>
 
+      <!-- =================== I18N NOTES =================== -->
+      <section class="implementation-note" id="i18n-notes">
+        <h2>i18n Notes (en + ja registries)</h2>
+        <p>All operator-visible copy in this mockup is English placeholder text only. The production app resolves every string through the i18n hook against two registries that must stay in lock-step: <code>frontend/src/app/i18n/registry/en.ts</code> and <code>frontend/src/app/i18n/registry/ja.ts</code>. The parity lint <code>scripts/check_i18n_registry_parity.mjs</code> enforces the key set match.</p>
+        <p><strong>Key namespace pattern</strong> (additive — do not rename existing keys in any implementation slice):</p>
+        <ul>
+          <li><span class="i18n-key">stationSession.row.session.*</span> — Session row title, subtext variants, actions</li>
+          <li><span class="i18n-key">stationSession.row.operator.*</span> — Operator row title, subtext variants, action</li>
+          <li><span class="i18n-key">stationSession.row.equipment.*</span> — Equipment row title, subtext variants, action</li>
+          <li><span class="i18n-key">stationSession.row.status.*</span> — Pill labels (Open / Identified / Bound / Not yet / Optional / Not confirmed)</li>
+          <li><span class="i18n-key">stationSession.cta.enterQueue</span> — Primary CTA label</li>
+          <li><span class="i18n-key">stationSession.cta.helper.*</span> — Helper text variants for disabled CTA</li>
+          <li><span class="i18n-key">stationSession.empty.missingStation.*</span> — Empty-state title / message / CTA</li>
+          <li><span class="i18n-key">stationSession.close.*</span> — Close-confirm dialog title / body / actions</li>
+          <li><span class="i18n-key">stationExecution.hero.*</span> — Cockpit hero state labels</li>
+          <li><span class="i18n-key">stationExecution.action.*</span> — Cockpit action labels (Report quantity, Pause, Resume, Start / End downtime, Complete)</li>
+          <li><span class="i18n-key">stationExecution.interrupted.*</span> — Interrupted-mode banners (paused, downtime)</li>
+          <li><span class="i18n-key">stationExecution.downtime.dialog.*</span> — Start-downtime dialog labels</li>
+          <li><span class="i18n-key">quality.measurement.*</span> — Measurement entry labels and spec reference</li>
+          <li><span class="i18n-key">quality.hold.operator.*</span> — Operator hold view</li>
+          <li><span class="i18n-key">quality.hold.qa.*</span> — QA resolution view</li>
+          <li><span class="i18n-key">supervisor.timeline.*</span> — Supervisor read-only timeline</li>
+        </ul>
+        <p><strong>Rules:</strong> never hardcode operator-visible strings in JSX; never delete existing keys in this feature (orphan cleanup is a separate hygiene slice); always add the same key to both <code>en.ts</code> and <code>ja.ts</code> in the same commit; numeric formatting and date formatting must use locale-aware helpers (not raw template literals).</p>
+      </section>
+
       <section class="implementation-note" id="implementation-notes">
-        <h2>Implementation Notes For Coding Agent</h2>
-        <p><strong>Scope intent:</strong> Visual direction pack, không phải production code. Translate sang component hiện có (StationWorkflowShell, OpenSessionPanel, IdentifyOperatorPanel, BindEquipmentPanel, CloseSessionPanel cho Mode A; ExecutionStateHero, AllowedActionZone, QuantitySummaryPanel cho Mode B).</p>
+        <h2>Implementation notes for the coding agent</h2>
+        <p><strong>Scope intent:</strong> visual direction pack, not production code. Map onto existing components — <code>StationWorkflowShell</code>, <code>OpenSessionPanel</code>, <code>IdentifyOperatorPanel</code>, <code>BindEquipmentPanel</code>, <code>CloseSessionPanel</code> for Mode A, plus <code>ExecutionStateHero</code>, <code>AllowedActionZone</code>, <code>QuantitySummaryPanel</code> for Mode B.</p>
         <p><strong>Hard requirements:</strong></p>
         <ul>
-          <li>Mode A KHÔNG dùng <code>StationWorkflowShell</code>; KHÔNG dùng <code>StationEntryPanel</code>; KHÔNG wizard 5-step (D-01..D-02).</li>
-          <li>Mode A có exact 1 primary CTA top-level "Enter queue"; helper text reflect missing prerequisite (D-05, IR-06). Variable name: <code>canNavigateToQueueByVisibleSetupState</code>.</li>
-          <li>Error display: TOP banner duy nhất, no toast on failure cho command-guard codes (D-04, IR-05).</li>
-          <li>Empty state khi <code>!stationId</code>: 1 amber notice, không Shell, không rows (D-08).</li>
-          <li>Close-session confirm dialog OWN bởi <code>CloseSessionPanel</code> (IR-01).</li>
-          <li>Cockpit (Mode B): action visibility từ <code>allowed_actions</code>; KHÔNG STX label, KHÔNG generic partial banner.</li>
-          <li>Quality Measurement: KHÔNG render "Pass preview" / "No hold will be opened". Sau submit, backend trả <code>quality_result</code>.</li>
-          <li>Quality Hold: tách Operator view và QA view (route/authorization khác nhau), KHÔNG render side-by-side.</li>
-          <li>Touch targets: primary 56px, secondary 48px, gap ≥ 12px, KPI value ≥ 48px.</li>
-          <li>Pill states: dot + label (color + text), không chỉ color.</li>
-          <li>Focus-visible ring trên mọi interactive element.</li>
-          <li><code>aria-hidden="true"</code> trên decorative symbols (●, ○, dot, step number).</li>
+          <li>Mode A MUST NOT use <code>StationWorkflowShell</code>, MUST NOT use <code>StationEntryPanel</code>, MUST NOT show a 5-step wizard (D-01 / D-02).</li>
+          <li>Mode A has exactly one top-level primary CTA "Enter queue"; helper text names the missing prerequisite (D-05, IR-06). Variable name MUST be <code>canNavigateToQueueByVisibleSetupState</code>.</li>
+          <li>Error display: one top banner, no toast on failure for command-guard codes (D-04, IR-05).</li>
+          <li>Empty state when <code>!stationId</code>: one amber notice, no Shell, no rows (D-08).</li>
+          <li>Close-session confirm dialog is OWNED by <code>CloseSessionPanel</code> (IR-01).</li>
+          <li>Cockpit (Mode B): action visibility comes from <code>allowed_actions</code>; no STX label, no generic partial banner.</li>
+          <li>Quality Measurement: do not render any "pass preview" / "no hold will be opened" copy. After submit, the backend returns <code>quality_result</code>.</li>
+          <li>Quality Hold: separate Operator and QA views (different routes / authorization), never side-by-side.</li>
+          <li>Touch targets: primary ≥ 56px, secondary ≥ 48px, gap ≥ 12px, KPI value ≥ 48px.</li>
+          <li>Pill states: dot + label (color + text), never color alone.</li>
+          <li>Focus-visible ring on every interactive element.</li>
+          <li><code>aria-hidden="true"</code> on decorative symbols (●, ○, dot, step number).</li>
+          <li>All operator-visible strings go through i18n (en + ja parity). See "i18n Notes" section above.</li>
         </ul>
-        <p><strong>Suggested slice ordering:</strong></p>
+        <p><strong>Suggested slice order:</strong></p>
         <ol>
-          <li><code>FE-SE-MODEA-SIMPLIFY-09</code> — Setup 3-row card + empty + error + close-confirm dialog ownership.</li>
-          <li><code>FE-SE-COCKPIT-REWORK-07</code> — Cockpit Mode B hero + allowed_actions + interrupted mode (paused, downtime).</li>
-          <li><code>FE-SE-QUALITY-MEASURE-XX</code> — Quality entry spec-reference panel; remove pass preview.</li>
-          <li><code>FE-SE-QUALITY-HOLD-XX</code> — Operator hold view + QA disposition route (separate).</li>
-          <li><code>FE-SE-SUPERVISOR-TIMELINE-XX</code> — Supervisor timeline read-only.</li>
+          <li><code>FE-SE-MODEA-SIMPLIFY-09</code> — Setup 3-row card, empty state, error banner, close-confirm dialog ownership.</li>
+          <li><code>FE-SE-COCKPIT-HERO-10</code> — Mode B hero, allowed_actions zone (active state).</li>
+          <li><code>FE-SE-INTERRUPTED-MODE-11</code> — Cockpit paused and downtime-open visual modes.</li>
+          <li><code>FE-SE-START-DOWNTIME-DIALOG-12</code> — Start-downtime modal with backend reason list.</li>
+          <li><code>FE-SE-QUALITY-MEASURE-13</code> — Quality entry spec-reference panel; remove the pass preview.</li>
+          <li><code>FE-SE-QUALITY-HOLD-SPLIT-14</code> — Operator hold view plus QA disposition route (separate).</li>
+          <li><code>FE-SE-SUPERVISOR-TIMELINE-15</code> — Supervisor timeline read-only.</li>
         </ol>
-        <p><strong>Caveats:</strong> Reason list, disposition list, spec ranges đều backend-derived master data — không hardcode trong FE.</p>
+        <p><strong>Caveats:</strong> reason codes, disposition list, spec ranges, downtime reasons are all backend-derived master data — do not hardcode in FE.</p>
       </section>
     </main>
   </div>

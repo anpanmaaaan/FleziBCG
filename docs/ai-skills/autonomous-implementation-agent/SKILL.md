@@ -18,13 +18,14 @@ PLAN → HARD MODE v3 GATE → TEST FIRST → CODE → BUILD → TEST → VERIFY
 ## Mandatory Reading
 
 1. `.github/copilot-instructions.md`
-2. `docs/design/INDEX.md`
-3. `docs/design/AUTHORITATIVE_FILE_MAP.md`
-4. `docs/governance/CODING_RULES.md`
-5. `docs/governance/ENGINEERING_DECISIONS.md`
-6. `docs/governance/SOURCE_STRUCTURE.md`
-7. `docs/implementation/slice-strategy-for-flezibcg.md`
-8. relevant design docs for the slice
+2. `docs/agent-context/flezibcg-project-primer.md`
+3. `docs/design/INDEX.md`
+4. `docs/design/AUTHORITATIVE_FILE_MAP.md`
+5. `docs/governance/CODING_RULES.md`
+6. `docs/governance/ENGINEERING_DECISIONS.md`
+7. `docs/governance/SOURCE_STRUCTURE.md`
+8. `docs/implementation/slice-strategy-for-flezibcg.md`
+9. relevant design docs for the slice
 
 ## Public Work Packet
 
@@ -34,12 +35,14 @@ Before coding, output this compact packet:
 ## Work Packet
 - User goal:
 - Slice boundary:
+- Project primer read: yes/no
 - Selected skills read:
 - Hard Mode MOM v3: on/off + reason
 - Coverage target: service | API | frontend | E2E | docs-only
 - Files expected to change:
 - Files intentionally not changed:
 - Existing patterns to reuse:
+- Navigation/screen intent classification, if routing/list/queue/detail/action is touched:
 - Validation commands:
 - Stop conditions:
 ```
@@ -95,6 +98,22 @@ When implementing a reviewer correction:
 - Do not mark the correction complete by changing only the report while the
   original code failure remains.
 
+## Task Identity Discipline
+
+The latest user prompt is the active task. Before editing, copy the requested
+task/slice id and one-line goal into the work packet. Compare that id to:
+
+- the report title you are about to write;
+- the screenshot/audit folder you are about to create or update;
+- the main files you are about to edit;
+- any older prompt/report you are using as context.
+
+If the ids diverge, stop before coding and report `RED - task identity
+mismatch`. Do not continue an older slice just because its prompt or report is
+still open in the repo. A final report for `FE-SE-INTERRUPTED-MODE-11` is a
+failure when the active prompt requested `FE-SE-REMOVE-WORKFLOW-SHELL-12`, even
+if the interrupted-mode work is technically correct.
+
 ## Test And Fixture Discipline
 
 - Prefer behavior tests that assert source-of-truth state, emitted events, and
@@ -141,12 +160,55 @@ Required behavior:
 - If a guard changes intentionally, report the old condition, the new condition,
   the reason, and the verification.
 
+## Navigation Intent Discipline
+
+When a slice touches login landing, routing, menus, lists, queues, tables,
+selected entity state, detail pages, cockpit pages, or action panels, classify
+the screen intent before editing:
+
+- `LANDING`, `LIST`, or `QUEUE`: safe entry surfaces. They must not select an
+  entity or enter cockpit/action state on initial load.
+- `SETUP`: context preparation for user/session/equipment/scope.
+- `DETAIL`, `COCKPIT`, or `ACTION`: require explicit route param, explicit
+  user gesture, or backend-confirmed active context owned by the current
+  user/session.
+
+Required behavior:
+
+- Never use `items[0]`, `data.items[0]`, `queueItems[0]`, or
+  `preferred ?? items[0]` to choose an entity for a landing/list/queue route on
+  initial load.
+- Never mutate the URL with an entity id from the first list/queue item during
+  initial load.
+- Never open a detail/cockpit/action panel merely because a collection has
+  items.
+- A backend active-context exception must be documented with
+  `NAV_INTENT_EXCEPTION:` near the code and must name the backend field or
+  contract that proves ownership.
+
+Required verification for affected slices:
+
+- source search on every touched routing/list/queue/detail/cockpit/action file
+  for first-item selection and initial URL entity-id mutation patterns,
+  including `items[0]`, `data.items[0]`, `queueItems[0]`, `preferred ??`,
+  `setSearchParams`, `navigate(`, and route-param setters;
+- paste or summarize the search result in the final report. If any suspicious
+  pattern exists anywhere in a touched file, answer `yes - existing` or
+  `yes - introduced`; do not answer `no` just because the current diff did not
+  add the pattern;
+- user-flow, screenshot, or E2E evidence that the default landing/list/queue
+  state does not auto-enter detail/cockpit/action;
+- evidence that explicit user selection or explicit deep link still works.
+
 ## Pre-Final Self-Review Gate
 
 Before the final report, run a self-review:
 
 ```markdown
 ## Implementation Self-Review
+- Requested task/slice id:
+- Implemented/reported task/slice id:
+- Task identity matches latest user prompt:
 - `git status --short` checked:
 - Expected changed files present:
 - Unexpected changed files:
@@ -162,6 +224,12 @@ Before the final report, run a self-review:
 - Behavior preserved:
 - Behavior intentionally changed:
 - Behavior changed accidentally/fixed:
+- Navigation intent classification checked:
+- Implicit first-item selection present (no | yes - existing | yes - introduced):
+- Initial URL entity-id mutation present (no | yes - existing | yes - introduced):
+- Navigation forbidden-pattern search result:
+- Detail/cockpit/action entry source:
+- Navigation intent verification:
 - Report claims match actual diff:
 - Component prop contracts match interfaces/call sites:
 - Final report contains only this slice, with no stale appended report:
@@ -177,6 +245,10 @@ is stale, or required assertions are failing.
   review artifacts unless the prompt explicitly says to commit them.
 - Report artifacts under `Generated artifact paths`; report code/docs/test paths
   under `Files intended for commit`.
+- Screenshot harness scripts, Playwright specs, QA scripts, mocks, and test
+  utilities are code/test paths. If the slice adds or updates them to reproduce
+  evidence, they belong under `Files intended for commit` unless the prompt
+  explicitly marks them as disposable scratch work.
 - Do not stage or commit PNG, JPG, JPEG, GIF, WebP, MP4, or WebM artifacts under
   `docs/audit/**` unless explicitly requested.
 - Do not delete tracked historical artifacts under `docs/audit/**` unless the
@@ -202,6 +274,10 @@ Stop only if:
 Stop and report a blocker if validation cannot be trusted because the command ran
 against stale source, ambiguous logs, or a failed test environment.
 
+Stop and report a blocker if a landing/list/queue route would need implicit
+first-item selection to satisfy the prompt. The product decision must explicitly
+authorize a backend active-context exception before implementation continues.
+
 ## Reports to update
 
 - `docs/implementation/autonomous-implementation-plan.md`
@@ -225,6 +301,9 @@ Every final report must include:
 - what is not covered;
 - known environment caveats;
 - next slice recommendation.
+- navigation intent classification and verification when routing, landing,
+  list, queue, selected entity, detail, cockpit, or action entry behavior was
+  touched.
 
 Do not claim API/RBAC/E2E/pilot golden path coverage from service-only tests.
 

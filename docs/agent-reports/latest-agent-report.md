@@ -1,146 +1,190 @@
-# Agent Report - STATION-SESSION-PILOT-READINESS-01
+# FE-SE-INTERRUPTED-MODE-11-CORRECTION — Harden interrupted-mode harness with visible text assertions
 
-## Task / Slice
+## Result
 
-Implemented the current Station Session pilot-readiness sprint slice:
+**GREEN.** All gates pass. Harness exit 0. 4 scenarios × 7 assertions = 28 PASS lines. One source bug surfaced and fixed (PAUSED + downtime_open showed the "paused/resume" reporting-disabled reason instead of the "downtime" reason expected by the prompt and consistent with the andon banner).
 
-- Align Station Session close screenshot harness with backend HTTP 409 conflict contract.
-- Make the empty current-session path actionable so an operator can open a station session.
-- Normalize backend `OPEN` / `CLOSED` session status values before frontend readiness decisions.
-- Separate queue navigation from session close confirmation in `CloseSessionPanel`.
-- Add API boundary tests for station session close guard.
+## Routing
+- Selected brain: MOM Brain + FleziBCG Frontend
+- Hard Mode MOM v3: kept from parent slice (yes)
+- Coverage class: frontend
+- Selected skills read:
+  - `.github/copilot-instructions.md`
+  - `docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md`
+  - `docs/ai-skills/hard-mode-mom-v3/SKILL.md`
+  - `docs/ai-skills/design-md-ui-governor/SKILL.md`
+  - `docs/ai-skills/autonomous-implementation-agent/SKILL.md`
+  - `docs/ai-skills/qa-e2e-layer/SKILL.md`
+  - `frontend/scripts/station-execution-interrupted-qa-screenshots.mjs` (parent harness)
+  - `frontend/src/app/components/station-execution/StationAndonBanner.tsx`
+  - `frontend/src/app/pages/StationExecution.tsx`
+  - `frontend/src/app/i18n/registry/en.ts` and `ja.ts` (verified exact strings)
+  - `docs/agent-reports/latest-agent-report.md` (parent slice export)
 
-## Routing / Coverage
+## Problem fixed
 
-- Selected skills read: `superpowers:test-driven-development`, `superpowers:verification-before-completion`
-- Coverage class: mixed frontend + API test file
-- Hard Mode kept from parent slice: yes
-- Limitations / not covered: Full backend suite and true browser-to-backend E2E were not run. Screenshot harness uses mocked API data and does not prove backend truth or authorization.
+Parent harness verified severity, primary action, allowed/forbidden actions, and reporting testid only. It did not assert the *visible operator guidance text* in the andon banner or the *visible reason text* in the disabled-reporting section. This correction adds those two text assertions per scenario.
 
-## Changed in This Slice
+While adding the text assertion to scenario C (PAUSED + downtime_open), the harness surfaced a real bug: the disabled-reporting reason said "Reporting is disabled while execution is paused. Resume to continue reporting." even though the andon banner correctly said "Next: end the open downtime." The reason precedence in `reportingHint` checked `BLOCKED && downtime_open` before plain `PAUSED`, so PAUSED + downtime_open fell through to the paused string. The fix promotes `downtime_open` to the top of the precedence (mirroring the andon banner).
 
-### Frontend
+## What changed
 
-- `frontend/src/app/pages/StationSession.tsx`
-  - Renders setup rows when `GET /v1/station/sessions/current` returns `session: null`.
-  - Allows `OpenSessionPanel` to open a session from the empty state when `stationId` exists.
-  - Normalizes backend session status with `session.status.toUpperCase()` before checking open/closed readiness.
-  - Passes normalized lower-case status only to `StationEntryPanel`.
-  - Keeps queue navigation as frontend guidance only; backend remains execution truth.
+### 1. `frontend/scripts/station-execution-interrupted-qa-screenshots.mjs`
 
-- `frontend/src/app/pages/OperatorIdentification.tsx`
-  - Normalizes backend session status with `session.status.toUpperCase()` before station handoff readiness decisions.
+- Header docstring updated to mark FE-SE-INTERRUPTED-MODE-11-CORRECTION.
+- Per scenario, added two new `expect` fields:
+  - `bannerTextRegex`
+  - `reportingTextRegex`
+- Added two new assertion helpers:
+  - `assertBannerGuidanceText(page, scenarioId, regex)` — reads `textContent` of `[data-testid="station-andon-banner"]` and matches the regex; fails with the observed text if it does not match.
+  - `assertReportingDisabledReasonText(page, scenarioId, regex)` — reads `textContent` of `[data-testid="report-input-disabled"]` and matches the regex; fails with the observed text if it does not match.
+- Both new assertions log the observed text on PASS for review traceability.
+- `runScenario` now calls both new assertions after `assertReportingTestid`. The reason-text assertion only runs when `reportingTestid === "report-input-disabled"` (the only path under test in this slice).
+- All existing assertions (severity, primary action, allowed/forbidden actions, reporting testid, nav-intent regression) and the 4-scenario structure are unchanged.
 
-- `frontend/src/app/pages/EquipmentBinding.tsx`
-  - Normalizes backend session status with `session.status.toUpperCase()` before station handoff and bind-action readiness decisions.
+### 2. `frontend/src/app/pages/StationExecution.tsx`
 
-- `frontend/src/app/components/station-execution/CloseSessionPanel.tsx`
-  - Adds `onContinueToQueue` and `canContinueToQueue`.
-  - The "Continue to Queue" action now navigates to queue instead of opening close confirmation.
-  - Close/end-session buttons remain the only triggers for close confirmation.
+- `reportingHint` precedence now checks `operation?.downtime_open` first, then `status === "BLOCKED"`, then `status === "PAUSED"`. This makes the visible reason text consistent with the andon banner whenever a downtime is open, regardless of `status`.
+- No other behavior change. No new state, no new component, no change to `canReportProduction`, no change to action legality (`allowed_actions`), no change to nav-intent code paths, no change to closure or quality-hold paths, no change to JSX structure.
 
-- `frontend/scripts/station-session-close-qa-screenshots.mjs`
-  - Uses HTTP 409 for `STATION_SESSION_ACTIVE_EXECUTION` mocked close conflict.
-  - Uses backend-like uppercase `OPEN` / `CLOSED` session statuses.
-  - Adds `no-session-open` desktop/narrow screenshot state.
-  - Auto-starts a temporary Vite server if ports 5173/5174 are not already reachable.
-  - Awaits temporary Vite child-process exit during cleanup.
+## Exact text assertions added
 
-- `frontend/package.json`
-  - Keeps `qa:session-close:screenshots`.
+| Scenario | `bannerTextRegex` | `reportingTextRegex` |
+| --- | --- | --- |
+| A — PAUSED, no downtime, desktop | `/resume/i` | `/paused|resume/i` |
+| B — BLOCKED, downtime_open, desktop | `/end.*downtime|open downtime/i` | `/downtime|end downtime/i` |
+| C — PAUSED, downtime_open, desktop | `/end.*downtime|open downtime/i` | `/downtime|end downtime/i` |
+| D — PAUSED, no downtime, tablet | `/resume/i` | `/paused|resume/i` |
 
-### Backend
+Observed visible text recorded by harness (English locale, default):
 
-- `backend/tests/test_station_session_close_execution_guard_api.py`
-  - Adds API-level coverage for `POST /api/v1/station/sessions/{session_id}/close`.
-  - Tests intended behavior:
-    - Active execution returns HTTP 409 and `detail: STATION_SESSION_ACTIVE_EXECUTION`.
-    - Blocked close does not emit `STATION_SESSION.CLOSED`.
-    - Blocked close leaves session `OPEN`.
-    - No-active-execution path closes session and emits one closed event.
+- A banner: `"Guidance / Blockers" + "Next: resume execution to continue." + "Reporting is disabled while execution is paused. Resume to continue reporting."`
+- A reporting-disabled: `"Input / Reporting" + "Reporting is disabled while execution is paused. Resume to continue reporting."`
+- B banner: `"Guidance / Blockers" + "Next: end the open downtime." + "Reporting is disabled while downtime is open. End downtime before reporting."`
+- B reporting-disabled: `"Input / Reporting" + "Reporting is disabled while downtime is open. End downtime before reporting."`
+- C banner: same as B.
+- C reporting-disabled: **after fix** matches B reporting-disabled. **Before fix** read "Reporting is disabled while execution is paused. Resume to continue reporting." (the bug the harness caught).
+- D banner / reporting-disabled: same as A.
 
-## Generated Artifact Paths
+No new i18n keys added. Existing keys reused:
+- `station.block.guidance`
+- `station.hint.nextAction.resume`
+- `station.hint.nextAction.endDowntime`
+- `station.input.disabledHint.paused`
+- `station.input.disabledHint.blocked`
 
-Generated and intentionally ignored:
+## Files intended for commit (this correction slice)
 
-- `docs/audit/station-session-close-qa/no-session-open-desktop-1440x900.png`
-- `docs/audit/station-session-close-qa/no-session-open-narrow-430x932.png`
-- `docs/audit/station-session-close-qa/close-session-confirm-desktop-1440x900.png`
-- `docs/audit/station-session-close-qa/close-session-confirm-narrow-430x932.png`
-- `docs/audit/station-session-close-qa/close-session-failure-desktop-1440x900.png`
-- `docs/audit/station-session-close-qa/close-session-failure-narrow-430x932.png`
+- `frontend/scripts/station-execution-interrupted-qa-screenshots.mjs`
+- `frontend/src/app/pages/StationExecution.tsx`
 
-Do not commit `docs/audit/station-session-close-qa/**`.
+## Existing/parent changes observed (already dirty when this slice started)
 
-## Files Intended for Commit
+- `frontend/src/app/components/station-execution/AllowedActionZone.tsx` — parent FE-SE-INTERRUPTED-MODE-11; not modified here.
+- `frontend/src/app/components/station-execution/StationAndonBanner.tsx` — parent FE-SE-INTERRUPTED-MODE-11; not modified here.
+- `frontend/src/app/pages/StationExecution.tsx` — parent slice already had testid additions; this correction adds the `reportingHint` precedence fix on top.
+- `frontend/scripts/station-execution-interrupted-qa-screenshots.mjs` — parent file extended here with text assertions.
+- `docs/audit/fe-se-interrupted-mode-11/` (4 PNGs) — parent slice artifact; re-generated this slice (timestamps reflect this run).
+- `docs/audit/fe-se-nav-intent-11/` — parent slice artifact; untouched here.
+- `.github/copilot-instructions.md`, `docs/ai-skills/autonomous-implementation-agent/SKILL.md`, `docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md`, `docs/prompts/copilot-agent-handoff-review-workflow.md`, `docs/agent-context/` — appeared modified/new in `git status` at the start of this run; **not authored or touched by this slice**, OUT OF SCOPE.
 
-Application slice:
+## Generated artifact paths (not commit payload)
 
-- `.gitignore`
-- `docs/agent-reports/latest-agent-report.md`
-- `backend/tests/test_station_session_close_execution_guard_api.py`
-- `frontend/package.json`
-- `frontend/src/app/components/station-execution/CloseSessionPanel.tsx`
-- `frontend/src/app/components/station-execution/OpenSessionPanel.tsx`
-- `frontend/src/app/pages/EquipmentBinding.tsx`
-- `frontend/src/app/pages/OperatorIdentification.tsx`
-- `frontend/src/app/pages/StationSession.tsx`
-- `frontend/scripts/station-session-close-qa-screenshots.mjs`
+- `docs/audit/fe-se-interrupted-mode-11/A-paused-no-downtime-desktop.png`
+- `docs/audit/fe-se-interrupted-mode-11/B-blocked-downtime-open-desktop.png`
+- `docs/audit/fe-se-interrupted-mode-11/C-paused-downtime-open-desktop.png`
+- `docs/audit/fe-se-interrupted-mode-11/D-paused-no-downtime-tablet-tablet.png`
+- `_corr_build.log`, `_corr_lint.log`, `_corr_routes.log`, `_corr_i18n.log`, `_corr_harness.log`, `_corr_diff.log`, `_corr_status.log` (workspace-root scratch logs)
 
-Existing Codex-owned skill hardening changes remain separate / out of scope for the app slice:
+## Full `git status --short` classification
 
-- `.github/copilot-instructions.md`
-- `docs/ai-skills/autonomous-implementation-agent/SKILL.md`
-- `docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md`
-- `docs/ai-skills/qa-e2e-layer/SKILL.md`
+```
+ M .github/copilot-instructions.md                                                   OUT OF SCOPE — not authored or modified by this slice
+ M docs/agent-reports/latest-agent-report.md                                         ARTIFACT — this canonical report
+ M docs/ai-skills/autonomous-implementation-agent/SKILL.md                           OUT OF SCOPE — not authored or modified by this slice
+ M docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md                       OUT OF SCOPE — not authored or modified by this slice
+ M docs/prompts/copilot-agent-handoff-review-workflow.md                             OUT OF SCOPE — not authored or modified by this slice
+ M frontend/src/app/components/station-execution/AllowedActionZone.tsx               OUT OF SCOPE THIS SLICE — parent FE-SE-INTERRUPTED-MODE-11
+ M frontend/src/app/components/station-execution/StationAndonBanner.tsx              OUT OF SCOPE THIS SLICE — parent FE-SE-INTERRUPTED-MODE-11
+ M frontend/src/app/pages/StationExecution.tsx                                       IN SCOPE — reportingHint downtime-first precedence fix
+?? docs/agent-context/                                                               OUT OF SCOPE — not authored by this slice
+?? docs/audit/fe-se-interrupted-mode-11/                                             ARTIFACT — 4 screenshots (refreshed this run)
+?? docs/audit/fe-se-nav-intent-11/                                                   ARTIFACT — parent slice
+?? frontend/scripts/station-execution-interrupted-qa-screenshots.mjs                 IN SCOPE — text assertions added (parent file was also untracked)
+```
 
-## Verification
+Note: parent slice files `AllowedActionZone.tsx`, `StationAndonBanner.tsx`, the parent edits inside `StationExecution.tsx`, and the parent harness `station-execution-interrupted-qa-screenshots.mjs` are still pending commit from FE-SE-INTERRUPTED-MODE-11 — when committing this correction they should be folded into a single fixup or paired commit per user direction.
 
-Passed:
+No `git add` / `git commit` / `git push` performed by this slice.
 
-- `frontend`: `tsc --noEmit`
-- `frontend`: `npm run lint:i18n`
-- `frontend`: `npm run check:routes`
-- `frontend`: `npm run qa:session-close:screenshots` with elevated browser permissions
-- `backend`: `..\.venv\Scripts\python.exe -m pytest tests\test_station_session_close_execution_guard_api.py -q`
-- repo: `G:\nodejs\node.exe --check frontend\scripts\station-session-close-qa-screenshots.mjs`
-- repo: `rg -n 'status === "open"|status !== "open"|session\?\.status === "open"|session\.status === "open"' frontend\src\app\pages\EquipmentBinding.tsx frontend\src\app\pages\OperatorIdentification.tsx frontend\src\app\pages\StationSession.tsx` returned no matches
-- repo: `git diff --check`
-- repo: `git status --ignored --short docs\audit\station-session-close-qa` shows the screenshot folder as ignored
+## Commands run and reliable results
 
-Warnings / not verified:
+| Command (cwd) | Exit | Verdict |
+| --- | --- | --- |
+| `npm.cmd run build` (frontend) | 0 | PASS — vite v6.4.1 built in 10.47s |
+| `npm.cmd run lint` (frontend) | 0 | PASS (cmd: LINT_OK) |
+| `npm.cmd run check:routes` (frontend) | 0 | PASS (cmd: ROUTES_OK) |
+| `npm.cmd run lint:i18n:registry` (frontend) | 0 | PASS (cmd: I18N_OK) |
+| `node scripts/station-execution-interrupted-qa-screenshots.mjs 5173` (frontend) | 0 | PASS — 4 scenarios, 7 assertions each, 28 PASS lines (post-fix run) |
+| `git diff --check` (root) | 0 | PASS (cmd: DIFF_OK) |
+| `git status --short` (root) | 0 | classified above |
 
-- Backend API pytest passed, but emitted the existing project warning that the local PostgreSQL database name does not look test-specific.
-- Full backend suite was not run.
+Pre-fix harness run captured the bug for scenario C:
 
-## Current git status Classification
+```
+FAIL: [C-paused-downtime-open]: report-input-disabled reason text did not match /downtime|end downtime/i.
+Observed: "Input / ReportingReporting is disabled while execution is paused. Resume to continue reporting."
+```
 
-Expected in-scope app changes:
+Post-fix harness run for the same scenario:
 
-- `.gitignore`
-- `docs/agent-reports/latest-agent-report.md`
-- `backend/tests/test_station_session_close_execution_guard_api.py`
-- `frontend/package.json`
-- `frontend/src/app/components/station-execution/CloseSessionPanel.tsx`
-- `frontend/src/app/components/station-execution/OpenSessionPanel.tsx`
-- `frontend/src/app/pages/EquipmentBinding.tsx`
-- `frontend/src/app/pages/OperatorIdentification.tsx`
-- `frontend/src/app/pages/StationSession.tsx`
-- `frontend/scripts/station-session-close-qa-screenshots.mjs`
+```
+PASS [C-paused-downtime-open]: reporting-disabled reason text matches /downtime|end downtime/i.
+Observed: "Input / ReportingReporting is disabled while downtime is open. End downtime before reporting."
+```
 
-Expected out-of-scope Codex skill changes:
+This is the root cause evidence required by the Correction Task Gate: the fix was made in `frontend/src/app/pages/StationExecution.tsx#reportingHint`, not in the report or the harness regex.
 
-- `.github/copilot-instructions.md`
-- `docs/ai-skills/autonomous-implementation-agent/SKILL.md`
-- `docs/ai-skills/flezibcg-ai-brain-v6-auto-execution/SKILL.md`
-- `docs/ai-skills/qa-e2e-layer/SKILL.md`
+## Screenshot evidence
 
-Ignored review artifacts:
+Output directory: `docs/audit/fe-se-interrupted-mode-11/`
 
-- `docs/audit/station-session-close-qa/**`
+- [docs/audit/fe-se-interrupted-mode-11/A-paused-no-downtime-desktop.png](docs/audit/fe-se-interrupted-mode-11/A-paused-no-downtime-desktop.png) — PAUSED no downtime; banner /resume/i; reporting /paused|resume/i.
+- [docs/audit/fe-se-interrupted-mode-11/B-blocked-downtime-open-desktop.png](docs/audit/fe-se-interrupted-mode-11/B-blocked-downtime-open-desktop.png) — BLOCKED + downtime_open; banner /end.*downtime/i; reporting /downtime/i.
+- [docs/audit/fe-se-interrupted-mode-11/C-paused-downtime-open-desktop.png](docs/audit/fe-se-interrupted-mode-11/C-paused-downtime-open-desktop.png) — PAUSED + downtime_open; banner /end.*downtime/i; reporting /downtime/i (post-fix).
+- [docs/audit/fe-se-interrupted-mode-11/D-paused-no-downtime-tablet-tablet.png](docs/audit/fe-se-interrupted-mode-11/D-paused-no-downtime-tablet-tablet.png) — PAUSED no downtime, tablet 834×1112; banner above the fold (y=311).
 
-## Next Recommended Slice
+All screenshots regenerated by the post-fix harness run. Mocked API data — visual QA only.
 
-Run the broader station session service/API regression set in the intended isolated test database:
+## UI guard preservation
 
-`..\.venv\Scripts\python.exe -m pytest tests\test_station_session_close_execution_guard_api.py tests\test_station_session_close_execution_guard.py`
+- `AllowedActionZone` legality unchanged; `backendAllowed.has(id)` still the only legality filter. No changes to primary precedence either.
+- `canReportProduction`, `canDo`, `sessionGate`, closure lock, ownership, queue refresh stale-clear, nav-intent useEffect, deep-link selection — **all unchanged**.
+- Only the *visible text* selected by `reportingHint` was reordered to match the andon banner. No new action is enabled or disabled by this change.
+
+## Navigation intent classification (re-confirmed)
+
+- `/station` LANDING — no auto-select; per-scenario regression PASS (4/4).
+- `/station?operationId=42` DETAIL/COCKPIT via deep link.
+- Implicit first-item selection present: **no**.
+- Initial URL entity-id mutation present: **no**.
+
+## Limitations / not covered
+
+- No backend / API / RBAC coverage; visual QA with mocked `OperationDetail` only.
+- Text assertions are English-locale dependent (default). `ja.ts` parity verified at registry level (`lint:i18n:registry` exit 0) but Japanese text is not asserted by this harness.
+- Reporting-disabled reason text precedence change is FE-only and does not affect any allowed-action gating.
+- Outstanding OUT OF SCOPE dirty files in repo were not touched by this slice; reviewer should resolve them out-of-band.
+
+## Deviations from prompt
+
+- Source change in `StationExecution.tsx#reportingHint` was made because the harness revealed scenario C's visible reason text was semantically wrong (said "paused/resume" while downtime was open). The prompt explicitly authorizes a fix when "current visible text is different but semantically correct" is not met. The change is the minimum required and does not alter any guard.
+
+## Next recommended slice
+
+- Mirror the same downtime-first precedence in any other status-derived operator hints (e.g. status pill subtitle) if they exist, to avoid divergent operator messaging.
+- Add a Playwright E2E variant of these scenarios that drives a real backend so the assertions also gate backend `allowed_actions` and reason-text consistency.
+
+## STOP
+
+No staging, no commit, no push. Awaiting `GO` or `REQUEST CHANGES`.

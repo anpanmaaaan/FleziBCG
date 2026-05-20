@@ -36,6 +36,9 @@ description: QA and E2E testing layer for FleziBCG. Simulates real user/operator
 - complete without conditions
 - event/projection mismatch
 - tenant leakage across plant/scope
+- login or list/queue landing auto-selects the first operation, hold, work
+  order, production order, material, WIP item, or dispatch item without explicit
+  user intent
 
 ## Hard Mode QA Requirements
 
@@ -94,6 +97,9 @@ For frontend screenshot QA:
   focused screenshot if needed;
 - list only current-run screenshots in the report;
 - state whether screenshots use mocked API data or real backend data.
+- treat harness scripts/specs/mocks as source/test files. They are not generated
+  artifacts; include them in files intended for commit when they are added or
+  updated to reproduce the evidence.
 
 For Station Execution, Station Session, operator, equipment, quality, material,
 or other MES workflow screenshots, include assertions for the actual business
@@ -111,6 +117,37 @@ state under review. Examples:
 If the harness only checks a `CONNECTED` badge, route load, or absence of a
 `PARTIAL` badge, report it as smoke coverage only. Do not claim it validates the
 business state.
+
+## Navigation Intent Regression Requirements
+
+For any route, list, queue, selected-entity, detail, cockpit, or action-entry
+change, QA must test the navigation intent invariant:
+
+- default role landing does not auto-enter a detail/cockpit/action surface;
+- list/queue routes do not auto-select the first item on initial load;
+- initial load does not mutate the URL with an entity id from the first item;
+- explicit row/queue click or explicit deep link still enters the target detail
+  or cockpit;
+- backend active-context auto-resume is tested separately from the "items exist"
+  case and must prove ownership/session context.
+
+Minimum cross-feature matrix when practical:
+
+- OPR login to Station Execution: no implicit first operation selection;
+- SUP/PMG operations list: no implicit operation detail;
+- QC quality hold list: no implicit first hold resolution;
+- Production Orders / Work Orders: no implicit first order/work order detail;
+- Material/WIP/Dispatch: no implicit first item action panel.
+
+Screenshot-only mocks are acceptable as frontend regression evidence only if
+they assert URL, selected state, and absence of cockpit/action UI. They are not
+backend E2E proof unless the flow crosses a real API/backend boundary.
+
+Report the source-search evidence behind the navigation claim. If any touched
+route/list/queue/detail/cockpit/action file still contains `items[0]`,
+`data.items[0]`, `queueItems[0]`, `preferred ??`, `setSearchParams`,
+`navigate(`, or route-param setter hits, classify them as `yes - existing` or
+`yes - introduced`. Do not report `no` unless the search output supports it.
 
 ## Coverage Class Rules
 
@@ -150,6 +187,12 @@ For DB-backed automated tests:
 ## Automation priority
 ## Assertion failure behavior
 ## Screenshot / artifact evidence
+## Navigation intent evidence (if routing/list/queue/detail/action is touched)
+- Screen intent:
+- Default route selected entity:
+- URL entity id after initial load:
+- Explicit selection/deep-link check:
+- Backend active-context exception check:
 ## Not covered
 ## Report export
 - Canonical report file: docs/agent-reports/latest-agent-report.md

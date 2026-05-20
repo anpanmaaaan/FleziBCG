@@ -27,12 +27,25 @@ This skill automatically selects:
    - Hard Mode MOM v3 for autonomous/risky MOM implementation
    - Hard Mode MOM v2 for focused review
 
+Before selecting mode for any non-trivial FleziBCG task, read:
+
+```text
+docs/agent-context/flezibcg-project-primer.md
+```
+
+The primer is the compact product orientation layer. It does not replace
+specific design contracts, but it tells agents how to interpret this repo as a
+manufacturing operations product instead of a generic UI/codebase.
+
 ## Required Output
 
 For every non-trivial task:
 
 ```markdown
 ## Routing
+- Requested task/slice id:
+- Requested goal:
+- Project primer read: yes/no
 - Selected brain:
 - Selected mode:
 - Hard Mode MOM:
@@ -41,6 +54,19 @@ For every non-trivial task:
 - Hard Mode kept from parent slice: yes/no
 - Reason:
 ```
+
+### Task Identity Lock
+
+The requested task/slice id from the latest user prompt is binding. Older
+reports, prompt files, screenshots, or partially completed slices are context,
+not permission to continue that older work.
+
+Before implementation, compare the requested id to the id in the work packet,
+report title, screenshot output folder, and intended changed files. If they do
+not match, stop and report `RED - task identity mismatch`. Do not implement
+`FE-SE-INTERRUPTED-MODE-11` when the active prompt requested
+`FE-SE-REMOVE-WORKFLOW-SHELL-12`, and do not mark such a run green even if all
+commands pass.
 
 ## Brain Selection
 
@@ -56,6 +82,8 @@ For every non-trivial task:
 - manufacturing ERP integration
 - OEE / shopfloor / Andon / APS / operational Digital Twin
 - IAM/scope/audit foundation for FleziBCG
+- route landing, list, queue, or selected-entity behavior that can lead to a
+  MOM detail, cockpit, or action surface
 
 If ambiguous in the FleziBCG repo, prefer MOM Brain.
 
@@ -113,6 +141,35 @@ This add-on is compatible with both Generic Brain and MOM Brain.
 If UI work touches execution state, station/session/operator/equipment, quality hold, material impact, allowed actions, tenant/scope/auth, or governed actions, Hard Mode MOM v3 still applies.
 
 Do not let UI implementation fake backend truth, authorization truth, execution state, quality result, ERP posting, backflush completion, or AI deterministic decisions.
+
+### Navigation Intent Add-on
+
+If the task touches login landing, route defaults, sidebar/menu routing,
+list/table/queue pages, selected entity state, detail pages, cockpit pages, or
+action panels, apply the Navigation Intent Gate from
+`.github/copilot-instructions.md` and `design-md-ui-governor`.
+
+Required routing decision:
+
+- classify each touched screen as `LANDING`, `LIST`, `QUEUE`, `SETUP`,
+  `DETAIL`, `COCKPIT`, or `ACTION`;
+- prevent `LANDING`/`LIST`/`QUEUE` from auto-selecting the first item or
+  mutating the URL with a first-item entity id on initial load;
+- allow entry to `DETAIL`/`COCKPIT`/`ACTION` only through explicit deep link,
+  explicit user selection/scan/typed id, or backend-confirmed active owned
+  context.
+
+If an exception is needed, require a `NAV_INTENT_EXCEPTION:` code comment and
+report the backend-owned field or contract that proves the active context.
+
+Required evidence:
+
+- run a source search on every touched routing/list/queue/detail/cockpit/action
+  file for `items[0]`, `data.items[0]`, `queueItems[0]`, `preferred ??`,
+  `setSearchParams`, `navigate(`, and route-param setters;
+- report the result as evidence. If any suspicious hit remains in a touched
+  file, classify it as `yes - existing` or `yes - introduced`; do not answer
+  `no` because the current diff did not add the hit.
 
 ## Hard Mode Selection
 
@@ -227,6 +284,9 @@ Before declaring completion, run a self-review and include the result in
 - Acceptance criteria mapped to diff/tests/screenshots:
 - Report claims match actual diff:
 - Commands failed, skipped, or not trusted:
+- Navigation intent classification checked when routing/list/queue/detail/action
+  entry behavior was touched:
+- Implicit first-item selection and initial URL entity-id mutation checked:
 ```
 
 Rules:
@@ -384,7 +444,11 @@ class, Hard Mode carry-forward status, `Changed in this slice`,
 `Existing/parent changes observed`, `Files intended for commit`, `Generated
 artifact paths`, `git status --short` with `IN SCOPE` / `OUT OF SCOPE`
 classification, commands and reliable results, verification notes,
-limitations/not covered, environment caveats, and next recommended slice.
+limitations/not covered, environment caveats, and next recommended slice. When
+routing, landing, list, queue, selected entity, detail, cockpit, or action-entry
+behavior is touched, the report must also include navigation intent
+classification, implicit first-item selection status, initial URL entity-id
+mutation status, entry source, and verification evidence.
 
 ## Required Command Pattern for MOM/Governance Actions
 

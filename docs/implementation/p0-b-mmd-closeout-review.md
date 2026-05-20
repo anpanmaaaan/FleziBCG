@@ -6,6 +6,7 @@
 |---|---|---|
 | 2026-04-29 | v1.0 | Initial P0-B closeout audit prior to P0-C entry (review-only; no implementation changes). |
 | 2026-04-29 | v1.1 | Stale status marker resolved in resource-requirement-mapping contract; closeout debt updated to resolved. |
+| 2026-05-20 | v2.0 | **SUPERSEDED by `docs/audit/mmd-master-baseline-01-freeze-handoff.md`** for the aggregated MMD foundation closeout. This doc remains authoritative for the P0-B-entry verdict; the master baseline extends it with PV write, BOM write, Reason Code write, BOM↔PV binding, and parity-debt tracking added between 2026-05-01 and 2026-05-20. |
 
 ## Executive Summary
 

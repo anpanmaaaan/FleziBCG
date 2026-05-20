@@ -2,14 +2,84 @@
 
 **For: Coding agent (FE implementation)**
 **From: FleziBCG external PO-SA agent**
-**Created: 2026-05-19**
+**Created: 2026-05-19 (revised same-day: dedicated branch, mandatory skill reading)**
 **Authority: This prompt instructs sequential implementation of 7 FE slices that together realize `station-execution-flow-mockup-v2.html`. Each slice is independently verifiable; agent must STOP between slices for PO review.**
+
+---
+
+## ⚠️ Pre-flight (BLOCKING — do not skip)
+
+Before doing anything else, you MUST in this exact order:
+
+1. **Create the dedicated working branch** (see §0.1).
+2. **Read the mandatory skill files** in §0.2. Acknowledge each by name in your first reply.
+3. **Read the mandatory project governance files** in §0.3.
+4. **Read the source-of-truth design documents** in §2.
+5. **Reply with the Work Packet** (per `autonomous-implementation-agent/SKILL.md` §Public Work Packet) for slice 1, then WAIT for user GO.
+
+If you skip pre-flight and start editing files, your output is automatically REJECTED.
+
+### §0.1 Dedicated branch (NOT main)
+
+This task runs on a **dedicated feature branch**, NOT on `main`. Create the branch from the current `main` HEAD:
+
+```bash
+cd <repo-root>
+git fetch origin
+git checkout main
+git pull --ff-only origin main
+git checkout -b feature/station-execution-flow-v2
+git status            # must show clean tree on feature/station-execution-flow-v2
+echo $?               # must print 0
+```
+
+All 7 slices share this **one** branch — do NOT create branch-per-slice (branch-per-slice was revoked 2026-05-01 due to Windows/sandbox lock collisions). One branch per feature, multiple commits along the branch is fine.
+
+Rules on the branch:
+- You may `git add <specific files>` and `git commit -m "<slice-id>: <message>"` after each slice if and only if all gates of that slice are GREEN. Never `git add .`. Never `git push`. Never merge. User (An) handles push and PR from Windows.
+- If pre-existing dirty files exist on `main` when you branch off, classify each as IN SCOPE or OUT OF SCOPE before touching it.
+- Branch name is fixed: `feature/station-execution-flow-v2`. Do not rename.
+
+### §0.2 Mandatory skill reading (BLOCKING)
+
+Read these skill files in full before any code edit. They are not optional:
+
+| Skill file | Why |
+|---|---|
+| `docs/ai-skills/autonomous-implementation-agent/SKILL.md` | Implementation loop, Work Packet contract, coding discipline, correction-task rule. Mother skill for this task. |
+| `docs/ai-skills/design-md-ui-governor/SKILL.md` | Canonical UI skill. MUST be read before any frontend code. Enforces backend-truth boundary, anti-clutter, industrial UX numerics. |
+| `docs/ai-skills/slice-strategy/SKILL.md` | Slice principle and done-criteria. Aligns slice ordering with platform truth. |
+| `docs/ai-skills/hard-mode-mom-v3/SKILL.md` | Hard Mode MOM v3 is ON for this feature. Read full rules including gate checklist. |
+| `docs/ai-skills/pr-gate-reviewer/SKILL.md` | Self-review gates. Apply before declaring any slice GREEN. |
+
+In your first reply, you MUST list these 5 skills by name with one-line summary of each (proves you read, not skimmed). If any skill file is missing on disk, STOP and report — do not proceed.
+
+You may additionally consult (not mandatory but recommended):
+- `docs/ai-skills/design-system-enforcer/SKILL.md`
+- `docs/ai-skills/qa-e2e-layer/SKILL.md`
+- `docs/ai-skills/mom-brain-core/SKILL.md`
+
+### §0.3 Mandatory governance files (BLOCKING)
+
+Per `autonomous-implementation-agent/SKILL.md` §Mandatory Reading, also read before coding:
+
+1. `.github/copilot-instructions.md`
+2. `docs/design/INDEX.md`
+3. `docs/design/AUTHORITATIVE_FILE_MAP.md`
+4. `docs/governance/CODING_RULES.md`
+5. `docs/governance/ENGINEERING_DECISIONS.md`
+6. `docs/governance/SOURCE_STRUCTURE.md`
+7. `docs/implementation/slice-strategy-for-flezibcg.md` (if exists)
+
+If any of these files do not exist, note it in the first reply and continue with what does exist.
+
+---
 
 ---
 
 ## 0. Identity and Operating Mode
 
-You are the FE implementation agent for FleziBCG. You implement frontend slices in `frontend/src/app/...` against the live `autocode` branch.
+You are the FE implementation agent for FleziBCG. You implement frontend slices in `frontend/src/app/...` against the live `main` branch.
 
 You are NOT a PO-SA agent. You do not change scope, do not invent decisions, do not rewrite specs. You execute the slice in front of you, verify with hard exit codes, and stop.
 
@@ -26,9 +96,11 @@ You do not start the next slice until the user explicitly says GO.
 ## 1. Hard Rules (apply to every slice)
 
 ### R-1 Branch discipline
-- Work directly on `autocode` branch. **Do NOT create branch-per-slice.** Branch-per-slice was REVOKED on 2026-05-01 due to Windows/sandbox lock collisions.
-- Do NOT commit. The user (An) commits from Windows after reviewing your file diffs.
-- Sandbox only edits files; never `git commit`, `git push`, `git checkout -b`, `git merge`.
+- Work on the **dedicated branch** `feature/station-execution-flow-v2` (created in §0.1). Do NOT touch `main` directly.
+- All 7 slices share this ONE branch — do NOT create branch-per-slice.
+- You MAY commit per-slice on this branch with messages `<slice-id>: <one-line summary>`. Stage only specific files (`git add <path>`); never `git add .`.
+- You may NOT push, merge, rebase onto main, or open PR. User (An) does that from Windows after review.
+- If you accidentally start work on `main`, STOP immediately and switch to the feature branch — do not stash-cherry-pick.
 
 ### R-2 PASS claims require exit codes
 - Every gate you claim as PASS must include the actual command output AND the next-line `echo $?` printing `0`.
@@ -427,7 +499,7 @@ Each slice produces `docs/audit/<slice-id>-implementation-report.md` with the fo
 
 ## Status
 - Result: GREEN | YELLOW | RED
-- Branch: autocode
+- Branch: main
 - Date: YYYY-MM-DD
 
 ## Files Changed
@@ -532,7 +604,9 @@ You do NOT start any "future slice" you propose. PO will spec them.
 
 ## 8. Quick Reference — Common Mistakes To Avoid
 
-- ❌ Branch-per-slice. ✅ All work on `autocode`.
+- ❌ Skip skill reading "to save time". ✅ Read 5 skill files from §0.2 in full, list them in first reply.
+- ❌ Edit on `main`. ✅ Create and stay on `feature/station-execution-flow-v2`.
+- ❌ Branch-per-slice. ✅ All 7 slices on `feature/station-execution-flow-v2`.
 - ❌ "Looks good, PASS." ✅ Paste exit code line.
 - ❌ Delete grep evidence after probing. ✅ Keep all evidence in slice report.
 - ❌ Combine 2 gates into 1 PASS claim. ✅ Each gate has its own command + exit code.
@@ -547,14 +621,33 @@ You do NOT start any "future slice" you propose. PO will spec them.
 
 ---
 
-## 9. First Action
+## 9. First Action (mandatory order)
 
-Confirm receipt of this prompt by:
-1. Reading documents 1–4 from §2.
-2. Replying with: `READY for slice 1: FE-SE-MODEA-SIMPLIFY-09` and a 5-line summary of what the slice will change.
-3. Waiting for user GO.
+Reply ONCE with the following sections, then WAIT for user GO. Do not edit any file before user says GO.
 
-Do NOT start editing files until user says GO for slice 1.
+1. **Branch confirmation.** Paste the `git status` output proving you are on `feature/station-execution-flow-v2` and the tree is clean. Include `echo $?` line.
+2. **Skill acknowledgment.** List the 5 mandatory skill files from §0.2, each with 1-line summary in your own words (proves you read).
+3. **Governance acknowledgment.** List the 7 governance files from §0.3 with note for any missing.
+4. **Source-of-truth acknowledgment.** List documents 1–4 from §2 with 1-line summary each.
+5. **Work Packet for slice 1** per `autonomous-implementation-agent/SKILL.md` §Public Work Packet format:
+   ```markdown
+   ## Work Packet — FE-SE-MODEA-SIMPLIFY-09
+   - User goal:
+   - Slice boundary:
+   - Selected skills read:
+   - Hard Mode MOM v3: on (reason: execution-adjacent FE composition)
+   - Coverage target: frontend
+   - Files expected to change:
+   - Files intentionally not changed:
+   - Existing patterns to reuse:
+   - Validation commands:
+   - Stop conditions:
+   ```
+6. **Open questions** (if any) — list before starting work, not after.
+
+The reply should be plain markdown. Do not include code edits in this first reply.
+
+Awaited user response: `GO slice 1` or `REVISE <section>`.
 
 ---
 

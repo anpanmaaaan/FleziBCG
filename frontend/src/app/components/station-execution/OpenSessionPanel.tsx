@@ -1,14 +1,19 @@
 import { useI18n } from "@/app/i18n";
 import type { I18nSemanticKey } from "@/app/i18n/keys";
 
+// Per FE-SE-MODEA-SIMPLIFY-09 IR-02:
+// - `stationId` and `commandError` removed from props (parent owns banner; navigation guarded upstream).
+// - `onEndSessionClick` added so the Session row only TRIGGERS close intent.
+//   Close lifecycle (dialog, closing state, stationApi.closeSession call) is owned by
+//   <CloseSessionPanel /> rendered as a sibling of the 3-row card.
 interface OpenSessionPanelProps {
   sessionId: string | null;
   openedAt: string | null;
   isOpen: boolean;
   loading: boolean;
   opening: boolean;
-  stationId: string | null;
   onOpenSession: () => void;
+  onEndSessionClick: () => void;
 }
 
 export function OpenSessionPanel({
@@ -17,8 +22,8 @@ export function OpenSessionPanel({
   isOpen,
   loading,
   opening,
-  stationId,
   onOpenSession,
+  onEndSessionClick,
 }: OpenSessionPanelProps) {
   const { t } = useI18n();
 
@@ -43,6 +48,7 @@ export function OpenSessionPanel({
         className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
           isOpen ? "bg-emerald-50 text-emerald-900" : "bg-slate-100 text-slate-700"
         }`}
+        aria-hidden="true"
       >
         1
       </div>
@@ -64,11 +70,20 @@ export function OpenSessionPanel({
             : subtext}
         </p>
       </div>
-      {!isOpen && (
+      {isOpen ? (
+        <button
+          type="button"
+          onClick={onEndSessionClick}
+          disabled={loading}
+          className="min-h-11 shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 text-sm font-medium text-red-700 transition hover:bg-red-100 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {t("stationSession.row.session.action.endSession" as I18nSemanticKey)}
+        </button>
+      ) : (
         <button
           type="button"
           onClick={onOpenSession}
-          disabled={loading || opening || !stationId}
+          disabled={loading || opening}
           className="min-h-11 shrink-0 rounded-lg border border-blue-600 bg-blue-600 px-3 text-sm font-semibold text-white transition hover:bg-blue-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {opening
