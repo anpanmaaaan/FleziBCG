@@ -149,6 +149,10 @@ Artifact policy:
 - Screenshots, videos, and generated binary evidence under `docs/audit/**` are
   review artifacts, not commit payload, unless the task prompt explicitly says
   to commit them.
+- Screenshot/E2E harness source files, scripts, specs, and test utilities are
+  not generated binary artifacts. If a slice adds or updates a harness script
+  needed to reproduce evidence, list it under `Files intended for commit` unless
+  the prompt explicitly marks it as disposable scratch work.
 - Artifact policy does not authorize deleting tracked historical evidence. If
   `git status --short` shows `D docs/audit/**`, report it as a blocker unless
   the task explicitly requested deletion of those exact tracked artifacts.
@@ -238,6 +242,10 @@ Verification status must follow the real command result:
 
 - A command with a non-zero exit code is `FAIL`, even if every failure appears
   to be pre-existing or outside the slice.
+- If a required acceptance gate exits non-zero, the slice result cannot be
+  `GREEN`. Use `RED` when the prompt defines the gate as blocking, or `YELLOW`
+  only when the prompt explicitly allows baseline failures and the report
+  separates baseline from current-slice impact.
 - Verification claims expire after later edits to code, scripts, config, or the
   canonical report. Re-run the affected commands after the final edit before
   writing `PASS`, `clean`, or `zero errors`.
@@ -300,6 +308,72 @@ Required behavior:
 - If the task is cleanup-only, any guard weakening is a regression and must be
   fixed before completion.
 
+## Navigation Intent And Explicit Selection Gate
+
+Any slice touching routing, login landing, menus, lists, queues, table row
+selection, selected entity state, detail pages, cockpit pages, or action panels
+must classify each touched screen intent before coding:
+
+- `LANDING`: safe overview; no entity selected by default.
+- `LIST`: collection view; no implicit detail.
+- `QUEUE`: executable candidates; no implicit execution/cockpit.
+- `SETUP`: user/session/equipment/context preparation.
+- `DETAIL`: explicit entity route param or user selection required.
+- `COCKPIT`: active execution context required.
+- `ACTION`: mutation surface; backend allowed actions required.
+
+Global invariant:
+
+- A `LANDING`, `LIST`, or `QUEUE` route must not auto-select the first item,
+  first row, first queue entry, first hold, first work order, first operation,
+  or first material/WIP record on initial load.
+- Initial load must not mutate the URL with an entity id such as `operationId`,
+  `workOrderId`, `holdId`, `productionOrderId`, or similar unless the id came
+  from an explicit deep link, explicit user click/scan, or backend-confirmed
+  active context owned by the current user/session.
+- Frontend code must not convert "items exist" into "this item is selected" or
+  "this action/cockpit is active". Backend truth may resume an active owned
+  context; `items[0]` fallback may not.
+
+Allowed ways to enter `DETAIL`, `COCKPIT`, or `ACTION`:
+
+- explicit route parameter/deep link supplied before page load;
+- explicit user gesture such as row click, queue selection, scan, or typed id;
+- backend-confirmed active owned context, such as active station session plus
+  active execution for the current operator/session.
+
+Forbidden patterns unless guarded by an explicit documented exception:
+
+- `items[0]`, `data.items[0]`, `queueItems[0]`, or `preferred ?? items[0]`
+  driving selected entity state on initial load;
+- `setSearchParams`, `navigate`, or URL construction that injects an entity id
+  from the first list/queue item on landing;
+- fetching a detail/cockpit/action entity from the first collection item before
+  explicit selection or backend active-owned context is proven.
+
+If an exception is required, add a nearby code comment containing
+`NAV_INTENT_EXCEPTION:` with the backend-owned reason, and report the exception
+and verification.
+
+Required report fields for affected slices:
+
+- `Navigation intent classification`
+- `Implicit first-item selection present: no | yes - existing | yes - introduced`
+- `Initial URL entity-id mutation present: no | yes - existing | yes - introduced`
+- `Entry to detail/cockpit/action source: deep link | user selection | backend active context | none`
+- `Navigation intent verification`
+
+Required evidence for affected slices:
+
+- Run and report a source search on every touched routing/list/queue/detail/
+  cockpit/action file for: `items[0]`, `data.items[0]`, `queueItems[0]`,
+  `preferred ??`, `setSearchParams`, `navigate(`, and route-param setters.
+- Do not answer the navigation gate from memory, slice intent, or only the
+  changed hunks. If a suspicious pattern exists anywhere in a touched file, the
+  report field is `yes - existing` or `yes - introduced`, not `no`.
+- Existing hits can remain out of scope, but must be named with file/line and
+  must not be presented as fixed.
+
 ## Report Export Rule
 
 For every non-trivial task, the final agent report must be written to:
@@ -355,6 +429,9 @@ For frontend/UI slices, the exported report must also include:
 - Authorization is server-side.
 - AI is advisory only.
 - Critical invariants must not rely only on UI validation.
+- List/queue/landing screens must not auto-select the first item or enter
+  detail/cockpit/action state without explicit user intent or backend-confirmed
+  active owned context.
 - Do not invent product scope.
 - Work in vertical slices.
 - Prefer behavior-based tests.

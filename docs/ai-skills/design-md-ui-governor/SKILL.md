@@ -250,6 +250,64 @@ For any new route/page, ALL must be verified:
 
 A passing build/lint is necessary but not sufficient.
 
+## 7.1 Navigation Intent Gate
+
+For any UI work touching login landing, routing, menus, list pages, queues,
+tables, selected row/entity state, detail pages, cockpit pages, or action
+panels, classify the screen intent before coding:
+
+| Intent | Meaning |
+|---|---|
+| `LANDING` | Safe overview; no entity selected by default |
+| `LIST` | Collection view; no implicit detail |
+| `QUEUE` | Executable candidates; no implicit execution/cockpit |
+| `SETUP` | Context preparation for user/session/equipment/scope |
+| `DETAIL` | Explicit route param or user selection required |
+| `COCKPIT` | Active execution context required |
+| `ACTION` | Mutation surface; backend allowed actions required |
+
+**Global UI invariant:** a `LANDING`, `LIST`, or `QUEUE` route must not
+auto-select the first row/item/queue entry and must not mutate the URL with an
+entity id on initial load. This applies across Station Execution, Operations,
+Production Orders, Work Orders, Quality Holds, Material/WIP, Dispatch, and
+future list/queue screens.
+
+Allowed entry to `DETAIL`, `COCKPIT`, or `ACTION`:
+
+- explicit route parameter/deep link;
+- explicit user gesture such as row click, queue selection, scan, or typed id;
+- backend-confirmed active context owned by the current user/session.
+
+Forbidden UI behavior:
+
+- `items[0]`, `data.items[0]`, `queueItems[0]`, or `preferred ?? items[0]`
+  drives selected entity state during initial landing/list/queue load;
+- initial load injects `operationId`, `workOrderId`, `holdId`,
+  `productionOrderId`, material id, or similar into the URL from the first item;
+- a cockpit/action panel opens merely because a collection has items.
+
+If backend active context makes auto-resume legitimate, add a nearby
+`NAV_INTENT_EXCEPTION:` comment naming the backend-owned field/contract and
+verify it with a negative test where only list items exist but no active context
+is present.
+
+Required evidence for affected UI slices:
+
+- source search on every touched routing/list/queue/detail/cockpit/action file
+  for first-item selection and URL entity-id mutation patterns, including
+  `items[0]`, `data.items[0]`, `queueItems[0]`, `preferred ??`,
+  `setSearchParams`, `navigate(`, and route-param setters;
+- report the search result. If a touched file still contains a suspicious
+  pattern, classify it as `yes - existing` or `yes - introduced`; never report
+  `no` from slice intent alone;
+- screenshot or E2E evidence for default landing/list/queue state;
+- screenshot or E2E evidence for explicit selection/deep-link behavior when the
+  slice touches detail/cockpit entry;
+- report fields: `Navigation intent classification`, `Implicit first-item
+  selection present (no | yes - existing | yes - introduced)`,
+  `Initial URL entity-id mutation present (no | yes - existing | yes - introduced)`,
+  `Entry source`, and `Navigation intent verification`.
+
 ---
 
 ## 8. Component Quality Checklist
@@ -342,6 +400,11 @@ Not allowed:
 - Screenshots and videos are review evidence, not default commit payload.
 - Save generated artifacts under `docs/audit/**`, but report them under
   `Generated artifact paths`, not under `Files intended for commit`.
+- Screenshot harness scripts, Playwright specs, QA scripts, mock fixtures, and
+  test utilities are source/test files, not generated binary artifacts. If a UI
+  slice adds or updates them to prove the work, include them in `Files intended
+  for commit` unless the prompt explicitly marks them as disposable scratch
+  files.
 - Do not stage or commit PNG, JPG, JPEG, GIF, WebP, MP4, or WebM artifacts under
   `docs/audit/**` unless the prompt explicitly says to commit generated
   artifacts.
@@ -466,6 +529,17 @@ ACTIVE / PARTIAL / MOCK / SHELL / FUTURE / DISABLED
 - Direct URL checked:
 - Detail route checked if applicable:
 
+## Navigation Intent Verification
+- Screen intent classification:
+- LANDING/LIST/QUEUE auto-selects first item: yes/no/N/A
+- Initial load mutates URL with entity id: yes/no/N/A
+- Entry to DETAIL/COCKPIT/ACTION source:
+- Backend active-context exception used: yes/no
+- `NAV_INTENT_EXCEPTION:` comments added where needed:
+- Source search for first-item selection patterns:
+- Default landing/list/queue screenshot or E2E evidence:
+- Explicit selection/deep-link evidence:
+
 ## Tests / Build Run
 - `npm run build`:
 - `npm run lint`:
@@ -521,14 +595,20 @@ Reject or stop the slice if UI:
 - shows screenshots that do not reach the target state;
 - leaves intended new UI files untracked or unintegrated;
 - claims a component is used when it is not imported/rendered by the target route.
+- auto-selects the first item from a landing/list/queue screen or mutates the
+  URL with a first-item entity id before explicit user selection, explicit deep
+  link, or backend-confirmed active owned context.
 
 ---
 
 ## 12. Versioning
 
 - v3: consolidated canonical skill, dated 2026-05-17.
-- v4 (current): added screenshot evidence hard gate, assertion failure
+- v4: added screenshot evidence hard gate, assertion failure
   discipline, and diff/report consistency rules after Station Execution cockpit
   review failures, dated 2026-05-18.
+- v5 (current): added Navigation Intent Gate after Station Execution login/queue
+  regression, requiring explicit selection before list/queue screens enter
+  detail/cockpit/action state, dated 2026-05-20.
 - Predecessor skills (`stitch-design-md-ui-ux`, `design-system-enforcer`) are
   now stub pointers and must not be loaded independently.

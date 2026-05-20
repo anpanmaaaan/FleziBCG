@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { PageHeader } from "@/app/components";
-import { MockWarningBanner } from "@/app/components";
 import { toast } from "sonner";
 import { RefreshCw, Lock, X, RotateCcw, Info, AlertTriangle } from "lucide-react";
 import { StationExecutionHeader } from "@/app/components/station-execution/StationExecutionHeader";
@@ -251,6 +250,8 @@ export function StationExecution() {
   const [queueOverlayOpen, setQueueOverlayOpen] = useState(false);
   const [forceSelectionMode, setForceSelectionMode] = useState(false);
   const [commandError, setCommandError] = useState<StationCommandErrorMessage | null>(null);
+  // FE-SE-COCKPIT-HERO-10: scroll target for the report_production primary CTA.
+  const inputSectionRef = useRef<HTMLElement | null>(null);
 
   const getStatusLabel = (status: OperationDetail["status"]): string => {
     return t(mapExecutionStatusText(status) as I18nSemanticKey);
@@ -440,18 +441,23 @@ export function StationExecution() {
         return;
       }
 
-      if (operation && data.items.some((item) => item.operation_id === operation.id)) {
-        return;
+      // FE-SE-NAV-INTENT-11: /station LANDING must not auto-select the first
+      // queue item. Entry to DETAIL/COCKPIT is only allowed via explicit deep
+      // link (`?operationId=...`, handled by the queryOperationId useEffect)
+      // or explicit user selection (`selectQueueOperation`). Queue/list
+      // existence is not user intent. Backend active-owned session context is
+      // not currently exposed by GET /v1/station/queue in a form that proves
+      // an active execution for the current operator, so no auto-resume is
+      // attempted here. If a currently-selected operation is no longer in
+      // the queue, drop it back to the selection surface so the operator
+      // re-selects explicitly.
+      if (operation && !data.items.some((item) => item.operation_id === operation.id)) {
+        setOperation(null);
+        setOperationId("");
+        if (searchParams.has("operationId")) {
+          setSearchParams({});
+        }
       }
-
-      const preferred =
-        queryOperationId && /^\d+$/.test(queryOperationId)
-          ? data.items.find((item) => item.operation_id === Number(queryOperationId))
-          : null;
-      const next = preferred ?? data.items[0];
-      setOperationId(String(next.operation_id));
-      setSearchParams({ operationId: String(next.operation_id) });
-      await fetchOperation(String(next.operation_id));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("station.toast.loadQueueFailed"));
     } finally {
@@ -851,7 +857,9 @@ export function StationExecution() {
             </div>
           }
         />
-        <MockWarningBanner phase="PARTIAL" note={t("screenStatus.banner.deprecation.body" as any)} />
+        {/* FE-SE-COCKPIT-HERO-10: removed legacy <MockWarningBanner phase="PARTIAL" /> .
+            screenStatus.stationExecution.phase === "CONNECTED"; partial-data
+            banner is not appropriate for this surface. */}
 
         <div className="flex-1 overflow-auto p-4 max-w-2xl mx-auto w-full">
           <StationWorkflowShell
@@ -1144,53 +1152,35 @@ export function StationExecution() {
                 </>
               ) : (
                 <>
-                  <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
-                    <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-2">
-                      {t("station.block.guidance")}
-                    </p>
+                  {(guidanceMessage || commandError) && (
+                    <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
+                      <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-2">
+                        {t("station.block.guidance")}
+                      </p>
 
-                    {guidanceMessage && (
-                      <div className="mb-4 flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 sm:px-5">
-                        <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-500 sm:h-6 sm:w-6" aria-hidden="true" />
-                        <div className="min-w-0">
-                          <p className="mt-1 text-sm text-blue-900 sm:text-base md:text-xl leading-snug">{guidanceMessage}</p>
+                      {guidanceMessage && (
+                        <div className="mb-4 flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 sm:px-5">
+                          <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-500 sm:h-6 sm:w-6" aria-hidden="true" />
+                          <div className="min-w-0">
+                            <p className="mt-1 text-sm text-blue-900 sm:text-base md:text-xl leading-snug">{guidanceMessage}</p>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {commandErrorBanner}
-
-                    <AllowedActionZone
-                      operation={operation}
-                      actionLoading={actionLoading}
-                      downtimeLoading={downtimeLoading}
-                      canExecute={canExecute}
-                      canPauseExecution={canPauseExecution}
-                      canStartDowntime={canStartDowntime}
-                      canCompleteExecution={canCompleteExecution}
-                      canResumeExecution={canResumeExecution}
-                      canEndDowntimeAction={canEndDowntimeAction}
-                      canDo={canDo}
-                      remainingQty={Math.max(0, (operation?.quantity ?? 0) - (operation?.completed_qty ?? 0))}
-                      onStartOperation={() => void startOperation()}
-                      onPauseOperation={() => void pauseOperation()}
-                      onOpenDowntimeModal={() => setDowntimeModalOpen(true)}
-                      onCompleteOperation={() => void completeOperation()}
-                      onResumeOperation={() => void resumeOperation()}
-                      onEndDowntime={() => void endDowntime()}
-                    />
-                  </section>
+                      {commandErrorBanner}
+                    </section>
+                  )}
 
                   {/* Report / input block */}
                   {isInterruptedMode && !canReportProduction ? (
-                    <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
+                    <section ref={inputSectionRef} className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
                       <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-2">
                         {t("station.block.inputReporting")}
                       </p>
                       <p className="mt-2 text-sm sm:text-base text-slate-600 md:text-xl">{reportingHint}</p>
                     </section>
                   ) : (
-                    <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
+                    <section ref={inputSectionRef} className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
                       <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-2">
                         {t("station.block.inputReporting")}
                       </p>
@@ -1235,6 +1225,29 @@ export function StationExecution() {
             </div>
 
             <aside className="flex min-w-0 flex-col gap-3 sm:gap-4">
+              {operation.status !== "COMPLETED" && (
+                <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:p-6 shrink-0">
+                  <p className="text-base font-semibold uppercase tracking-wide text-slate-500 md:text-lg mb-3">
+                    {t("station.block.actions")}
+                  </p>
+                  <AllowedActionZone
+                    operation={operation}
+                    actionLoading={actionLoading}
+                    downtimeLoading={downtimeLoading}
+                    sessionGate={canExecuteBySessionControl}
+                    remainingQty={Math.max(0, (operation?.quantity ?? 0) - (operation?.completed_qty ?? 0))}
+                    onStartOperation={() => void startOperation()}
+                    onPauseOperation={() => void pauseOperation()}
+                    onOpenDowntimeModal={() => setDowntimeModalOpen(true)}
+                    onCompleteOperation={() => void completeOperation()}
+                    onResumeOperation={() => void resumeOperation()}
+                    onEndDowntime={() => void endDowntime()}
+                    onReportProduction={() => {
+                      inputSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                  />
+                </section>
+              )}
               <ClosureStatePanel
                 closureStatus={operation.closure_status}
                 canCloseOperation={canCloseOperation}

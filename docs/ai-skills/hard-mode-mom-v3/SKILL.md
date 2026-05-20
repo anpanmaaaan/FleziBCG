@@ -51,6 +51,9 @@ Use v3 for:
 - role/action/scope assignment
 - audit/security event
 - DB schema enforcing operational or governance truth
+- login landing, route, list, queue, selected-entity, detail, cockpit, or
+  action-entry behavior that can put a user into MOM execution, quality,
+  material, dispatch, or governance work
 - any autonomous implementation slice where event/invariant requirements must be derived from design docs
 
 ## Mandatory Design Reading
@@ -314,6 +317,9 @@ Reject if:
 - invariant is not enforced
 - projection/read model becomes source of truth
 - frontend becomes execution or permission truth
+- landing/list/queue UI becomes implicit selection truth by auto-selecting the
+  first item or entering detail/cockpit/action state without explicit user
+  intent or backend-confirmed active owned context
 - tenant/scope/auth is not server-side
 - service layer is bypassed
 - broad refactor is mixed with behavior change

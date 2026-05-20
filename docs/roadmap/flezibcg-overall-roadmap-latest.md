@@ -16,6 +16,14 @@ Latest Design Baseline 2026-04-26
 > `docs/system/manufacturing-mode-profile.md` as the active pilot steering
 > documents.
 
+> **P0-B MMD Status (2026-05-20): MOSTLY FROZEN.** Foundation production-ready for
+> discrete-first execution; three parity gaps (RR / Routing Op / Routing-header
+> FE write intent) are tracked with named owning slices. P0-C Execution Core
+> entry is NOT blocked by these gaps. Primary references:
+> `docs/audit/mmd-master-baseline-01-freeze-handoff.md` (master baseline),
+> `docs/audit/mmd-current-state-report.md` v2.0 (current state),
+> `docs/roadmap/mmd-completion-roadmap-2026-05-20.md` (slice plan).
+
 # FleziBCG Overall Roadmap
 
 ## 0. Current Position — Chúng ta đang ở đâu?

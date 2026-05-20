@@ -395,6 +395,7 @@ export const enRegistry: I18nRegistry = {
   "station.block.executionSummary": "Execution Summary",
   "station.block.inputReporting": "Input / Reporting",
   "station.block.guidance": "Guidance / Blockers",
+  "station.block.actions": "Actions",
   "station.timer.elapsed": "Elapsed",
   "station.timer.targetTime": "Target Time",
   "station.timer.pausedTotal": "Paused total",
@@ -426,6 +427,7 @@ export const enRegistry: I18nRegistry = {
   "station.session.closeBlockedActiveExecution": "Cannot close session: complete or pause/end all active operations first.",
   "station.session.bindEquipment": "Bind Equipment",
   "station.action.completeOperation": "Complete Operation",
+  "station.action.noActionsAvailable": "No actions available — contact supervisor",
 
   // ── home ──
   "home.stats.activeLines": "Active Lines",
